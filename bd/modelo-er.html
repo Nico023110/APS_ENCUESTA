@@ -1,0 +1,1246 @@
+<title>Modelo Relacional APS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  --ground:      #F7F9F9;
+  --surface:     #FFFFFF;
+  --surface-alt: #EFF3F3;
+  --ink:         #12211F;
+  --ink-soft:    #3A4B49;
+  --muted:       #5C6E6C;
+  --rule:        #DBE4E3;
+  --rule-strong: #C2D0CE;
+  --accent:      #0F5F5C;
+  --accent-soft: #E0EDEC;
+  --inmediata:   #B23A2E;
+  --prioritaria: #B0670F;
+  --regular:     #8C7500;
+  --sinriesgo:   #2D6A4F;
+  --shadow:      0 1px 2px rgba(18,33,31,.05), 0 8px 24px -16px rgba(18,33,31,.18);
+
+  --f-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --f-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --measure: 68ch;
+  --step-0: 1rem;
+  --step-1: 1.19rem;
+  --step-2: 1.45rem;
+  --step-3: 1.85rem;
+  --step-4: 2.45rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #0D1514;
+    --surface:     #141F1E;
+    --surface-alt: #1B2827;
+    --ink:         #E5ECEA;
+    --ink-soft:    #B9C7C5;
+    --muted:       #8A9C99;
+    --rule:        #253433;
+    --rule-strong: #354746;
+    --accent:      #56BFB2;
+    --accent-soft: #16302E;
+    --inmediata:   #E8837A;
+    --prioritaria: #E0A44F;
+    --regular:     #C9B23F;
+    --sinriesgo:   #6FBF95;
+    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:      #0D1514;
+  --surface:     #141F1E;
+  --surface-alt: #1B2827;
+  --ink:         #E5ECEA;
+  --ink-soft:    #B9C7C5;
+  --muted:       #8A9C99;
+  --rule:        #253433;
+  --rule-strong: #354746;
+  --accent:      #56BFB2;
+  --accent-soft: #16302E;
+  --inmediata:   #E8837A;
+  --prioritaria: #E0A44F;
+  --regular:     #C9B23F;
+  --sinriesgo:   #6FBF95;
+  --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--step-0);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem 6rem;
+}
+@media (min-width: 1000px) {
+  .page { grid-template-columns: 15rem minmax(0, 1fr); gap: 3.5rem; padding-right: 2.5rem; }
+}
+
+/* ---------- Índice lateral ---------- */
+.toc { display: none; }
+@media (min-width: 1000px) {
+  .toc {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 4.5rem 0 3rem;
+    font-size: .82rem;
+    line-height: 1.45;
+  }
+}
+.toc-label {
+  font-family: var(--f-mono);
+  font-size: .66rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .55rem; }
+.toc a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: .3rem;
+  border-left: 2px solid transparent;
+  padding-left: .7rem;
+  margin-left: -.7rem;
+}
+.toc a:hover { color: var(--accent); border-left-color: var(--accent); }
+.toc a span { font-family: var(--f-mono); color: var(--muted); font-size: .74rem; }
+
+/* ---------- Cabecera ---------- */
+header.masthead { padding: 4.5rem 0 0; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 1.1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: var(--step-4);
+  line-height: 1.1;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+  margin: 0 0 .9rem;
+}
+.standfirst {
+  font-family: var(--f-display);
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: var(--measure);
+  margin: 0 0 2.5rem;
+}
+
+/* ---------- Ficha de identidad ---------- */
+.ficha {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-bottom: 3.5rem;
+}
+.ficha div {
+  padding: .95rem 1.15rem;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.ficha div:last-child { border-right: none; }
+.ficha dt {
+  font-family: var(--f-mono);
+  font-size: .64rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 .35rem;
+}
+.ficha dd { margin: 0; font-size: .92rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ---------- Secciones ---------- */
+section { margin-bottom: 4rem; scroll-margin-top: 1.5rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: var(--step-3);
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+  margin: 0 0 1.4rem;
+  padding-bottom: .7rem;
+  border-bottom: 1px solid var(--rule-strong);
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  align-items: baseline;
+}
+h2 .num {
+  font-family: var(--f-mono);
+  font-size: .95rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+h3 {
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: var(--step-1);
+  line-height: 1.35;
+  margin: 2.4rem 0 .8rem;
+  text-wrap: balance;
+}
+p, ul, ol { max-width: var(--measure); }
+p { margin: 0 0 1.1rem; }
+ul, ol { margin: 0 0 1.2rem; padding-left: 1.3rem; }
+li { margin-bottom: .5rem; }
+li::marker { color: var(--muted); }
+strong { font-weight: 600; }
+a { color: var(--accent); }
+
+code {
+  font-family: var(--f-mono);
+  font-size: .875em;
+  background: var(--surface-alt);
+  padding: .1em .35em;
+  border-radius: 2px;
+}
+
+/* ---------- Cita normativa ---------- */
+blockquote {
+  margin: 1.6rem 0;
+  padding: .2rem 0 .2rem 1.4rem;
+  border-left: 2px solid var(--accent);
+  max-width: var(--measure);
+  font-family: var(--f-display);
+  font-size: 1.06rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote cite {
+  display: block;
+  margin-top: .5rem;
+  font-family: var(--f-mono);
+  font-size: .72rem;
+  font-style: normal;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+
+/* ---------- Tablas ---------- */
+.scroll-x { overflow-x: auto; margin: 1.5rem 0; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+th, td { text-align: left; padding: .62rem .95rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th {
+  font-family: var(--f-mono);
+  font-size: .66rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  background: var(--surface-alt);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: none; }
+td.rn, td.num, th.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.obj { font-family: var(--f-mono); font-size: .8rem; }
+
+/* ---------- Código ---------- */
+pre.code {
+  font-family: var(--f-mono);
+  font-size: .8rem;
+  line-height: 1.6;
+  background: var(--surface-alt);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 1.4rem 0;
+  tab-size: 2;
+}
+
+/* ---------- Diagramas ---------- */
+figure { margin: 1.8rem 0 2.2rem; }
+.diagram {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1.4rem 1rem;
+}
+figcaption {
+  font-size: .82rem;
+  color: var(--muted);
+  margin-top: .7rem;
+  max-width: var(--measure);
+  line-height: 1.5;
+}
+
+/* ---------- Semaforización ---------- */
+.prioridades { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.4rem 0 1.8rem; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-family: var(--f-mono);
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .3rem .7rem;
+  border: 1px solid currentColor;
+  border-radius: 100px;
+}
+.pill::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; }
+.pill.i { color: var(--inmediata); }
+.pill.p { color: var(--prioritaria); }
+.pill.r { color: var(--regular); }
+.pill.s { color: var(--sinriesgo); }
+
+/* ---------- Puntos abiertos ---------- */
+.abiertos { display: flex; flex-direction: column; gap: 1rem; margin: 1.8rem 0; counter-reset: abierto; }
+.abierto {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--prioritaria);
+  border-radius: 3px;
+  background: var(--surface);
+  padding: 1.1rem 1.3rem;
+  box-shadow: var(--shadow);
+}
+.abierto h4 {
+  font-family: var(--f-body);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 .5rem;
+  display: grid;
+  grid-template-columns: 1.7rem 1fr;
+  align-items: baseline;
+}
+.abierto h4::before {
+  counter-increment: abierto;
+  content: counter(abierto);
+  font-family: var(--f-mono);
+  font-size: .82rem;
+  color: var(--prioritaria);
+}
+.abierto p { margin: 0 0 .7rem; padding-left: 1.7rem; font-size: .93rem; }
+.abierto p:last-child { margin-bottom: 0; }
+.abierto.dato { border-left-color: var(--accent); }
+.abierto.dato h4::before { color: var(--accent); }
+
+.nota {
+  background: var(--accent-soft);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1rem 1.2rem;
+  margin: 1.6rem 0;
+  font-size: .92rem;
+  max-width: var(--measure);
+}
+.nota p:last-child { margin-bottom: 0; }
+.nota strong { color: var(--accent); }
+
+footer {
+  margin-top: 5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule-strong);
+  font-size: .82rem;
+  color: var(--muted);
+  max-width: var(--measure);
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+<nav class="toc" aria-label="Índice">
+  <p class="toc-label">Contenido</p>
+  <ol>
+    <li><a href="#decisiones"><span>1</span> Decisiones que gobiernan</a></li>
+    <li><a href="#nucleo"><span>2</span> Núcleo transaccional</a></li>
+    <li><a href="#plan"><span>3</span> Plan, alertas, trazabilidad</a></li>
+    <li><a href="#catalogos"><span>4</span> Catálogos</a></li>
+    <li><a href="#auditoria"><span>5</span> Auditoría</a></li>
+    <li><a href="#reglas"><span>6</span> Dónde vive cada regla</a></li>
+    <li><a href="#abiertos"><span>7</span> Puntos abiertos</a></li>
+    <li><a href="#instalacion"><span>8</span> Instalación</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">SI-APS · Equipos Básicos de Salud · Santiago de Cali</p>
+  <h1>Modelo Entidad-Relación</h1>
+  <p class="standfirst">
+    Traducción del instrumento de caracterización poblacional a un esquema relacional que hace
+    cumplir las 167 reglas de negocio. La caracterización no es un fin en sí misma: el modelo
+    existe para que un hallazgo de riesgo produzca una atención verificable.
+  </p>
+
+  <dl class="ficha">
+    <div><dt>Motor</dt><dd>PostgreSQL 14+</dd></div>
+    <div><dt>Tablas</dt><dd>54</dd></div>
+    <div><dt>Opciones</dt><dd>442</dd></div>
+        <div><dt>CUPS</dt><dd>10 024</dd></div>
+    <div><dt>NoCUPS</dt><dd>20</dd></div>
+    <div><dt>Reglas</dt><dd>RN-000 … RN-226</dd></div>
+  </dl>
+</header>
+
+<!-- ============================================================ -->
+<section id="decisiones">
+  <h2><span class="num">1</span> Las tres decisiones que gobiernan el modelo</h2>
+
+  <h3>1.1 &nbsp;La jerarquía de RN-000 es la columna vertebral</h3>
+  <p>
+    El instrumento no es un formulario plano sino una estructura de bloques repetibles.
+    El árbol de tablas la reproduce sin desviarse.
+  </p>
+
+  <div class="scroll-x">
+    <table>
+      <thead>
+        <tr><th>Nivel</th><th class="num">Ítems</th><th>Cardinalidad</th><th>Tabla</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Ficha / Entorno</td><td class="num">1–20</td><td>1 por visita</td><td class="obj">aps.ficha</td></tr>
+        <tr><td>Vivienda</td><td class="num">21–49</td><td>1 por ficha</td><td class="obj">aps.vivienda</td></tr>
+        <tr><td>Familia</td><td class="num">50–57</td><td>N por vivienda</td><td class="obj">aps.familia_ficha</td></tr>
+        <tr><td>Integrante</td><td class="num">58–110</td><td>N por familia</td><td class="obj">aps.integrante</td></tr>
+        <tr><td>Plan — Vivienda</td><td class="num">111–119</td><td>1 por vivienda</td><td class="obj">aps.plan_cuidado · vivienda</td></tr>
+        <tr><td>Plan — Familia</td><td class="num">120–129</td><td>N por vivienda</td><td class="obj">aps.plan_cuidado · familia</td></tr>
+        <tr><td>Plan — Persona</td><td class="num">130–140</td><td>N por familia</td><td class="obj">aps.plan_cuidado · persona</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>La cardinalidad se hace cumplir con índices únicos parciales, no por convención:</p>
+
+<pre class="code">CREATE UNIQUE INDEX ux_plan_vivienda ON aps.plan_cuidado (ficha_id)         WHERE ambito = 'vivienda';
+CREATE UNIQUE INDEX ux_plan_familia  ON aps.plan_cuidado (familia_ficha_id) WHERE ambito = 'familia';
+CREATE UNIQUE INDEX ux_plan_persona  ON aps.plan_cuidado (integrante_id)    WHERE ambito = 'persona';</pre>
+
+  <h3>1.2 &nbsp;La identidad se separa de la caracterización</h3>
+  <p>
+    Ésta es la decisión con más consecuencias, y la impone el propio instrumento.
+  </p>
+
+  <blockquote>
+    <p>Se conserva estable entre visitas: si el EBS regresa a la misma dirección georreferenciada,
+    el sistema debe recuperar el hogar existente en lugar de crear uno nuevo.</p>
+    <cite>RN-025</cite>
+  </blockquote>
+
+  <blockquote>
+    <p>La combinación tipo + número es la llave de deduplicación de personas entre visitas y entre
+    hogares, de modo que una misma persona caracterizada dos veces no se contabilice como dos
+    individuos en los indicadores poblacionales.</p>
+    <cite>RN-063</cite>
+  </blockquote>
+
+  <p>Por eso cada nivel se parte en dos tablas:</p>
+
+  <div class="scroll-x">
+    <table>
+      <thead>
+        <tr><th>Identidad · persiste</th><th>Caracterización · por visita</th><th class="num">Regla</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>aps.hogar</code><br>código, dirección, georreferenciación</td>
+          <td><code>aps.vivienda</code><br>estrato, materiales, saneamiento, zoonosis</td>
+          <td class="rn">RN-025</td>
+        </tr>
+        <tr>
+          <td><code>aps.familia</code><br>código subordinado al hogar</td>
+          <td><code>aps.familia_ficha</code><br>tipo, Zarit, redes, riesgo</td>
+          <td class="rn">RN-026</td>
+        </tr>
+        <tr>
+          <td><code>aps.persona</code><br>documento, nombres, nacimiento, sexo</td>
+          <td><code>aps.integrante</code><br>rol, salud, antropometría, tamizajes</td>
+          <td class="rn">RN-063</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Sin esta separación, la segunda visita al mismo hogar crearía un hogar nuevo, una familia nueva
+    y personas nuevas: los indicadores de cobertura contarían dos veces a la misma población, y sería
+    imposible comparar la evolución del riesgo entre visitas.
+  </p>
+
+  <h3>1.3 &nbsp;Cada selección múltiple es una tabla, nunca una lista</h3>
+  <p>
+    El instrumento tiene 22 preguntas de selección múltiple. Cada una es una tabla puente con clave
+    primaria compuesta. Guardarlas como arreglo o como cadena separada por comas impediría lo que las
+    reglas de decisión exigen constantemente: <strong>contar</strong> — RN-207 distingue «un síntoma»
+    de «dos o más» —, <strong>cruzar</strong> — RN-208 cruza dengue con el ítem 37 — y
+    <strong>extender al hogar</strong> — RN-208 marca a todos los integrantes como contactos de
+    tuberculosis.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="nucleo">
+  <h2><span class="num">2</span> Núcleo transaccional</h2>
+
+  <figure>
+    <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    HOGAR ||--o{ FAMILIA : "alberga (RN-026)"
+    HOGAR ||--o{ FICHA : "es visitado en"
+    EQUIPO_SALUD ||--o{ FICHA : "caracteriza (RN-010)"
+    FUNCIONARIO ||--o{ FICHA : "es responsable"
+    EQUIPO_SALUD ||--o{ FUNCIONARIO : "integra"
+
+    FICHA ||--|| VIVIENDA : "1 por ficha (RN-000)"
+    FICHA ||--o{ FAMILIA_FICHA : "N familias (item 28)"
+    FAMILIA ||--o{ FAMILIA_FICHA : "se caracteriza en"
+    FAMILIA_FICHA ||--o{ INTEGRANTE : "N integrantes (item 51)"
+    PERSONA ||--o{ INTEGRANTE : "se caracteriza como (RN-063)"
+
+    VIVIENDA ||--o{ VIVIENDA_RIESGO_ACCIDENTE : "item 36"
+    VIVIENDA ||--o{ VIVIENDA_FACTOR_CONTAMINACION : "item 38"
+    VIVIENDA ||--o{ VIVIENDA_ANIMAL : "item 40"
+    FAMILIA_FICHA ||--o{ FAMILIA_SITUACION_RIESGO : "item 54"
+    FAMILIA_FICHA ||--o{ FAMILIA_PRACTICA_VINCULO : "item 55"
+
+    HOGAR {
+        bigint id PK
+        text codigo UK "item 25 estable entre visitas"
+        text territorio_codigo FK "item 7"
+        text microterritorio_codigo FK "item 8"
+        text direccion_normalizada "item 21"
+        numeric latitud "item 22"
+        numeric longitud "item 23"
+        boolean geo_pendiente "RN-022"
+    }
+    FAMILIA {
+        bigint id PK
+        text codigo UK "item 26"
+        bigint hogar_id FK
+        int consecutivo
+    }
+    PERSONA {
+        bigint id PK
+        text tipo_id UK "item 62"
+        text numero_id UK "item 63 deduplicacion"
+        text primer_nombre "item 58"
+        text primer_apellido "item 60"
+        date fecha_nacimiento "item 64"
+        text sexo "item 66"
+        char nacionalidad FK "item 65"
+    }
+    FICHA {
+        bigint id PK
+        text codigo UK "item 15"
+        boolean consentimiento "item 1 RN-001"
+        text situacion_inminente "item 2 RN-201"
+        bigint hogar_id FK
+        bigint equipo_salud_id FK
+        bigint responsable_id FK
+        date fecha_diligenciamiento "item 16"
+        text entorno_abordaje "item 17"
+        enum estado "borrador a sincronizada"
+        int version "RN-225"
+    }
+    VIVIENDA {
+        bigint ficha_id PK "1 a 1 con ficha"
+        text estrato "item 27"
+        int hogares_en_vivienda "item 28"
+        int personas_en_vivienda "item 29"
+        int habitaciones_vivienda "item 30"
+        numeric personas_por_habitacion "item 32 CALCULADO"
+        boolean hacinamiento "item 33 CALCULADO"
+        text material_techo "item 35"
+        int perros_vacunados "item 42"
+        text fuente_agua "item 46"
+    }
+    FAMILIA_FICHA {
+        bigint id PK
+        bigint ficha_id FK
+        bigint familia_id FK
+        text tipo_familia "item 50"
+        int numero_integrantes "item 51"
+        boolean cuidador_principal "item 52"
+        text zarit "item 53"
+        text redes_apoyo "item 56"
+        enum clasificacion_riesgo "RN-221 CALCULADO"
+    }
+    INTEGRANTE {
+        bigint id PK
+        bigint familia_ficha_id FK
+        bigint persona_id FK
+        text rol_familiar "item 72"
+        text regimen_afiliacion "item 75"
+        numeric peso "item 92"
+        numeric talla "item 93"
+        numeric imc "item 95 CALCULADO"
+        int tension_sistolica "item 98"
+        text clasificacion_tension "item 99"
+        boolean ideacion_suicida "item 107 RN-202"
+    }
+</pre>
+    </div>
+    <figcaption>
+      Las 16 tablas de selección múltiple del integrante (ítems 77–106) se omiten por legibilidad.
+      Todas siguen el mismo patrón: clave primaria <code>(integrante_id, codigo)</code> y borrado en cascada.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ -->
+<section id="plan">
+  <h2><span class="num">3</span> Plan de cuidado, alertas y trazabilidad</h2>
+
+  <p>
+    Éste es el subsistema que convierte la caracterización en atención en salud. Los tres niveles de
+    prioridad determinan el plazo máximo de respuesta y no son editables a la baja por el encuestador:
+  </p>
+
+  <div class="prioridades">
+    <span class="pill i">Inmediata · en la visita</span>
+    <span class="pill p">Prioritaria · 72 horas</span>
+    <span class="pill r">Regular · 30 días</span>
+    <span class="pill s">Sin riesgo · anual</span>
+  </div>
+
+  <blockquote>
+    <p>El sistema debe mantener un vínculo explícito y auditable entre cada alerta y la acción que la
+    resuelve, de modo que sea posible responder, para cualquier ficha, la pregunta:
+    <em>¿qué se hizo frente a este hallazgo?</em></p>
+    <cite>RN-220</cite>
+  </blockquote>
+
+  <p>
+    Esa pregunta es la que justifica la tabla <code>aps.alerta_accion</code>. Ninguna alerta puede
+    quedar sin acción: cuando el equipo considera que un hallazgo no requiere intervención, debe
+    registrarlo expresamente como «No procede» con justificación escrita.
+  </p>
+
+  <figure>
+    <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    FICHA ||--o{ PLAN_CUIDADO : "por ambito"
+    FICHA ||--o{ ALERTA : "genera RN-201 a RN-212"
+    FAMILIA_FICHA ||--o{ PLAN_CUIDADO : "ambito familia"
+    INTEGRANTE ||--o{ PLAN_CUIDADO : "ambito persona"
+
+    PLAN_CUIDADO ||--o{ PLAN_ACCION : "items 114 124 136a"
+    PLAN_CUIDADO ||--o{ PLAN_SEGUIMIENTO : "items 117 a 140"
+    FUNCIONARIO ||--o{ PLAN_ACCION : "ejecuta"
+    FUNCIONARIO ||--o{ PLAN_SEGUIMIENTO : "verifica"
+    PROCEDIMIENTO ||--o{ PLAN_ACCION : "CUPS o NoCUPS"
+
+    ALERTA ||--o{ ALERTA_ACCION : "RN-220"
+    PLAN_ACCION ||--o{ ALERTA_ACCION : "resuelve"
+    ALERTA ||--o{ NOTIFICACION_OBLIGATORIA : "SIVIGILA ICBF"
+    ALERTA ||--o| ALERTA : "reactivada_de RN-226"
+
+    PLAN_CUIDADO {
+        bigint id PK
+        bigint ficha_id FK
+        enum ambito "vivienda familia persona"
+        text codigo_ebs "items 111 120 130 HEREDADO"
+        text codigo_vivienda "items 112 121 131 HEREDADO"
+        text codigo_familia "items 122 132 HEREDADO"
+        text tipo_id_integrante "item 133"
+        text numero_id_integrante "item 134"
+    }
+    PLAN_ACCION {
+        bigint id PK
+        bigint plan_id FK
+        bigint ejecutor_id FK
+        text codigo_accion FK "CUPS o NoCUPS"
+        enum tipo_respuesta "en_sitio o derivada"
+        date fecha_cita
+        boolean no_procede "RN-220"
+        text justificacion_no_procede
+    }
+    PLAN_SEGUIMIENTO {
+        bigint id PK
+        bigint plan_id FK
+        text accion_concertada "items 117 127 138"
+        date seg1_fecha "items 118 128 139"
+        enum seg1_estado "C CP NC"
+        date seg2_fecha "items 119 129 140"
+        enum seg2_estado "C CP NC"
+        boolean escalado_gestor_eapb "RN-226"
+    }
+    ALERTA {
+        bigint id PK
+        bigint ficha_id FK
+        text regla_codigo "RN-201 a RN-212"
+        enum ambito
+        enum prioridad "regular prioritaria inmediata"
+        timestamptz vence_en "RN-200"
+        enum estado "activa atendida no_procede reactivada"
+        boolean bloquea_cierre "RN-202 RN-222"
+    }
+    ALERTA_ACCION {
+        bigint alerta_id PK
+        bigint plan_accion_id PK
+    }
+</pre>
+    </div>
+  </figure>
+
+  <h3>3.1 &nbsp;Por qué un solo <code>plan_cuidado</code> y no tres tablas</h3>
+  <p>
+    Las secciones 12.1, 12.2 y 12.3 del documento describen tres planes con estructura idéntica:
+    ejecutor, código CUPS, tipo de respuesta, responsable de seguimiento, acción concertada y dos
+    seguimientos fechados. Triplicar las tablas obligaría a triplicar también <code>plan_accion</code>,
+    <code>plan_seguimiento</code>, la tabla puente con <code>alerta</code> y cada consulta de supervisión.
+  </p>
+  <p>La discriminación por ámbito se conserva íntegra con un <code>CHECK</code> que fuerza la combinación correcta de llaves:</p>
+
+<pre class="code">CONSTRAINT plan_ambito_coherente CHECK (
+     (ambito = 'vivienda' AND familia_ficha_id IS NULL     AND integrante_id IS NULL     …)
+  OR (ambito = 'familia'  AND familia_ficha_id IS NOT NULL AND integrante_id IS NULL     …)
+  OR (ambito = 'persona'  AND familia_ficha_id IS NOT NULL AND integrante_id IS NOT NULL …)
+)</pre>
+
+  <h3>3.2 &nbsp;Las llaves heredadas se validan, no se confían</h3>
+  <p>
+    RN-130 declara que una divergencia entre los ítems 111/120/130, 112/121/131 y 122/132
+    <strong>bloquea la sincronización</strong>. El modelo materializa esas columnas —para poder
+    auditarlas— pero las verifica contra su origen en cada escritura mediante
+    <code>aps.trg_plan_llaves_heredadas()</code>. Un plan cuyo <code>codigo_ebs</code> no coincida con
+    el ítem 10 de su ficha no llega a insertarse.
+  </p>
+  <p>
+    El mismo disparador implementa RN-133/134: comprueba que el integrante intervenido exista
+    <em>bajo la familia del ítem 132</em>, lo que impide registrar una intervención sobre una persona
+    inexistente en la ficha.
+  </p>
+
+  <h3>3.3 &nbsp;Qué se codificó como NoCUPS y qué no</h3>
+  <p>
+    RN-114 admite dos codificaciones: CUPS para procedimientos del plan de beneficios, NoCUPS para
+    acciones educativas, de gestión o de salud ambiental sin código asignado. Antes de crear cada
+    NoCUPS se verificó que no existiera ya entre los 10.024 oficiales, y esa verificación
+    <strong>redujo la lista prevista</strong>.
+  </p>
+  <p>
+    El catálogo del Ministerio incluye dos anexos técnicos que cubren casi toda la acción educativa y
+    ambiental — los prefijos <code>I</code> y <code>A</code>, 498 códigos:
+  </p>
+
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th class="num">Código oficial</th><th>Cubre</th></tr></thead>
+      <tbody>
+        <tr><td class="rn">I11006</td><td>Educación y comunicación para el saneamiento básico</td></tr>
+        <tr><td class="rn">I10007</td><td>Prevención de accidentes en el hogar</td></tr>
+        <tr><td class="rn">I20202</td><td>Intervención de formas inmaduras de vectores</td></tr>
+        <tr><td class="rn">I30004</td><td>Vinculación a otras redes de apoyo</td></tr>
+        <tr><td class="rn">I30105</td><td>Primeros auxilios psicológicos</td></tr>
+        <tr><td class="rn">A31004</td><td>Búsqueda, estudio y seguimiento de contactos</td></tr>
+        <tr><td class="rn">I30001</td><td>Caracterización del individuo y su entorno familiar</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Duplicarlos como NoCUPS habría roto la comparabilidad del reporte. Los <strong>20 NoCUPS</strong>
+    creados se limitan a lo que efectivamente no tiene código:
+  </p>
+
+  <ul>
+    <li><strong>Gestión administrativa del caso</strong> (7) — Registraduría, afiliación al SGSSS,
+        radicado ante EAPB, Secretaría de Educación, RLCPD, asignación de cita, línea 123. Ninguno
+        existe en CUPS porque son trámites, no procedimientos en salud.</li>
+    <li><strong>Salud ambiental del predio</strong> (8) — vacunación antirrábica animal, gestión ante
+        prestadores de agua y aseo, reporte de asbesto, mejora locativa, control vectorial, visita de
+        seguimiento, elementos para dormir. La zoonosis veterinaria no pertenece al CUPS humano.</li>
+    <li><strong>Notificación a autoridad externa</strong> (2) — SIVIGILA e ICBF.</li>
+    <li><strong>Intervención familiar</strong> (2) — ruta de violencias y relevo del cuidador.</li>
+    <li><strong>Cierre sin intervención</strong> (1) — <code>NC-NOP-01</code>.</li>
+  </ul>
+
+  <div class="nota">
+    <p>
+      <strong>Por qué existe <code>NC-NOP-01</code>.</strong> Es estructural:
+      <code>plan_accion.codigo_accion</code> es obligatorio, así que registrar un «No procede» exige un
+      código con el cual hacerlo. Sin él, la única forma de cerrar un hallazgo que no requiere
+      intervención sería el silencio — que RN-220 prohíbe expresamente.
+    </p>
+  </div>
+
+  <h3>3.4 &nbsp;De la obligación textual al mecanismo</h3>
+  <p>
+    Varias reglas nombran la conducta de forma expresa: RN-042 «obliga a registrar acción de
+    canalización a vacunación antirrábica», RN-074 «exige registrar la canalización a la Secretaría de
+    Educación», RN-209 «exigir acción de gestión de afiliación».
+    <code>cat.accion_sugerida</code> convierte esas frases en datos — <strong>53 mapeos de regla a
+    acción</strong>, marcados <code>obligatoria</code> cuando la regla los nombra:
+  </p>
+
+<pre class="code">-- Lo que falta hacer frente a las alertas de una ficha
+SELECT regla_codigo, accion, nota
+  FROM aps.v_conducta_esperada
+ WHERE ficha_id = 1 AND obligatoria AND NOT registrada;</pre>
+
+  <p>
+    Sin esta tabla, RN-220 depende de que el encuestador recuerde qué corresponde a cada hallazgo
+    mientras busca entre diez mil códigos. Es una sugerencia operativa, no una restricción: el EBS
+    puede registrar otra acción si el caso lo amerita.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="catalogos">
+  <h2><span class="num">4</span> Catálogos</h2>
+
+  <figure>
+    <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    DOMINIO ||--o{ OPCION : "define"
+    CUPS ||--o{ ACCION_SUGERIDA : "resuelve regla (RN-220)"
+    DEPARTAMENTO ||--o{ MUNICIPIO : "RN-005 DIVIPOLA"
+    MUNICIPIO ||--o{ UZPE : "RN-004"
+    UZPE ||--o{ TERRITORIO : "RN-007"
+    TERRITORIO ||--o{ MICROTERRITORIO : "cascada RN-008"
+
+    DOMINIO {
+        text codigo PK
+        text nombre
+        int item "item del formulario"
+        text regla "RN-xxx"
+        boolean multiple
+    }
+    OPCION {
+        text dominio_codigo PK
+        text codigo PK
+        text etiqueta
+        int orden
+        boolean es_excluyente "Ninguna o No aplica"
+        boolean exige_texto "Otro cual"
+        jsonb metadata "umbrales edades sexo"
+    }
+    MICROTERRITORIO {
+        text territorio_codigo PK
+        text codigo PK "MT01 a MT04"
+        text nombre
+        text comuna "Rural define RN-007"
+    }
+    CUPS {
+        text codigo PK
+        text nombre
+        enum tipo "CUPS o NoCUPS"
+        text capitulo
+        text grupo
+        text subgrupo
+        text categoria
+        char sexo_aplicable "Z F M"
+        boolean apto_aps "seleccionable en campo"
+        tsvector busqueda "sin tildes"
+    }
+    ACCION_SUGERIDA {
+        text regla_codigo PK "RN-201 a RN-212"
+        text codigo_accion PK
+        enum ambito
+        boolean obligatoria "la regla la nombra"
+        text nota
+    }
+</pre>
+    </div>
+  </figure>
+
+  <h3>4.1 &nbsp;Catálogo genérico frente a 54 tablas</h3>
+  <p>
+    Las listas cerradas del instrumento —estrato, tipo de vivienda, rol familiar, atenciones RPMS—
+    viven en <code>cat.dominio</code> + <code>cat.opcion</code> en lugar de 54 tablas de dos columnas.
+    La razón es la nota de cierre de las reglas:
+  </p>
+
+  <blockquote>
+    <p>Los catálogos parametrizados (territorios, EAPB, UZPE, ocupaciones CIUO, CUPS) deben
+    administrarse por configuración y ser actualizables sin nueva versión de la aplicación.</p>
+    <cite>Sección 15 · Notas sobre aplicación de las reglas</cite>
+  </blockquote>
+
+  <p>
+    Los catálogos con jerarquía o atributos propios —DIVIPOLA, territorios, EAPB, CIUO, CUPS— sí son
+    tablas dedicadas, porque tienen relaciones que un catálogo genérico no puede expresar.
+  </p>
+
+  <div class="nota">
+    <p>
+      <strong>Compromiso asumido.</strong> La validación se hace con <code>cat.es_opcion(dominio, codigo)</code>
+      en un <code>CHECK</code> por columna, y un <code>CHECK</code> con función no revalida las filas
+      existentes cuando el catálogo cambia. Aquí eso es correcto y no un defecto: RN-225 exige que la
+      ficha valga por el catálogo vigente el día de su captura.
+    </p>
+  </div>
+
+  <h3>4.2 &nbsp;La metadata del catálogo alimenta las reglas de decisión</h3>
+  <p>
+    <code>catalogos.js</code> ya marca sus opciones con banderas semánticas —<code>noSegura</code> en
+    fuentes de agua, <code>critica</code> en disposición de excretas y residuos—. El generador las
+    preserva en <code>cat.opcion.metadata</code>, y la vista <code>aps.v_riesgo_vivienda</code> las lee
+    para contar los hallazgos de RN-211. El umbral sanitario queda así en el catálogo y no escrito
+    dentro de una vista.
+  </p>
+  <p>
+    El mismo mecanismo resuelve la matriz de RN-087: cada una de las 23 atenciones de la Ruta de
+    Promoción y Mantenimiento lleva sus <code>rangos</code> de edad en meses, los <code>sexos</code>
+    aplicables y las banderas <code>gestante</code> y <code>mujerEdadFertil</code>.
+    <code>cat.atencion_rpms_exigible()</code> las interpreta y
+    <code>aps.atenciones_rpms_exigibles(integrante)</code> devuelve la lista que el ítem 87 debe
+    mostrar — nada más.
+  </p>
+
+  <div class="nota">
+    <p>
+      <strong>No es sólo presentación.</strong> Un disparador rechaza el registro de una atención
+      pendiente fuera de perfil. La razón: una atención marcada obliga a registrar barrera (ítem 89) y
+      canalización, de modo que un pendiente espurio genera trabajo real sobre una persona que no lo
+      necesita.
+    </p>
+  </div>
+
+  <h3>4.3 &nbsp;CUPS: diez mil códigos que hay que poder encontrar</h3>
+  <p>
+    <code>cat.cups</code> carga los <strong>10.024 procedimientos</strong> de la tabla de referencia
+    del Ministerio, con su jerarquía oficial completa —capítulo, grupo, subgrupo, categoría—. La
+    jerarquía no es decoración: es lo que hace navegable un catálogo de ese tamaño.
+  </p>
+  <p>
+    La selección del ítem 114/124/136a se hace por búsqueda de texto, porque nadie recuerda que la
+    vacunación antirrábica es el código 997103. La configuración
+    <code>espanol_sin_acentos</code> combina <em>stemming</em> español con <code>unaccent</code>, de
+    modo que quien escribe «vacunacion antirrabica» encuentra «VACUNACIÓN ANTIRRÁBICA»:
+  </p>
+
+<pre class="code">SELECT * FROM cat.buscar_cups('vacunacion antirrabica');
+SELECT * FROM cat.buscar_cups('citologia', 10, 'mujer');   -- filtra por sexo aplicable</pre>
+
+  <p>
+    La función combina tres señales en orden de confianza: coincidencia de prefijo de código, ranking
+    <em>full-text</em> y similitud trigram. La tercera es la que perdona los errores de digitación que
+    el <em>full-text</em> no tolera. El filtro por sexo usa la columna
+    <code>Extra_I:Cobertura</code> de la fuente oficial (Z / F / M), pero se desactiva para personas
+    intersexuales conforme al enfoque diferencial de RN-087.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="auditoria">
+  <h2><span class="num">5</span> Auditoría y sincronización</h2>
+
+  <figure>
+    <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    FICHA ||--o{ SINCRONIZACION : "RN-223"
+    FICHA ||--o{ AUD_EVENTO : "RN-225"
+    FICHA ||--o| FICHA : "ficha_reemplazada nueva version"
+    INTEGRANTE ||--o{ AUD_ACCESO_SENSIBLE : "RN-224"
+    PERSONA ||--o{ AUD_SOLICITUD_TITULAR : "RN-224"
+    FUNCIONARIO ||--o{ AUD_EVENTO : "responsable"
+
+    AUD_EVENTO {
+        bigint id PK
+        bigint ficha_id FK
+        text entidad
+        enum tipo "creacion modificacion alerta cierre"
+        text campo
+        text valor_anterior
+        text valor_nuevo
+        numeric latitud "coordenadas al capturar"
+        timestamptz ocurrido_en
+    }
+    SINCRONIZACION {
+        bigint id PK
+        bigint ficha_id FK
+        text dispositivo_id
+        enum resultado
+        bigint ficha_conservada_id FK "RN-223 conflicto"
+    }
+    AUD_SOLICITUD_TITULAR {
+        bigint id PK
+        bigint persona_id FK
+        enum derecho "conocer actualizar rectificar suprimir"
+        timestamptz radicada_en
+        timestamptz atendida_en
+    }
+</pre>
+    </div>
+  </figure>
+
+  <p>
+    <code>aud.evento</code> y <code>aud.acceso_sensible</code> rechazan <code>UPDATE</code> y
+    <code>DELETE</code> por disparador. <code>aps.ficha</code> rechaza el borrado y la modificación de
+    sus campos estructurales una vez sincronizada: las correcciones se hacen creando una versión nueva
+    que apunta a la anterior mediante <code>ficha_reemplazada_id</code>.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="reglas">
+  <h2><span class="num">6</span> Dónde vive cada regla</h2>
+
+  <h3>6.1 &nbsp;Resueltas por estructura o restricción declarativa</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th class="num">Regla</th><th>Implementación</th></tr></thead>
+      <tbody>
+        <tr><td class="rn">RN-000</td><td>Árbol de tablas + índices únicos parciales por ámbito de plan</td></tr>
+        <tr><td class="rn">RN-001</td><td><code>ficha.consentimiento</code> + <code>CHECK ficha_sin_consentimiento</code></td></tr>
+        <tr><td class="rn">RN-005</td><td><code>CHECK municipio_pertenece_departamento</code> y <code>ficha_divipola_coherente</code></td></tr>
+        <tr><td class="rn">RN-008</td><td>FK compuesta a <code>cat.microterritorio(territorio_codigo, codigo)</code></td></tr>
+        <tr><td class="rn">RN-010</td><td><code>CHECK ebs_formato_codigo</code> — 3 a 20 alfanuméricos</td></tr>
+        <tr><td class="rn">RN-013 · RN-063</td><td><code>CHECK</code> de formato por tipo de documento</td></tr>
+        <tr><td class="rn">RN-022 · RN-023</td><td>Rangos + <code>CHECK hogar_geo_par</code> — nunca una coordenada sin la otra</td></tr>
+        <tr><td class="rn">RN-028 … RN-031</td><td><code>CHECK</code> de mínimos en <code>aps.vivienda</code></td></tr>
+        <tr><td class="rn">RN-032 · RN-033</td><td>Columnas <code>GENERATED ALWAYS AS … STORED</code></td></tr>
+        <tr><td class="rn">RN-042 · RN-044</td><td><code>CHECK</code> vacunados ≤ total</td></tr>
+        <tr><td class="rn">RN-053</td><td><code>CHECK ff_zarit_condicionado</code> — Zarit si y sólo si hay cuidador</td></tr>
+        <tr><td class="rn">RN-076 · RN-209</td><td><code>CHECK int_eapb_condicionada</code></td></tr>
+        <tr><td class="rn">RN-095</td><td>Columna generada <code>imc</code></td></tr>
+        <tr><td class="rn">RN-098</td><td><code>CHECK int_tension_par</code> + rango fisiológico</td></tr>
+        <tr><td class="rn">RN-109</td><td><code>CHECK int_puntajes_condicionados</code> + rangos CRAFFT / AUDIT / ASSIST</td></tr>
+        <tr><td class="rn">RN-122</td><td>Índice único parcial de plan familiar por familia</td></tr>
+        <tr><td class="rn">RN-226</td><td><code>seg2_posterior</code>, <code>seg1_nc_motivado</code>, <code>seg2_nc_motivado</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.2 &nbsp;Reglas que exigen función o disparador</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th class="num">Regla</th><th>Objeto</th></tr></thead>
+      <tbody>
+        <tr><td class="rn">RN-016</td><td class="obj">aps.trg_ficha_fecha() — no futura, no más de 30 días al sincronizar</td></tr>
+        <tr><td class="rn">RN-007</td><td class="obj">aps.trg_hogar_territorio_area() — territorio rural vs. ítem 6</td></tr>
+        <tr><td class="rn">RN-064</td><td class="obj">aps.trg_persona_fechas() + aps.v_integrante_edad</td></tr>
+        <tr><td class="rn">RN-087</td><td class="obj">cat.atencion_rpms_exigible(), aps.atenciones_rpms_exigibles()</td></tr>
+        <tr><td class="rn">RN-099</td><td class="obj">aps.clasificar_tension() — AHA 2024</td></tr>
+        <tr><td class="rn">RN-130 … RN-134</td><td class="obj">aps.trg_plan_llaves_heredadas()</td></tr>
+        <tr><td class="rn">RN-200</td><td class="obj">aps.plazo_prioridad(), aps.prioridad_maxima(), trg_alerta_prioridad</td></tr>
+        <tr><td class="rn">RN-211</td><td class="obj">aps.v_riesgo_vivienda — recuento de hallazgos concurrentes</td></tr>
+        <tr><td class="rn">RN-220</td><td class="obj">aps.alerta_accion + aps.v_alertas_sin_accion</td></tr>
+        <tr><td class="rn">RN-221</td><td class="obj">aps.calcular_riesgo_familiar() + recálculo automático</td></tr>
+        <tr><td class="rn">RN-222</td><td class="obj">aps.validar_cierre() — devuelve bloque, regla, ítem y detalle</td></tr>
+        <tr><td class="rn">RN-225</td><td class="obj">trg_ficha_inalterable, aud.trg_solo_insercion</td></tr>
+        <tr><td class="rn">RN-226</td><td class="obj">trg_seguimiento_fechas, trg_seguimiento_nc_reactiva</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 &nbsp;Reglas que la base deliberadamente no impone</h3>
+  <p>
+    El documento distingue <strong>Bloqueo</strong> de <strong>Advertencia</strong>. La base implementa
+    los bloqueos; las advertencias pertenecen a la capa de captura, que pide confirmación y permite
+    continuar. Imponerlas en la base rechazaría casos que las propias reglas admiten como legítimos:
+  </p>
+
+  <blockquote>
+    <p>Las inconsistencias de NV, RC, TI y CC se resuelven con advertencia y confirmación, no con
+    bloqueo, porque existen casos legítimos de trámite pendiente: un niño de 8 años que aún no ha
+    tramitado la TI, o un joven de 18 que no ha renovado la CC, son situaciones frecuentes en
+    territorio y no deben impedir la caracterización.</p>
+    <cite>RN-064</cite>
+  </blockquote>
+
+  <p>
+    Quedan por tanto fuera de la base: la coherencia edad/documento de NV, RC, TI y CC; el recuadro
+    municipal de RN-022/023, que advierte sin bloquear; los valores atípicos de RN-029 y RN-041; y la
+    contradicción de carné de RN-045.
+  </p>
+  <p>
+    Tampoco se modelan como restricción las habilitaciones condicionadas por edad (ítems 91, 94, 97,
+    98, 105–109). La razón la da RN-051: <em>«Un menor de 6 meses no responde tensión arterial y eso
+    no lo hace incompleto»</em>. Un <code>NULL</code> en esas columnas es una respuesta válida y
+    esperada; convertirlo en error impediría capturar niños.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="abiertos">
+  <h2><span class="num">7</span> Puntos abiertos para revisión</h2>
+
+  <h3>7.1 &nbsp;Resueltos en esta revisión</h3>
+
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th>Punto</th><th>Resolución</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>UZPE</strong></td>
+          <td>El catálogo queda sólo con <code>UZPE006</code>, la del despliegue actual. Habilitar otra
+              es un <code>INSERT</code> en <code>cat.uzpe</code>, sin cambio de esquema.</td>
+        </tr>
+        <tr>
+          <td><strong>Ruralidad del territorio</strong></td>
+          <td>Se deriva del Anexo A: un territorio es rural cuando sus microterritorios llevan
+              <code>comuna = "Rural"</code>. Resultado: <strong>30 rurales</strong> (T55–T84) y
+              <strong>7 urbanos</strong> (T48–T54). La coherencia con el ítem 6 la impone
+              <code>aps.trg_hogar_territorio_area()</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Matriz edad/sexo RN-087</strong></td>
+          <td>Ya estaba en <code>catalogos.js</code> y el seed la había cargado en
+              <code>cat.opcion.metadata</code>. Ahora se aplica mediante
+              <code>cat.atencion_rpms_exigible()</code>, <code>aps.atenciones_rpms_exigibles()</code>
+              y un disparador que rechaza pendientes fuera de perfil.</td>
+        </tr>
+        <tr>
+          <td><strong>Catálogo CUPS</strong></td>
+          <td>Cargado desde <code>TablaReferencia_CUPS.xlsx</code>: <strong>10.024 procedimientos</strong>
+              con jerarquía oficial y búsqueda insensible a tildes.</td>
+        </tr>
+        <tr>
+          <td><strong>Códigos NoCUPS</strong></td>
+          <td><strong>20 códigos</strong> creados, limitados a lo que el catálogo oficial no cubre, más
+              <strong>53 mapeos</strong> de regla a conducta esperada. Ver sección 3.3.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Sobre los nombres de territorio: el instrumento no les asigna denominación propia. El Anexo A los
+    identifica sólo por código y nombra los <em>microterritorios</em>, que es donde está el topónimo
+    real — San Cayetano, Siloé, Kilómetro 18. <code>cat.territorio.nombre</code> queda igual al
+    código, que es lo que la fuente dice.
+  </p>
+
+  <h3>7.2 &nbsp;Abiertos</h3>
+
+  <div class="abiertos">
+
+    <div class="abierto dato">
+      <h4>Subconjunto de CUPS apto para campo</h4>
+      <p>
+        Los 10.024 códigos incluyen procedimientos como «exenteración pélvica», sin sentido en una
+        visita domiciliaria. <code>05_nocups.sql</code> deja marcados con <code>apto_aps</code> los
+        <strong>44 códigos que alguna regla invoca</strong> — 20 NoCUPS y 24 CUPS oficiales —, que es
+        el mínimo defendible. Falta que la Secretaría defina el resto; hasta entonces el selector debe
+        ofrecer también el catálogo completo, porque 44 códigos no cubren toda la práctica de un EBS.
+      </p>
+    </div>
+
+    <div class="abierto dato">
+      <h4>Catálogo CIUO</h4>
+      <p>
+        <code>cat.ocupacion_ciuo</code> está vacía. RN-073 admite texto libre como alternativa, así que
+        no bloquea la captura — sólo impide el análisis de riesgo ocupacional que la regla recomienda.
+      </p>
+    </div>
+
+    <div class="abierto">
+      <h4>Cifrado de datos sensibles — decisión pendiente</h4>
+      <p>
+        El modelo marca los campos sensibles y audita su consulta, pero el cifrado en reposo no está
+        resuelto en el DDL. Son dos caminos: <code>pgcrypto</code> a nivel de columna, que cifra sólo
+        lo sensible pero impide indexar y buscar por esos campos; o cifrado de disco o instancia, que
+        es transparente para las consultas pero protege menos frente a un acceso con credenciales
+        válidas.
+      </p>
+      <p>
+        <strong>Recomiendo cifrado de instancia más el control de acceso por territorio de
+        RN-224.3</strong>, porque el riesgo real que describe la regla es el acceso indebido de personal
+        autorizado a fichas de territorios que no le fueron asignados, y contra eso
+        <code>pgcrypto</code> no protege.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="instalacion">
+  <h2><span class="num">8</span> Instalación</h2>
+
+<pre class="code">createdb aps_encuesta
+cd bd
+psql -d aps_encuesta -f 01_esquema.sql
+psql -d aps_encuesta -f 02_catalogos_seed.sql
+psql -d aps_encuesta -f 03_reglas.sql
+psql -d aps_encuesta -f 04_cups.sql     # desde bd/: \copy usa ruta relativa</pre>
+
+  <p>
+    El orden es obligatorio: <code>03_reglas.sql</code> define disparadores sobre tablas de
+    <code>01</code>, y el disparador <code>trg_ficha_fecha</code> lee el parámetro
+    <code>dias_maximos_ficha</code> que siembra <code>02</code>. El paso 4 debe ejecutarse
+    <strong>desde el directorio <code>bd/</code></strong>, porque <code>\copy</code> resuelve
+    <code>cups.csv</code> en el directorio de trabajo del cliente.
+  </p>
+  <p>
+    Para regenerar los datos desde sus fuentes: <code>node bd/gen_seed.js</code> tras editar
+    <code>catalogos.js</code>, y <code>node bd/gen_cups.js</code> tras una nueva publicación de CUPS
+    del Ministerio.
+  </p>
+
+  <h3>Consultas de verificación</h3>
+
+<pre class="code">-- Qué falta para cerrar una ficha (RN-222)
+SELECT * FROM aps.validar_cierre(1);
+
+-- Alertas sin conducta registrada (RN-220)
+SELECT * FROM aps.v_alertas_sin_accion;
+
+-- Viviendas de alto riesgo sanitario: tres o más hallazgos (RN-211)
+SELECT * FROM aps.v_riesgo_vivienda WHERE hallazgos >= 3;
+
+-- Semaforización del riesgo familiar (RN-221)
+SELECT fa.codigo, ff.clasificacion_riesgo
+  FROM aps.familia_ficha ff JOIN aps.familia fa ON fa.id = ff.familia_id;
+
+-- Selector de acciones del Plan de Cuidado (ítems 114, 124, 136a)
+SELECT * FROM cat.buscar_cups('vacunacion antirrabica');
+
+-- Atenciones RPMS exigibles según edad y sexo del integrante (RN-087)
+SELECT * FROM aps.atenciones_rpms_exigibles(1);
+
+-- Conducta que las reglas esperan y aún no se ha registrado (RN-220)
+SELECT regla_codigo, accion, nota
+  FROM aps.v_conducta_esperada
+ WHERE ficha_id = 1 AND obligatoria AND NOT registrada;</pre>
+</section>
+
+<footer>
+  <p>
+    Derivado de <code>REGLAS_DE_NEGOCIO.md</code> v2.0, <code>reglas.js</code> y
+    <code>catalogos.js</code>. El seed de catálogos se genera desde el código fuente, no se transcribe
+    a mano: 54 dominios y 442 opciones.
+  </p>
+</footer>
+
+</main>
+</div>

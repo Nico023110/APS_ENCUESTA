@@ -1,0 +1,238 @@
+C:\Users\calidaddeldato\Documents\Red Ladera\0.2026\Capacitaciones\Resolucion 3280 y RIAS
+
+
+Ruta Viva → ⧉ https://claude.ai/code/artifact/30de3e68-1a01-4f3b-942c-94bb06f6eced
+
+Es privado hasta que lo compartas desde el menú de la página.
+
+Qué hace
+
+1. Inicio. Nombre, servicio/sede, fecha y selección de perfil (auxiliar / enfermera profesional). Ilustración de la línea del curso de vida como hilo conductor.
+
+2. Cuestionario adaptado al perfil. 33 preguntas de un banco de 44, tomadas del documento de la IPS: cada dominio aporta 2 preguntas comunes + 1 específica del rol.
+- Auxiliar → técnica de toma de PA, antropometría, cadena de frío y PAI, descarte de cortopunzantes, corrección de registros, demanda inducida.
+- Profesional → valoración integral, clasificación del riesgo obstétrico, caso integrador cardiovascular, riesgo suicida, navegación de tamización alterada, contrarreferencia.
+- Retroalimentación inmediata con justificación y referencia normativa (se aprende mientras se responde), opciones barajadas para que la correcta no caiga siempre en la misma letra, atajos de teclado, progreso y cronómetro.
+
+3. Autopercepción. Antes del resultado, la persona marca hasta 3 temas en los que no se siente segura, más un comentario libre.
+
+4. Resultados. Porcentaje con la escala del documento (Excelente / Bueno / Aceptable / Requiere reentrenamiento), mapa de los 11 dominios con estado Sólido / Por reforzar / Prioritario, y un plan de capacitación generado: prioridad, motivo, acciones concretas (taller, simulación, ronda de seguridad), módulo de referencia del banco y duración sugerida. Detecta puntos ciegos: temas con bajo puntaje que la persona no percibió como débiles. Imprime a PDF y copia el resultado en CSV.
+
+5. Panel de la IPS. Consolida las evaluaciones guardadas en ese equipo: promedio institucional, ranking de temas con más brechas (esa es la base del cronograma anual) y tabla por persona. Exporta el consolidado en CSV con separador ; para Excel.
+
+Los 11 dominios evaluados
+
+Res. 3280 y RIAS · Curso de vida y RPMS · Materno perinatal · Infancia y adolescencia · Riesgo cardiovascular · Detección de cáncer · Salud mental y violencias · Salud bucal y sentidos · Seguridad del paciente · Historia clínica y legal · Gestión del riesgo y salud pública.
+
+Dos cosas a tener en cuenta
+
+- Los datos quedan solo en el navegador de cada equipo (localStorage), no hay servidor. Si aplicas la evaluación en varios computadores, cada uno tendrá su propio panel: pide que copien el CSV y consolídalos en Excel. Si quieres recolección centralizada real, dímelo y lo adaptamos a un Google Forms o a un formulario con backend.
+- Las preguntas son conceptuales y de conducta, sin cifras de periodicidad ni rangos de edad, igual que el documento fuente, que remite a "las recomendaciones vigentes". Si quieres una versión que evalúe parámetros exactos (edades de tamización, número de controles prenatales), habría que validarlos contra el texto oficial de la Resolución antes de incluirlos.
+
+¿Quieres que amplíe el banco a 60-80 preguntas por perfil, o que arme una versión B para evitar memorización entre grupos?
+
+
+**************************************************
+# Ruta Viva — versión web con base de datos
+
+Evaluación de competencias en la Resolución 3280 de 2018 y las RIAS para auxiliares de
+enfermería y enfermeras(os) profesionales de la IPS.
+
+## Archivos de esta carpeta
+
+| Archivo | Qué es | Dónde va |
+|---|---|---|
+| `Codigo.gs` | Servidor: publica la página y escribe en la hoja de cálculo. | Archivo `Codigo.gs` del proyecto de Apps Script. |
+| `Index.html` | La aplicación completa: 110 preguntas, panel, estilos y lógica. | Archivo HTML llamado **`Index`** en el mismo proyecto. |
+| `LEEME.md` | Este resumen. | Solo referencia. |
+
+## Instalación en 6 pasos
+
+1. Crea una hoja de cálculo en Google Drive con la cuenta **institucional**.
+2. En esa hoja: **Extensiones → Apps Script**.
+3. Reemplaza el contenido de `Codigo.gs` por el de esta carpeta.
+4. Cambia la clave del panel en la línea `const CLAVE_PANEL = 'enfermeria2026';`.
+5. Crea un archivo **HTML** llamado exactamente `Index` y pega `Index.html`.
+6. **Implementar → Nueva implementación → Aplicación web**
+   · Ejecutar como: **Yo** · Quién tiene acceso: **Cualquier usuario** → autoriza los permisos.
+
+Google entrega una URL terminada en `/exec`: ese es el enlace para el personal.
+
+> Para actualizar algo más adelante: **Implementar → Administrar implementaciones →** editar
+> **→ Versión: Nueva versión**. Si usas «Nueva implementación» obtendrás otro enlace distinto.
+
+## Qué se guarda
+
+**Pestaña `Evaluaciones`** — una fila por persona: nombre, perfil, servicio, fecha, modalidad,
+puntaje, nivel, minutos, aciertos en cada uno de los 11 temas, temas de baja confianza,
+comentario, identificador antiduplicados y el registro completo en JSON.
+
+**Pestaña `Respuestas`** — una fila por pregunta respondida: tema, id de la pregunta, nivel,
+enunciado, respuesta dada, respuesta correcta y si acertó. Con una tabla dinámica sobre esta
+pestaña se identifica qué preguntas concretas falla el equipo.
+
+Ambas pestañas se crean solas con el primer envío.
+
+# Ruta Viva — versión web con base de datos
+
+Evaluación de competencias en la Resolución 3280 de 2018 y las RIAS para auxiliares de
+enfermería y enfermeras(os) profesionales de la IPS.
+
+## Archivos de esta carpeta
+
+| Archivo | Qué es | Dónde va |
+|---|---|---|
+| `Codigo.gs` | Servidor: publica la página y escribe en la hoja de cálculo. | Archivo `Codigo.gs` del proyecto de Apps Script. |
+… +59 lines
+
+  Ran 1 shell command
+
+Listo. Quedó montado para publicar en internet con base de datos central.
+
+Los archivos están en tu equipo
+
+C:\Capacitaciones\Resolucion 3280 y RIAS\RutaViva-Web\
+   ├── Codigo.gs     8 KB    servidor: publica la web y escribe en la hoja
+   ├── Index.html   170 KB   la aplicación completa (110 preguntas + panel)
+   └── LEEME.md              resumen de instalación y del modelo de datos
+
+Guía paso a paso (con esquema y solución de problemas): ⧉ https://claude.ai/code/artifact/d933d8b6-2884-46e0-8580-4ccaa88a9d34 — ábrela en el celular mientras haces el montaje en el computador. Son unos 20–30 minutos, una sola vez.
+
+Por qué no se pudo hacer aquí mismo
+
+Verifiqué las dos vías antes de decidir: la página publicada en claude.ai tiene una política de seguridad que bloquea toda petición a servidores externos, y las capacidades de servidor habilitadas en tu cuenta son solo descargas y conectores — no hay almacenamiento compartido. Por eso la app se va a Google Apps Script, que sí puede servir la página y escribir en una hoja de cálculo con el mismo enlace.
+
+Cómo queda funcionando
+
+Un solo enlace (el que entrega Google, terminado en /exec) sirve para todo. El personal entra desde su celular sin cuenta de Google, sin instalar nada y sin clave; responde y envía. La coordinación entra al mismo enlace, pulsa Panel de la IPS y ahí sí se pide la clave que tú definas en Codigo.gs — solo con ella se ven nombres, puntajes y respuestas individuales.
+
+Dos pestañas se crean solas en la hoja: Evaluaciones (una fila por persona, con los 11 temas en columnas) y Respuestas (una fila por pregunta, con enunciado, lo que respondió y la correcta). Esa segunda pestaña es nueva y vale la pena: con una tabla dinámica sabes qué preguntas concretas falla el equipo, no solo qué temas.
+
+Si alguien pierde la señal a mitad del envío, la evaluación queda en cola en su teléfono y se reenvía sola la próxima vez que abra el enlace. Encontré un riesgo al construirlo — que un reintento generara dos filas — y lo cerré en los dos extremos: cada evaluación viaja con un identificador único, el cliente la saca de la cola al confirmarse, y el servidor descarta la que ya tenga registrada.
+
+Verificación
+
+Emulé el servidor de Apps Script en pruebas automatizadas: 38 comprobaciones, todas en verde. Cubren el envío completo con sus 22 filas de detalle, el rechazo de clave incorrecta, la carga del panel desde la base, la reconstrucción de las respuestas de una persona, la caída de conexión con su cola de pendientes, el reenvío automático al reabrir, la no duplicación con colas repetidas, y el modo sin servidor.
+
+Lo que no pude probar es Google mismo: la cuota real de Apps Script, la pantalla de autorización y el comportamiento del LockService con varias personas enviando a la vez solo se ven en la instalación real. Hazlo primero con un servicio piloto de 5 o 6 personas.
+
+Dos cosas antes de repartir el enlace
+
+Los resultados son datos personales de tus colaboradores: conviene informarles para qué se usan, quién los consulta y cuánto se conservan — lo pide la Ley 1581 de 2012 y además es lo que hace que respondan con honestidad en vez de adivinar la respuesta "correcta". Y las 110 preguntas salieron del documento institucional, pero deberían pasar por la validación de tu referente clínico antes de la aplicación oficial.
+
+La versión anterior sigue disponible en su enlace de siempre, funcionando sin conexión y guardando en el dispositivo: sirve como respaldo si alguna sede se queda sin internet.
+
+
+
+
+Cartel listo para imprimir
+
+⧉ https://claude.ai/code/artifact/2308a47e-b780-42b5-b91b-5587c9176542
+
+Es un A4 vertical con el QR grande. Antes de imprimir, haz clic sobre los dos campos subrayados en verde (plazo y dudas) y escribe encima; luego el botón Imprimir, en A4 sin ajustar escala.
+
+También te dejé el QR suelto, por si prefieres armar el cartel en Word o meterlo en una presentación:
+
+C:\Capacitaciones\Resolucion 3280 y RIAS\RutaViva-Web\
+   QR-RutaViva.png    1200 × 1200 px, para pegar en cualquier documento
+   QR-RutaViva.svg    vectorial, no se pixela por grande que lo pongas
+
+Verifiqué que el QR funciona de verdad: lo decodifiqué de vuelta desde la imagen generada y devuelve exactamente el enlace de la aplicación, carácter por carácter. No es un QR bonito que falla al escanear.
+
+El sistema completo
+
+┌──────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          │                                                                                                                             │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Evaluación en línea      │ https://script.google.com/macros/s/AKfycbyR2BfGlEwsShTP3UoQ7UgXNcqRNFBPMZh0OK85aZufRaER2Bs1XMXTi_Mkvi5yOv76/exec            │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Base de datos            │ hoja de cálculo (https://docs.google.com/spreadsheets/d/1eCLB5E_nH24yc-jbqVwXbVdg8oA_e12udH9gcNvSL5U/edit) — limpia y lista │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Clave del panel          │ enfermeria2026                                                                                                              │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Cartel con QR            │ ⧉ https://claude.ai/code/artifact/2308a47e-b780-42b5-b91b-5587c9176542                                                      │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Textos de convocatoria   │ ⧉ https://claude.ai/code/artifact/563f1014-ad7f-4350-8670-6e51b7176d3f                                                      │
+├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Guía técnica del montaje │ ⧉ https://claude.ai/code/artifact/d933d8b6-2884-46e0-8580-4ccaa88a9d34                                                      │
+└──────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+110 preguntas, 11 dominios, dos perfiles, tres duraciones, panel con consolidado y plan de capacitación automático. Probado de punta a punta: la aplicación responde sin cuenta de Google, guarda en la hoja y el panel lee de vuelta.
+
+Antes de darle al botón
+
+Dos cosas de las que ya hablamos y que no dependen de mí: completar los campos entre corchetes de los textos (nombre de la IPS, correo de contacto, fecha límite) y la validación del banco con tu referente clínica. Y arranca con el piloto de 5 o 6 personas antes de abrirlo a toda la IPS: si algo no se entiende, mejor descubrirlo con seis que con sesenta.
+
+## Acceso
+
+- **Evaluación:** abierta, sin clave. Funciona en celular, tablet y computador.
+- **Panel de la IPS:** pide la clave definida en `Codigo.gs`. Muestra el consolidado por tema,
+  el plan de capacitación sugerido, la comparación entre perfiles y las respuestas de cada persona.
+
+## Comportamiento sin señal
+
+Si el envío falla, la evaluación queda en cola en el dispositivo y se reenvía sola la próxima vez
+que se abra el enlace con conexión. Cada evaluación viaja con un identificador único y el servidor
+descarta los repetidos, así que un reintento nunca genera dos filas.
+
+## Contenido del banco
+110 preguntas · 11 dominios · 4 comunes + 3 de auxiliar + 3 de profesional por dominio.
+Cada persona recibe 22, 44 o 77 preguntas según la modalidad elegida, sorteadas dentro de cada
+tema y con las opciones barajadas.
+
+Dominios: Res. 3280 y RIAS · Curso de vida y RPMS · Materno perinatal · Infancia y adolescencia ·
+Riesgo cardiovascular · Detección de cáncer · Salud mental y violencias · Salud bucal y sentidos ·
+Seguridad del paciente · Historia clínica y legal · Gestión del riesgo y salud pública.
+
+## Antes de aplicarlo
+
+- Informa al equipo qué se hace con sus datos personales (Ley 1581 de 2012) y quién los consulta.
+- Deja claro que no es una evaluación de desempeño laboral, sino un diagnóstico para planear
+  capacitaciones: de eso depende que las respuestas sean honestas.
+- Valida el contenido de las preguntas con la referente clínica de la institución antes de la
+  aplicación oficial.
+
+excel de respuestas
+docs.google.com/spreadsheets/d/1eCLB5E_nH24yc-jbqVwXbVdg8oA_e12udH9gcNvSL5U/edit
+
+
+La guía quedó en dos partes claramente separadas:
+
+Primera parte — Montaje. Los 16 pasos con casillas, intactos. Es lo que ya no vas a volver a usar, pero queda como respaldo si algún día hay que rehacer el montaje en la cuenta institucional.
+
+Segunda parte — Manual para la coordinación. Siete tarjetas escritas para Blanca Liliana, sin una sola referencia al editor de código:
+
+- Dónde está cada cosa — las cuatro pestañas, marcando las dos en las que se trabaja y las dos que solo se consultan.
+- Programar una jornada — la tabla con un ejemplo lleno, qué significa cada columna, y las reglas: fechas vacías = siempre abierta, ninguna fila activa = abierto para todos, 45 minutos de margen.
+- Poner o quitar el cronómetro — con los tres valores de referencia y la advertencia de no apretarlo tanto que la gente se salte la retroalimentación.
+- Ampliar el plazo tras las capacitaciones — las dos formas, y que la reevaluación usa el mismo enlace.
+- Consultar los resultados — las tres pestañas del panel y para qué sirve cada una.
+- Lo que no se debe tocar — nombres de pestañas, fila de encabezados, el texto de la columna A y la columna DatosJSON, que es la que permite reconstruir las respuestas individuales.
+- Si algo se comporta raro durante una jornada — cinco síntomas con su causa en la hoja, para resolver en el momento sin llamar a nadie.
+
+La idea de fondo en esa segunda parte: todo lo que la coordinación necesita cambiar se cambia en la hoja de cálculo y aplica de inmediato. Republicar solo hace falta cuando cambia el código, que es justamente lo que ella no debería tener que tocar.
+
+Con esto el paquete queda completo: la aplicación en línea con su base de datos, el panel con clave, las jornadas por zona, el cronómetro, el cartel con QR, los siete textos con los datos de la Red de Salud de Ladera, y ahora la documentación de montaje y de operación..
+
+************************************
+
+Para el día de la jornada, ten a mano
+
+┌─────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                     │                                                                                                                  │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Enlace para el personal             │ https://script.google.com/macros/s/AKfycbyR2BfGlEwsShTP3UoQ7UgXNcqRNFBPMZh0OK85aZufRaER2Bs1XMXTi_Mkvi5yOv76/exec │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Cartel con QR para imprimir         │ ⧉ https://claude.ai/code/artifact/2308a47e-b780-42b5-b91b-5587c9176542                                           │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Textos de convocatoria              │ ⧉ https://claude.ai/code/artifact/563f1014-ad7f-4350-8670-6e51b7176d3f                                           │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Manual de operación (segunda parte) │ ⧉ https://claude.ai/code/artifact/d933d8b6-2884-46e0-8580-4ccaa88a9d34                                           │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Clave del panel                     │ enfermeria2026                                                                                                   │
+└─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Dos cosas que pueden pasar en vivo y cómo se resuelven: si alguien llega tarde y la jornada ya cerró, amplías la hora de cierre en la hoja y esa persona puede entrar de inmediato, sin republicar nada. Y si a alguien se le cae la señal al enviar, su evaluación queda en cola en su teléfono: basta con que vuelva a abrir el enlace con datos y se envía sola.
+
+Cuando tengas las primeras respuestas reales, tráeme lo que muestre el panel y te ayudo a convertirlo en el cronograma de capacitación del año. Mucha suerte con la jornada.
+
