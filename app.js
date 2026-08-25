@@ -808,6 +808,46 @@ function eliminarEncuestaPorId(id) {
   guardarEncuestas(encuestas);
 }
 
+// Nueva función de sincronización con la API (Backend en Vercel)
+async function sincronizarEncuestas() {
+  const encuestasLocales = obtenerEncuestas();
+  
+  if (encuestasLocales.length === 0) {
+    mostrarNotificacion('No hay encuestas nuevas para sincronizar.', 'info');
+    return;
+  }
+
+  mostrarNotificacion('Sincronizando encuestas con la nube...', 'info');
+
+  try {
+    for (const encuesta of encuestasLocales) {
+      if (encuesta.sincronizada) continue;
+
+      const respuesta = await fetch('/api/guardar_encuesta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(encuesta)
+      });
+
+      if (respuesta.ok) {
+        encuesta.sincronizada = true; // Marcar como sincronizada
+      } else {
+        console.error('Error al sincronizar encuesta', encuesta.id);
+      }
+    }
+    
+    // Guardar los estados actualizados en localStorage
+    guardarEncuestas(encuestasLocales);
+    
+    // Mostrar notificacion de éxito si hubo encuestas que se sincronizaron
+    mostrarNotificacion('Sincronización completada exitosamente.', 'success');
+    renderizarTablaRecientes(); // Actualizar la tabla si estamos en la vista de inicio
+  } catch (error) {
+    console.error('Fallo en sincronización:', error);
+    mostrarNotificacion('Error de red al sincronizar. Reintente cuando tenga conexión.', 'error');
+  }
+}
+
 /* ---------------------------------------------------------
    11. DATOS INICIALES DE DEMOSTRACIÓN (seed)
    --------------------------------------------------------- */

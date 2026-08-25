@@ -13,7 +13,7 @@ INSERT INTO cat.parametro (clave, valor, descripcion) VALUES
   ('recuadro_municipal', '{"latMin":3.24,"latMax":3.56,"lonMin":-76.78,"lonMax":-76.40}', 'RN-022/023. Advierte sin bloquear fuera de rango.'),
   ('dias_maximos_ficha', '30', 'RN-016. Antigüedad máxima de la fecha de diligenciamiento.'),
   ('plazo_dias_prioridad','{"inmediata":2,"prioritaria":3,"regular":30}', 'RN-200/RN-226. Plazo máximo de respuesta por nivel.'),
-  ('uzpe_predeterminada', 'UZPE006', 'Valor prediligenciado del ítem 4.')
+  ('uzpe_predeterminada', '"UZPE006"', 'Valor prediligenciado del ítem 4.')
 ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado_en = now();
 
 /* --- DIVIPOLA (RN-003, RN-005) ----------------------------------------- */

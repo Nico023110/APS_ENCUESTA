@@ -36,7 +36,10 @@
     <div class="card">
       <div class="card__header">
         <h2>Últimos registros</h2>
-        <button class="btn btn--ghost" data-goto="historial">Ver historial completo</button>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn--primary" onclick="sincronizarEncuestas()">Sincronizar a la Nube</button>
+          <button class="btn btn--ghost" data-goto="historial">Ver historial completo</button>
+        </div>
       </div>
       <div class="table-wrapper">
         <table class="data-table" id="recentTable">
