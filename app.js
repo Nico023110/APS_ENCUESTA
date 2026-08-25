@@ -841,7 +841,8 @@ async function sincronizarEncuestas() {
     
     // Mostrar notificacion de éxito si hubo encuestas que se sincronizaron
     mostrarNotificacion('Sincronización completada exitosamente.', 'success');
-    renderizarTablaRecientes(); // Actualizar la tabla si estamos en la vista de inicio
+    renderizarInicio(); 
+    renderizarHistorial();
   } catch (error) {
     console.error('Fallo en sincronización:', error);
     mostrarNotificacion('Error de red al sincronizar. Reintente cuando tenga conexión.', 'error');
