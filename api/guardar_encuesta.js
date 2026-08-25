@@ -153,6 +153,117 @@ module.exports = async (req, res) => {
       encuesta.residuosSolidos || 'servicio_aseo'
     ]);
 
+    // ── 6. Familias, Personas e Integrantes ─────────────────────────
+    // El modelo anidado es: familias: [{ ...familia, integrantes: [{ ...persona }] }]
+    const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+
+    for (let fi = 0; fi < familias.length; fi++) {
+      const fam = familias[fi];
+
+      // 6a. Obtener o crear la Familia (identidad persistente)
+      const famCodigo = fam.idFamilia || encuesta.idFamilia || ('FM' + Date.now() + fi);
+      const familiaRes = await client.query(`
+        INSERT INTO aps.familia (codigo, hogar_id, consecutivo)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (codigo) DO UPDATE SET codigo = EXCLUDED.codigo
+        RETURNING id
+      `, [famCodigo, hogarId, fi + 1]);
+      const familiaId = familiaRes.rows[0].id;
+
+      // 6b. Familia-Ficha (caracterización de esta visita)
+      const familiaFichaRes = await client.query(`
+        INSERT INTO aps.familia_ficha (
+          ficha_id, familia_id, tipo_familia, numero_integrantes,
+          cuidador_principal, zarit, redes_apoyo
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (ficha_id, familia_id) DO NOTHING
+        RETURNING id
+      `, [
+        fichaId,
+        familiaId,
+        fam.tipoFamilia || 'nuclear_biparental',
+        parseInt(fam.numeroIntegrantes) || 1,
+        fam.cuidadorPrincipal === 'si',
+        fam.cuidadorPrincipal === 'si' ? (fam.zarit || 'ausencia') : null,
+        fam.redesApoyo || 'cuenta_protectoras'
+      ]);
+
+      let familiaFichaId;
+      if (familiaFichaRes.rows.length > 0) {
+        familiaFichaId = familiaFichaRes.rows[0].id;
+      } else {
+        const existFF = await client.query(
+          'SELECT id FROM aps.familia_ficha WHERE ficha_id = $1 AND familia_id = $2',
+          [fichaId, familiaId]
+        );
+        familiaFichaId = existFF.rows[0].id;
+      }
+
+      // 6c. Integrantes de esta familia
+      const integrantes = Array.isArray(fam.integrantes) ? fam.integrantes : [];
+
+      for (let ii = 0; ii < integrantes.length; ii++) {
+        const ing = integrantes[ii];
+
+        // Solo procesar si tiene al menos nombre y tipo/numero de documento
+        if (!ing.primerNombre || !ing.tipoId || !ing.numeroId) continue;
+
+        // 6c-i. Persona (identidad persistente, UPSERT por tipo+numero)
+        const personaRes = await client.query(`
+          INSERT INTO aps.persona (
+            tipo_id, numero_id, primer_nombre, segundo_nombre,
+            primer_apellido, segundo_apellido, fecha_nacimiento, sexo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT (tipo_id, numero_id) DO UPDATE SET
+            primer_nombre = EXCLUDED.primer_nombre,
+            primer_apellido = EXCLUDED.primer_apellido
+          RETURNING id
+        `, [
+          ing.tipoId,
+          ing.numeroId,
+          ing.primerNombre,
+          ing.segundoNombre || null,
+          ing.primerApellido || 'ND',
+          ing.segundoApellido || null,
+          ing.fechaNacimiento || '2000-01-01',
+          ing.sexo || 'hombre'
+        ]);
+        const personaId = personaRes.rows[0].id;
+
+        // 6c-ii. Integrante (caracterización en esta visita)
+        // 6c-ii. Integrante (caracterización en esta visita)
+        let eapbCodigo = ing.eapbCodigo;
+        let regimenAfiliacion = ing.regimenAfiliacion || 'no_afiliado';
+        
+        if (!eapbCodigo) {
+          regimenAfiliacion = 'no_afiliado';
+          eapbCodigo = null;
+        }
+
+        await client.query(`
+          INSERT INTO aps.integrante (
+            familia_ficha_id, persona_id, orden, genero,
+            autoidentificacion_genero, orientacion_sexual,
+            rol_familiar, regimen_afiliacion, eapb_codigo, pertenencia_etnica,
+            limitacion_cotidiana
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (familia_ficha_id, persona_id) DO NOTHING
+        `, [
+          familiaFichaId,
+          personaId,
+          ii + 1,
+          ing.genero || 'masculino',
+          ing.autoidentificacionGenero || 'masculino',
+          ing.orientacionSexual || null,
+          ing.rolFamiliar || 'hijo',
+          regimenAfiliacion,
+          eapbCodigo,
+          ing.pertenenciaEtnica || 'ninguna',
+          ing.limitacionCotidiana === 'si'
+        ]);
+      }
+    }
+
     await client.query('COMMIT');
     
     console.log('Encuesta guardada OK:', fichaCodigo, 'fichaId:', fichaId);
