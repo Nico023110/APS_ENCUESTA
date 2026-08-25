@@ -819,28 +819,43 @@ async function sincronizarEncuestas() {
 
   mostrarNotificacion('Sincronizando encuestas con la nube...', 'info');
 
+  let exitosas = 0;
+  let errores = 0;
+
   try {
     for (const encuesta of encuestasLocales) {
-      if (encuesta.sincronizada) continue;
+      try {
+        const respuesta = await fetch('/api/guardar_encuesta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(encuesta)
+        });
 
-      const respuesta = await fetch('/api/guardar_encuesta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(encuesta)
-      });
-
-      if (respuesta.ok) {
-        encuesta.sincronizada = true; // Marcar como sincronizada
-      } else {
-        console.error('Error al sincronizar encuesta', encuesta.id);
+        if (respuesta.ok) {
+          encuesta.sincronizada = true;
+          exitosas++;
+        } else {
+          const errorData = await respuesta.json().catch(function() { return {}; });
+          console.error('Error al sincronizar encuesta', encuesta.id, errorData);
+          errores++;
+        }
+      } catch (fetchError) {
+        console.error('Error de red para encuesta', encuesta.id, fetchError);
+        errores++;
       }
     }
     
     // Guardar los estados actualizados en localStorage
     guardarEncuestas(encuestasLocales);
     
-    // Mostrar notificacion de éxito si hubo encuestas que se sincronizaron
-    mostrarNotificacion('Sincronización completada exitosamente.', 'success');
+    if (exitosas > 0) {
+      mostrarNotificacion('Se sincronizaron ' + exitosas + ' encuesta(s) correctamente.' + (errores > 0 ? ' (' + errores + ' con error)' : ''), 'success');
+    } else if (errores > 0) {
+      mostrarNotificacion('No se pudo sincronizar ninguna encuesta. Revise la consola (F12).', 'error');
+    } else {
+      mostrarNotificacion('No había encuestas pendientes de sincronizar.', 'info');
+    }
+    
     renderizarInicio(); 
     renderizarHistorial();
   } catch (error) {
