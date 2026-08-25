@@ -112,7 +112,7 @@ function llenarGrupoCasillas(idContenedor, nombreCampo, catalogo) {
     );
   }).join('');
 }
-
+console-log('hola mundo');
 /* ---------------------------------------------------------
    Renderizado declarativo de catálogos.
    Cualquier elemento con data-catalogo se llena desde el catálogo
