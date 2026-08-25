@@ -89,9 +89,9 @@ module.exports = async (req, res) => {
       INSERT INTO aps.ficha (
         codigo, consentimiento, situacion_inminente, departamento_codigo, municipio_codigo,
         uzpe_codigo, hogar_id, equipo_salud_id, responsable_id, fecha_diligenciamiento,
-        entorno_abordaje, lider_entorno, jovenes_en_paz, estado, cerrada_en
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'cerrada', now())
-      ON CONFLICT (codigo) DO NOTHING
+        entorno_abordaje, lider_entorno, jovenes_en_paz, estado, cerrada_en, fechas_modificacion
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'cerrada', now(), $14)
+      ON CONFLICT (codigo) DO UPDATE SET fechas_modificacion = EXCLUDED.fechas_modificacion
       RETURNING id;
     `, [
       fichaCodigo,
@@ -106,7 +106,8 @@ module.exports = async (req, res) => {
       fechaDiligenciamiento,
       encuesta.entornoAbordaje || 'hogar',
       encuesta.cabezaFamilia || 'ND',
-      encuesta.jovenesEnPaz === 'si'
+      encuesta.jovenesEnPaz === 'si',
+      JSON.stringify(encuesta.fechasModificacion || [])
     ]);
 
     let fichaId;

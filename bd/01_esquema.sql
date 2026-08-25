@@ -412,6 +412,8 @@ CREATE TABLE aps.ficha (
   nombre_institucion    text,                          -- ítem 18, condicionado
   lider_entorno         text NOT NULL,                 -- ítem 19
   jovenes_en_paz        boolean NOT NULL,              -- ítem 20
+  -- Auditoria y Versionamiento
+  fechas_modificacion   jsonb DEFAULT '[]'::jsonb,     -- Arreglo de fechas de modificacion
   -- Ciclo de vida y sincronización
   estado                aps.estado_ficha NOT NULL DEFAULT 'borrador',
   motivo_cierre_incompleto text,                       -- RN-222 excepción de campo

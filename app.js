@@ -808,6 +808,22 @@ function eliminarEncuestaPorId(id) {
   guardarEncuestas(encuestas);
 }
 
+function actualizarEncuesta(id, datosActualizados) {
+  const encuestas = obtenerEncuestas();
+  const indice = encuestas.findIndex(function(e) { return e.id === id; });
+  if (indice !== -1) {
+    const encuestaAntigua = encuestas[indice];
+    const fechasModificacion = encuestaAntigua.fechasModificacion || [];
+    fechasModificacion.push(new Date().toISOString());
+    
+    encuestas[indice] = Object.assign({}, encuestaAntigua, datosActualizados, {
+      fechasModificacion: fechasModificacion,
+      sincronizada: false
+    });
+    guardarEncuestas(encuestas);
+  }
+}
+
 // Nueva función de sincronización con la API (Backend en Vercel)
 async function sincronizarEncuestas() {
   const encuestasLocales = obtenerEncuestas();
@@ -880,6 +896,7 @@ function crearDatosSemilla() {
       responsableTipoId: 'CC', responsableNumeroId: '52741963',
       perfilProfesional: 'auxiliar_enfermeria', codigoFicha: 'F-00123',
       fechaDiligenciamiento: '2026-07-15',
+      fechasModificacion: [],
       entornoAbordaje: 'hogar', nombreInstitucion: '', cabezaFamilia: 'Marta Rodríguez',
       jovenesEnPaz: 'no',
       direccionComponentes: {
@@ -906,6 +923,7 @@ function crearDatosSemilla() {
       responsableTipoId: 'CC', responsableNumeroId: '43897215',
       perfilProfesional: 'gestor_comunitario', codigoFicha: 'F-00456',
       fechaDiligenciamiento: '2026-07-22',
+      fechasModificacion: [],
       entornoAbordaje: 'hogar', nombreInstitucion: '', cabezaFamilia: 'Luis Fernando Gómez',
       jovenesEnPaz: 'si',
       direccionComponentes: {
@@ -1104,6 +1122,13 @@ function textoTerritorio(encuesta) {
   return escaparHtml(etiquetaTerritorio(encuesta.territorio));
 }
 
+function textoModificacion(encuesta) {
+  const fechas = encuesta.fechasModificacion || [];
+  if (fechas.length === 0) return '<span class="badge badge--neutral" style="font-size: 0.75rem; color: #666; background: #eee;">Sin modificaciones</span>';
+  const ultima = fechas[fechas.length - 1];
+  return '<span class="badge badge--info" title="' + fechas.length + ' modificaciones" style="font-size: 0.75rem; color: #0056b3; background: #cce5ff;">' + formatearFecha(ultima) + ' (' + fechas.length + ')</span>';
+}
+
 function textoMicroterritorio(encuesta) {
   if (!encuesta.microterritorio) return '—';
   const nombre = encuesta.microterritorioNombre;
@@ -1126,6 +1151,7 @@ function renderizarInicio() {
     return (
       '<tr>' +
         '<td>' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
+        '<td>' + textoModificacion(encuesta) + '</td>' +
         '<td>' + textoTerritorio(encuesta) + '</td>' +
         '<td>' + textoSeguro(encuesta.direccion) + '</td>' +
         '<td>' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
@@ -1180,6 +1206,7 @@ function renderizarHistorial() {
     return (
       '<tr>' +
         '<td>' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
+        '<td>' + textoModificacion(encuesta) + '</td>' +
         '<td>' + textoTerritorio(encuesta) + '</td>' +
         '<td>' + textoMicroterritorio(encuesta) + '</td>' +
         '<td>' + textoSeguro(encuesta.direccion) + '</td>' +
@@ -1538,6 +1565,7 @@ function construirEncuestaDesdeDatos(datos) {
   const encuesta = Object.assign({}, datos, {
     id: generarId(),
     fechaRegistro: new Date().toISOString(),
+    fechasModificacion: [],
     personasPorHabitacion: resultadoCalculo.personasPorHabitacion,
     hacinamiento: resultadoCalculo.hacinamiento,
     // RN-221: el nivel de riesgo se persiste para priorizar la agenda del EBS.
