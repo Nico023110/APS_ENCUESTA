@@ -29,7 +29,15 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const RAIZ = path.join(__dirname, '..');
+/* `require.resolve` hace que el empaquetador de Vercel (Node File Trace)
+   detecte estos archivos como dependencias y los incluya en el bundle de la
+   función serverless. Sin esto, `fs.readFileSync` con `path.join` no basta
+   porque el tracer no sigue rutas dinámicas. */
+const ARCHIVOS_MOTOR = {
+  'catalogos.js': require.resolve('../catalogos.js'),
+  'direccion.js': require.resolve('../direccion.js'),
+  'reglas.js':    require.resolve('../reglas.js')
+};
 
 /* ---------------------------------------------------------
    1. MOTOR DE REGLAS COMPARTIDO
@@ -47,7 +55,7 @@ function obtenerMotor() {
   /* `direccion.js` entra porque el servidor recompone la dirección en vez de
      creer la que llega. Es texto puro, sin DOM, y sólo depende de catalogos.js. */
   ['catalogos.js', 'direccion.js', 'reglas.js'].forEach(function (archivo) {
-    const fuente = fs.readFileSync(path.join(RAIZ, archivo), 'utf8');
+    const fuente = fs.readFileSync(ARCHIVOS_MOTOR[archivo], 'utf8');
     vm.runInContext(fuente, contexto, { filename: archivo });
   });
 
