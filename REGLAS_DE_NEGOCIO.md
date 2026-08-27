@@ -850,6 +850,10 @@ Su presencia garantiza que toda intervención sobre la vivienda quede atribuida 
 
 **Ítem 114.** Campo obligatorio para registrar los códigos de procedimientos en salud bajo la codificación oficial **CUPS**, o códigos internos aprobados (**NoCUPS**) de salud ambiental.
 
+> **Cómo se captura.** El campo se escribe y lo tecleado se busca contra `cat.cups` en el momento: por prefijo del código («876» ofrece los que empiezan así) y por contenido del nombre («curación» ofrece los que lo mencionan). Los 10.044 procedimientos del catálogo oficial no se descargan al dispositivo; la consulta viaja y vuelve sólo con lo pedido. Bajo el campo se muestra el nombre del procedimiento elegido, como confirmación, y se advierte en el acto si el código no existe. Sin señal la búsqueda se restringe a las acciones de APS ya descargadas y se avisa de que es parcial. Lo que se guarda es siempre el **código**, nunca el nombre.
+
+> **Procedimiento realizado (complemento).** Junto al código se captura un campo de texto libre donde el profesional describe en sus palabras el procedimiento que efectivamente realizó. Es complemento y no reemplazo: el código sigue siendo obligatorio, porque de él dependen la integridad referencial contra `cat.cups` y el cruce alerta ↔ acción que exige **RN-220**. El texto es opcional y no participa en ninguna decisión automática.
+
 #### RN-115 — Tipo de respuesta en vivienda
 
 **Ítem 115.** Selección única obligatoria para definir la naturaleza operativa: ejecutada en el momento (**"En sitio"**) o canalizada a otra institución (**"Derivada"**).
@@ -893,6 +897,10 @@ Cuando la vivienda alberga **más de una familia** (ítem 28 mayor a 1), el sist
 #### RN-124 — Acción / Intervención familiar (CUPS / NoCUPS)
 
 **Ítem 124.** Captura obligatoria de códigos CUPS o NoCUPS enfocados en dinámicas relacionales, comunitarias o de salud familiar.
+
+> **Cómo se captura.** El campo se escribe y lo tecleado se busca contra `cat.cups` en el momento: por prefijo del código («876» ofrece los que empiezan así) y por contenido del nombre («curación» ofrece los que lo mencionan). Los 10.044 procedimientos del catálogo oficial no se descargan al dispositivo; la consulta viaja y vuelve sólo con lo pedido. Bajo el campo se muestra el nombre del procedimiento elegido, como confirmación, y se advierte en el acto si el código no existe. Sin señal la búsqueda se restringe a las acciones de APS ya descargadas y se avisa de que es parcial. Lo que se guarda es siempre el **código**, nunca el nombre.
+
+> **Procedimiento realizado (complemento).** Junto al código se captura un campo de texto libre donde el profesional describe en sus palabras el procedimiento que efectivamente realizó. Es complemento y no reemplazo: el código sigue siendo obligatorio, porque de él dependen la integridad referencial contra `cat.cups` y el cruce alerta ↔ acción que exige **RN-220**. El texto es opcional y no participa en ninguna decisión automática.
 
 #### RN-125 — Tipo de respuesta familiar
 
@@ -945,6 +953,10 @@ Cualquier divergencia constituye una inconsistencia que **bloquea la sincronizac
 #### RN-136a — Acción / Intervención individual (CUPS / NoCUPS)
 
 **Ítem 136 (primera columna).** Campo de codificación obligatorio que cruza las alertas de atenciones pendientes detectadas con procedimientos estándar resueltos o programados.
+
+> **Cómo se captura.** El campo se escribe y lo tecleado se busca contra `cat.cups` en el momento: por prefijo del código («876» ofrece los que empiezan así) y por contenido del nombre («curación» ofrece los que lo mencionan). Los 10.044 procedimientos del catálogo oficial no se descargan al dispositivo; la consulta viaja y vuelve sólo con lo pedido. Bajo el campo se muestra el nombre del procedimiento elegido, como confirmación, y se advierte en el acto si el código no existe. Sin señal la búsqueda se restringe a las acciones de APS ya descargadas y se avisa de que es parcial. Lo que se guarda es siempre el **código**, nunca el nombre.
+
+> **Procedimiento realizado (complemento).** Junto al código se captura un campo de texto libre donde el profesional describe en sus palabras el procedimiento que efectivamente realizó. Es complemento y no reemplazo: el código sigue siendo obligatorio, porque de él dependen la integridad referencial contra `cat.cups` y el cruce alerta ↔ acción que exige **RN-220**. El texto es opcional y no participa en ninguna decisión automática.
 
 #### RN-136b — Tipo de respuesta individual
 

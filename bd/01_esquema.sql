@@ -888,6 +888,7 @@ CREATE TABLE aps.plan_accion (                        -- ítems 113-115 / 123-12
   plan_id        bigint NOT NULL REFERENCES aps.plan_cuidado(id) ON DELETE CASCADE,
   ejecutor_id    bigint NOT NULL REFERENCES aps.funcionario(id),   -- ítems 113 / 123 / 135
   codigo_accion  text NOT NULL REFERENCES cat.cups(codigo),          -- ítems 114 / 124 / 136a
+  procedimiento_realizado text,                        -- ítems 114 / 124 / 136a, en palabras
   tipo_respuesta aps.tipo_respuesta NOT NULL,                       -- ítems 115 / 125 / 136b
   institucion_destino text,                            -- si tipo_respuesta = 'derivada'
   fecha_cita     date,                                 -- RN-200: derivación con cita asignada
@@ -902,6 +903,11 @@ CREATE TABLE aps.plan_accion (                        -- ítems 113-115 / 123-12
     tipo_respuesta <> 'derivada' OR nullif(btrim(institucion_destino),'') IS NOT NULL
   )
 );
+COMMENT ON COLUMN aps.plan_accion.procedimiento_realizado IS
+  'Ítems 114 / 124 / 136a. El código CUPS/NoCUPS nombra el procedimiento dentro de una '
+  'codificación cerrada; esta columna deja al profesional describir en sus palabras lo que '
+  'efectivamente hizo. Es complemento, no reemplazo: el código sigue siendo obligatorio '
+  'porque de él dependen la llave foránea a cat.cups y el cruce alerta ↔ acción de RN-220.';
 COMMENT ON COLUMN aps.plan_accion.no_procede IS
   'RN-220. El silencio no es opción válida de cierre. Monitorear su frecuencia en supervisión: '
   'su uso rutinario delata evasión.';

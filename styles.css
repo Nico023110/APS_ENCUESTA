@@ -1304,6 +1304,103 @@ h1, h2, h3 { margin: 0; }
   min-width: 860px;
 }
 
+/* =========================================================
+   Buscador de procedimientos CUPS / NoCUPS (ítems 114 / 124 / 136a)
+   ---------------------------------------------------------
+   El campo se escribe y las coincidencias llegan de la base conforme se
+   teclea. La lista se posiciona sobre el resto de la fila: dentro de una
+   celda de tabla no hay sitio para desplegarla en el flujo.
+   ========================================================= */
+
+.combo-cups { position: relative; }
+
+.combo-cups__lista {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.combo-cups__opcion {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.combo-cups__opcion:hover,
+.combo-cups__opcion--activa {
+  background: var(--bg-page);
+}
+
+.combo-cups__codigo {
+  flex: 0 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.combo-cups__etiqueta {
+  flex: 1 1 auto;
+  color: var(--text-primary);
+}
+
+/* Marca el subconjunto que un equipo básico concierta a diario: entre diez
+   mil procedimientos, es lo que distingue lo habitual de lo excepcional. */
+.combo-cups__marca {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.combo-cups__aviso {
+  padding: 7px 9px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* El nombre del procedimiento, bajo el campo: seis dígitos no se leen y
+   «AORTOGRAMA TORÁCICO» sí. Es la confirmación de haber elegido bien. */
+.combo-cups__nombre {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.combo-cups__nombre:empty { display: none; }
+
+.combo-cups__nombre--error { color: var(--color-danger, #b91c1c); font-weight: 600; }
+.combo-cups__nombre--pendiente { font-style: italic; }
+
+/* Las tablas de acciones (ítems 114 / 124 / 136a) llevan dos columnas anchas:
+   el código del catálogo y el procedimiento escrito por el profesional. Con el
+   mínimo común se aplastaban las dos; el contenedor ya desplaza en horizontal
+   cuando la pantalla no da. */
+.plan-table--acciones { min-width: 1040px; }
+
 .plan-table th {
   text-align: left;
   padding: 9px 10px;
@@ -1528,3 +1625,28 @@ h1, h2, h3 { margin: 0; }
   .indicator-card { flex-direction: column; text-align: center; }
   .llaves-heredadas { grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   CINTA DE CORRECCIÓN
+   ---------------------------------------------------------
+   Aparece sobre el formulario cuando se está editando una ficha ya guardada
+   en vez de capturando una visita nueva. La distinción importa: al guardar se
+   reemplaza un registro existente, y eso no debería descubrirse después.
+   ========================================================= */
+.aviso-correccion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 12px 18px;
+  border: 1.5px solid var(--color-warning);
+  border-left-width: 5px;
+  border-radius: 10px;
+  background: var(--color-warning-light, #fff8e6);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.aviso-correccion[hidden] { display: none; }

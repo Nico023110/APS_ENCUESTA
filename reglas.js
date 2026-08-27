@@ -72,6 +72,12 @@ const UMBRAL_HACINAMIENTO_CRITICO = 3;
 /* RN-016 — Antigüedad máxima admitida de la fecha de diligenciamiento. */
 const DIAS_MAXIMOS_FICHA = 30;
 
+/* RN-114 / RN-124 / RN-136a — Forma de un código de procedimiento. Los 10.044
+   códigos de `cat.cups` miden entre 6 y 9 caracteres alfanuméricos, con guion
+   sólo en los NoCUPS. Que EXISTA lo comprueba el servidor contra la tabla:
+   enumerar los diez mil en el navegador no es viable. */
+const FORMATO_CODIGO_ACCION = /^[A-Za-z0-9-]{6,9}$/;
+
 /* RN-200 — Niveles de prioridad de las alertas clínicas. */
 const PRIORIDAD = {
   INMEDIATA: 'inmediata',
@@ -212,6 +218,27 @@ function hoySinHora() {
 function fechaNoFutura(valor) {
   const fecha = parsearFecha(valor);
   return fecha !== null && fecha.getTime() <= hoySinHora().getTime();
+}
+
+/**
+ * Ninguna fecha capturada puede ser posterior al día en que se diligencia la
+ * ficha. Contrastarla contra hoy no basta: RN-016 admite hasta 30 días de
+ * antigüedad, así que una fecha situada entre la visita y hoy pasaba la
+ * comprobación y dejaba, por ejemplo, a una persona naciendo después de haber
+ * sido caracterizada.
+ *
+ * Si el ítem 16 está sin responder —o trae una fecha futura, que RN-016 ya
+ * rechaza por su cuenta— la referencia vuelve a ser hoy.
+ */
+function fechaNoPosteriorA(valor, referencia) {
+  const fecha = parsearFecha(valor);
+  if (fecha === null) return false;
+
+  const hoy = hoySinHora();
+  const tope = parsearFecha(referencia);
+  const limite = tope !== null && tope.getTime() <= hoy.getTime() ? tope : hoy;
+
+  return fecha.getTime() <= limite.getTime();
 }
 
 function diferenciaEnDias(desde, hasta) {
@@ -443,8 +470,12 @@ const REGLAS_BLOQUE_2 = [
   {
     codigo: 'RN-010',
     campo: 'equipoSaludId',
-    valida: function (d) { return /^[A-Za-z0-9-]{3,20}$/.test(String(d.equipoSaludId || '').trim()); },
-    mensaje: 'Obligatorio. Código alfanumérico del EBS de 3 a 20 caracteres.'
+    /* Sin guiones: RN-010 dice "alfanuméricos" y la base lo impone con
+       ebs_formato_codigo (^[A-Za-z0-9]{3,20}$). El motor los admitía, así que
+       un código con guión pasaba la validación y lo rechazaba PostgreSQL al
+       sincronizar. */
+    valida: function (d) { return /^[A-Za-z0-9]{3,20}$/.test(String(d.equipoSaludId || '').trim()); },
+    mensaje: 'Obligatorio. Código alfanumérico del EBS de 3 a 20 caracteres, sin guiones ni espacios.'
   },
   {
     codigo: 'RN-011',
@@ -490,6 +521,26 @@ const REGLAS_BLOQUE_2 = [
     aplica: function (d) { return d.fechaDiligenciamiento !== undefined; },
     valida: function (d) { return fechaNoFutura(d.fechaDiligenciamiento); },
     mensaje: 'Ingrese una fecha válida (AAAA/MM/DD) que no sea posterior a hoy.'
+  },
+  {
+    /* RN-016, segunda mitad: la antigüedad máxima. `DIAS_MAXIMOS_FICHA` estaba
+       declarada pero ninguna regla la usaba, de modo que el límite sólo lo
+       aplicaba el disparador de la base. El encuestador se enteraba al
+       sincronizar —o no se enteraba, porque el endpoint reescribía la fecha—
+       en vez de al cerrar la ficha. */
+    codigo: 'RN-016',
+    campo: 'fechaDiligenciamiento',
+    aplica: function (d) {
+      return d.fechaDiligenciamiento !== undefined && fechaNoFutura(d.fechaDiligenciamiento);
+    },
+    valida: function (d) {
+      const fecha = parsearFecha(d.fechaDiligenciamiento);
+      if (fecha === null) return false;
+      const dias = Math.floor((hoySinHora().getTime() - fecha.getTime()) / 86400000);
+      return dias <= DIAS_MAXIMOS_FICHA;
+    },
+    mensaje: 'La ficha no puede tener más de ' + DIAS_MAXIMOS_FICHA +
+      ' días de antigüedad. Sincronice las fichas pendientes o registre una fecha vigente.'
   },
   {
     codigo: 'RN-016',
@@ -1002,8 +1053,11 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-064',
     campo: 'fechaNacimiento',
-    valida: function (i) { return fechaNoFutura(i.fechaNacimiento); },
-    mensaje: 'Ingrese una fecha de nacimiento válida (AAAA/MM/DD) que no sea posterior a hoy.'
+    valida: function (i, c, f, d) {
+      return fechaNoPosteriorA(i.fechaNacimiento, d && d.fechaDiligenciamiento);
+    },
+    mensaje: 'Ingrese una fecha de nacimiento válida (AAAA/MM/DD) que no sea posterior al día ' +
+             'en que se diligencia la ficha.'
   },
   {
     codigo: 'RN-064',
@@ -1486,10 +1540,64 @@ function reglasDeAcciones(codigos) {
       mensaje: 'Registre el tipo y número de identificación del integrante del EBS que ejecuta la acción.'
     },
     {
+      /* El ejecutor de la acción se guarda en `aps.funcionario`, la misma
+         tabla que el responsable de la ficha, y la restricción
+         `func_formato_documento` le exige el mismo formato de RN-013. Aquí
+         sólo se comprobaba que no estuviera vacío, así que un documento de
+         cinco dígitos pasaba el cierre, entraba al historial y hacía estallar
+         la transacción del servidor con un 500: el encuestador veía «no hubo
+         respuesta del servidor» sobre un campo que nadie le había señalado. */
+      codigo: codigos.ejecutor,
+      campo: 'ejecutorNumeroId',
+      aplica: function (accion) { return !esVacio(accion.ejecutorNumeroId); },
+      valida: function (accion) {
+        return documentoValidoParaTipo(accion.ejecutorTipoId, accion.ejecutorNumeroId);
+      },
+      mensaje: 'Número de documento inválido para el tipo seleccionado ' +
+               '(CC: 6 a 10 dígitos; CD, CE y PT: 5 a 16 alfanuméricos).'
+    },
+    {
       codigo: codigos.accion,
       campo: 'codigoAccion',
+      /* Aquí se comprueba la FORMA del código, no su existencia.
+
+         Antes se exigía pertenecer a `CAT_ACCION_PLAN`, la lista corta de
+         acciones de APS que descarga /api/catalogo_acciones. Servía cuando el
+         campo era un desplegable de esas 64 opciones, pero el catálogo oficial
+         tiene 10.044 procedimientos: comprobar contra la lista corta rechazaba
+         como inválido cualquier CUPS legítimo que el profesional hubiera
+         realizado, que es justo lo que el buscador vino a permitir.
+
+         Enumerar los diez mil en el navegador no es alternativa —son varios
+         megabytes en una visita domiciliaria—, así que la existencia la
+         comprueba quien tiene la tabla delante: `api/_validacion.js` la
+         contrasta contra `cat.cups` y devuelve un 400 que nombra el campo. En
+         pantalla el aviso llega antes: el buscador muestra el nombre del
+         procedimiento bajo el campo, y dice en el momento si el código no está
+         en el catálogo.
+
+         Los 10.044 códigos miden entre 6 y 9 caracteres alfanuméricos, con
+         guion sólo en los NoCUPS. Es lo que se comprueba: descarta la prosa y
+         el código a medio escribir sin rechazar ninguno de los válidos. */
       valida: function (accion) { return !esVacio(accion.codigoAccion); },
-      mensaje: 'Registre el código CUPS o NoCUPS de la acción o intervención.'
+      mensaje: 'Registre el código CUPS o NoCUPS de la acción. Búsquelo escribiendo el código ' +
+               'o el nombre del procedimiento.'
+    },
+    {
+      /* Un código escrito pero mal formado no es lo mismo que uno ausente, y
+         decirle «regístrelo» a quien ya escribió algo no ayuda: hay que
+         mostrarle lo que escribió. */
+      codigo: codigos.accion,
+      campo: 'codigoAccion',
+      aplica: function (accion) { return !esVacio(accion.codigoAccion); },
+      valida: function (accion) {
+        return FORMATO_CODIGO_ACCION.test(String(accion.codigoAccion).trim());
+      },
+      mensaje: function (accion) {
+        return '«' + String(accion.codigoAccion).trim() + '» no tiene forma de código CUPS ni ' +
+               'NoCUPS (6 a 9 caracteres). Búsquelo escribiendo el código o el nombre del ' +
+               'procedimiento.';
+      }
     },
     {
       codigo: codigos.respuesta,
@@ -1509,6 +1617,18 @@ function reglasDeSeguimientos(codigos) {
         return perteneceA(CAT_TIPO_ID_EJECUTOR, s.seguimientoTipoId) && !esVacio(s.seguimientoNumeroId);
       },
       mensaje: 'Registre la identificación del integrante del EBS responsable del seguimiento.'
+    },
+    {
+      /* Mismo caso que el ejecutor de la acción: acaba en `aps.funcionario` y
+         la base le exige el formato de RN-013. */
+      codigo: codigos.responsable,
+      campo: 'seguimientoNumeroId',
+      aplica: function (s) { return !esVacio(s.seguimientoNumeroId); },
+      valida: function (s) {
+        return documentoValidoParaTipo(s.seguimientoTipoId, s.seguimientoNumeroId);
+      },
+      mensaje: 'Número de documento inválido para el tipo seleccionado ' +
+               '(CC: 6 a 10 dígitos; CD, CE y PT: 5 a 16 alfanuméricos).'
     },
     {
       codigo: codigos.concertada,
@@ -1632,7 +1752,16 @@ function evaluarPlan(plan, contenedor, datos, contexto, salida) {
     if (llave.desdeContenedor) {
       esperado = contenedor[llave.origen];          // RN-133 / RN-134
     } else if (llave.origen === 'idFamilia') {
-      esperado = contenedor.idFamilia || datos.idFamilia;
+      /* RN-122 y RN-132 comparan contra la llave de la familia (RN-026), no
+         contra el ítem 26 de la ficha, que es sólo un número de referencia.
+
+         El plan de la familia cuelga de la familia y la encuentra en el
+         contenedor; el de la persona cuelga del integrante, que no lleva ese
+         código, así que se toma de la familia que lo contiene. Sin ese salto,
+         RN-132 exigía el ítem 26 y ninguna ficha con plan de persona podía
+         cerrarse. */
+      const familia = contexto.familia || contenedor;
+      esperado = familia.idFamilia || datos.idFamilia;
     } else {
       esperado = datos[llave.origen];
     }
@@ -1750,7 +1879,9 @@ function evaluarTodo(datos) {
         if (secciones.plan) {
           evaluarPlan(PLANES[2], integrante, datos, {
             ruta: rutaFamilia + '.integrantes[' + indiceIntegrante + '].planPersona',
-            referencia: referenciaFamilia + ' · ' + nombreIntegrante(integrante, indiceIntegrante)
+            referencia: referenciaFamilia + ' · ' + nombreIntegrante(integrante, indiceIntegrante),
+            /* RN-132: el integrante no lleva el código de su familia. */
+            familia: familia
           }, salida);
         }
       });

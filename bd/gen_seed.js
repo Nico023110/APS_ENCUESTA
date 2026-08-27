@@ -1,13 +1,25 @@
-/* Genera 02_catalogos_seed.sql a partir de catalogos.js (fuente única de verdad). */
+/* Genera 02_catalogos_seed.sql a partir de catalogos.js (fuente única de verdad).
+
+   Las rutas se resuelven desde la ubicación de este archivo. Antes estaban
+   fijas en C:/APS_ENCUESTA y en el directorio temporal de otro usuario, de
+   modo que el generador leía y escribía en una copia distinta del proyecto:
+   editar catalogos.js aquí y regenerar no cambiaba nada, en silencio. */
 'use strict';
 const fs = require('fs');
-const path = 'C:/APS_ENCUESTA/catalogos.js';
-let src = fs.readFileSync(path, 'utf8');
+const nodePath = require('path');
+const os = require('os');
 
+const RAIZ = nodePath.join(__dirname, '..');
+const ORIGEN = nodePath.join(RAIZ, 'catalogos.js');
+const DESTINO = nodePath.join(__dirname, '02_catalogos_seed.sql');
+
+let src = fs.readFileSync(ORIGEN, 'utf8');
+
+/* catalogos.js se carga al navegador con <script>, no exporta nada. Se le
+   añade un module.exports al vuelo para poder leerlo desde node. */
 const nombres = [...src.matchAll(/^const (CAT_[A-Z0-9_]+)\s*=/gm)].map(m => m[1]);
 const wrapped = src + '\nmodule.exports = {' + nombres.map(n => n + ':' + n).join(',') + '};\n';
-const tmp = process.env.CLAUDE_JOB_DIR ? process.env.CLAUDE_JOB_DIR + '/tmp/_cat.js'
-                                       : 'C:/Users/soporte1/.claude/jobs/f0ee9cc7/tmp/_cat.js';
+const tmp = nodePath.join(fs.mkdtempSync(nodePath.join(os.tmpdir(), 'aps-seed-')), '_cat.js');
 fs.writeFileSync(tmp, wrapped);
 const C = require(tmp);
 
@@ -71,6 +83,10 @@ const DOM = {
 };
 
 const q = s => s === null || s === undefined ? 'NULL' : "'" + String(s).replace(/'/g, "''") + "'";
+
+/* cat.parametro.valor es jsonb: una cadena suelta como 'UZPE006' no es JSON
+   válido y el seed falla al aplicarse. Debe ir como '"UZPE006"'. */
+const qJson = v => q(JSON.stringify(v));
 const EXCL = new Set(['ninguno','ninguna','no_aplica','sin_discapacidad','no']);
 
 let out = [];
@@ -89,7 +105,7 @@ INSERT INTO cat.parametro (clave, valor, descripcion) VALUES
   ('recuadro_municipal', '{"latMin":3.24,"latMax":3.56,"lonMin":-76.78,"lonMax":-76.40}', 'RN-022/023. Advierte sin bloquear fuera de rango.'),
   ('dias_maximos_ficha', '30', 'RN-016. Antigüedad máxima de la fecha de diligenciamiento.'),
   ('plazo_dias_prioridad','{"inmediata":2,"prioritaria":3,"regular":30}', 'RN-200/RN-226. Plazo máximo de respuesta por nivel.'),
-  ('uzpe_predeterminada', ${q(C.UZPE_PREDETERMINADA || 'UZPE006')}, 'Valor prediligenciado del ítem 4.')
+  ('uzpe_predeterminada', ${qJson(C.UZPE_PREDETERMINADA || 'UZPE006')}, 'Valor prediligenciado del ítem 4.')
 ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado_en = now();
 
 /* --- DIVIPOLA (RN-003, RN-005) ----------------------------------------- */
@@ -107,18 +123,73 @@ if (Array.isArray(C.CAT_NACIONALIDAD)) {
   out.push(`INSERT INTO cat.pais (codigo, nombre) VALUES\n${vals}\nON CONFLICT (codigo) DO NOTHING;\n`);
 }
 
-/* UZPE — el despliegue actual opera únicamente sobre UZPE006. Las demás quedan
-   fuera del catálogo hasta que la Secretaría confirme su denominación oficial. */
+/* UZPE — se siembran exactamente las marcadas `vigente` en catalogos.js, que son
+   las mismas que el formulario ofrece. Mantener las dos listas sincronizadas a
+   mano fue lo que produjo la reescritura silenciosa del ítem 4: el formulario
+   ofrecía diez y la base aceptaba una. */
 const UZPE_ACTIVA = C.UZPE_PREDETERMINADA || 'UZPE006';
 if (Array.isArray(C.CAT_UZPE)) {
-  const activa = C.CAT_UZPE.find(o => (o.valor || o.codigo) === UZPE_ACTIVA);
-  if (!activa) throw new Error('UZPE activa no encontrada en CAT_UZPE: ' + UZPE_ACTIVA);
+  const vigentes = C.CAT_UZPE.filter(o => o.vigente);
+  if (vigentes.length === 0) throw new Error('Ninguna UZPE marcada como vigente en CAT_UZPE.');
+
+  const activa = vigentes.find(o => (o.valor || o.codigo) === UZPE_ACTIVA);
+  if (!activa) {
+    throw new Error('UZPE_PREDETERMINADA (' + UZPE_ACTIVA + ') no está entre las vigentes de CAT_UZPE.');
+  }
+
+  const uv = vigentes.map(o =>
+    `  (${q(o.valor || o.codigo)}, ${q(C.CAT_MUNICIPIO.codigo)}, ${q(o.etiqueta || o.nombre)}, true)`
+  ).join(',\n');
+
   out.push(`/* --- UZPE (RN-004) ------------------------------------------------------
-   Sólo la UZPE del despliegue actual. Para habilitar otra, insértela aquí:
-   el catálogo es parametrizable y no requiere cambio de esquema.            */
+   ${vigentes.length} UZPE vigente(s). Para habilitar otra, márquela \`vigente: true\`
+   en CAT_UZPE (catalogos.js) con su denominación oficial y regenere este archivo.
+   El formulario lee la misma lista, así que ambos lados no pueden divergir.   */
 INSERT INTO cat.uzpe (codigo, municipio_codigo, nombre, vigente) VALUES
-  (${q(UZPE_ACTIVA)}, ${q(C.CAT_MUNICIPIO.codigo)}, ${q(activa.etiqueta || activa.nombre)}, true)
-ON CONFLICT (codigo) DO UPDATE SET vigente = true;\n`);
+${uv}
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;\n`);
+}
+
+/* Catálogos oficiales externos (EAPB, CIUO, prestadores).
+   No son dominios de cat.opcion sino tablas propias, así que se emiten
+   aparte. Salen de catalogos.js para que el <select> del formulario y la
+   llave foránea de la base ofrezcan exactamente lo mismo. */
+if (Array.isArray(C.CAT_EAPB)) {
+  const ev = C.CAT_EAPB.map(o =>
+    `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.regimen || null)}, true)`
+  ).join(',\n');
+  out.push(`/* --- EAPB (ítem 76, RN-076) ---------------------------------------------
+   ${C.CAT_EAPB.length} entidades. CONTENIDO PROVISIONAL: verificar contra el
+   Registro Especial de EAPB del MSPS antes de cualquier despliegue.        */
+INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
+${ev}
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;\n`);
+}
+
+if (Array.isArray(C.CAT_OCUPACION_CIUO)) {
+  const ov = C.CAT_OCUPACION_CIUO.map(o =>
+    `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.riesgo || null)})`
+  ).join(',\n');
+  out.push(`/* --- Ocupaciones CIUO (ítem 73, RN-073) ---------------------------------
+   ${C.CAT_OCUPACION_CIUO.length} ocupaciones. CONTENIDO PROVISIONAL: es una
+   muestra de CIUO-08 A.C., no el catálogo del DANE. Cuando llegue completo
+   conviene cargarlo como los CUPS (\\copy) y no desde este archivo.          */
+INSERT INTO cat.ocupacion_ciuo (codigo, nombre, riesgo_ocupacional) VALUES
+${ov}
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, riesgo_ocupacional = EXCLUDED.riesgo_ocupacional;\n`);
+}
+
+if (Array.isArray(C.CAT_PRESTADOR)) {
+  const pv = C.CAT_PRESTADOR.map(o =>
+    `  (${q(o.valor)}, ${q(o.etiqueta)}, true)`
+  ).join(',\n');
+  out.push(`/* --- Prestadores primarios (ítem 11, RN-011) ----------------------------
+   ${C.CAT_PRESTADOR.length} prestadores de la red pública de Cali. Los códigos
+   llevan prefijo PROV- a propósito: el REPS usa otro formato y no deben
+   confundirse con códigos de habilitación reales.                          */
+INSERT INTO cat.prestador (codigo, nombre, vigente) VALUES
+${pv}
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;\n`);
 }
 
 /* Territorios y microterritorios — Anexo A de las reglas.
@@ -186,5 +257,11 @@ ON CONFLICT (dominio_codigo, codigo) DO NOTHING;
 COMMIT;
 `);
 
-fs.writeFileSync('C:/APS_ENCUESTA/bd/02_catalogos_seed.sql', out.join('\n'));
-console.log('OK — dominios: ' + domRows.length + ', opciones: ' + opRows.length);
+fs.writeFileSync(DESTINO, out.join('\n'));
+fs.rmSync(nodePath.dirname(tmp), { recursive: true, force: true });
+
+const uzpeVigentes = (C.CAT_UZPE || []).filter(o => o.vigente).length;
+console.log('OK — dominios: ' + domRows.length +
+  ', opciones: ' + opRows.length +
+  ', UZPE vigentes: ' + uzpeVigentes);
+console.log('     escrito en ' + DESTINO);

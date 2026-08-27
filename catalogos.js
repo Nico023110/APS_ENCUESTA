@@ -558,21 +558,34 @@ const VALOR_NO_APLICA = 'no_aplica';
    RN-004 — Unidad Zonal de Planeación y Evaluación
    Catálogo parametrizable administrado por la Secretaría de
    Salud Pública Municipal.
+
+   `vigente` decide en un solo sitio qué UZPE existen para este
+   despliegue: el formulario ofrece las vigentes y el seed de la
+   base siembra exactamente esas mismas.
+
+   Antes el formulario ofrecía las diez y la base sólo aceptaba
+   UZPE006, así que el endpoint reescribía en silencio la
+   respuesta del encuestador. Cuando la Secretaría confirme las
+   denominaciones oficiales, basta poner `vigente: true` con el
+   nombre real y regenerar el seed (node bd/gen_seed.js).
    --------------------------------------------------------- */
 const CAT_UZPE = [
-  { valor: 'UZPE001', etiqueta: 'UZPE001' },
-  { valor: 'UZPE002', etiqueta: 'UZPE002' },
-  { valor: 'UZPE003', etiqueta: 'UZPE003' },
-  { valor: 'UZPE004', etiqueta: 'UZPE004' },
-  { valor: 'UZPE005', etiqueta: 'UZPE005' },
-  { valor: 'UZPE006', etiqueta: 'UZPE006' },
-  { valor: 'UZPE007', etiqueta: 'UZPE007' },
-  { valor: 'UZPE008', etiqueta: 'UZPE008' },
-  { valor: 'UZPE009', etiqueta: 'UZPE009' },
-  { valor: 'UZPE010', etiqueta: 'UZPE010' }
+  { valor: 'UZPE001', etiqueta: 'UZPE001', vigente: false },
+  { valor: 'UZPE002', etiqueta: 'UZPE002', vigente: false },
+  { valor: 'UZPE003', etiqueta: 'UZPE003', vigente: false },
+  { valor: 'UZPE004', etiqueta: 'UZPE004', vigente: false },
+  { valor: 'UZPE005', etiqueta: 'UZPE005', vigente: false },
+  { valor: 'UZPE006', etiqueta: 'UZPE006', vigente: true },
+  { valor: 'UZPE007', etiqueta: 'UZPE007', vigente: false },
+  { valor: 'UZPE008', etiqueta: 'UZPE008', vigente: false },
+  { valor: 'UZPE009', etiqueta: 'UZPE009', vigente: false },
+  { valor: 'UZPE010', etiqueta: 'UZPE010', vigente: false }
 ];
 
-/* UZPE del despliegue actual: queda preseleccionada, sin impedir el cambio. */
+/* Las que el formulario puede ofrecer y la base va a aceptar. */
+const CAT_UZPE_VIGENTES = CAT_UZPE.filter(function (u) { return u.vigente; });
+
+/* UZPE del despliegue actual: queda preseleccionada. */
 const UZPE_PREDETERMINADA = 'UZPE006';
 
 /* ---------------------------------------------------------
@@ -896,6 +909,77 @@ const CAT_REGIMEN_AFILIACION = [
   { valor: 'especial', etiqueta: 'Especial' },
   { valor: 'excepcion', etiqueta: 'Excepción' },
   { valor: REGIMEN_NO_AFILIADO, etiqueta: 'No afiliado' }
+];
+
+/* =========================================================
+   CATÁLOGOS OFICIALES EXTERNOS — CONTENIDO PROVISIONAL
+   ---------------------------------------------------------
+   Estos tres no salen del instrumento: son registros oficiales
+   administrados por otras entidades.
+
+     CAT_EAPB           ítem 76 (RN-076)  Registro Especial de EAPB, MSPS
+     CAT_OCUPACION_CIUO ítem 73 (RN-073)  CIUO-08 A.C., DANE
+     CAT_PRESTADOR      ítem 11 (RN-011)  REPS, MSPS
+
+   Viven aquí y no sólo en la base por dos razones. La captura es
+   offline: el encuestador en campo no puede depender de una consulta
+   al servidor para desplegar una lista. Y `gen_seed.js` genera el
+   seed desde este archivo, de modo que formulario y base no pueden
+   divergir — que es justo lo que ocurrió con la UZPE del ítem 4.
+
+   EL CONTENIDO NO ESTÁ VERIFICADO. Es un mínimo para trabajar:
+   las EAPB son entidades reales con los códigos de uso corriente,
+   pero deben contrastarse contra el registro oficial antes de
+   cualquier despliegue. Las ocupaciones son una muestra de CIUO-08,
+   no el catálogo. Los prestadores llevan el prefijo PROV- a
+   propósito: el REPS usa códigos de habilitación con otro formato,
+   y un código inventado con apariencia oficial es peor que uno que
+   se delata como provisional.
+   --------------------------------------------------------- */
+
+/* `regimen` sirve para contrastar con el ítem 75 (RN-075).
+   'ambos' cuando la entidad opera en los dos regímenes. */
+const CAT_EAPB = [
+  { valor: 'EPS018', etiqueta: 'Servicio Occidental de Salud — SOS', regimen: 'contributivo' },
+  { valor: 'CCF050', etiqueta: 'Comfenalco Valle EPS', regimen: 'ambos' },
+  { valor: 'ESS024', etiqueta: 'Emssanar ESS', regimen: 'subsidiado' },
+  { valor: 'ESS062', etiqueta: 'Asmet Salud ESS', regimen: 'subsidiado' },
+  { valor: 'EPS037', etiqueta: 'Nueva EPS', regimen: 'ambos' },
+  { valor: 'EPS002', etiqueta: 'Salud Total EPS', regimen: 'ambos' },
+  { valor: 'EPS005', etiqueta: 'EPS Sanitas', regimen: 'ambos' },
+  { valor: 'EPS010', etiqueta: 'EPS Sura', regimen: 'contributivo' },
+  { valor: 'EPS017', etiqueta: 'Famisanar EPS', regimen: 'ambos' },
+  { valor: 'EPSI03', etiqueta: 'Asociación Indígena del Cauca — AIC', regimen: 'subsidiado' }
+];
+
+/* `riesgo` es la exposición característica del oficio, que RN-073
+   cruza con las condiciones de salud. Se omite cuando no la hay. */
+const CAT_OCUPACION_CIUO = [
+  { valor: '0000', etiqueta: 'Sin ocupación' },
+  { valor: '2341', etiqueta: 'Docente de básica primaria' },
+  { valor: '5120', etiqueta: 'Cocinero' },
+  { valor: '5223', etiqueta: 'Vendedor de tienda o almacén' },
+  { valor: '5321', etiqueta: 'Auxiliar de enfermería', riesgo: 'biologico' },
+  { valor: '6111', etiqueta: 'Agricultor de cultivos transitorios', riesgo: 'agroquimicos' },
+  { valor: '6113', etiqueta: 'Cultivador de caña de azúcar', riesgo: 'agroquimicos' },
+  { valor: '7111', etiqueta: 'Constructor de vivienda', riesgo: 'asbesto' },
+  { valor: '7126', etiqueta: 'Fontanero e instalador de tuberías', riesgo: 'asbesto' },
+  { valor: '7233', etiqueta: 'Mecánico de vehículos', riesgo: 'solventes' },
+  { valor: '8111', etiqueta: 'Minero', riesgo: 'mineria' },
+  { valor: '8322', etiqueta: 'Conductor de automóvil, taxi o camioneta' },
+  { valor: '9111', etiqueta: 'Trabajador doméstico' },
+  { valor: '9520', etiqueta: 'Vendedor ambulante' },
+  { valor: '9611', etiqueta: 'Recolector de residuos', riesgo: 'residuos_peligrosos' },
+  { valor: '9999', etiqueta: 'Otra ocupación no clasificada' }
+];
+
+/* Red pública de Santiago de Cali. */
+const CAT_PRESTADOR = [
+  { valor: 'PROV-ESE-LADERA', etiqueta: 'E.S.E. Ladera' },
+  { valor: 'PROV-ESE-CENTRO', etiqueta: 'E.S.E. Centro' },
+  { valor: 'PROV-ESE-NORTE', etiqueta: 'E.S.E. Norte' },
+  { valor: 'PROV-ESE-ORIENTE', etiqueta: 'E.S.E. Oriente' },
+  { valor: 'PROV-ESE-SURORIENTE', etiqueta: 'E.S.E. Suroriente' }
 ];
 
 /* ---------------------------------------------------------
@@ -1288,11 +1372,13 @@ const UMBRALES_TAMIZAJE_SPA = {
 /* ---------------------------------------------------------
    RN-113 / RN-115 / RN-118 — Plan de cuidado
    --------------------------------------------------------- */
-const CAT_TIPO_ID_EJECUTOR = [
-  { valor: 'CC', etiqueta: 'CC' },
-  { valor: 'DE', etiqueta: 'DE' },
-  { valor: 'PT', etiqueta: 'PT' }
-];
+/* Quien ejecuta una acción del plan o responde por un seguimiento es un
+   integrante del EBS, es decir la misma clase de persona que el responsable
+   del ítem 12. Se reutiliza aquel catálogo en vez de mantener una lista
+   aparte: la lista propia ofrecía 'DE', que `aps.funcionario` no admite —su
+   restricción valida contra TIPO_ID_RESPONSABLE—, de modo que escoger esa
+   opción hacía imposible guardar el plan. */
+const CAT_TIPO_ID_EJECUTOR = CAT_TIPO_ID_RESPONSABLE;
 
 const CAT_TIPO_RESPUESTA = [
   { valor: 'en_sitio', etiqueta: 'En sitio' },
@@ -1307,3 +1393,35 @@ const CAT_ESTADO_SEGUIMIENTO = [
 
 /* Acción registrada expresamente como no procedente (RN-220) */
 const ACCION_NO_PROCEDE = 'no_procede';
+
+/* ---------------------------------------------------------
+   RN-114 / RN-124 / RN-136a — Acciones del plan de cuidado
+   ---------------------------------------------------------
+   Ítems 114, 124 y 136a. A diferencia del resto de catálogos, éste no se
+   escribe aquí: son decenas de códigos CUPS y NoCUPS que viven en `cat.cups`
+   y cambian con cada actualización del catálogo oficial. Se pide en marcha a
+   /api/catalogo_acciones y se guarda en el navegador para seguir sirviendo
+   sin red.
+
+   El arreglo se llena, no se reasigna: `CATALOGOS_DECLARATIVOS` guarda esta
+   misma referencia, y sustituirla dejaría al formulario apuntando a la lista
+   vieja.
+
+   Antes el código se digitaba a mano y el formulario sólo comprobaba que no
+   estuviera vacío. La base sí exige que exista, así que la ficha pasaba la
+   validación en pantalla y la rechazaba el servidor al sincronizar.
+   --------------------------------------------------------- */
+const CAT_ACCION_PLAN = [];
+
+/** Reemplaza el contenido del catálogo conservando la referencia. */
+function fijarCatalogoAcciones(filas) {
+  CAT_ACCION_PLAN.length = 0;
+  (filas || []).forEach(function (fila) {
+    CAT_ACCION_PLAN.push({
+      valor: fila.codigo,
+      etiqueta: fila.codigo + ' — ' + fila.nombre,
+      ambito: fila.ambito || null
+    });
+  });
+  return CAT_ACCION_PLAN;
+}

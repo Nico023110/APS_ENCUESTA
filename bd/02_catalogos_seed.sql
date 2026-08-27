@@ -35,11 +35,63 @@ INSERT INTO cat.pais (codigo, nombre) VALUES
 ON CONFLICT (codigo) DO NOTHING;
 
 /* --- UZPE (RN-004) ------------------------------------------------------
-   Sólo la UZPE del despliegue actual. Para habilitar otra, insértela aquí:
-   el catálogo es parametrizable y no requiere cambio de esquema.            */
+   1 UZPE vigente(s). Para habilitar otra, márquela `vigente: true`
+   en CAT_UZPE (catalogos.js) con su denominación oficial y regenere este archivo.
+   El formulario lee la misma lista, así que ambos lados no pueden divergir.   */
 INSERT INTO cat.uzpe (codigo, municipio_codigo, nombre, vigente) VALUES
   ('UZPE006', '76001', 'UZPE006', true)
-ON CONFLICT (codigo) DO UPDATE SET vigente = true;
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;
+
+/* --- EAPB (ítem 76, RN-076) ---------------------------------------------
+   10 entidades. CONTENIDO PROVISIONAL: verificar contra el
+   Registro Especial de EAPB del MSPS antes de cualquier despliegue.        */
+INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
+  ('EPS018', 'Servicio Occidental de Salud — SOS', 'contributivo', true),
+  ('CCF050', 'Comfenalco Valle EPS', 'ambos', true),
+  ('ESS024', 'Emssanar ESS', 'subsidiado', true),
+  ('ESS062', 'Asmet Salud ESS', 'subsidiado', true),
+  ('EPS037', 'Nueva EPS', 'ambos', true),
+  ('EPS002', 'Salud Total EPS', 'ambos', true),
+  ('EPS005', 'EPS Sanitas', 'ambos', true),
+  ('EPS010', 'EPS Sura', 'contributivo', true),
+  ('EPS017', 'Famisanar EPS', 'ambos', true),
+  ('EPSI03', 'Asociación Indígena del Cauca — AIC', 'subsidiado', true)
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;
+
+/* --- Ocupaciones CIUO (ítem 73, RN-073) ---------------------------------
+   16 ocupaciones. CONTENIDO PROVISIONAL: es una
+   muestra de CIUO-08 A.C., no el catálogo del DANE. Cuando llegue completo
+   conviene cargarlo como los CUPS (\copy) y no desde este archivo.          */
+INSERT INTO cat.ocupacion_ciuo (codigo, nombre, riesgo_ocupacional) VALUES
+  ('0000', 'Sin ocupación', NULL),
+  ('2341', 'Docente de básica primaria', NULL),
+  ('5120', 'Cocinero', NULL),
+  ('5223', 'Vendedor de tienda o almacén', NULL),
+  ('5321', 'Auxiliar de enfermería', 'biologico'),
+  ('6111', 'Agricultor de cultivos transitorios', 'agroquimicos'),
+  ('6113', 'Cultivador de caña de azúcar', 'agroquimicos'),
+  ('7111', 'Constructor de vivienda', 'asbesto'),
+  ('7126', 'Fontanero e instalador de tuberías', 'asbesto'),
+  ('7233', 'Mecánico de vehículos', 'solventes'),
+  ('8111', 'Minero', 'mineria'),
+  ('8322', 'Conductor de automóvil, taxi o camioneta', NULL),
+  ('9111', 'Trabajador doméstico', NULL),
+  ('9520', 'Vendedor ambulante', NULL),
+  ('9611', 'Recolector de residuos', 'residuos_peligrosos'),
+  ('9999', 'Otra ocupación no clasificada', NULL)
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, riesgo_ocupacional = EXCLUDED.riesgo_ocupacional;
+
+/* --- Prestadores primarios (ítem 11, RN-011) ----------------------------
+   5 prestadores de la red pública de Cali. Los códigos
+   llevan prefijo PROV- a propósito: el REPS usa otro formato y no deben
+   confundirse con códigos de habilitación reales.                          */
+INSERT INTO cat.prestador (codigo, nombre, vigente) VALUES
+  ('PROV-ESE-LADERA', 'E.S.E. Ladera', true),
+  ('PROV-ESE-CENTRO', 'E.S.E. Centro', true),
+  ('PROV-ESE-NORTE', 'E.S.E. Norte', true),
+  ('PROV-ESE-ORIENTE', 'E.S.E. Oriente', true),
+  ('PROV-ESE-SURORIENTE', 'E.S.E. Suroriente', true)
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;
 
 /* --- Territorios y microterritorios (RN-007, RN-008, Anexo A) -----------
    37 territorios: 30 rurales, 7 urbanos.
@@ -736,9 +788,10 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('ESTADO_SEGUIMIENTO', 'C', 'C: Cumple', 1, false, false, '{"cumple":true}'::jsonb),
   ('ESTADO_SEGUIMIENTO', 'CP', 'CP: Cumple Parcial', 2, false, false, '{"cumple":false}'::jsonb),
   ('ESTADO_SEGUIMIENTO', 'NC', 'NC: No cumple', 3, false, false, '{"cumple":false}'::jsonb),
-  ('TIPO_ID_EJECUTOR', 'CC', 'CC', 1, false, false, NULL),
-  ('TIPO_ID_EJECUTOR', 'DE', 'DE', 2, false, false, NULL),
-  ('TIPO_ID_EJECUTOR', 'PT', 'PT', 3, false, false, NULL)
+  ('TIPO_ID_EJECUTOR', 'CC', 'CC. Cédula de Ciudadanía', 1, false, false, NULL),
+  ('TIPO_ID_EJECUTOR', 'CD', 'CD. Carné Diplomático', 2, false, false, NULL),
+  ('TIPO_ID_EJECUTOR', 'CE', 'CE. Cédula de Extranjería', 3, false, false, NULL),
+  ('TIPO_ID_EJECUTOR', 'PT', 'PT. Permiso por Protección Temporal', 4, false, false, NULL)
 ON CONFLICT (dominio_codigo, codigo) DO UPDATE
   SET etiqueta = EXCLUDED.etiqueta, orden = EXCLUDED.orden,
       es_excluyente = EXCLUDED.es_excluyente, exige_texto = EXCLUDED.exige_texto;

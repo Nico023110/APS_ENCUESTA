@@ -1,11 +1,4 @@
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+const { consultar } = require('./_db');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -13,19 +6,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const client = await pool.connect();
-    // Por ahora obtenemos solo un resumen de las fichas para listarlas
-    // Cuando las tablas estén creadas, esto funcionará.
-    const query = `
+    const resultado = await consultar(`
       SELECT id, codigo, fecha_diligenciamiento, estado
       FROM aps.ficha
       ORDER BY capturada_en DESC
       LIMIT 100
-    `;
-    const result = await client.query(query);
-    client.release();
+    `);
 
-    res.status(200).json(result.rows);
+    res.status(200).json(resultado.rows);
   } catch (err) {
     console.error('Error al obtener encuestas:', err);
     res.status(500).json({ error: 'Error de servidor', detalles: err.message });

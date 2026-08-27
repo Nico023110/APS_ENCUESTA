@@ -4,7 +4,17 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node servidor.js",
+    "bd:crear": "node bd/crear_bd.js",
+    "bd:recrear": "node bd/crear_bd.js --recrear",
+    "bd:migrar": "node bd/crear_bd.js --migrar",
+    "test": "node pruebas/reglas.test.js && node pruebas/formulario.test.js && node pruebas/validacion.test.js && node pruebas/campos_catalogo.test.js && node pruebas/correccion.test.js",
+    "test:bd": "node pruebas/endpoint.test.js && node pruebas/extremo_a_extremo.test.js",
+    "test:todo": "npm test && npm run test:bd",
+    "e2e": "playwright test --config=playwright.config.lento.js",
+    "e2e:rapido": "playwright test",
+    "e2e:informe": "playwright show-report pruebas/e2e/informe",
+    "encuesta": "playwright test --config=playwright.config.encuesta.js"
   },
   "repository": {
     "type": "git",
@@ -25,6 +35,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "jsdom": "^30.0.1",
     "playwright": "^1.62.1"
   }
 }

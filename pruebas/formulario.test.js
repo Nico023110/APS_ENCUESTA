@@ -35,7 +35,8 @@ window.addEventListener('error', (e) => errores.push(e.message));
 
 // Los <script> del navegador comparten el alcance global: se concatenan
 // en un solo eval para reproducir esa semántica con const/let.
-const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js', 'app.js']
+const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
+  'cups.js', 'correccion.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
 window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo };');
@@ -323,28 +324,42 @@ check('La alerta muestra la etiqueta de SIVIGILA',
 check('La alerta muestra que bloquea la sincronización',
   $('#listaAlertas').innerHTML.indexOf('Bloquea sincronización') !== -1);
 
-console.log('\n=== 13. Cierre por causa externa (RN-222) ===');
-const casilla = $('#visitaIncompleta');
-casilla.checked = true;
-casilla.dispatchEvent(new window.Event('change', { bubbles: true }));
-check('Marcar cierre incompleto revela el motivo',
-  $('#campoMotivoIncompleta').hidden === false);
-setVal('#motivoVisitaIncompleta', 'Informante rechazó continuar');
-$('#encuestaForm').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
-const guardadas = JSON.parse(almacen['aps_encuestas'] || '[]');
-check('Se guardó la visita incompleta pese a los faltantes',
-  guardadas.length === antesDeGuardar + 1,
-  'antes ' + antesDeGuardar + ', ahora ' + guardadas.length);
-const nueva = guardadas.find((e) => e.visitaIncompleta === true);
-check('Quedó marcada como incompleta', !!nueva);
-check('Se persistió el nivel de riesgo (RN-221)',
-  nueva && nueva.riesgoFamiliar && nueva.riesgoFamiliar.nivel === 'alto',
-  nueva && JSON.stringify(nueva.riesgoFamiliar));
-check('Se persistieron las alertas', nueva && nueva.alertas.length > 0);
+/* De aquí al final se espera el guardado, que pasa por el servidor. */
+function esperarUnTurno() { return new Promise(function (r) { setTimeout(r, 0); }); }
 
-console.log('\n=== 14. Sin errores de JS en toda la sesión ===');
-check('Ningún error capturado', errores.length === 0, errores.join(' | '));
+async function cerrarPruebas() {
+  console.log('\n=== 13. Cierre por causa externa (RN-222) ===');
+  const casilla = $('#visitaIncompleta');
+  casilla.checked = true;
+  casilla.dispatchEvent(new window.Event('change', { bubbles: true }));
+  check('Marcar cierre incompleto revela el motivo',
+    $('#campoMotivoIncompleta').hidden === false);
+  setVal('#motivoVisitaIncompleta', 'Informante rechazó continuar');
+  $('#encuestaForm').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  
+  /* Guardar dejó de ser instantáneo: ahora el formulario intenta escribir en la
+     base y sólo cae a `localStorage` cuando no hay servidor —que es el caso en
+     JSDOM, donde no hay `fetch`—. Ese rodeo son varias microtareas, así que hay
+     que cederle el turno al bucle de eventos antes de leer lo guardado. */
+    await esperarUnTurno();
+  
+    const guardadas = JSON.parse(almacen['aps_encuestas'] || '[]');
+  check('Se guardó la visita incompleta pese a los faltantes',
+    guardadas.length === antesDeGuardar + 1,
+    'antes ' + antesDeGuardar + ', ahora ' + guardadas.length);
+  const nueva = guardadas.find((e) => e.visitaIncompleta === true);
+  check('Quedó marcada como incompleta', !!nueva);
+  check('Se persistió el nivel de riesgo (RN-221)',
+    nueva && nueva.riesgoFamiliar && nueva.riesgoFamiliar.nivel === 'alto',
+    nueva && JSON.stringify(nueva.riesgoFamiliar));
+  check('Se persistieron las alertas', nueva && nueva.alertas.length > 0);
+  
+  console.log('\n=== 14. Sin errores de JS en toda la sesión ===');
+  check('Ningún error capturado', errores.length === 0, errores.join(' | '));
+  
+  console.log('\n---------------------------------------------');
+  console.log('Pasadas: ' + ok + '   Fallidas: ' + fail);
+  process.exit(fail > 0 ? 1 : 0);
+}
 
-console.log('\n---------------------------------------------');
-console.log('Pasadas: ' + ok + '   Fallidas: ' + fail);
-process.exit(fail > 0 ? 1 : 0);
+cerrarPruebas();

@@ -36,8 +36,8 @@ function fichaBase() {
     territorio: 'T48',
     microterritorio: 'MT01',
     divisionTerritorial: 'Barrio San Cayetano',
-    equipoSaludId: 'EBS-001',
-    prestadorPrimario: 'IPS Ladera',
+    equipoSaludId: 'EBS001',
+    prestadorPrimario: 'PROV-ESE-LADERA',
     responsableTipoId: 'CC',
     responsableNumeroId: '1144012345',
     perfilProfesional: 'enfermeria',
@@ -72,8 +72,10 @@ function adultaValida() {
     nacionalidad: 'CO', sexo: 'mujer', genero: 'femenino',
     autoidentificacionGenero: 'femenino', orientacionSexual: 'heterosexual',
     telefono1: '3155551234', rolFamiliar: 'responsable_economico',
-    ocupacion: 'Comerciante', nivelEducativo: 'media_academica',
-    regimenAfiliacion: 'subsidiado', eapb: 'EMSSANAR',
+    /* Códigos de catálogo, no texto libre: los ítems 73 y 76 son llave
+       foránea en el esquema (cat.ocupacion_ciuo, cat.eapb). */
+    ocupacion: '5223', nivelEducativo: 'media_academica',
+    regimenAfiliacion: 'subsidiado', eapb: 'ESS024',
     sujetoEspecialProteccion: ['ninguna'], pertenenciaEtnica: 'ninguna',
     saberesAncestrales: ['ninguna'], discapacidad: ['sin_discapacidad'],
     certificacionRlcpd: 'no_aplica', intencionReproductiva: 'no', gestacionActual: 'no',
@@ -314,7 +316,7 @@ verificar('Clasificación de tensión incoherente => bloqueo RN-099',
 // RN-133 / RN-134: el plan de la persona debe apuntar al integrante correcto.
 const conPlanErrado = familiaValida([Object.assign(adultaValida(), {
   planPersona: {
-    codigoEbs: 'EBS-001', codigoVivienda: 'HOG-001', codigoFamilia: 'FAM-001',
+    codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', codigoFamilia: 'FAM-001',
     tipoIdIntegrante: 'CC', numeroIdIntegrante: '9999999999',
     acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: '890201', tipoRespuesta: 'en_sitio' }],
     seguimientos: []
@@ -322,7 +324,7 @@ const conPlanErrado = familiaValida([Object.assign(adultaValida(), {
 })]);
 const datosPlanErrado = Object.assign(fichaBase(), {
   familias: [conPlanErrado],
-  planVivienda: { codigoEbs: 'EBS-001', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
+  planVivienda: { codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
 });
 errores = validarReglas(datosPlanErrado);
 verificar('Plan que apunta a un documento inexistente => bloqueo RN-134',
@@ -331,7 +333,7 @@ verificar('Plan que apunta a un documento inexistente => bloqueo RN-134',
 
 const conPlanCorrecto = familiaValida([Object.assign(adultaValida(), {
   planPersona: {
-    codigoEbs: 'EBS-001', codigoVivienda: 'HOG-001', codigoFamilia: 'FAM-001',
+    codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', codigoFamilia: 'FAM-001',
     tipoIdIntegrante: 'CC', numeroIdIntegrante: '1144099887',
     acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: '890201', tipoRespuesta: 'en_sitio' }],
     seguimientos: []
@@ -340,7 +342,7 @@ const conPlanCorrecto = familiaValida([Object.assign(adultaValida(), {
 verificar('Plan con llaves heredadas correctas => sin bloqueos',
   validarReglas(Object.assign(fichaBase(), {
     familias: [conPlanCorrecto],
-    planVivienda: { codigoEbs: 'EBS-001', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
+    planVivienda: { codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
   })).length === 0);
 
 const llaveViviendaErrada = Object.assign(fichaBase(), {

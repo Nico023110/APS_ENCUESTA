@@ -112,7 +112,7 @@ function llenarGrupoCasillas(idContenedor, nombreCampo, catalogo) {
     );
   }).join('');
 }
-console-log('hola mundo');
+
 /* ---------------------------------------------------------
    Renderizado declarativo de catálogos.
    Cualquier elemento con data-catalogo se llena desde el catálogo
@@ -122,9 +122,15 @@ console-log('hola mundo');
    --------------------------------------------------------- */
 
 const CATALOGOS_DECLARATIVOS = {
+  /* Se llena en marcha desde /api/catalogo_acciones; el arreglo se comparte
+     por referencia, así que basta con repintar los selects al cargarlo. */
+  CAT_ACCION_PLAN: CAT_ACCION_PLAN,
   CAT_SI_NO: CAT_SI_NO,
   CAT_SI_NO_NA: CAT_SI_NO_NA,
-  CAT_UZPE: CAT_UZPE,
+  CAT_UZPE: CAT_UZPE_VIGENTES,
+  CAT_EAPB: CAT_EAPB,
+  CAT_OCUPACION_CIUO: CAT_OCUPACION_CIUO,
+  CAT_PRESTADOR: CAT_PRESTADOR,
   CAT_ANIMALES: CAT_ANIMALES,
   CAT_FUENTE_AGUA: CAT_FUENTE_AGUA,
   CAT_DISPOSICION_EXCRETAS: CAT_DISPOSICION_EXCRETAS,
@@ -217,6 +223,64 @@ function renderizarCatalogosDeclarativos(raiz) {
   });
 }
 
+/* ---------------------------------------------------------
+   CATÁLOGO DE ACCIONES DEL PLAN (ítems 114, 124 y 136a)
+   ---------------------------------------------------------
+   Es el único catálogo que no viene en `catalogos.js`: son los códigos CUPS
+   y NoCUPS de `cat.cups`, que cambian con cada actualización del catálogo
+   oficial. Se pide al servidor y se guarda en el navegador, de modo que una
+   visita sin señal siga ofreciendo la lista de la última vez.
+   --------------------------------------------------------- */
+
+const CLAVE_CACHE_ACCIONES = 'aps_catalogo_acciones';
+
+/**
+ * El catálogo de acciones ya no llena ningún desplegable: los ítems 114, 124 y
+ * 136a se buscan contra la tabla conforme se escribe (ver `cups.js`). Sigue
+ * descargándose porque es lo que permite seguir buscando sin señal, y al
+ * llegar se repasan los códigos ya escritos: puede que uno que no se había
+ * podido resolver tenga ahora nombre.
+ */
+function repintarSelectsDeAccion() {
+  if (typeof resolverCombosCups === 'function') resolverCombosCups();
+}
+
+async function cargarCatalogoDeAcciones() {
+  /* Primero lo guardado: la lista aparece de inmediato y sin depender de que
+     la red conteste. */
+  try {
+    const cacheado = localStorage.getItem(CLAVE_CACHE_ACCIONES);
+    if (cacheado) {
+      fijarCatalogoAcciones(JSON.parse(cacheado));
+      repintarSelectsDeAccion();
+    }
+  } catch (error) {
+    console.warn('No fue posible leer el catálogo de acciones guardado:', error);
+  }
+
+  try {
+    const respuesta = await fetch('/api/catalogo_acciones');
+    if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
+    const filas = await respuesta.json();
+    if (!Array.isArray(filas) || filas.length === 0) throw new Error('catálogo vacío');
+
+    fijarCatalogoAcciones(filas);
+    localStorage.setItem(CLAVE_CACHE_ACCIONES, JSON.stringify(filas));
+    repintarSelectsDeAccion();
+  } catch (error) {
+    /* Sin red y sin copia guardada el desplegable queda vacío. Se avisa, en
+       vez de dejar al encuestador frente a una lista sin opciones y sin
+       explicación. */
+    if (CAT_ACCION_PLAN.length === 0) {
+      console.error('No fue posible cargar el catálogo de acciones:', error);
+      mostrarNotificacion(
+        'No se pudo cargar el catálogo de acciones del plan de cuidado. ' +
+        'Conéctese al menos una vez para descargarlo.', 'warning');
+    }
+  }
+}
+
 /* RN-222 — El cierre por causa externa exige registrar el motivo. */
 function inicializarCierreIncompleto() {
   const casilla = document.getElementById('visitaIncompleta');
@@ -247,6 +311,10 @@ function inicializarCatalogosDelFormulario() {
   // Bloques 4 a 12: se resuelven por data-catalogo, sin ids fijos.
   renderizarCatalogosDeclarativos(document);
 
+  /* El catálogo de acciones vive en la base, no en `catalogos.js`. Se pide sin
+     bloquear el arranque: los selects se repintan cuando llegue. */
+  cargarCatalogoDeAcciones();
+
   // RN-005: entidad territorial fija (un único valor posible en cada select).
   llenarSelect('departamento', [{ valor: CAT_DEPARTAMENTO.codigo, etiqueta: CAT_DEPARTAMENTO.codigo + ' — ' + CAT_DEPARTAMENTO.nombre }],
     { placeholder: null, seleccionado: CAT_DEPARTAMENTO.codigo });
@@ -269,8 +337,9 @@ function inicializarCatalogosDelFormulario() {
   llenarGrupoCasillas('grupoRiesgosAccidente', 'riesgosAccidente', CAT_RIESGOS_ACCIDENTE);             // RN-036
   llenarGrupoCasillas('grupoFactoresContaminacion', 'factoresContaminacion', CAT_FACTORES_CONTAMINACION); // RN-038
 
-  // RN-004: UZPE006 queda preseleccionada; las demás siguen disponibles.
-  llenarSelect('uzpe', CAT_UZPE, { placeholder: null, seleccionado: UZPE_PREDETERMINADA });
+  // RN-004: sólo se ofrecen las UZPE vigentes en el catálogo. Ofrecer las diez
+  // hacía que el encuestador escogiera una que la base no acepta.
+  llenarSelect('uzpe', CAT_UZPE_VIGENTES, { placeholder: null, seleccionado: UZPE_PREDETERMINADA });
   llenarSelect('fuenteAgua', CAT_FUENTE_AGUA);                       // RN-046
   llenarSelect('disposicionExcretas', CAT_DISPOSICION_EXCRETAS);     // RN-047
   llenarSelect('aguasResiduales', CAT_AGUAS_RESIDUALES);             // RN-048
@@ -801,6 +870,34 @@ function agregarEncuesta(encuesta) {
   guardarEncuestas(encuestas);
 }
 
+/**
+ * Sustituye una ficha por su versión corregida, en su mismo sitio del
+ * historial y conservando su identidad: el registro es la misma visita, no
+ * una nueva. Se deja constancia de la fecha de corrección.
+ */
+function reemplazarEncuesta(id, encuestaCorregida) {
+  const encuestas = obtenerEncuestas();
+  const indice = encuestas.findIndex(function (e) { return e.id === id; });
+
+  if (indice === -1) {
+    encuestas.unshift(encuestaCorregida);
+    guardarEncuestas(encuestas);
+    return;
+  }
+
+  const anterior = encuestas[indice];
+  const fechas = (anterior.fechasModificacion || []).slice();
+  fechas.push(new Date().toISOString());
+
+  encuestas[indice] = Object.assign({}, encuestaCorregida, {
+    id: anterior.id,
+    fechaRegistro: anterior.fechaRegistro,
+    fechasModificacion: fechas
+  });
+
+  guardarEncuestas(encuestas);
+}
+
 function eliminarEncuestaPorId(id) {
   const encuestas = obtenerEncuestas().filter(function (encuesta) {
     return encuesta.id !== id;
@@ -827,19 +924,28 @@ function actualizarEncuesta(id, datosActualizados) {
 // Nueva función de sincronización con la API (Backend en Vercel)
 async function sincronizarEncuestas() {
   const encuestasLocales = obtenerEncuestas();
-  
-  if (encuestasLocales.length === 0) {
-    mostrarNotificacion('No hay encuestas nuevas para sincronizar.', 'info');
+
+  /* Sólo lo que falta por subir. Antes se reenviaba todo el historial en cada
+     pulsación —incluidas las fichas ya guardadas en la base—, así que un
+     rechazo antiguo volvía a contarse como error nuevo y el resumen final
+     nunca reflejaba lo que acababa de pasar. */
+  const pendientes = encuestasLocales.filter(function (e) { return e.sincronizada !== true; });
+
+  if (pendientes.length === 0) {
+    mostrarNotificacion(
+      encuestasLocales.length === 0
+        ? 'No hay encuestas para sincronizar.'
+        : 'Todas las encuestas ya están guardadas en la base.', 'info');
     return;
   }
 
   mostrarNotificacion('Sincronizando encuestas con la nube...', 'info');
 
   let exitosas = 0;
-  let errores = 0;
+  const rechazadas = [];
 
   try {
-    for (const encuesta of encuestasLocales) {
+    for (const encuesta of pendientes) {
       try {
         const respuesta = await fetch('/api/guardar_encuesta', {
           method: 'POST',
@@ -851,25 +957,64 @@ async function sincronizarEncuestas() {
           encuesta.sincronizada = true;
           exitosas++;
         } else {
-          const errorData = await respuesta.json().catch(function() { return {}; });
+          const errorData = await respuesta.json().catch(function () { return {}; });
           console.error('Error al sincronizar encuesta', encuesta.id, errorData);
-          errores++;
+          rechazadas.push({
+            codigo: encuesta.codigoFicha || encuesta.id,
+            bloqueos: errorData.bloqueos || [],
+            /* Un 500 no es un rechazo por reglas: el servidor sí contestó, y
+               contestó que falló. Se guarda su explicación para poder decirla,
+               en vez de achacárselo a la red. */
+            fallaDelServidor: respuesta.status >= 500
+              ? (errorData.detalles || errorData.error || 'error interno')
+              : null
+          });
         }
       } catch (fetchError) {
         console.error('Error de red para encuesta', encuesta.id, fetchError);
-        errores++;
+        rechazadas.push({
+          codigo: encuesta.codigoFicha || encuesta.id, bloqueos: [], fallaDelServidor: null
+        });
       }
     }
-    
+
     // Guardar los estados actualizados en localStorage
     guardarEncuestas(encuestasLocales);
-    
+
     if (exitosas > 0) {
-      mostrarNotificacion('Se sincronizaron ' + exitosas + ' encuesta(s) correctamente.' + (errores > 0 ? ' (' + errores + ' con error)' : ''), 'success');
-    } else if (errores > 0) {
-      mostrarNotificacion('No se pudo sincronizar ninguna encuesta. Revise la consola (F12).', 'error');
-    } else {
-      mostrarNotificacion('No había encuestas pendientes de sincronizar.', 'info');
+      mostrarNotificacion('Se sincronizaron ' + exitosas + ' encuesta(s) correctamente.' +
+        (rechazadas.length > 0 ? ' (' + rechazadas.length + ' con error)' : ''), 'success');
+    }
+
+    /* El aviso decía «revise la consola (F12)». Un encuestador no abre la
+       consola: se queda sin saber qué corregir y la ficha no sube nunca. El
+       servidor ya devuelve qué campo falla; se muestra. */
+    if (rechazadas.length > 0) {
+      const primera = rechazadas[0];
+
+      /* Tres desenlaces distintos y tres mensajes distintos. Decir «no hubo
+         respuesta del servidor» ante un 500 manda a revisar la red o la base
+         cuando el servidor ya dijo exactamente qué falló. */
+      let detalle;
+      if (primera.bloqueos.length > 0) {
+        detalle = ' ' + primera.codigo + ': ' + primera.bloqueos[0].mensaje;
+      } else if (primera.fallaDelServidor) {
+        detalle = ' ' + primera.codigo + ': el servidor no pudo guardarla — ' +
+          primera.fallaDelServidor;
+      } else {
+        detalle = ' ' + primera.codigo + ': no hubo respuesta del servidor.';
+      }
+
+      mostrarNotificacion(
+        rechazadas.length + ' encuesta(s) no se pudieron guardar.' + detalle, 'error');
+
+      console.table(rechazadas.map(function (r) {
+        return {
+          ficha: r.codigo,
+          bloqueos: r.bloqueos.length,
+          primero: r.bloqueos.length > 0 ? r.bloqueos[0].ruta + ': ' + r.bloqueos[0].mensaje : '—'
+        };
+      }));
     }
     
     renderizarInicio(); 
@@ -881,127 +1026,45 @@ async function sincronizarEncuestas() {
 }
 
 /* ---------------------------------------------------------
-   11. DATOS INICIALES DE DEMOSTRACIÓN (seed)
+   11. RETIRO DE LOS DATOS DE DEMOSTRACIÓN
+   ---------------------------------------------------------
+   La aplicación sembraba tres fichas de ejemplo la primera vez que se abría,
+   para que Inicio e Historial no se vieran vacíos. Salió más caro de lo que
+   valía: eran fichas incompletas a propósito —fechas fuera del plazo de
+   RN-016, valores que ya no están en los catálogos, familias sin
+   caracterizar—, así que la API las rechazaba una y otra vez. Quien pulsaba
+   «Sincronizar a la Nube» recibía un error que no venía de su trabajo y no
+   tenía forma de resolver.
+
+   Con el guardado directo contra la base, además, ya no hacen falta: la
+   primera encuesta registrada llena las dos vistas.
+
+   Esto no siembra nada; sólo retira lo sembrado antes, una sola vez, de los
+   navegadores que ya lo tienen.
    --------------------------------------------------------- */
 
-function crearDatosSemilla() {
-  const semillas = [
-    {
-      consentimiento: 'si',
-      situacionInminente: 'no_aplica',
-      uzpe: 'UZPE-04', areaUbicacion: 'urbana',
-      territorio: 'T53', microterritorio: 'MT03',
-      divisionTerritorial: 'Barrio Siloé, sector alto',
-      equipoSaludId: 'EQ-2201', prestadorPrimario: 'ESE Ladera',
-      responsableTipoId: 'CC', responsableNumeroId: '52741963',
-      perfilProfesional: 'auxiliar_enfermeria', codigoFicha: 'F-00123',
-      fechaDiligenciamiento: '2026-07-15',
-      fechasModificacion: [],
-      entornoAbordaje: 'hogar', nombreInstitucion: '', cabezaFamilia: 'Marta Rodríguez',
-      jovenesEnPaz: 'no',
-      direccionComponentes: {
-        modo: 'urbana', viaTipo: 'KR', viaNumero: '8', viaLetra: '', viaBis: false,
-        viaLetraBis: '', viaCuadrante: '', genNumero: '15', genLetra: '', genCuadrante: '',
-        placa: '32', complementos: []
-      },
-      latitud: '3.427100', longitud: '-76.556300',
-      ubicacionReferencia: 'Frente al parque principal', idHogar: 'HG-3311', idFamilia: 'FM-1187',
-      estrato: 'bajo', hogaresEnVivienda: 1, personasEnVivienda: 4, habitacionesVivienda: 2,
-      elementosParaDormir: 3,
-      tipoVivienda: 'casa', materialTecho: 'zinc',
-      riesgosAccidente: ['instalaciones_electricas', 'terreno_inestable'],
-      vectores: 'no',
-      factoresContaminacion: ['basuras_escombros']
-    },
-    {
-      consentimiento: 'si',
-      situacionInminente: 'no_aplica',
-      uzpe: 'UZPE-02', areaUbicacion: 'urbana',
-      territorio: 'T48', microterritorio: 'MT01',
-      divisionTerritorial: 'Barrio San Cayetano',
-      equipoSaludId: 'EQ-1187', prestadorPrimario: 'ESE Centro',
-      responsableTipoId: 'CC', responsableNumeroId: '43897215',
-      perfilProfesional: 'gestor_comunitario', codigoFicha: 'F-00456',
-      fechaDiligenciamiento: '2026-07-22',
-      fechasModificacion: [],
-      entornoAbordaje: 'hogar', nombreInstitucion: '', cabezaFamilia: 'Luis Fernando Gómez',
-      jovenesEnPaz: 'si',
-      direccionComponentes: {
-        modo: 'urbana', viaTipo: 'CL', viaNumero: '45', viaLetra: 'A', viaBis: false,
-        viaLetraBis: '', viaCuadrante: '', genNumero: '52', genLetra: 'B', genCuadrante: '',
-        placa: '18', complementos: [{ tipo: 'TO', valor: '3' }, { tipo: 'AP', valor: '402' }]
-      },
-      latitud: '3.464200', longitud: '-76.523900',
-      ubicacionReferencia: 'Cerca a la iglesia central', idHogar: 'HG-5502', idFamilia: 'FM-2290',
-      estrato: 'medio_bajo', hogaresEnVivienda: 2, personasEnVivienda: 9, habitacionesVivienda: 2,
-      elementosParaDormir: 4,
-      tipoVivienda: 'apartamento', materialTecho: 'concreto',
-      riesgosAccidente: ['sin_rutas_evacuacion', 'ventanas_sin_proteccion'],
-      vectores: 'si',
-      factoresContaminacion: ['trafico_vehicular', 'ruido']
-    },
-    {
-      consentimiento: 'si',
-      situacionInminente: 'psicologica',
-      uzpe: 'UZPE-01', areaUbicacion: 'rural',
-      territorio: 'T65', microterritorio: 'MT01',
-      divisionTerritorial: 'Corregimiento La Elvira, Km 18',
-      equipoSaludId: 'EQ-0931', prestadorPrimario: 'ESE Ladera',
-      responsableTipoId: 'CE', responsableNumeroId: '78412356',
-      perfilProfesional: 'psicologia', codigoFicha: 'F-00789',
-      fechaDiligenciamiento: '2026-08-01',
-      entornoAbordaje: 'comunitario', nombreInstitucion: 'JAC Vereda La Elvira',
-      cabezaFamilia: 'Ana Milena Torres', jovenesEnPaz: 'no',
-      direccionComponentes: {
-        modo: 'rural', ruralViaTipo: 'VIA', ruralViaNombre: 'Cali - Buenaventura', ruralKm: '18',
-        ruralPredioTipo: 'FINCA', ruralPredioNombre: 'La Esperanza', ruralSector: 'Las Peñas',
-        complementos: []
-      },
-      latitud: '3.470200', longitud: '-76.622100',
-      ubicacionReferencia: 'Escuela rural La Elvira', idHogar: 'HG-7743', idFamilia: 'FM-3105',
-      estrato: 'bajo_bajo', hogaresEnVivienda: 1, personasEnVivienda: 3, habitacionesVivienda: 2,
-      elementosParaDormir: 2,
-      tipoVivienda: 'casa', materialTecho: 'fibrocemento_con_asbesto',
-      riesgosAccidente: ['fogon_sin_ventilacion', 'terreno_inestable'],
-      vectores: 'si',
-      factoresContaminacion: ['porquerizas', 'quema_basuras']
-    }
-  ];
+const CLAVE_SEMILLA_RETIRADA = 'aps_semilla_retirada';
+const CODIGOS_SEMILLA = ['F-00123', 'F-00456', 'F-00789'];
 
-  return semillas.map(function (base) {
-    const resultadoCalculo = calcularHacinamiento(base.personasEnVivienda, base.habitacionesVivienda);
-    const microterritorio = buscarMicroterritorio(base.territorio, base.microterritorio);
-    const direccion = normalizarDireccion(base.direccionComponentes);
+function retirarDatosDemostracion() {
+  if (localStorage.getItem(CLAVE_SEMILLA_RETIRADA) === 'si') return;
 
-    return Object.assign({}, base, {
-      id: generarId(),
-      fechaRegistro: new Date().toISOString(),
-      departamentoCodigo: CAT_DEPARTAMENTO.codigo,
-      departamento: CAT_DEPARTAMENTO.nombre,
-      municipioCodigo: CAT_MUNICIPIO.codigo,
-      municipio: CAT_MUNICIPIO.nombre,
-      microterritorioNombre: microterritorio ? microterritorio.nombre : null,
-      comuna: comunaDeTerritorio(base.territorio),
-      perfilProfesionalOtro: null,
-      direccion: direccion.canonica,
-      direccionLegible: direccion.legible,
-      consultaGeocodificacion: construirConsultaGeocodificacion(base.direccionComponentes, base.divisionTerritorial),
-      latitud: aFloatOrNull(base.latitud),
-      longitud: aFloatOrNull(base.longitud),
-      origenCoordenadas: 'geocodificacion',
-      precisionCoordenadas: 'via',
-      referenciaCoordenadas: null,
-      personasPorHabitacion: resultadoCalculo.personasPorHabitacion,
-      hacinamiento: resultadoCalculo.hacinamiento
-    });
+  const encuestas = obtenerEncuestas();
+
+  /* Sólo las de demostración que nunca llegaron a la base. Si alguna se
+     sincronizó, es un registro real que reutilizó el código y no se toca. */
+  const conservadas = encuestas.filter(function (encuesta) {
+    return !(CODIGOS_SEMILLA.indexOf(encuesta.codigoFicha) !== -1 &&
+             encuesta.sincronizada !== true);
   });
-}
 
-function inicializarDatosSemillaSiEsNecesario() {
-  const encuestasExistentes = obtenerEncuestas();
-  if (encuestasExistentes.length === 0) {
-    guardarEncuestas(crearDatosSemilla());
+  const retiradas = encuestas.length - conservadas.length;
+  if (retiradas > 0) {
+    guardarEncuestas(conservadas);
+    console.info('Se retiraron ' + retiradas + ' ficha(s) de demostración del almacenamiento local.');
   }
+
+  localStorage.setItem(CLAVE_SEMILLA_RETIRADA, 'si');
 }
 
 /* ---------------------------------------------------------
@@ -1112,6 +1175,17 @@ function badgeHacinamiento(valor) {
   return '<span class="badge badge--neutral">—</span>';
 }
 
+/**
+ * Dice si la ficha llegó a la base o sigue sólo en este dispositivo. Es la
+ * diferencia entre un dato a salvo y uno que se pierde si se borra el
+ * navegador, y hasta ahora no se veía en ninguna parte.
+ */
+function badgeSincronizacion(sincronizada) {
+  return sincronizada === true
+    ? '<span class="badge badge--success">En la base</span>'
+    : '<span class="badge badge--warning">Pendiente</span>';
+}
+
 function badgeSituacion(valor) {
   if (!requiereAtencionPrioritaria(valor)) return '<span class="badge badge--neutral">No aplica</span>';
   return '<span class="badge badge--warning">' + escaparHtml(etiquetaDeCatalogo(CAT_SITUACION_INMINENTE, valor)) + '</span>';
@@ -1194,6 +1268,13 @@ function renderizarHistorial() {
 
   if (encuestas.length === 0) {
     cuerpoTabla.innerHTML = '';
+    /* Sin fichas de demostración, el historial vacío es lo primero que ve
+       quien abre la aplicación. Decirle «no se encontraron registros con los
+       filtros seleccionados» cuando no ha filtrado nada lo manda a buscar un
+       filtro que no existe. */
+    estadoVacio.textContent = obtenerEncuestas().length === 0
+      ? 'Todavía no hay encuestas registradas. Diligencie la primera desde la pestaña «Nueva Encuesta».'
+      : 'No se encontraron registros con los filtros seleccionados.';
     estadoVacio.hidden = false;
     return;
   }
@@ -1205,6 +1286,11 @@ function renderizarHistorial() {
 
     return (
       '<tr>' +
+        /* El código y el estado hacen falta para poder actuar sobre la fila:
+           los rechazos de la API nombran la ficha por su código, y sin verlo
+           aquí no había manera de saber cuál de todas hay que corregir. */
+        '<td>' + textoSeguro(encuesta.codigoFicha) + '</td>' +
+        '<td>' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
         '<td>' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
         '<td>' + textoModificacion(encuesta) + '</td>' +
         '<td>' + textoTerritorio(encuesta) + '</td>' +
@@ -1215,6 +1301,7 @@ function renderizarHistorial() {
         '<td>' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
           '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + encuesta.id + '">Ver</button>' +
+          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + encuesta.id + '">Corregir</button>' +
           '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + encuesta.id + '">Eliminar</button>' +
         '</td>' +
       '</tr>'
@@ -1223,6 +1310,9 @@ function renderizarHistorial() {
 
   cuerpoTabla.querySelectorAll('[data-ver]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirModalDetalle(boton.dataset.ver); });
+  });
+  cuerpoTabla.querySelectorAll('[data-corregir]').forEach(function (boton) {
+    boton.addEventListener('click', function () { abrirCorreccionDeEncuesta(boton.dataset.corregir); });
   });
   cuerpoTabla.querySelectorAll('[data-eliminar]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirModalConfirmarEliminacion(boton.dataset.eliminar); });
@@ -1546,8 +1636,21 @@ function limpiarErroresFormulario(formulario) {
   });
 }
 
+/** El contenedor donde se pinta el error de un control, buscado por su ruta. */
+function contenedorPorRuta(formulario, ruta) {
+  if (!ruta) return null;
+  const control = formulario.querySelector('[name="' + ruta + '"]');
+  return control ? control.closest('.field, td') : null;
+}
+
 function marcarIncumplimiento(formulario, incumplimiento) {
-  const contenedor = formulario.querySelector('[data-campo="' + incumplimiento.campo + '"]');
+  /* La `ruta` nombra el control exacto —`planVivienda.acciones[0].ejecutorNumeroId`
+     señala esa casilla y no las tres del plan a la vez—, así que se prefiere
+     cuando hay un control con ese nombre. `data-campo` queda de respaldo para
+     las reglas que marcan un bloque entero y no un control concreto. */
+  const contenedor = contenedorPorRuta(formulario, incumplimiento.ruta) ||
+    formulario.querySelector('[data-campo="' + incumplimiento.campo + '"]');
+
   if (!contenedor || contenedor.querySelector('.field-error-msg')) return contenedor;
 
   contenedor.classList.add('has-error');
@@ -1705,7 +1808,7 @@ function actualizarTableroDeRiesgo(datos) {
   return { alertas: alertas, sinAccion: sinAccion };
 }
 
-function manejarEnvioFormulario(evento) {
+async function manejarEnvioFormulario(evento) {
   evento.preventDefault();
   const formulario = evento.target;
 
@@ -1722,7 +1825,7 @@ function manejarEnvioFormulario(evento) {
       document.getElementById('campoMotivoIncompleta').scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    guardarYReiniciar(datos, formulario, 'La visita se guardó como incompleta por causa externa.');
+    await guardarYReiniciar(datos, formulario, 'La visita se guardó como incompleta por causa externa.');
     return;
   }
 
@@ -1765,21 +1868,175 @@ function manejarEnvioFormulario(evento) {
     );
   }
 
-  guardarYReiniciar(datos, formulario, 'La encuesta fue guardada correctamente.');
+  await guardarYReiniciar(datos, formulario, 'La encuesta fue guardada correctamente.');
 }
 
 function esVacioTexto(valor) {
   return valor === null || valor === undefined || String(valor).trim() === '';
 }
 
-function guardarYReiniciar(datos, formulario, mensaje) {
-  agregarEncuesta(construirEncuestaDesdeDatos(datos));
+/* ---------------------------------------------------------
+   GUARDADO DE LA FICHA
+   ---------------------------------------------------------
+   Guardar escribe en la base. La sincronización es el plan B para las
+   visitas sin señal, no el camino normal.
+
+   Antes «Guardar encuesta» sólo escribía en `localStorage` y anunciaba «La
+   encuesta fue guardada correctamente». Para quien está en campo eso se lee
+   como «ya quedó», y no había quedado en ninguna parte fuera de su
+   dispositivo: había que acordarse de pulsar «Sincronizar a la Nube» después,
+   y si el servidor rechazaba la ficha el aviso llegaba mucho después de haber
+   cerrado la visita, sin el formulario delante para corregirla.
+   --------------------------------------------------------- */
+
+async function guardarYReiniciar(datos, formulario, mensaje) {
+  const encuesta = construirEncuestaDesdeDatos(datos);
+  const boton = document.getElementById('btnGuardar');
+
+  const resultado = await enviarFichaAlServidor(encuesta, boton);
+
+  /* Rechazo por reglas de negocio: la ficha NO se guarda ni se limpia el
+     formulario. El encuestador tiene que poder corregir lo que el servidor
+     señala, y para eso necesita sus respuestas en pantalla. */
+  if (resultado.estado === 'rechazada') {
+    mostrarBloqueosDelServidor(formulario, resultado.bloqueos);
+    return false;
+  }
+
+  encuesta.sincronizada = resultado.estado === 'guardada';
+
+  /* Corrigiendo se reemplaza la ficha existente; capturando se agrega una
+     nueva. Sin esta distinción, arreglar un dato dejaría dos copias de la
+     misma visita en el historial. */
+  if (encuestaEnCorreccion) {
+    reemplazarEncuesta(encuestaEnCorreccion, encuesta);
+    salirDeCorreccion();
+  } else {
+    agregarEncuesta(encuesta);
+  }
+
+  if (encuesta.sincronizada) {
+    mostrarNotificacion(mensaje + ' Quedó registrada en la base de datos.', 'success');
+  } else if (resultado.estado === 'error_servidor') {
+    /* La ficha se conserva igual —el trabajo del encuestador no se pierde—,
+       pero el aviso nombra la causa real en vez de culpar a la red. */
+    mostrarNotificacion(
+      mensaje + ' El servidor no pudo registrarla: ' + resultado.detalle +
+      ' Quedó pendiente de sincronizar.', 'error');
+  } else {
+    /* Sin red. La ficha se conserva en el dispositivo y queda en cola: es
+       exactamente el caso para el que existe la sincronización. */
+    mostrarNotificacion(
+      mensaje + ' No hubo conexión con el servidor: quedó pendiente de sincronizar.',
+      'warning');
+  }
 
   formulario.reset();
   reiniciarEstadoFormulario();
-
-  mostrarNotificacion(mensaje, 'success');
   cambiarVista('historial');
+  return true;
+}
+
+/**
+ * Envía la ficha y traduce la respuesta a tres desenlaces:
+ *   guardada    quedó escrita en la base
+ *   rechazada   el servidor la devolvió por incumplir reglas (400)
+ *   sin_red     no se pudo hablar con el servidor
+ */
+async function enviarFichaAlServidor(encuesta, boton) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { estado: 'sin_red' };
+  }
+
+  /* Se bloquea el botón mientras la petición viaja: sin esto, un segundo clic
+     manda la ficha dos veces. */
+  const textoOriginal = boton ? boton.textContent : null;
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = 'Guardando…';
+  }
+
+  try {
+    const respuesta = await fetch('/api/guardar_encuesta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(encuesta)
+    });
+
+    if (respuesta.ok) return { estado: 'guardada' };
+
+    if (respuesta.status === 400) {
+      const cuerpo = await respuesta.json().catch(function () { return {}; });
+      return { estado: 'rechazada', bloqueos: cuerpo.bloqueos || [] };
+    }
+
+    /* 500 y demás: el problema es del servidor, no de la ficha. No se pierde
+       el trabajo del encuestador; queda en cola. Pero no es lo mismo que
+       quedarse sin señal, y decirlo así mandaba a buscar cobertura cuando lo
+       que hay que mirar es el registro del servidor. */
+    const cuerpo = await respuesta.json().catch(function () { return {}; });
+    console.error('El servidor respondió ' + respuesta.status + ' al guardar la ficha:', cuerpo);
+    return {
+      estado: 'error_servidor',
+      detalle: cuerpo.detalles || cuerpo.error || 'error interno del servidor'
+    };
+  } catch (error) {
+    console.error('No fue posible hablar con el servidor:', error);
+    return { estado: 'sin_red' };
+  } finally {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
+  }
+}
+
+/**
+ * Pinta en el formulario lo que el servidor rechazó, con el mismo aspecto que
+ * los incumplimientos detectados en el navegador. La ruta que devuelve la API
+ * —`familias[0].integrantes[1].planPersona.acciones[0].codigoAccion`— se usa
+ * para señalar el control exacto; el `campo` a secas marcaría los tres planes
+ * a la vez y no diría cuál corregir.
+ */
+function mostrarBloqueosDelServidor(formulario, bloqueos) {
+  const lista = bloqueos || [];
+
+  renderizarImpedimentos(lista.map(function (b) {
+    return {
+      codigo: b.codigo || 'BD',
+      mensaje: b.mensaje,
+      bloque: b.ambito || null,
+      referencia: b.referencia || b.ruta || null
+    };
+  }));
+
+  let primerControl = null;
+
+  lista.forEach(function (b) {
+    if (!b.ruta) return;
+    const control = formulario.querySelector('[name="' + b.ruta + '"]');
+    if (!control) return;
+
+    const contenedor = control.closest('.field, td');
+    if (contenedor && !contenedor.querySelector('.field-error-msg')) {
+      contenedor.classList.add('has-error');
+      const aviso = document.createElement('span');
+      aviso.className = 'field-error-msg';
+      aviso.textContent = (b.codigo || 'BD') + ': ' + b.mensaje;
+      contenedor.appendChild(aviso);
+    }
+    if (!primerControl) primerControl = control;
+  });
+
+  if (primerControl) {
+    primerControl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else {
+    document.getElementById('seccion-cierre').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  mostrarNotificacion(
+    'El servidor no aceptó la ficha: ' + lista.length + ' campo(s) por corregir. ' +
+    'Revise lo señalado en rojo.', 'error');
 }
 
 function reiniciarEstadoFormulario() {
@@ -1948,8 +2205,9 @@ function inicializarAplicacion() {
   inicializarCatalogosDelFormulario();
   inicializarModoRevision();
   inicializarFormularioDinamico();
+  inicializarBuscadorCups();
   inicializarCierreIncompleto();
-  inicializarDatosSemillaSiEsNecesario();
+  retirarDatosDemostracion();
   inicializarNavegacion();
   inicializarFiltrosHistorial();
   inicializarFormulario();

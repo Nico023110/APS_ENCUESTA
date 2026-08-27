@@ -46,11 +46,30 @@ function limpiarClon(clon) {
     else campo.value = '';
   });
 
-  // Los grupos de pastillas se repintan para que hereden el nuevo data-name.
+  /* Los catálogos se repintan en el clon: las pastillas para que hereden el
+     nuevo data-name, y los <select> porque el prototipo puede haberse guardado
+     antes de que llegara su catálogo. Es el caso del código de acción del plan,
+     que se pide a la base al arrancar: la fila o el bloque nuevos nacían con el
+     desplegable vacío, así que no admitían ningún código —ni el que el
+     encuestador quería elegir, ni el que traía una ficha puesta a corregir—. */
   Array.prototype.forEach.call(clon.querySelectorAll('[data-catalogo]'), function (grupo) {
-    if (grupo.tagName === 'SELECT') return;
-    grupo.innerHTML = '';
+    if (grupo.tagName !== 'SELECT') grupo.innerHTML = '';
     delete grupo.dataset.renderizado;
+  });
+
+  /* El buscador de CUPS deja dos rastros fuera de los controles: la lista de
+     resultados y el nombre del procedimiento bajo el campo. Sin limpiarlos, la
+     fila nueva nace mostrando el nombre de la acción de la fila de la que se
+     clonó, con el código ya vacío. */
+  Array.prototype.forEach.call(clon.querySelectorAll('[data-rol="comboCups"]'), function (combo) {
+    const lista = combo.querySelector('.combo-cups__lista');
+    const nombre = combo.querySelector('.combo-cups__nombre');
+    if (lista) { lista.innerHTML = ''; lista.hidden = true; }
+    if (nombre) {
+      nombre.textContent = '';
+      nombre.className = 'combo-cups__nombre';
+      delete nombre.dataset.codigo;
+    }
   });
 
   renderizarCatalogosDeclarativos(clon);
@@ -97,12 +116,51 @@ function renumerarColeccionDeBloques(selectorContenedor, tipoBloque, coleccion) 
   });
 }
 
+/**
+ * A qué plan pertenece una tabla de filas: `planVivienda`, `planesFamilia[i]`
+ * o `planesPersona[i]`.
+ *
+ * Hace falta porque las filas de acción y de seguimiento se clonan siempre del
+ * plan de la vivienda —es la primera del documento y de ahí sale el prototipo—.
+ * Renumerar sólo el índice dejaba a una fila añadida en 6.2 o en 6.3 llamándose
+ * `planVivienda.acciones[N]`: dos controles distintos con el mismo nombre. Al
+ * recolectar ganaba el último, que es el clon en blanco, así que agregar una
+ * acción a una familia borraba la acción de la vivienda.
+ */
+function rutaDelPlan(cuerpoTabla) {
+  const bloque = cuerpoTabla.closest('[data-bloque="planFamilia"], [data-bloque="planPersona"]');
+  if (!bloque) return 'planVivienda';
+
+  const coleccion = bloque.dataset.bloque === 'planFamilia' ? 'planesFamilia' : 'planesPersona';
+  return coleccion + '[' + (bloque.dataset.indice || 0) + ']';
+}
+
+/** El último segmento de una ruta: `planVivienda.acciones[0].peso` -> `peso`. */
+function hojaDeRuta(nombre) {
+  const punto = nombre.lastIndexOf('.');
+  return punto === -1 ? nombre : nombre.slice(punto + 1);
+}
+
+/** Reescribe la ruta completa de los controles de una fila del plan. */
+function fijarRutaDeFila(fila, ruta) {
+  const elementos = fila.querySelectorAll('[name], [data-name]');
+  Array.prototype.forEach.call(elementos, function (el) {
+    const nombre = el.getAttribute('name');
+    if (nombre) el.setAttribute('name', ruta + '.' + hojaDeRuta(nombre));
+    if (el.dataset.name) el.dataset.name = ruta + '.' + hojaDeRuta(el.dataset.name);
+  });
+}
+
 function renumerarFilas(cuerpoTabla) {
   const filas = cuerpoTabla.querySelectorAll('tr[data-fila]');
+  if (filas.length === 0) return;
+
+  const ruta = rutaDelPlan(cuerpoTabla);
+
   Array.prototype.forEach.call(filas, function (fila, i) {
     const coleccion = fila.dataset.fila === 'accion' ? 'acciones' : 'seguimientos';
     fila.dataset.indice = i;
-    fijarIndiceEnAmbito(fila, coleccion, i);
+    fijarRutaDeFila(fila, ruta + '.' + coleccion + '[' + i + ']');
   });
 }
 
@@ -243,6 +301,80 @@ function numeroDe(campo) {
   if (!campo || campo.value.trim() === '') return null;
   const n = Number(campo.value);
   return isFinite(n) ? n : null;
+}
+
+/* =========================================================
+   3.1 LÍMITES DE FECHA (RN-016 / RN-064)
+   ---------------------------------------------------------
+   Ninguna fecha capturada puede ser posterior al día en que se diligencia la
+   ficha, y la ficha misma no puede fecharse en el futuro. Las reglas ya lo
+   dicen —y el servidor lo vuelve a decir—, pero avisaban al cerrar la visita,
+   con doscientos campos de por medio. Poniendo el tope en el propio control,
+   el calendario del navegador no deja siquiera elegir el día, y si la fecha
+   entra escrita a mano queda señalada en el acto.
+   ========================================================= */
+
+function fechaDeHoyIso() {
+  const ahora = new Date();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return ahora.getFullYear() + '-' + mes + '-' + dia;
+}
+
+/**
+ * La fecha contra la que se contrastan las demás: la de diligenciamiento si el
+ * ítem 16 ya está respondido, y hoy mientras tanto. Una fecha de ficha futura
+ * no sirve de tope —la rechaza RN-016—, así que también cae a hoy.
+ */
+function fechaDeReferencia() {
+  const hoy = fechaDeHoyIso();
+  const campo = document.getElementById('fechaDiligenciamiento');
+  const fecha = campo ? campo.value : '';
+  return fecha && fecha <= hoy ? fecha : hoy;
+}
+
+/** Pone el tope en cada control de fecha y revisa lo que ya estuviera puesto. */
+function actualizarLimitesDeFecha() {
+  const campoFicha = document.getElementById('fechaDiligenciamiento');
+  if (campoFicha) {
+    campoFicha.max = fechaDeHoyIso();
+    revisarLimiteDeFecha(campoFicha);
+  }
+
+  const referencia = fechaDeReferencia();
+  Array.prototype.forEach.call(
+    document.querySelectorAll('[data-rol="fechaNacimiento"]'),
+    function (campo) {
+      campo.max = referencia;
+      revisarLimiteDeFecha(campo);
+    }
+  );
+}
+
+/** Señala la fecha que se sale del tope, sin esperar al cierre de la visita. */
+function revisarLimiteDeFecha(campo) {
+  if (!campo || !campo.max) return;
+
+  const contenedor = campo.closest('.field, td');
+  if (!contenedor) return;
+
+  /* Sólo se retira el aviso propio: los que puso el motor de reglas o el
+     servidor los limpia el guardado, no este repaso. */
+  const previo = contenedor.querySelector('.field-error-msg[data-origen="fecha"]');
+  if (previo) previo.remove();
+  if (!contenedor.querySelector('.field-error-msg')) contenedor.classList.remove('has-error');
+
+  if (!campo.value || campo.value <= campo.max) return;
+
+  contenedor.classList.add('has-error');
+  const aviso = document.createElement('span');
+  aviso.className = 'field-error-msg';
+  aviso.dataset.origen = 'fecha';
+  aviso.textContent = campo.id === 'fechaDiligenciamiento'
+    ? 'RN-016: la ficha no puede fecharse después de hoy (' + campo.max + ').'
+    : 'RN-064: la fecha no puede ser posterior al día en que se diligencia la ficha (' +
+      campo.max + ').';
+  contenedor.appendChild(aviso);
 }
 
 /** RN-064 — Edad en años, meses y días a partir de la fecha de nacimiento. */
@@ -563,6 +695,12 @@ function actualizarAtencionesRpms(bloque, meses, sexo, gestante) {
   }).join('');
 }
 
+/* Un nombre es plano cuando no anida: ni índice ni punto. Los planos los
+   recoge FormData; los anidados los arma `asignarEnRuta`. */
+function esNombrePlano(nombre) {
+  return nombre.indexOf('[') === -1 && nombre.indexOf('.') === -1;
+}
+
 /* =========================================================
    6. HERENCIA DE LLAVES DEL PLAN DE CUIDADO
    ========================================================= */
@@ -575,11 +713,56 @@ function propagarLlavesHeredadas() {
     idFamilia: valorDeId('idFamilia')
   };
 
+  /* RN-026: el código de la familia no es el ítem 26 que se digita, sino uno
+     derivado del hogar y del consecutivo —el mismo que el servidor termina
+     escribiendo en `aps.familia.codigo`—. Los planes 6.2 y 6.3 tienen que
+     heredar ése.
+
+     Heredando el ítem 26, el plan apuntaba a un código de familia que no
+     existía en la base y el disparador RN-122/132 tumbaba la ficha entera con
+     un 500. El ítem 26 sigue siendo el número que la familia usa como
+     referencia; no es su llave. */
+  const codigoDeFamilia = function (indice) {
+    return origenes.idHogar ? origenes.idHogar + '-F' + (indice + 1) : '';
+  };
+
+  /* Cada familia muestra desde ya el código que se le va a asignar, en lugar
+     de dejar el campo en «Se asigna al guardar» hasta después de guardar. */
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]'),
+    function (familia, i) {
+      const campo = familia.querySelector('input[name$=".idFamilia"]');
+      if (campo) campo.value = codigoDeFamilia(i);
+    }
+  );
+
   Array.prototype.forEach.call(document.querySelectorAll('[data-hereda]'), function (campo) {
     const clave = campo.dataset.hereda;
     if (clave === 'documentoIntegrante') return; // se resuelve en el selector de 6.3
+
+    if (clave === 'idFamilia') {
+      campo.value = codigoDeFamilia(familiaDelPlan(campo));
+      return;
+    }
+
     campo.value = origenes[clave] || '';
   });
+}
+
+/**
+ * Índice de la familia a la que apunta el plan que contiene a este campo.
+ * En 6.2 el selector vale «0»; en 6.3 vale «0:2» —familia e integrante—, y en
+ * los dos casos la familia va de primera. Sin selección, la primera familia.
+ */
+function familiaDelPlan(campo) {
+  const bloque = campo.closest('[data-bloque="planFamilia"], [data-bloque="planPersona"]');
+  if (!bloque) return 0;
+
+  const selector = bloque.querySelector('[data-rol="selectorFamilia"], [data-rol="selectorIntegrante"]');
+  if (!selector || !selector.value) return 0;
+
+  const indice = parseInt(String(selector.value).split(':')[0], 10);
+  return isFinite(indice) ? indice : 0;
 }
 
 function valorDeId(id) {
@@ -629,12 +812,53 @@ function actualizarSelectoresDePlan() {
     if (campoTipo) {
       campoTipo.value = elegido ? elegido.tipoId : '';
       campoTipo.disabled = true;
+      espejarCampoDeshabilitado(campoTipo);
     }
     if (campoNumero) {
       campoNumero.value = elegido ? elegido.numeroId : '';
       campoNumero.readOnly = true;
     }
   });
+}
+
+/**
+ * Mantiene un `input` oculto con el valor de un control deshabilitado.
+ *
+ * Un control `disabled` no viaja en el `FormData` —lo manda el estándar—, y
+ * `recolectarDatosFormulario` construye la ficha justamente a partir de un
+ * `FormData`. El tipo de documento del ítem 133 se veía en pantalla, se
+ * bloqueaba para que nadie lo cambiara, y desaparecía al guardar: RN-133
+ * rechazaba la ficha señalando un campo que el usuario no podía tocar, y la
+ * sección 6.3 no había manera de cerrarla.
+ *
+ * El número del ítem 134 nunca tuvo el problema porque usa `readOnly`, que sí
+ * se envía. `readOnly` no existe para `<select>`, así que el equivalente es
+ * dejarlo deshabilitado y acompañarlo de este espejo.
+ */
+function espejarCampoDeshabilitado(campo) {
+  const contenedor = campo.parentNode;
+  if (!contenedor) return;
+
+  let espejo = contenedor.querySelector(':scope > input[data-espejo="si"]');
+
+  /* Sin valor no se escribe nada: un espejo vacío metería la clave en la
+     ficha con cadena vacía en vez de dejarla ausente. */
+  if (!campo.value) {
+    if (espejo) espejo.remove();
+    return;
+  }
+
+  if (!espejo) {
+    espejo = document.createElement('input');
+    espejo.type = 'hidden';
+    espejo.setAttribute('data-espejo', 'si');
+    contenedor.appendChild(espejo);
+  }
+
+  /* El nombre se copia en cada pasada y no una sola vez: al agregar o quitar
+     planes, `fijarIndiceEnAmbito` renumera el select y el espejo debe seguirlo. */
+  espejo.name = campo.name;
+  espejo.value = campo.value;
 }
 
 function refrescarSelector(selectorCss, opciones, placeholder) {
@@ -815,7 +1039,12 @@ function recolectarBloquesRepetibles(formulario) {
   const campos = formulario.querySelectorAll('[name]');
   Array.prototype.forEach.call(campos, function (campo) {
     const nombre = campo.getAttribute('name');
-    if (!nombre || nombre.indexOf('[') === -1) return;
+    /* Se recogen los nombres anidados y se dejan los planos, que ya vienen
+       por FormData. Anidan de dos formas: con índice —familias[0].tipoFamilia—
+       y con punto a secas —planVivienda.codigoEbs—. Exigir el corchete dejaba
+       fuera las llaves heredadas del plan (RN-111, RN-112, RN-121, RN-131),
+       de modo que llegaban vacías al motor y la ficha no podía cerrarse. */
+    if (!nombre || esNombrePlano(nombre)) return;
     if (campo.disabled) return;
 
     if (campo.type === 'checkbox') {
@@ -844,7 +1073,7 @@ function normalizarListasVacias(formulario, datos) {
     if (grupo.classList.contains('radio-group') || grupo.dataset.tipo === 'radio') return;
 
     const nombre = grupo.dataset.name;
-    if (!nombre || nombre.indexOf('[') === -1) return;
+    if (!nombre || esNombrePlano(nombre)) return;
 
     const segmentos = nombre.replace(/\[(\d+)\]/g, '.$1').split('.');
     let actual = datos;
@@ -902,11 +1131,25 @@ function recalcularFormularioCompleto() {
 
   propagarLlavesHeredadas();
   actualizarSelectoresDePlan();
+  actualizarLimitesDeFecha();
+
+  /* Los códigos que llegan puestos —una ficha abierta para corregir— no los
+     tecleó nadie, así que nadie disparó su búsqueda. Resolverlos aquí les pone
+     el nombre debajo. Es barato: lo ya resuelto no se vuelve a preguntar. */
+  if (typeof resolverCombosCups === 'function') resolverCombosCups();
+
   actualizarEncabezadosDeBloques();
 }
 
 function manejarCambioEnFormulario(evento) {
   const objetivo = evento.target;
+
+  /* La fecha de la ficha es el tope de todas las demás, así que al cambiarla
+     hay que repasar el formulario entero (RN-016 / RN-064). */
+  if (objetivo.type === 'date') {
+    if (objetivo.id === 'fechaDiligenciamiento') actualizarLimitesDeFecha();
+    else revisarLimiteDeFecha(objetivo);
+  }
 
   // Si el encuestador interviene el campo, deja de ser un valor autoasignado.
   if (objetivo.dataset && objetivo.dataset.autoasignado === 'si') {
@@ -942,6 +1185,9 @@ function manejarCambioEnFormulario(evento) {
   if (bloqueFamilia || objetivo.dataset.rol === 'selectorIntegrante' ||
       objetivo.dataset.rol === 'selectorFamilia') {
     actualizarSelectoresDePlan();
+    /* Elegir otra familia en el plan cambia el código que hereda (RN-122/132),
+       así que las llaves se vuelven a propagar. */
+    propagarLlavesHeredadas();
   }
 
   actualizarEncabezadosDeBloques();

@@ -1,3 +1,7 @@
 .vercel
 .env*
 node_modules/
+
+# Salidas de las pruebas de navegador (vídeos, trazas, capturas, informe HTML)
+pruebas/e2e/informe/
+pruebas/e2e/resultados/
