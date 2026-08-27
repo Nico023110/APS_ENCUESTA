@@ -1,7 +1,11 @@
 {
   "functions": {
     "api/**/*.js": {
-      "includeFiles": "catalogos.js,direccion.js,reglas.js"
+      "includeFiles": [
+        "catalogos.js",
+        "direccion.js",
+        "reglas.js"
+      ]
     }
   }
 }
