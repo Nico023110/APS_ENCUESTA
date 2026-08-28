@@ -25,6 +25,14 @@
 
 'use strict';
 
+/* Indicadores para Node File Trace de Vercel: estos archivos se leen con
+   fs.readFileSync dentro de _validacion.js. El tracer no siempre sigue
+   require.resolve en módulos auxiliares (prefijo _), así que se repiten aquí
+   en el entry point para garantizar que se incluyan en el bundle. */
+require.resolve('../catalogos.js');
+require.resolve('../direccion.js');
+require.resolve('../reglas.js');
+
 const { obtenerPool } = require('./_db');
 const { validar } = require('./_validacion');
 

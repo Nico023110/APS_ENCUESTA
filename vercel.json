@@ -4,7 +4,9 @@
       "includeFiles": [
         "catalogos.js",
         "direccion.js",
-        "reglas.js"
+        "reglas.js",
+        "api/_db.js",
+        "api/_validacion.js"
       ]
     }
   }
