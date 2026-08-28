@@ -693,6 +693,18 @@ h1, h2, h3 { margin: 0; }
   font-family: inherit;
 }
 
+/* Sin esto un botón deshabilitado se ve idéntico a uno activo: el cursor
+   cambia, pero nada más lo distingue. Es el caso de Corregir/Eliminar sobre
+   una fila del historial que sólo existe en la base (ver renderizarHistorial
+   en app.js): el título explica por qué, y esta regla hace que se note que
+   hay un motivo antes de leerlo. */
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .btn--primary {
   background: var(--color-primary);
   color: #fff;

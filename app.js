@@ -927,6 +927,100 @@ function eliminarEncuestaPorId(id) {
   guardarEncuestas(encuestas);
 }
 
+/* ---------------------------------------------------------
+   10.1 FICHAS GUARDADAS DESDE OTRO DISPOSITIVO
+   ---------------------------------------------------------
+   `obtenerEncuestas()` sólo ve `localStorage`, que es de este navegador y de
+   ningún otro. Una ficha diligenciada y sincronizada desde otro equipo
+   llegaba a la base, pero nada volvía a pedirla: el historial de cualquier
+   otro dispositivo la mostraba como si no existiera.
+
+   Este bloque trae el resto —lo que hay en la base y no está en este
+   dispositivo— y lo combina con lo local sólo para MOSTRARLO. La base sigue
+   sin ser la fuente de verdad de las funciones que escriben
+   (agregarEncuesta, reemplazarEncuesta, eliminarEncuestaPorId): esas siguen
+   operando sobre localStorage exactamente igual que antes.
+   --------------------------------------------------------- */
+
+/* `null` antes de la primera consulta; luego, el último listado que
+   contestó el servidor. Se conserva entre renders para que aplicar un
+   filtro no dispare una petición de red en cada tecla. */
+let cacheFichasDelServidor = null;
+
+/**
+ * Vuelve a pedir el listado a la base y lo deja en la caché. Se llama al
+ * entrar a Inicio o Historial, no en cada render: son las dos vistas que
+ * necesitan verlo, y volver a pedirlo en cada filtro sería tan lento como
+ * inútil, porque el filtro no cambia lo que hay en la base.
+ */
+async function refrescarFichasDelServidor() {
+  try {
+    const respuesta = await fetch('/api/listar_fichas');
+    if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
+    const filas = await respuesta.json();
+    if (!Array.isArray(filas)) throw new Error('respuesta con forma inesperada');
+
+    cacheFichasDelServidor = filas.map(function (fila) {
+      /* El endpoint sólo trae los códigos de territorio y microterritorio; el
+         nombre lo resuelve el catálogo que el navegador ya tiene cargado,
+         igual que hace `recolectarDatosFormulario` con lo que sale del
+         formulario. Sin esto, el historial mostraría "MT02" en vez de
+         "MT02 — Meléndez", y el buscador de texto no lo encontraría por
+         nombre. */
+      const datosMicro = buscarMicroterritorio(fila.territorio, fila.microterritorio);
+
+      return Object.assign({}, fila, {
+        /* El id local es el que genera `generarId()`; una fila de la base no
+           tiene ninguno propio y no lo necesita para escribir, así que se usa
+           el código de la ficha —único por columna `codigo`— como su
+           identificador en pantalla. */
+        id: fila.codigoFicha,
+        sincronizada: true,
+        microterritorioNombre: datosMicro ? datosMicro.nombre : null,
+        /* Marca que distingue una fila que sólo existe en la base de una
+           diligenciada en este dispositivo: la primera no trae familias,
+           integrantes ni planes, así que Corregir no tiene de dónde
+           repoblar el formulario, y Eliminar no borra nada real. */
+        soloEnServidor: true
+      });
+    });
+  } catch (error) {
+    /* Sin red, o el servidor caído: se seguirá mostrando la última copia
+       que sí llegó a responder, si la hay. No es un error del encuestador
+       y no interrumpe con un aviso; es exactamente el caso para el que
+       existe la cola de sincronización. */
+    console.warn('No fue posible traer las fichas de la base:', error);
+  }
+
+  return cacheFichasDelServidor || [];
+}
+
+/**
+ * Lo local, más lo que hay en la base y no está local, en un solo listado
+ * ordenado por fecha. Es lo que leen las vistas; no lee red por sí mismo,
+ * usa lo que dejó `refrescarFichasDelServidor()`.
+ *
+ * La preferencia es del registro local cuando el mismo código aparece en
+ * los dos lados: es el mismo que ya tiene su detalle completo —familias,
+ * integrantes, planes— y puede seguir corrigiéndose y eliminándose desde
+ * aquí. Traer la versión resumida de la base lo empobrecería sin necesidad.
+ */
+function obtenerEncuestasParaMostrar() {
+  const locales = obtenerEncuestas();
+  const codigosLocales = new Set(
+    locales.map(function (e) { return e.codigoFicha; }).filter(Boolean)
+  );
+
+  const remotas = (cacheFichasDelServidor || []).filter(function (e) {
+    return !codigosLocales.has(e.codigoFicha);
+  });
+
+  return locales.concat(remotas).sort(function (a, b) {
+    return new Date(b.fechaRegistro || 0) - new Date(a.fechaRegistro || 0);
+  });
+}
+
 function actualizarEncuesta(id, datosActualizados) {
   const encuestas = obtenerEncuestas();
   const indice = encuestas.findIndex(function(e) { return e.id === id; });
@@ -1128,8 +1222,17 @@ function cambiarVista(nombreVista) {
     boton.classList.toggle('is-active', boton.dataset.view === nombreVista);
   });
 
-  if (nombreVista === 'inicio') renderizarInicio();
-  if (nombreVista === 'historial') renderizarHistorial();
+  if (nombreVista === 'inicio') {
+    renderizarInicio();
+    /* Se repinta otra vez cuando conteste la base: la primera pintura usa la
+       caché que ya hubiera (o nada, la primera vez), para que la pestaña no
+       se vea vacía mientras la red contesta. */
+    refrescarFichasDelServidor().then(renderizarInicio);
+  }
+  if (nombreVista === 'historial') {
+    renderizarHistorial();
+    refrescarFichasDelServidor().then(renderizarHistorial);
+  }
 }
 
 function inicializarNavegacion() {
@@ -1232,7 +1335,7 @@ function textoMicroterritorio(encuesta) {
 }
 
 function renderizarInicio() {
-  const encuestas = obtenerEncuestas();
+  const encuestas = obtenerEncuestasParaMostrar();
   renderizarIndicadores(encuestas);
 
   const cuerpoTabla = document.getElementById('recentTableBody');
@@ -1265,7 +1368,7 @@ function obtenerEncuestasFiltradas() {
   const texto = document.getElementById('filtroTexto').value.trim().toLowerCase();
   const filtroHacinamiento = document.getElementById('filtroHacinamiento').value;
 
-  return obtenerEncuestas().filter(function (encuesta) {
+  return obtenerEncuestasParaMostrar().filter(function (encuesta) {
     const campos = [
       encuesta.direccion,
       encuesta.territorio,
@@ -1294,7 +1397,7 @@ function renderizarHistorial() {
        quien abre la aplicación. Decirle «no se encontraron registros con los
        filtros seleccionados» cuando no ha filtrado nada lo manda a buscar un
        filtro que no existe. */
-    estadoVacio.textContent = obtenerEncuestas().length === 0
+    estadoVacio.textContent = obtenerEncuestasParaMostrar().length === 0
       ? 'Todavía no hay encuestas registradas. Diligencie la primera desde la pestaña «Nueva Encuesta».'
       : 'No se encontraron registros con los filtros seleccionados.';
     estadoVacio.hidden = false;
@@ -1305,6 +1408,15 @@ function renderizarHistorial() {
   cuerpoTabla.innerHTML = encuestas.map(function (encuesta) {
     const personasPorHabitacion = encuesta.personasPorHabitacion === null || encuesta.personasPorHabitacion === undefined
       ? '—' : encuesta.personasPorHabitacion;
+
+    /* Una fila que sólo existe en la base —diligenciada en otro dispositivo—
+       no trae familias, integrantes ni planes: no hay de dónde repoblar el
+       formulario. Corregir queda deshabilitado con el motivo en el título en
+       vez de abrir un formulario a medio llenar. Eliminar también: borraría
+       sólo de este navegador y la fila volvería a aparecer en el siguiente
+       refresco, dando a entender que se eliminó cuando no fue así. */
+    const remota = encuesta.soloEnServidor === true;
+    const deshabilitado = remota ? ' disabled title="Diligenciada desde otro dispositivo: sólo se puede ver desde aquí."' : '';
 
     return (
       '<tr>' +
@@ -1323,8 +1435,8 @@ function renderizarHistorial() {
         '<td>' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
           '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + encuesta.id + '">Ver</button>' +
-          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + encuesta.id + '">Corregir</button>' +
-          '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + encuesta.id + '">Eliminar</button>' +
+          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + encuesta.id + '"' + deshabilitado + '>Corregir</button>' +
+          '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + encuesta.id + '"' + deshabilitado + '>Eliminar</button>' +
         '</td>' +
       '</tr>'
     );
@@ -1393,11 +1505,38 @@ function textoSiNo(valor) {
   return null;
 }
 
-function abrirModalDetalle(id) {
-  const encuesta = obtenerEncuestas().find(function (e) { return e.id === id; });
+async function abrirModalDetalle(id) {
+  let encuesta = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
   if (!encuesta) {
     mostrarNotificacion('No se encontró la encuesta seleccionada.', 'error');
     return;
+  }
+
+  /* Una fila de la base sólo trae lo que necesita la tabla del historial
+     (`listar_fichas`); lo que pinta este modal es bastante más. Se completa
+     aquí, en el momento de abrirlo, para no traer el detalle de cientos de
+     filas que nadie va a mirar. */
+  if (encuesta.soloEnServidor) {
+    try {
+      const respuesta = await fetch('/api/obtener_ficha?codigo=' + encodeURIComponent(encuesta.codigoFicha));
+      if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
+      /* El endpoint trae los códigos, no los nombres: departamento y
+         municipio son fijos en toda la aplicación —esta ficha es de un solo
+         municipio— y el navegador ya los tiene como constantes. Es lo mismo
+         que hace `recolectarDatosFormulario` con lo que sale del formulario;
+         sin esto el modal mostraba «76 — undefined». */
+      encuesta = Object.assign({}, encuesta, await respuesta.json(), {
+        departamento: CAT_DEPARTAMENTO.nombre,
+        municipio: CAT_MUNICIPIO.nombre
+      });
+    } catch (error) {
+      console.error('No fue posible traer el detalle de la ficha:', error);
+      mostrarNotificacion(
+        'No fue posible traer el detalle de esta ficha. Verifique la conexión e intente de nuevo.',
+        'error');
+      return;
+    }
   }
 
   const microterritorio = buscarMicroterritorio(encuesta.territorio, encuesta.microterritorio);
@@ -1510,6 +1649,19 @@ function resolverConfirmacion(aceptada) {
 }
 
 function abrirModalConfirmarEliminacion(id) {
+  /* El botón que llama a esto está deshabilitado para las filas que sólo
+     existen en la base (ver renderizarHistorial), pero se comprueba también
+     aquí: eliminar algo que no está en este dispositivo no borraría nada
+     real y, peor, diría «eliminada correctamente» sobre una ficha que va a
+     seguir apareciendo en el próximo refresco. */
+  const encuesta = obtenerEncuestas().find(function (e) { return e.id === id; });
+  if (!encuesta) {
+    mostrarNotificacion(
+      'Esta ficha se diligenció desde otro dispositivo: no se puede eliminar desde aquí.',
+      'warning');
+    return;
+  }
+
   encuestaSeleccionadaId = id;
   pedirConfirmacion({
     titulo: 'Eliminar registro',
@@ -2238,6 +2390,14 @@ function inicializarAplicacion() {
 
   renderizarInicio();
   renderizarHistorial();
+
+  /* Primer vistazo a lo que hay en la base, para que abrir la aplicación ya
+     muestre lo que otros dispositivos hayan guardado y no sólo lo que hay en
+     este navegador. */
+  refrescarFichasDelServidor().then(function () {
+    renderizarInicio();
+    renderizarHistorial();
+  });
 
   mostrarNotificacion('Bienvenido a Encuesta_APS. Se cargaron datos de demostración.', 'info');
 }
