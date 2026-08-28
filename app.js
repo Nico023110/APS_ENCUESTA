@@ -129,7 +129,6 @@ const CATALOGOS_DECLARATIVOS = {
   CAT_SI_NO_NA: CAT_SI_NO_NA,
   CAT_UZPE: CAT_UZPE_VIGENTES,
   CAT_EAPB: CAT_EAPB,
-  CAT_OCUPACION_CIUO: CAT_OCUPACION_CIUO,
   CAT_PRESTADOR: CAT_PRESTADOR,
   CAT_ANIMALES: CAT_ANIMALES,
   CAT_FUENTE_AGUA: CAT_FUENTE_AGUA,
@@ -259,24 +258,47 @@ async function cargarCatalogoDeAcciones() {
   }
 
   try {
-    const respuesta = await fetch('/api/catalogo_acciones');
-    if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
-
-    const filas = await respuesta.json();
-    if (!Array.isArray(filas) || filas.length === 0) throw new Error('catálogo vacío');
-
-    fijarCatalogoAcciones(filas);
-    localStorage.setItem(CLAVE_CACHE_ACCIONES, JSON.stringify(filas));
-    repintarSelectsDeAccion();
+    const cacheCatalogos = localStorage.getItem('aps_catalogos_dinamicos');
+    if (cacheCatalogos) {
+      fijarCatalogosDinamicos(JSON.parse(cacheCatalogos));
+    }
   } catch (error) {
-    /* Sin red y sin copia guardada el desplegable queda vacío. Se avisa, en
-       vez de dejar al encuestador frente a una lista sin opciones y sin
-       explicación. */
+    console.warn('No fue posible leer los catálogos dinámicos guardados:', error);
+  }
+
+  try {
+    const [resAcciones, resCatalogos] = await Promise.all([
+      fetch('/api/catalogo_acciones'),
+      fetch('/api/catalogo_dinamico')
+    ]);
+
+    if (resAcciones.ok) {
+      const filas = await resAcciones.json();
+      if (Array.isArray(filas) && filas.length > 0) {
+        fijarCatalogoAcciones(filas);
+        localStorage.setItem(CLAVE_CACHE_ACCIONES, JSON.stringify(filas));
+        repintarSelectsDeAccion();
+      }
+    }
+
+    if (resCatalogos.ok) {
+      const dataCatalogos = await resCatalogos.json();
+      fijarCatalogosDinamicos(dataCatalogos);
+      localStorage.setItem('aps_catalogos_dinamicos', JSON.stringify(dataCatalogos));
+      // Re-render components that might have been initialized empty
+      if (typeof ventana === 'undefined' && typeof document !== 'undefined') {
+        const eapbSelects = document.querySelectorAll('[data-catalogo="CAT_EAPB"]');
+        eapbSelects.forEach(select => llenarSelect(select.id, CAT_EAPB));
+        const prestadorSelects = document.querySelectorAll('[data-catalogo="CAT_PRESTADOR"]');
+        prestadorSelects.forEach(select => llenarSelect(select.id, CAT_PRESTADOR));
+      }
+    }
+  } catch (error) {
     if (CAT_ACCION_PLAN.length === 0) {
-      console.error('No fue posible cargar el catálogo de acciones:', error);
+      console.error('No fue posible cargar catálogos:', error);
       mostrarNotificacion(
-        'No se pudo cargar el catálogo de acciones del plan de cuidado. ' +
-        'Conéctese al menos una vez para descargarlo.', 'warning');
+        'No se pudieron cargar algunos catálogos. ' +
+        'Conéctese al menos una vez para descargarlos.', 'warning');
     }
   }
 }

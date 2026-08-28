@@ -90,14 +90,13 @@ let catalogos = null;
 async function obtenerCatalogos(cliente) {
   if (catalogos) return catalogos;
 
-  const [opciones, uzpe, eapb, territorios, micros, prestadores, ocupaciones] = await Promise.all([
+  const [opciones, uzpe, eapb, territorios, micros, prestadores] = await Promise.all([
     cliente.query('SELECT dominio_codigo, codigo FROM cat.opcion'),
     cliente.query('SELECT codigo FROM cat.uzpe WHERE vigente'),
     cliente.query('SELECT codigo, regimen FROM cat.eapb WHERE vigente'),
     cliente.query('SELECT codigo FROM cat.territorio'),
     cliente.query('SELECT territorio_codigo, codigo FROM cat.microterritorio'),
-    cliente.query('SELECT codigo FROM cat.prestador WHERE vigente'),
-    cliente.query('SELECT codigo FROM cat.ocupacion_ciuo')
+    cliente.query('SELECT codigo FROM cat.prestador WHERE vigente')
   ]);
 
   const porDominio = new Map();
@@ -119,8 +118,7 @@ async function obtenerCatalogos(cliente) {
     microterritorio: new Set(micros.rows.map(function (f) {
       return f.territorio_codigo + '/' + f.codigo;
     })),
-    prestador: new Set(prestadores.rows.map(function (f) { return f.codigo; })),
-    ocupacion: new Set(ocupaciones.rows.map(function (f) { return f.codigo; }))
+    prestador: new Set(prestadores.rows.map(function (f) { return f.codigo; }))
   };
 
   return catalogos;
@@ -402,13 +400,6 @@ async function validarIntegridad(cliente, encuesta) {
         ));
       }
 
-      if (!vacio(integrante.ocupacion) && !cat.ocupacion.has(integrante.ocupacion)) {
-        errores.push(fallo(
-          rutaI + '.ocupacion',
-          'La ocupación no existe en el catálogo CIUO.',
-          integrante.ocupacion
-        ));
-      }
     });
   });
 

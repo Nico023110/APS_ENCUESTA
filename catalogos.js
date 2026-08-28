@@ -952,26 +952,6 @@ const CAT_EAPB = [
   { valor: 'EPSI03', etiqueta: 'Asociación Indígena del Cauca — AIC', regimen: 'subsidiado' }
 ];
 
-/* `riesgo` es la exposición característica del oficio, que RN-073
-   cruza con las condiciones de salud. Se omite cuando no la hay. */
-const CAT_OCUPACION_CIUO = [
-  { valor: '0000', etiqueta: 'Sin ocupación' },
-  { valor: '2341', etiqueta: 'Docente de básica primaria' },
-  { valor: '5120', etiqueta: 'Cocinero' },
-  { valor: '5223', etiqueta: 'Vendedor de tienda o almacén' },
-  { valor: '5321', etiqueta: 'Auxiliar de enfermería', riesgo: 'biologico' },
-  { valor: '6111', etiqueta: 'Agricultor de cultivos transitorios', riesgo: 'agroquimicos' },
-  { valor: '6113', etiqueta: 'Cultivador de caña de azúcar', riesgo: 'agroquimicos' },
-  { valor: '7111', etiqueta: 'Constructor de vivienda', riesgo: 'asbesto' },
-  { valor: '7126', etiqueta: 'Fontanero e instalador de tuberías', riesgo: 'asbesto' },
-  { valor: '7233', etiqueta: 'Mecánico de vehículos', riesgo: 'solventes' },
-  { valor: '8111', etiqueta: 'Minero', riesgo: 'mineria' },
-  { valor: '8322', etiqueta: 'Conductor de automóvil, taxi o camioneta' },
-  { valor: '9111', etiqueta: 'Trabajador doméstico' },
-  { valor: '9520', etiqueta: 'Vendedor ambulante' },
-  { valor: '9611', etiqueta: 'Recolector de residuos', riesgo: 'residuos_peligrosos' },
-  { valor: '9999', etiqueta: 'Otra ocupación no clasificada' }
-];
 
 /* Red pública de Santiago de Cali. */
 const CAT_PRESTADOR = [
@@ -1424,4 +1404,35 @@ function fijarCatalogoAcciones(filas) {
     });
   });
   return CAT_ACCION_PLAN;
+}
+
+function fijarCatalogosDinamicos(data) {
+  if (data.eapb) {
+    CAT_EAPB.length = 0;
+    data.eapb.forEach(function(r) { CAT_EAPB.push(r); });
+  }
+  if (data.prestador) {
+    CAT_PRESTADOR.length = 0;
+    data.prestador.forEach(function(r) { CAT_PRESTADOR.push(r); });
+  }
+  if (data.uzpe) {
+    CAT_UZPE.length = 0;
+    CAT_UZPE_VIGENTES.length = 0;
+    data.uzpe.forEach(function(r) {
+      CAT_UZPE.push(r);
+      CAT_UZPE_VIGENTES.push(r);
+    });
+  }
+  if (data.territorios) {
+    for (const key in CAT_TERRITORIOS) {
+      if (Object.prototype.hasOwnProperty.call(CAT_TERRITORIOS, key)) {
+        delete CAT_TERRITORIOS[key];
+      }
+    }
+    for (const key in data.territorios) {
+      if (Object.prototype.hasOwnProperty.call(data.territorios, key)) {
+        CAT_TERRITORIOS[key] = data.territorios[key];
+      }
+    }
+  }
 }

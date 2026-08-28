@@ -79,8 +79,9 @@ const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js', 'reglas.j
 
 try {
   ventana.eval(fuentes +
-    ';\nwindow.__api = { recolectarDatosFormulario: recolectarDatosFormulario,' +
-    ' CAT_EAPB: CAT_EAPB, CAT_OCUPACION_CIUO: CAT_OCUPACION_CIUO, CAT_PRESTADOR: CAT_PRESTADOR };');
+    ';\nfijarCatalogosDinamicos({ eapb: [{ valor: "ESS024", etiqueta: "Coosalud EPS", regimen: "subsidiado" }], prestador: [{ valor: "PROV-ESE-LADERA", etiqueta: "E.S.E. Ladera" }] });' +
+    '\nwindow.__api = { recolectarDatosFormulario: recolectarDatosFormulario,' +
+    ' CAT_EAPB: CAT_EAPB, CAT_PRESTADOR: CAT_PRESTADOR };');
   ventana.document.dispatchEvent(new ventana.Event('DOMContentLoaded', { bubbles: true }));
 } catch (error) {
   errores.push('montaje: ' + error.message);
@@ -101,12 +102,6 @@ const CAMPOS = [
     selector: '[name="prestadorPrimario"]',
     catalogo: 'CAT_PRESTADOR',
     codigoEsperado: 'PROV-ESE-LADERA'
-  },
-  {
-    titulo: 'ítem 73 · ocupación (RN-073)',
-    selector: '[name="familias[0].integrantes[0].ocupacion"]',
-    catalogo: 'CAT_OCUPACION_CIUO',
-    codigoEsperado: '5223'
   },
   {
     titulo: 'ítem 76 · EAPB (RN-076)',
@@ -172,8 +167,6 @@ if (datos) {
   if (!integrante) {
     verificar('se recolectó el primer integrante', false, 'no hay familias[0].integrantes[0]');
   } else {
-    verificar('ocupacion viaja como código CIUO',
-      integrante.ocupacion === '5223', String(integrante.ocupacion));
     verificar('eapb viaja como código de catálogo',
       integrante.eapb === 'ESS024', String(integrante.eapb));
   }
