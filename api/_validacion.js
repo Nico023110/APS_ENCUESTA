@@ -29,15 +29,27 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-/* `require.resolve` hace que el empaquetador de Vercel (Node File Trace)
-   detecte estos archivos como dependencias y los incluya en el bundle de la
-   función serverless. Sin esto, `fs.readFileSync` con `path.join` no basta
-   porque el tracer no sigue rutas dinámicas. */
-const ARCHIVOS_MOTOR = {
-  'catalogos.js': require.resolve('../catalogos.js'),
-  'direccion.js': require.resolve('../direccion.js'),
-  'reglas.js':    require.resolve('../reglas.js')
-};
+/* Buscar los archivos del motor. En Vercel `process.cwd()` es `/var/task/`
+   (la raíz del proyecto). En desarrollo local, `__dirname` + `..` apunta a
+   la misma raíz. Se intenta primero `process.cwd()` porque es lo que Vercel
+   recomienda para archivos estáticos en funciones serverless.
+
+   `require.resolve` no bastaba: el Node File Trace de Vercel no siempre sigue
+   esa llamada cuando está en un módulo auxiliar (prefijo _), y el archivo
+   terminaba fuera del bundle. */
+function resolverArchivo(nombre) {
+  const porCwd = path.join(process.cwd(), nombre);
+  if (fs.existsSync(porCwd)) return porCwd;
+
+  const porDirname = path.join(__dirname, '..', nombre);
+  if (fs.existsSync(porDirname)) return porDirname;
+
+  throw new Error(
+    nombre + ' no se encontró ni en ' + porCwd + ' ni en ' + porDirname +
+    '. Verifique que vercel.json incluya el archivo en includeFiles.'
+  );
+}
+
 
 /* ---------------------------------------------------------
    1. MOTOR DE REGLAS COMPARTIDO
@@ -55,7 +67,7 @@ function obtenerMotor() {
   /* `direccion.js` entra porque el servidor recompone la dirección en vez de
      creer la que llega. Es texto puro, sin DOM, y sólo depende de catalogos.js. */
   ['catalogos.js', 'direccion.js', 'reglas.js'].forEach(function (archivo) {
-    const fuente = fs.readFileSync(ARCHIVOS_MOTOR[archivo], 'utf8');
+    const fuente = fs.readFileSync(resolverArchivo(archivo), 'utf8');
     vm.runInContext(fuente, contexto, { filename: archivo });
   });
 
