@@ -1275,10 +1275,10 @@ function renderizarIndicadores(encuestas) {
   const contenedor = document.getElementById('indicatorsGrid');
 
   const tarjetas = [
-    { icono: '📋', clase: 'teal', valor: indicadores.totalEncuestas, etiqueta: 'Encuestas registradas' },
-    { icono: '🛏️', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento' },
-    { icono: '🚨', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes detectadas' },
-    { icono: '📍', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' }
+    { icono: '<i class="ph ph-files"></i>', clase: 'teal', valor: indicadores.totalEncuestas, etiqueta: 'Encuestas registradas' },
+    { icono: '<i class="ph ph-bed"></i>', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento' },
+    { icono: '<i class="ph ph-warning-circle"></i>', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes detectadas' },
+    { icono: '<i class="ph ph-map-pin"></i>', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' }
   ];
 
   contenedor.innerHTML = tarjetas.map(function (tarjeta) {
@@ -1337,27 +1337,6 @@ function textoMicroterritorio(encuesta) {
 function renderizarInicio() {
   const encuestas = obtenerEncuestasParaMostrar();
   renderizarIndicadores(encuestas);
-
-  const cuerpoTabla = document.getElementById('recentTableBody');
-  const recientes = encuestas.slice(0, 5);
-
-  if (recientes.length === 0) {
-    cuerpoTabla.innerHTML = '<tr><td colspan="5" class="empty-state">Aún no hay encuestas registradas.</td></tr>';
-    return;
-  }
-
-  cuerpoTabla.innerHTML = recientes.map(function (encuesta) {
-    return (
-      '<tr>' +
-        '<td>' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
-        '<td>' + textoModificacion(encuesta) + '</td>' +
-        '<td>' + textoTerritorio(encuesta) + '</td>' +
-        '<td>' + textoSeguro(encuesta.direccion) + '</td>' +
-        '<td>' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
-        '<td>' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
-      '</tr>'
-    );
-  }).join('');
 }
 
 /* ---------------------------------------------------------

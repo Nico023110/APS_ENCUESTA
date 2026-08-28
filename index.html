@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Encuesta_APS · Sistema de recolección</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,16 +15,25 @@
 <!-- ===================== HEADER ===================== -->
 <header class="app-header">
   <div class="app-header__brand">
-    <div class="app-header__logo">APS</div>
-    <div>
+    <div class="app-header__logo"><i class="ph ph-heartbeat"></i></div>
+    <div class="app-header__title">
       <h1>Encuesta_APS</h1>
-      <p>Formulario para identificación APS — Equipos Básicos de Salud</p>
+      <p>Identificación Equipos Básicos</p>
     </div>
   </div>
   <nav class="app-tabs" id="appTabs">
-    <button class="app-tabs__btn is-active" data-view="inicio">Inicio</button>
-    <button class="app-tabs__btn" data-view="nueva">Nueva Encuesta</button>
-    <button class="app-tabs__btn" data-view="historial">Historial</button>
+    <button class="app-tabs__btn is-active" data-view="inicio">
+      <i class="ph ph-house app-tabs__icon"></i>
+      <span class="app-tabs__label">Inicio</span>
+    </button>
+    <button class="app-tabs__btn" data-view="nueva">
+      <i class="ph ph-file-text app-tabs__icon"></i>
+      <span class="app-tabs__label">Nueva Encuesta</span>
+    </button>
+    <button class="app-tabs__btn" data-view="historial">
+      <i class="ph ph-folder app-tabs__icon"></i>
+      <span class="app-tabs__label">Historial</span>
+    </button>
   </nav>
 </header>
 
@@ -29,33 +42,34 @@
   <!-- ===================== VISTA: INICIO ===================== -->
   <section class="view is-active" id="view-inicio">
 
+    <!-- Saludo y bienvenida -->
+    <div class="hero-welcome">
+      <h2 class="hero-welcome__title">Bienvenido al Sistema de Encuestas APS</h2>
+      <p class="hero-welcome__subtitle">Gestiona las fichas de caracterización de los Equipos Básicos de Salud</p>
+    </div>
+
     <div class="indicators-grid" id="indicatorsGrid">
       <!-- Tarjetas de indicadores generadas por JS -->
     </div>
 
-    <div class="card">
-      <div class="card__header">
-        <h2>Últimos registros</h2>
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn--primary" onclick="sincronizarEncuestas()">Sincronizar a la Nube</button>
-          <button class="btn btn--ghost" data-goto="historial">Ver historial completo</button>
-        </div>
-      </div>
-      <div class="table-wrapper">
-        <table class="data-table" id="recentTable">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Modificación</th>
-              <th>Territorio</th>
-              <th>Dirección</th>
-              <th>Hacinamiento</th>
-              <th>Situación inminente</th>
-            </tr>
-          </thead>
-          <tbody id="recentTableBody"></tbody>
-        </table>
-      </div>
+    <!-- Acciones rápidas -->
+    <h3 class="section-title">Acciones rápidas</h3>
+    <div class="quick-actions">
+      <button class="quick-action-card quick-action-card--primary" data-goto="nueva">
+        <i class="ph ph-file-plus quick-action-card__icon"></i>
+        <span class="quick-action-card__title">Nueva Encuesta</span>
+        <span class="quick-action-card__desc">Diligenciar una nueva ficha de caracterización</span>
+      </button>
+      <button class="quick-action-card quick-action-card--blue" data-goto="historial">
+        <i class="ph ph-list-dashes quick-action-card__icon"></i>
+        <span class="quick-action-card__title">Ver Historial</span>
+        <span class="quick-action-card__desc">Consultar, corregir o eliminar fichas registradas</span>
+      </button>
+      <button class="quick-action-card quick-action-card--teal" onclick="sincronizarEncuestas()">
+        <i class="ph ph-cloud-arrow-up quick-action-card__icon"></i>
+        <span class="quick-action-card__title">Sincronizar a la Nube</span>
+        <span class="quick-action-card__desc">Subir fichas pendientes a la base de datos</span>
+      </button>
     </div>
   </section>
 
@@ -138,18 +152,18 @@
           <div class="form-grid">
             <div class="field" data-campo="departamento">
               <label for="departamento"><span class="item-num">3.</span> Departamento: *</label>
-              <select id="departamento" name="departamento" class="is-fijo"></select>
               <span class="field-hint field-hint--inline">Entidad territorial fija del proyecto.</span>
+              <select id="departamento" name="departamento" class="is-fijo"></select>
             </div>
             <div class="field" data-campo="uzpe">
               <label for="uzpe"><span class="item-num">4.</span> Unidad Zonal de Planeación y Evaluación (UZPE): *</label>
+              <span class="field-hint field-hint--inline">Catálogo parametrizable de SSPM.</span>
               <select id="uzpe" name="uzpe"></select>
-              <span class="field-hint field-hint--inline">Catálogo parametrizable de la Secretaría de Salud Pública Municipal.</span>
             </div>
             <div class="field" data-campo="municipio">
               <label for="municipio"><span class="item-num">5.</span> Municipio / Área no municipalizada: *</label>
-              <select id="municipio" name="municipio" class="is-fijo"></select>
               <span class="field-hint field-hint--inline">Entidad territorial fija del proyecto.</span>
+              <select id="municipio" name="municipio" class="is-fijo"></select>
             </div>
             <div class="field" data-campo="areaUbicacion">
               <label for="areaUbicacion"><span class="item-num">6.</span> Área de ubicación de la vivienda: *</label>
@@ -169,7 +183,7 @@
             </div>
             <div class="field field--full" data-campo="divisionTerritorial">
               <label for="divisionTerritorial"><span class="item-num">9.</span> Corregimiento / Centro de poblado / Vereda / Localidad / Barrio / Resguardo Indígena: *</label>
-              <input type="text" id="divisionTerritorial" name="divisionTerritorial">
+              <input type="text" id="divisionTerritorial" name="divisionTerritorial" placeholder="Ej. Barrio El Caney">
             </div>
           </div>
         </div>
@@ -182,7 +196,7 @@
           <div class="form-grid">
             <div class="field" data-campo="equipoSaludId">
               <label for="equipoSaludId"><span class="item-num">10.</span> Número de identificación del Equipo de Salud: *</label>
-              <input type="text" id="equipoSaludId" name="equipoSaludId" placeholder="Ej: EQ0931">
+              <input type="text" id="equipoSaludId" name="equipoSaludId" placeholder="Ej. EQ0931">
             </div>
             <div class="field" data-campo="prestadorPrimario">
               <label for="prestadorPrimario"><span class="item-num">11.</span> Prestador primario / Organismo de adscripción del Equipo de Salud: *</label>
@@ -196,26 +210,29 @@
             <h2>2.4 Detalle de personal del Equipo de Salud</h2>
             <span class="rule-tag">RN-012 · RN-013 · RN-014</span>
           </div>
+          <p class="field-hint" style="margin-top:-10px; margin-bottom:16px;">
+            *Datos del responsable del proceso inicial de identificación de procesos cuidadores, deteriorantes y condiciones de salud.
+          </p>
           <div class="form-grid">
-            <div class="field field--full" data-campo="responsableTipoId">
-              <label for="responsableTipoId"><span class="item-num">12.</span> Tipo de identificación del responsable del proceso inicial de identificación de procesos cuidadores, deteriorantes y condiciones de salud: *</label>
+            <div class="field" data-campo="responsableTipoId">
+              <label for="responsableTipoId"><span class="item-num">12.</span> Tipo de identificación: *</label>
               <select id="responsableTipoId" name="responsableTipoId"></select>
             </div>
-            <div class="field field--full" data-campo="responsableNumeroId">
-              <label for="responsableNumeroId"><span class="item-num">13.</span> Número de identificación del responsable proceso inicial de identificación de procesos cuidadores, deteriorantes y condiciones de salud: *</label>
-              <input type="text" id="responsableNumeroId" name="responsableNumeroId">
+            <div class="field" data-campo="responsableNumeroId">
+              <label for="responsableNumeroId"><span class="item-num">13.</span> Número de identificación: *</label>
+              <input type="text" id="responsableNumeroId" name="responsableNumeroId" placeholder="Ej. 1144000000">
             </div>
             <div class="field field--full" data-campo="perfilProfesional">
-              <label for="perfilProfesional"><span class="item-num">14.</span> Perfil profesional de quien realiza proceso inicial de identificación de capacidades, riesgos y condiciones de salud: *</label>
+              <label for="perfilProfesional"><span class="item-num">14.</span> Perfil profesional: *</label>
               <select id="perfilProfesional" name="perfilProfesional"></select>
             </div>
             <div class="field" data-campo="perfilProfesionalOtro" id="contenedorPerfilOtro" hidden>
               <label for="perfilProfesionalOtro">14.1 ¿Cuál? *</label>
-              <input type="text" id="perfilProfesionalOtro" name="perfilProfesionalOtro">
+              <input type="text" id="perfilProfesionalOtro" name="perfilProfesionalOtro" placeholder="Ej. Trabajador Social">
             </div>
             <div class="field" data-campo="codigoFicha">
               <label for="codigoFicha"><span class="item-num">15.</span> Código de la ficha:</label>
-              <input type="text" id="codigoFicha" name="codigoFicha">
+              <input type="text" id="codigoFicha" name="codigoFicha" placeholder="Ej. F-10293">
             </div>
             <div class="field" data-campo="fechaDiligenciamiento">
               <label for="fechaDiligenciamiento"><span class="item-num">16.</span> Fecha diligenciamiento de la ficha:</label>
@@ -226,19 +243,19 @@
           <h3 class="card__subtitle">2.4.1 Datos de abordaje <span class="rule-tag">RN-017 · RN-018 · RN-019 · RN-020</span></h3>
           <div class="form-grid">
             <div class="field" data-campo="entornoAbordaje">
-              <label for="entornoAbordaje"><span class="item-num">17.</span> Entorno donde se realiza la identificación de capacidades y riesgos: *</label>
+              <label for="entornoAbordaje"><span class="item-num">17.</span> Entorno de abordaje: *</label>
               <select id="entornoAbordaje" name="entornoAbordaje"></select>
             </div>
             <div class="field" data-campo="nombreInstitucion">
-              <label for="nombreInstitucion"><span class="item-num">18.</span> Nombre de la institución, entidad, organización, etc.: <span class="field-auto" id="marcaInstitucion"></span></label>
-              <input type="text" id="nombreInstitucion" name="nombreInstitucion">
+              <label for="nombreInstitucion"><span class="item-num">18.</span> Institución / Entidad / Organización: <span class="field-auto" id="marcaInstitucion"></span></label>
+              <input type="text" id="nombreInstitucion" name="nombreInstitucion" placeholder="Ej. Fundación Valle del Lili">
             </div>
             <div class="field" data-campo="cabezaFamilia">
-              <label for="cabezaFamilia"><span class="item-num">19.</span> Cabeza de familia / Líder / Representante legal (depende del entorno): *</label>
-              <input type="text" id="cabezaFamilia" name="cabezaFamilia">
+              <label for="cabezaFamilia"><span class="item-num">19.</span> Cabeza de familia / Líder / Representante legal: *</label>
+              <input type="text" id="cabezaFamilia" name="cabezaFamilia" placeholder="Ej. María Pérez">
             </div>
             <div class="field" data-campo="jovenesEnPaz">
-              <label for="jovenesEnPaz"><span class="item-num">20.</span> ¿Alguno de los habitantes de la vivienda pertenece al Programa Jóvenes en Paz?: *</label>
+              <label for="jovenesEnPaz"><span class="item-num">20.</span> ¿Habitantes en Prog. Jóvenes en Paz?: *</label>
               <select id="jovenesEnPaz" name="jovenesEnPaz"></select>
             </div>
           </div>
@@ -385,67 +402,68 @@
             <label>Coordenadas geográficas del lugar de aplicación</label>
             <span class="field-hint field-hint--inline">
               Se calculan automáticamente a partir de la dirección del ítem 21 y del barrio del ítem 9.
-              Puede recalcularlas, tomarlas del GPS del dispositivo o digitarlas.
+              Puede calcularlas desde la dirección o tomarlas del GPS del dispositivo.
             </span>
-            <div class="form-grid">
-              <div class="field" data-campo="latitud">
-                <label for="latitud"><span class="item-num">22.</span> Coordenada geográfica de latitud:</label>
-                <input type="text" id="latitud" name="latitud" inputmode="decimal" placeholder="3.451647">
+            <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-top:8px;">
+              <div class="field" data-campo="latitud" style="flex:1; min-width:180px;">
+                <label for="latitud"><span class="item-num">22.</span> Latitud:</label>
+                <input type="text" id="latitud" name="latitud" inputmode="decimal" placeholder="3.451647" readonly>
               </div>
-              <div class="field" data-campo="longitud">
-                <label for="longitud"><span class="item-num">23.</span> Coordenada geográfica de longitud:</label>
-                <input type="text" id="longitud" name="longitud" inputmode="decimal" placeholder="-76.531985">
+              <div class="field" data-campo="longitud" style="flex:1; min-width:180px;">
+                <label for="longitud"><span class="item-num">23.</span> Longitud:</label>
+                <input type="text" id="longitud" name="longitud" inputmode="decimal" placeholder="-76.531985" readonly>
+              </div>
+              <div class="geo-acciones" style="display:flex; gap:8px; flex:2; min-width:280px; margin-top:auto;">
+                <button type="button" class="btn btn--ghost btn--icon" id="btnGeocodificar" style="flex:1; justify-content:center;">🔎 Buscar dir.</button>
+                <button type="button" class="btn btn--ghost btn--icon" id="btnCapturarGps" style="flex:1; justify-content:center;">📍 Usar GPS</button>
               </div>
             </div>
-            <div class="geo-acciones">
-              <button type="button" class="btn btn--ghost btn--icon" id="btnGeocodificar">🔎 Buscar desde la dirección</button>
-              <button type="button" class="btn btn--ghost btn--icon" id="btnCapturarGps">📍 Tomar del GPS del dispositivo</button>
-              <span class="geo-estado" id="geoEstado"></span>
-            </div>
+            <span class="geo-estado" id="geoEstado" style="display:block; margin-top:6px;"></span>
             <p class="direccion-resultado__aviso" id="geoAviso" hidden></p>
           </div>
 
           <div class="form-grid">
             <div class="field field--full" data-campo="ubicacionReferencia">
               <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): *</label>
-              <input type="text" id="ubicacionReferencia" name="ubicacionReferencia">
+              <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" placeholder="Ej. Casa verde esquinera con rejas negras">
             </div>
             <div class="field" data-campo="idHogar">
               <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar:</label>
-              <input type="text" id="idHogar" name="idHogar">
+              <input type="text" id="idHogar" name="idHogar" placeholder="Ej. H-102">
             </div>
             <div class="field" data-campo="idFamilia">
               <label for="idFamilia"><span class="item-num">26.</span> N.° de Identificación de la familia:</label>
-              <input type="text" id="idFamilia" name="idFamilia">
+              <input type="text" id="idFamilia" name="idFamilia" placeholder="Ej. F-102">
             </div>
-            <div class="field field--full" data-campo="estrato">
+            <div class="field" data-campo="estrato">
               <label for="estrato"><span class="item-num">27.</span> Estrato socioeconómico de la vivienda: *</label>
               <select id="estrato" name="estrato"></select>
             </div>
             <div class="field" data-campo="hogaresEnVivienda">
               <label for="hogaresEnVivienda"><span class="item-num">28.</span> N.° de hogares familiares en la vivienda:</label>
-              <input type="number" id="hogaresEnVivienda" name="hogaresEnVivienda" min="0" step="1">
+              <input type="number" id="hogaresEnVivienda" name="hogaresEnVivienda" min="0" step="1" placeholder="Ej. 1">
             </div>
             <div class="field" data-campo="personasEnVivienda">
               <label for="personasEnVivienda"><span class="item-num">29.</span> N.° de personas en la vivienda: *</label>
-              <input type="number" id="personasEnVivienda" name="personasEnVivienda" min="1" step="1">
+              <input type="number" id="personasEnVivienda" name="personasEnVivienda" min="1" step="1" placeholder="Ej. 4">
             </div>
             <div class="field" data-campo="habitacionesVivienda">
               <label for="habitacionesVivienda"><span class="item-num">30.</span> N.° de habitaciones por vivienda: *</label>
-              <input type="number" id="habitacionesVivienda" name="habitacionesVivienda" min="1" step="1">
+              <input type="number" id="habitacionesVivienda" name="habitacionesVivienda" min="1" step="1" placeholder="Ej. 2">
             </div>
             <div class="field field--full" data-campo="elementosParaDormir">
-              <label for="elementosParaDormir"><span class="item-num">31.</span> ¿Cuántos elementos para dormir (camas, colchones, colchonetas, hamacas, camarotes o sofacamas) hay actualmente en su hogar?</label>
-              <input type="number" id="elementosParaDormir" name="elementosParaDormir" min="0" step="1">
+              <label for="elementosParaDormir"><span class="item-num">31.</span> ¿Cuántos elementos para dormir hay actualmente en su hogar?</label>
+              <span class="field-hint field-hint--inline">Camas, colchones, colchonetas, hamacas, camarotes o sofacamas.</span>
+              <input type="number" id="elementosParaDormir" name="elementosParaDormir" min="0" step="1" style="max-width: 240px;" placeholder="Ej. 3">
             </div>
             <div class="field" data-campo="personasPorHabitacion">
-              <label for="personasPorHabitacion"><span class="item-num">32.</span> N.° personas por habitación: <span class="field-auto">(cálculo automático)</span></label>
+              <label for="personasPorHabitacion"><span class="item-num">32.</span> N.° personas por habitación: <span class="field-auto">(cálculo auto)</span></label>
               <input type="text" id="personasPorHabitacion" name="personasPorHabitacion" readonly>
             </div>
             <div class="field" data-campo="hacinamiento">
-              <label for="hacinamiento"><span class="item-num">33.</span> Hacinamiento <span class="field-auto">(cálculo automático)</span></label>
-              <div class="calc-badge-wrapper">
-                <span class="badge badge--neutral" id="hacinamientoBadge">Sin calcular</span>
+              <label for="hacinamiento"><span class="item-num">33.</span> Hacinamiento <span class="field-auto">(cálculo auto)</span></label>
+              <div class="calc-badge-wrapper" style="margin-top:auto;">
+                <span class="badge badge--neutral" id="hacinamientoBadge" style="display:inline-flex; align-items:center; height:41px; padding:0 14px; border-radius:9px; font-size:14px; background:var(--bg-page); border:1.5px solid var(--border-color); color:var(--text-secondary); width:100%;">Sin calcular</span>
               </div>
             </div>
           </div>
@@ -460,29 +478,31 @@
             <span class="rule-tag">RN-034 · RN-035 · RN-036 · RN-037 · RN-038</span>
           </div>
 
-          <div class="field field--full field--block" data-campo="tipoVivienda">
-            <label for="tipoVivienda"><span class="item-num">34.</span> Tipo de vivienda: *</label>
-            <select id="tipoVivienda" name="tipoVivienda"></select>
-          </div>
-
-          <div class="field field--full field--block" data-campo="materialTecho">
-            <label for="materialTecho"><span class="item-num">35.</span> ¿Cuál es el material predominante de la cubierta o techo de la vivienda? *</label>
-            <select id="materialTecho" name="materialTecho"></select>
+          <div class="form-grid" style="margin-bottom: 24px;">
+            <div class="field" data-campo="tipoVivienda">
+              <label for="tipoVivienda"><span class="item-num">34.</span> Tipo de vivienda: *</label>
+              <select id="tipoVivienda" name="tipoVivienda"></select>
+            </div>
+            <div class="field" data-campo="materialTecho">
+              <label for="materialTecho"><span class="item-num">35.</span> Material de la cubierta o techo: *</label>
+              <select id="materialTecho" name="materialTecho"></select>
+            </div>
           </div>
 
           <div class="field field--full field--block" data-campo="riesgosAccidente">
-            <label><span class="item-num">36.</span> ¿Se identifica algunos de los siguientes escenarios de riesgo de accidente en la vivienda? *</label>
+            <label><span class="item-num">36.</span> Escenarios de riesgo de accidente en la vivienda: *</label>
             <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguno" desmarca las demás opciones.</span>
             <div class="check-group" id="grupoRiesgosAccidente"></div>
           </div>
 
-          <div class="field field--full field--block" data-campo="vectores">
-            <label><span class="item-num">37.</span> ¿Se observa cerca de la vivienda o dentro de ella criaderos o reservorios que pueden favorecer la presencia de vectores transmisores de enfermedades? *</label>
+          <div class="field field--full field--block" data-campo="vectores" style="margin-top: 24px;">
+            <label><span class="item-num">37.</span> Criaderos o reservorios de vectores (mosquitos, ratas, etc.): *</label>
+            <span class="field-hint field-hint--inline">¿Se observan dentro o cerca de la vivienda criaderos que favorezcan enfermedades?</span>
             <div class="radio-group" id="grupoVectores"></div>
           </div>
 
-          <div class="field field--full field--block" data-campo="factoresContaminacion">
-            <label><span class="item-num">38.</span> Observe e indague si cerca de la vivienda hay alguno de los siguientes: *</label>
+          <div class="field field--full field--block" data-campo="factoresContaminacion" style="margin-top: 24px;">
+            <label><span class="item-num">38.</span> Factores de contaminación cercanos a la vivienda: *</label>
             <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguno" desmarca las demás opciones.</span>
             <div class="check-group" id="grupoFactoresContaminacion"></div>
           </div>
@@ -491,24 +511,24 @@
         <!-- ---------- 3.2 Oficios u ocupaciones y zoonosis (39-45) ---------- -->
         <div class="card" id="seccion-3-2">
           <div class="card__header">
-            <h2>3.2 Oficios u ocupaciones que se desarrollan en la vivienda o su entorno inmediato (peridomicilio)</h2>
+            <h2>3.2 Oficios, ocupaciones y animales en la vivienda</h2>
             <span class="rule-tag">RN-039 · RN-040 · RN-041 a RN-045</span>
           </div>
 
           <div class="field field--full field--block" data-campo="actividadEconomica">
-            <label><span class="item-num">39.</span> ¿Al interior de la vivienda se realiza alguna actividad económica? *</label>
+            <label><span class="item-num">39.</span> Actividad económica en el interior de la vivienda: *</label>
             <div class="radio-group" id="grupoActividadEconomica"></div>
           </div>
 
-          <div class="field field--full field--block" data-campo="animales">
-            <label><span class="item-num">40.</span> Señale los animales que conviven con la familia dentro de la vivienda o en su entorno inmediato: *</label>
+          <div class="field field--full field--block" data-campo="animales" style="margin-top: 24px;">
+            <label><span class="item-num">40.</span> Animales que conviven en la vivienda o entorno inmediato: *</label>
             <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguno" desmarca las demás opciones.</span>
             <div class="check-group" id="grupoAnimales"></div>
           </div>
 
           <div class="field field--full" data-campo="animalesOtro" id="contenedorAnimalesOtro" hidden>
             <label for="animalesOtro">40.1 ¿Cuál otro animal? *</label>
-            <input type="text" id="animalesOtro" name="animalesOtro">
+            <input type="text" id="animalesOtro" name="animalesOtro" placeholder="Ej. Loro">
           </div>
 
           <!-- Conteos de caninos y felinos: se habilitan según el ítem 40 -->
@@ -521,19 +541,19 @@
             <div class="form-grid">
               <div class="field" data-campo="perros">
                 <label for="perros"><span class="item-num">41.</span> N.° de perros en la vivienda:</label>
-                <input type="number" id="perros" name="perros" min="0" step="1" disabled>
+                <input type="number" id="perros" name="perros" min="0" step="1" placeholder="Ej. 1" disabled>
               </div>
               <div class="field" data-campo="perrosVacunados">
                 <label for="perrosVacunados"><span class="item-num">42.</span> Cantidad de perros con vacuna antirrábica:</label>
-                <input type="number" id="perrosVacunados" name="perrosVacunados" min="0" step="1" disabled>
+                <input type="number" id="perrosVacunados" name="perrosVacunados" min="0" step="1" placeholder="Ej. 1" disabled>
               </div>
               <div class="field" data-campo="gatos">
                 <label for="gatos"><span class="item-num">43.</span> N.° de gatos en la vivienda:</label>
-                <input type="number" id="gatos" name="gatos" min="0" step="1" disabled>
+                <input type="number" id="gatos" name="gatos" min="0" step="1" placeholder="Ej. 2" disabled>
               </div>
               <div class="field" data-campo="gatosVacunados">
                 <label for="gatosVacunados"><span class="item-num">44.</span> Cantidad de gatos con vacuna antirrábica:</label>
-                <input type="number" id="gatosVacunados" name="gatosVacunados" min="0" step="1" disabled>
+                <input type="number" id="gatosVacunados" name="gatosVacunados" min="0" step="1" placeholder="Ej. 2" disabled>
               </div>
             </div>
             <div class="calc-strip" id="stripCoberturaAntirrabica" hidden>
@@ -542,8 +562,8 @@
             </div>
           </div>
 
-          <div class="field field--full field--block" data-campo="carnetAntirrabico">
-            <label><span class="item-num">45.</span> ¿Los perros y gatos cuentan con carnet de vacuna antirrábica inferior a 3 años? *</label>
+          <div class="field field--full field--block" data-campo="carnetAntirrabico" style="margin-top: 24px;">
+            <label><span class="item-num">45.</span> Carnet de vacuna antirrábica (perros/gatos) inferior a 3 años: *</label>
             <span class="field-hint field-hint--inline">Se autoasigna "No aplica" cuando no hay caninos ni felinos en la vivienda.</span>
             <div class="radio-group" id="grupoCarnetAntirrabico"></div>
           </div>
@@ -556,20 +576,20 @@
             <span class="rule-tag">RN-046 · RN-047 · RN-048 · RN-049</span>
           </div>
           <div class="form-grid">
-            <div class="field field--full" data-campo="fuenteAgua">
-              <label for="fuenteAgua"><span class="item-num">46.</span> ¿Cuál es la principal fuente de abastecimiento de agua para consumo humano en la vivienda? *</label>
+            <div class="field" data-campo="fuenteAgua">
+              <label for="fuenteAgua"><span class="item-num">46.</span> Fuente de agua para consumo humano: *</label>
               <select id="fuenteAgua" name="fuenteAgua"></select>
             </div>
-            <div class="field field--full" data-campo="disposicionExcretas">
-              <label for="disposicionExcretas"><span class="item-num">47.</span> ¿Cuál es el sistema de disposición de excretas en la vivienda? *</label>
+            <div class="field" data-campo="disposicionExcretas">
+              <label for="disposicionExcretas"><span class="item-num">47.</span> Sistema de disposición de excretas: *</label>
               <select id="disposicionExcretas" name="disposicionExcretas"></select>
             </div>
-            <div class="field field--full" data-campo="aguasResiduales">
-              <label for="aguasResiduales"><span class="item-num">48.</span> ¿Cuál es el sistema de disposición de aguas residuales domésticas en la vivienda? *</label>
+            <div class="field" data-campo="aguasResiduales">
+              <label for="aguasResiduales"><span class="item-num">48.</span> Sistema de disposición de aguas residuales: *</label>
               <select id="aguasResiduales" name="aguasResiduales"></select>
             </div>
-            <div class="field field--full" data-campo="residuosSolidos">
-              <label for="residuosSolidos"><span class="item-num">49.</span> ¿Cómo se realiza la disposición final de los residuos sólidos ordinarios de la vivienda? *</label>
+            <div class="field" data-campo="residuosSolidos">
+              <label for="residuosSolidos"><span class="item-num">49.</span> Disposición final de residuos sólidos: *</label>
               <select id="residuosSolidos" name="residuosSolidos"></select>
             </div>
           </div>
@@ -611,33 +631,34 @@
                   <span class="rule-tag">RN-050 a RN-054</span>
                 </div>
                 <div class="form-grid">
-                  <div class="field field--full" data-campo="tipoFamilia">
+                  <div class="field" data-campo="tipoFamilia">
                     <label><span class="item-num">50.</span> Tipo de familia: *</label>
                     <select name="familias[0].tipoFamilia" data-catalogo="CAT_TIPO_FAMILIA"></select>
                   </div>
                   <div class="field" data-campo="numeroIntegrantes">
                     <label><span class="item-num">51.</span> N.° de personas que conforman la familia: *</label>
-                    <input type="number" name="familias[0].numeroIntegrantes" min="1" step="1" data-rol="numeroIntegrantes">
-                    <span class="field-hint field-hint--inline">Genera un bloque de sección 5 por cada integrante.</span>
+                    <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Genera un bloque de sección 5 por cada integrante.</span>
+                    <input type="number" name="familias[0].numeroIntegrantes" min="1" step="1" data-rol="numeroIntegrantes" placeholder="Ej. 3">
                   </div>
                   <div class="field" data-campo="idFamiliaBloque">
-                    <label>N.° de Identificación de la familia <span class="field-auto">(generado)</span></label>
+                    <label>N.° de ID de la familia <span class="field-auto">(generado)</span></label>
                     <input type="text" name="familias[0].idFamilia" readonly placeholder="Se asigna al guardar">
                   </div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="cuidadorPrincipal">
-                  <label><span class="item-num">52.</span> ¿Se identifica un cuidador principal de niños, niñas, personas con discapacidad, adulto mayor o enfermedad? *</label>
+                <div class="field field--full field--block" data-campo="cuidadorPrincipal" style="margin-top: 16px;">
+                  <label><span class="item-num">52.</span> Cuidador principal identificado en la familia (niños, personas mayores, etc.): *</label>
                   <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].cuidadorPrincipal"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="zarit" data-rol="campoZarit">
-                  <label><span class="item-num">53.</span> Si la respuesta anterior es SÍ, aplicar escala ZARIT y registrar el resultado - puntaje:</label>
+                <div class="field field--full field--block" data-campo="zarit" data-rol="campoZarit" style="margin-top: 24px;">
+                  <label><span class="item-num">53.</span> Escala ZARIT (resultado/puntaje) del cuidador principal:</label>
+                  <span class="field-hint field-hint--inline">Aplicar escala ZARIT si la respuesta anterior es SÍ.</span>
                   <div class="radio-group radio-group--columna" data-catalogo="CAT_ZARIT" data-name="familias[0].zarit"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="situacionesRiesgo">
-                  <label><span class="item-num">54.</span> Familia en la que se identifica alguna de las siguientes situaciones o condiciones que pueden alterar o generar riesgo para la salud (física o mental): *</label>
+                <div class="field field--full field--block" data-campo="situacionesRiesgo" style="margin-top: 24px;">
+                  <label><span class="item-num">54.</span> Situaciones o condiciones de riesgo para la salud (física o mental): *</label>
                   <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguna" desmarca las demás opciones.</span>
                   <div class="check-group" data-catalogo="CAT_SITUACIONES_RIESGO_FAMILIAR" data-name="familias[0].situacionesRiesgo"></div>
                 </div>
@@ -646,26 +667,28 @@
               <!-- ---------- 4.2 Prácticas protectoras (55-57) ---------- -->
               <div class="card card--anidada">
                 <div class="card__header">
-                  <h2>4.2 Prácticas o condiciones protectoras para el cuidado de la salud predominantes en la familia</h2>
+                  <h2>4.2 Prácticas protectoras en la familia</h2>
                   <span class="rule-tag">RN-055 · RN-056 · RN-057</span>
                 </div>
 
                 <div class="field field--full field--block" data-campo="practicasVinculo">
                   <label><span class="item-num">55.</span> Prácticas que favorecen los vínculos familiares:</label>
-                  <div class="check-group check-group--una-columna" data-catalogo="CAT_PRACTICAS_VINCULO" data-name="familias[0].practicasVinculo"></div>
+                  <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                  <div class="check-group" data-catalogo="CAT_PRACTICAS_VINCULO" data-name="familias[0].practicasVinculo"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="redesApoyo">
+                <div class="field field--full field--block" data-campo="redesApoyo" style="margin-top: 24px;">
                   <label><span class="item-num">56.</span> Redes de apoyo social: *</label>
                   <div class="radio-group radio-group--columna" data-catalogo="CAT_REDES_APOYO" data-name="familias[0].redesApoyo"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="practicasCuidadoHogar">
-                  <label><span class="item-num">57.</span> Prácticas para el cuidado de su salud y protección en el entorno hogar:</label>
-                  <div class="check-group check-group--una-columna" data-catalogo="CAT_PRACTICAS_CUIDADO_HOGAR" data-name="familias[0].practicasCuidadoHogar"></div>
+                <div class="field field--full field--block" data-campo="practicasCuidadoHogar" style="margin-top: 24px;">
+                  <label><span class="item-num">57.</span> Prácticas para el cuidado de la salud y protección en el hogar:</label>
+                  <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                  <div class="check-group" data-catalogo="CAT_PRACTICAS_CUIDADO_HOGAR" data-name="familias[0].practicasCuidadoHogar"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="sinContactoTelefonico">
+                <div class="field field--full field--block" data-campo="sinContactoTelefonico" style="margin-top: 24px;">
                   <label>Novedad de contacto <span class="rule-tag">RN-070</span></label>
                   <label class="check-inline">
                     <input type="checkbox" name="familias[0].sinContactoTelefonico">
@@ -699,34 +722,34 @@
                         <h2>5.1 Identificación de cada uno de los integrantes de la familia</h2>
                         <span class="rule-tag">RN-058 a RN-072</span>
                       </div>
-                      <div class="form-grid">
+                      <div class="form-grid form-grid--2col">
                         <div class="field" data-campo="primerNombre">
                           <label><span class="item-num">58.</span> Primer Nombre: *</label>
-                          <input type="text" name="familias[0].integrantes[0].primerNombre" data-rol="primerNombre">
+                          <input type="text" name="familias[0].integrantes[0].primerNombre" data-rol="primerNombre" placeholder="Ej. Juan">
                         </div>
                         <div class="field" data-campo="segundoNombre">
                           <label><span class="item-num">59.</span> Segundo Nombre:</label>
-                          <input type="text" name="familias[0].integrantes[0].segundoNombre">
+                          <input type="text" name="familias[0].integrantes[0].segundoNombre" placeholder="Ej. Pablo">
                         </div>
                         <div class="field" data-campo="primerApellido">
                           <label><span class="item-num">60.</span> Primer Apellido: *</label>
-                          <input type="text" name="familias[0].integrantes[0].primerApellido" data-rol="primerApellido">
+                          <input type="text" name="familias[0].integrantes[0].primerApellido" data-rol="primerApellido" placeholder="Ej. Pérez">
                         </div>
                         <div class="field" data-campo="segundoApellido">
                           <label><span class="item-num">61.</span> Segundo Apellido:</label>
-                          <input type="text" name="familias[0].integrantes[0].segundoApellido">
+                          <input type="text" name="familias[0].integrantes[0].segundoApellido" placeholder="Ej. Gómez">
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="tipoId">
-                        <label><span class="item-num">62.</span> Tipo de identificación integrante de la familia: *</label>
-                        <div class="radio-group" data-catalogo="CAT_TIPO_ID_INTEGRANTE" data-name="familias[0].integrantes[0].tipoId"></div>
+                      <div class="field field--full field--block" data-campo="tipoId" style="margin-top: 24px;">
+                        <label><span class="item-num">62.</span> Tipo de identificación: *</label>
+                        <div class="radio-group radio-group--grid" data-catalogo="CAT_TIPO_ID_INTEGRANTE" data-name="familias[0].integrantes[0].tipoId"></div>
                       </div>
 
-                      <div class="form-grid">
+                      <div class="form-grid form-grid--2col" style="margin-top: 24px;">
                         <div class="field" data-campo="numeroId">
                           <label><span class="item-num">63.</span> Número de identificación: *</label>
-                          <input type="text" name="familias[0].integrantes[0].numeroId">
+                          <input type="text" name="familias[0].integrantes[0].numeroId" placeholder="Ej. 1144000000">
                         </div>
                         <div class="field" data-campo="fechaNacimiento">
                           <label><span class="item-num">64.</span> Fecha de nacimiento: *</label>
@@ -734,8 +757,8 @@
                         </div>
                         <div class="field" data-campo="edadCalculada">
                           <label>Edad <span class="field-auto">(cálculo automático)</span></label>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Años, meses y días. Habilita las preguntas condicionadas por edad.</span>
                           <input type="text" name="familias[0].integrantes[0].edadTexto" readonly data-rol="edadCalculada" placeholder="—">
-                          <span class="field-hint field-hint--inline">Años, meses y días. Habilita las preguntas condicionadas por edad.</span>
                         </div>
                         <div class="field" data-campo="nacionalidad">
                           <label><span class="item-num">65.</span> Nacionalidad: *</label>
@@ -743,18 +766,18 @@
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="sexo">
+                      <div class="field field--full field--block" data-campo="sexo" style="margin-top: 24px;">
                         <label><span class="item-num">66.</span> Sexo: *</label>
                         <span class="field-hint field-hint--inline">Determina los tamizajes exigibles del ítem 87. Es independiente del género y de la autoidentificación.</span>
                         <div class="radio-group" data-catalogo="CAT_SEXO" data-name="familias[0].integrantes[0].sexo"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="genero">
+                      <div class="field field--full field--block" data-campo="genero" style="margin-top: 16px;">
                         <label><span class="item-num">67.</span> Género: *</label>
                         <div class="radio-group" data-catalogo="CAT_GENERO" data-name="familias[0].integrantes[0].genero"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="autoidentificacionGenero">
+                      <div class="field field--full field--block" data-campo="autoidentificacionGenero" style="margin-top: 16px;">
                         <label><span class="item-num">68.</span> Usted se identifica como: *</label>
                         <div class="radio-group" data-catalogo="CAT_AUTOIDENTIFICACION_GENERO" data-name="familias[0].integrantes[0].autoidentificacionGenero"></div>
                       </div>
@@ -763,7 +786,7 @@
                         <input type="text" name="familias[0].integrantes[0].autoidentificacionGeneroOtro">
                       </div>
 
-                      <div class="field field--full field--block" data-campo="orientacionSexual" data-rol="campoOrientacion">
+                      <div class="field field--full field--block" data-campo="orientacionSexual" data-rol="campoOrientacion" style="margin-top: 24px;">
                         <label><span class="item-num">69.</span> Cuál es su orientación sexual:</label>
                         <span class="field-hint field-hint--inline">Obligatoria desde los 13 años. Dato sensible: no lo consulte en presencia de terceros.</span>
                         <div class="radio-group" data-catalogo="CAT_ORIENTACION_SEXUAL" data-name="familias[0].integrantes[0].orientacionSexual"></div>
@@ -773,18 +796,18 @@
                         <input type="text" name="familias[0].integrantes[0].orientacionSexualOtro">
                       </div>
 
-                      <div class="form-grid">
+                      <div class="form-grid" style="margin-top: 24px;">
                         <div class="field" data-campo="telefono1">
                           <label><span class="item-num">70.</span> Teléfono 1:</label>
-                          <input type="tel" name="familias[0].integrantes[0].telefono1" inputmode="numeric" placeholder="3155551234">
+                          <input type="tel" name="familias[0].integrantes[0].telefono1" inputmode="numeric" placeholder="Ej. 3155551234">
                         </div>
                         <div class="field" data-campo="telefono2">
                           <label><span class="item-num">71.</span> Teléfono 2:</label>
-                          <input type="tel" name="familias[0].integrantes[0].telefono2" inputmode="numeric">
+                          <input type="tel" name="familias[0].integrantes[0].telefono2" inputmode="numeric" placeholder="Ej. 3100000000">
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="rolFamiliar">
+                      <div class="field field--full field--block" data-campo="rolFamiliar" style="margin-top: 24px;">
                         <label><span class="item-num">72.</span> Rol dentro de la familia: *</label>
                         <span class="field-hint field-hint--inline">Debe existir exactamente un "Responsable económico" por familia.</span>
                         <div class="radio-group" data-catalogo="CAT_ROL_FAMILIAR" data-name="familias[0].integrantes[0].rolFamiliar"></div>
@@ -797,16 +820,16 @@
                         <h2>5.2 Características socioeconómicas</h2>
                         <span class="rule-tag">RN-073 a RN-080</span>
                       </div>
-                      <div class="form-grid">
+                      <div class="form-grid form-grid--2col">
                         <div class="field" data-campo="ocupacion">
                           <label><span class="item-num">73.</span> Ocupación:</label>
-                          <input type="text" name="familias[0].integrantes[0].ocupacion" maxlength="100" autocomplete="off">
-                          <span class="field-hint field-hint--inline">Obligatoria desde los 15 años.</span>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Obligatoria desde los 15 años.</span>
+                          <input type="text" name="familias[0].integrantes[0].ocupacion" maxlength="100" autocomplete="off" placeholder="Ej. Estudiante">
                         </div>
                         <div class="field" data-campo="nivelEducativo">
                           <label><span class="item-num">74.</span> Nivel Educativo:</label>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Obligatorio desde los 5 años.</span>
                           <select name="familias[0].integrantes[0].nivelEducativo" data-catalogo="CAT_NIVEL_EDUCATIVO"></select>
-                          <span class="field-hint field-hint--inline">Obligatorio desde los 5 años.</span>
                         </div>
                         <div class="field" data-campo="regimenAfiliacion">
                           <label><span class="item-num">75.</span> Régimen de afiliación: *</label>
@@ -814,13 +837,13 @@
                         </div>
                         <div class="field" data-campo="eapb">
                           <label><span class="item-num">76.</span> EAPB:</label>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Se inactiva si el régimen es "No afiliado".</span>
                           <select name="familias[0].integrantes[0].eapb" data-rol="eapb" data-catalogo="CAT_EAPB"></select>
-                          <span class="field-hint field-hint--inline">Se inactiva si el régimen es "No afiliado".</span>
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="sujetoEspecialProteccion">
-                        <label><span class="item-num">77.</span> Se reconoce como sujeto de especial protección constitucional o tiene alguna de las siguientes condiciones o situaciones: *</label>
+                      <div class="field field--full field--block" data-campo="sujetoEspecialProteccion" style="margin-top: 24px;">
+                        <label><span class="item-num">77.</span> Sujeto de especial protección o condiciones de riesgo: *</label>
                         <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguna" desmarca las demás opciones.</span>
                         <div class="check-group" data-catalogo="CAT_SUJETO_ESPECIAL_PROTECCION" data-name="familias[0].integrantes[0].sujetoEspecialProteccion"></div>
                       </div>
@@ -837,14 +860,14 @@
                         <div class="check-group" data-catalogo="CAT_MODALIDAD_VIOLENCIA" data-name="familias[0].integrantes[0].modalidadViolencia"></div>
                       </div>
 
-                      <div class="form-grid">
-                        <div class="field field--full" data-campo="pertenenciaEtnica">
+                      <div class="form-grid form-grid--2col" style="margin-top: 24px;">
+                        <div class="field" data-campo="pertenenciaEtnica">
                           <label><span class="item-num">79.</span> Pertenencia étnica: *</label>
                           <select name="familias[0].integrantes[0].pertenenciaEtnica" data-catalogo="CAT_PERTENENCIA_ETNICA"></select>
                         </div>
-                        <div class="field field--full" data-campo="puebloEtnico" data-rol="campoPuebloEtnico" hidden>
-                          <label><span class="item-num">80.</span> Pueblo o comunidad étnica a la cual pertenece: *</label>
-                          <input type="text" name="familias[0].integrantes[0].puebloEtnico">
+                        <div class="field" data-campo="puebloEtnico" data-rol="campoPuebloEtnico" hidden>
+                          <label><span class="item-num">80.</span> Pueblo o comunidad étnica: *</label>
+                          <input type="text" name="familias[0].integrantes[0].puebloEtnico" placeholder="Ej. Wayuu">
                         </div>
                       </div>
                     </div>
@@ -852,26 +875,28 @@
                     <!-- ---------- 5.3 Situación de salud (81-110) ---------- -->
                     <div class="card card--anidada">
                       <div class="card__header">
-                        <h2>5.3 Situación de salud, acceso a servicios y prácticas de cuidado de la salud</h2>
+                        <h2>5.3 Situación de salud, servicios y prácticas de cuidado</h2>
                         <span class="rule-tag">RN-081 a RN-110</span>
                       </div>
 
                       <div class="field field--full field--block" data-campo="saberesAncestrales">
                         <label><span class="item-num">81.</span> Prácticas de cuidado de la salud desde sus saberes ancestrales / tradicionales:</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_SABERES_ANCESTRALES" data-name="familias[0].integrantes[0].saberesAncestrales"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_SABERES_ANCESTRALES" data-name="familias[0].integrantes[0].saberesAncestrales"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="discapacidad">
+                      <div class="field field--full field--block" data-campo="discapacidad" style="margin-top: 24px;">
                         <label><span class="item-num">82.</span> ¿Se reconoce como persona con discapacidad? *</label>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
                         <div class="check-group" data-catalogo="CAT_DISCAPACIDAD" data-name="familias[0].integrantes[0].discapacidad"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="certificacionRlcpd" data-rol="campoRlcpd">
+                      <div class="field field--full field--block" data-campo="certificacionRlcpd" data-rol="campoRlcpd" style="margin-top: 24px;">
                         <label><span class="item-num">83.</span> Tiene certificación y registro de discapacidad (RLCPD):</label>
                         <div class="radio-group" data-catalogo="CAT_SI_NO_NA" data-name="familias[0].integrantes[0].certificacionRlcpd"></div>
                       </div>
 
-                      <div class="form-grid">
+                      <div class="form-grid" style="margin-top: 24px;">
                         <div class="field field--full field--block" data-campo="intencionReproductiva">
                           <label><span class="item-num">84.</span> Intención reproductiva a corto plazo: *</label>
                           <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].intencionReproductiva"></div>
@@ -882,64 +907,65 @@
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="practicasCuidado">
+                      <div class="field field--full field--block" data-campo="practicasCuidado" style="margin-top: 24px;">
                         <label><span class="item-num">86.</span> ¿Realiza rutinariamente las siguientes prácticas para el cuidado de la salud? *</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_PRACTICAS_CUIDADO" data-name="familias[0].integrantes[0].practicasCuidado"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_PRACTICAS_CUIDADO" data-name="familias[0].integrantes[0].practicasCuidado"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="atencionesPendientesRpms">
+                      <div class="field field--full field--block" data-campo="atencionesPendientesRpms" style="margin-top: 24px;">
                         <label><span class="item-num">87.</span> Atenciones pendientes de promoción y mantenimiento: *</label>
-                        <span class="field-hint field-hint--inline">
-                          Sólo se muestran las atenciones exigibles según la edad y el sexo del integrante.
-                          Complete primero los ítems 64 y 66.
-                        </span>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_ATENCIONES_RPMS" data-name="familias[0].integrantes[0].atencionesPendientesRpms" data-rol="grupoRpms"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple. Sólo se muestran las atenciones exigibles según la edad y el sexo.</span>
+                        <div class="check-group" data-catalogo="CAT_ATENCIONES_RPMS" data-name="familias[0].integrantes[0].atencionesPendientesRpms" data-rol="grupoRpms"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="atencionesPendientesMaterno" data-rol="campoMaterno" hidden>
+                      <div class="field field--full field--block" data-campo="atencionesPendientesMaterno" data-rol="campoMaterno" hidden style="margin-top: 24px;">
                         <label><span class="item-num">88.</span> Atenciones pendientes de la ruta materno perinatal: *</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_ATENCIONES_MATERNO" data-name="familias[0].integrantes[0].atencionesPendientesMaterno"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_ATENCIONES_MATERNO" data-name="familias[0].integrantes[0].atencionesPendientesMaterno"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="barrerasAcceso" data-rol="campoBarreras">
+                      <div class="field field--full field--block" data-campo="barrerasAcceso" data-rol="campoBarreras" style="margin-top: 24px;">
                         <label><span class="item-num">89.</span> Motivo por el cual no ha recibido las atenciones de promoción y mantenimiento o materno perinatal:</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_BARRERAS_ACCESO" data-name="familias[0].integrantes[0].barrerasAcceso"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_BARRERAS_ACCESO" data-name="familias[0].integrantes[0].barrerasAcceso"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="conocimientoDerecho">
+                      <div class="field field--full field--block" data-campo="conocimientoDerecho" style="margin-top: 24px;">
                         <label><span class="item-num">90.</span> Prácticas para el ejercicio y exigibilidad del derecho a la salud:</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_CONOCIMIENTO_DERECHO" data-name="familias[0].integrantes[0].conocimientoDerecho"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_CONOCIMIENTO_DERECHO" data-name="familias[0].integrantes[0].conocimientoDerecho"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="lactanciaExclusiva" data-rol="campoLactancia">
+                      <div class="field field--full field--block" data-campo="lactanciaExclusiva" data-rol="campoLactancia" style="margin-top: 24px;">
                         <label><span class="item-num">91.</span> Si es menor de 6 meses, ¿recibe lactancia materna exclusiva?</label>
                         <div class="radio-group" data-catalogo="CAT_SI_NO_NA" data-name="familias[0].integrantes[0].lactanciaExclusiva"></div>
                       </div>
 
                       <!-- Antropometría (92-97) -->
                       <h3 class="card__subtitle">Antropometría y estado nutricional <span class="rule-tag">RN-092 a RN-097</span></h3>
-                      <div class="form-grid">
+                      <div class="form-grid form-grid--2col">
                         <div class="field" data-campo="peso">
                           <label><span class="item-num">92.</span> Peso (en kilogramos): *</label>
-                          <input type="number" name="familias[0].integrantes[0].peso" min="0" step="0.1" data-rol="peso">
+                          <input type="number" name="familias[0].integrantes[0].peso" min="0" step="0.1" data-rol="peso" placeholder="Ej. 65.5">
                         </div>
                         <div class="field" data-campo="talla">
                           <label><span class="item-num">93.</span> Talla (en centímetros): *</label>
-                          <input type="number" name="familias[0].integrantes[0].talla" min="0" step="0.1" data-rol="talla">
+                          <input type="number" name="familias[0].integrantes[0].talla" min="0" step="0.1" data-rol="talla" placeholder="Ej. 170">
                         </div>
                         <div class="field" data-campo="circunferenciaCintura" data-rol="campoCintura">
                           <label><span class="item-num">94.</span> Circunferencia de cintura (cm):</label>
-                          <input type="number" name="familias[0].integrantes[0].circunferenciaCintura" min="0" step="0.1">
-                          <span class="field-hint field-hint--inline">Sólo personas de 18 años o más.</span>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Sólo personas de 18 años o más.</span>
+                          <input type="number" name="familias[0].integrantes[0].circunferenciaCintura" min="0" step="0.1" placeholder="Ej. 80">
                         </div>
                         <div class="field" data-campo="imc">
                           <label><span class="item-num">95.</span> Resultado del IMC <span class="field-auto">(cálculo automático)</span></label>
+                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Se calcula en mayores de 5 años.</span>
                           <input type="text" name="familias[0].integrantes[0].imc" readonly data-rol="imc" placeholder="—">
-                          <span class="field-hint field-hint--inline">Se calcula en mayores de 5 años.</span>
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="clasificacionAntropometrica">
+                      <div class="field field--full field--block" data-campo="clasificacionAntropometrica" style="margin-top: 24px;">
                         <label><span class="item-num">96.</span> Clasificación antropométrica del estado nutricional según indicador Peso para la Talla (P/T) o IMC para la edad: *</label>
                         <div class="check-group check-group--una-columna" data-catalogo="CAT_CLASIFICACION_ANTROPOMETRICA" data-name="familias[0].integrantes[0].clasificacionAntropometrica" data-tipo="radio"></div>
                       </div>
@@ -951,14 +977,14 @@
 
                       <!-- Tensión arterial (98-99) -->
                       <h3 class="card__subtitle">Tensión arterial <span class="rule-tag">RN-098 · RN-099</span></h3>
-                      <div class="form-grid" data-rol="campoTension">
+                      <div class="form-grid form-grid--2col" data-rol="campoTension">
                         <div class="field" data-campo="tensionSistolica">
                           <label><span class="item-num">98.</span> Tensión arterial sistólica (mm Hg):</label>
-                          <input type="number" name="familias[0].integrantes[0].tensionSistolica" min="50" max="300" step="1" data-rol="sistolica">
+                          <input type="number" name="familias[0].integrantes[0].tensionSistolica" min="50" max="300" step="1" data-rol="sistolica" placeholder="Ej. 120">
                         </div>
                         <div class="field" data-campo="tensionDiastolica">
                           <label><span class="item-num">98.</span> Tensión arterial diastólica (mm Hg):</label>
-                          <input type="number" name="familias[0].integrantes[0].tensionDiastolica" min="30" max="200" step="1" data-rol="diastolica">
+                          <input type="number" name="familias[0].integrantes[0].tensionDiastolica" min="30" max="200" step="1" data-rol="diastolica" placeholder="Ej. 80">
                         </div>
                         <div class="field field--full" data-campo="clasificacionTension">
                           <label><span class="item-num">99.</span> Clasificación de la Tensión arterial (AHA 2024) <span class="field-auto">(cálculo automático)</span></label>
@@ -972,46 +998,51 @@
                       <!-- Morbilidad (100-104) -->
                       <h3 class="card__subtitle">Morbilidad y adherencia <span class="rule-tag">RN-100 a RN-104</span></h3>
 
-                      <div class="field field--full field--block" data-campo="enfermedadesNoTransmisibles">
+                      <div class="field field--full field--block" data-campo="enfermedadesNoTransmisibles" style="margin-top: 24px;">
                         <label><span class="item-num">100.</span> ¿Algún profesional de salud le ha diagnosticado o le ha dicho que tiene alguna enfermedad no transmisible? *</label>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
                         <div class="check-group" data-catalogo="CAT_ENFERMEDADES_NO_TRANSMISIBLES" data-name="familias[0].integrantes[0].enfermedadesNoTransmisibles"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="condicionesTransmisibles">
+                      <div class="field field--full field--block" data-campo="condicionesTransmisibles" style="margin-top: 24px;">
                         <label><span class="item-num">101.</span> ¿Presenta alguna de las siguientes situaciones o condiciones de salud transmisible? *</label>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
                         <div class="check-group" data-catalogo="CAT_CONDICIONES_TRANSMISIBLES" data-name="familias[0].integrantes[0].condicionesTransmisibles"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="zonaEndemica">
+                      <div class="field field--full field--block" data-campo="zonaEndemica" style="margin-top: 24px;">
                         <label><span class="item-num">102.</span> ¿Vive en zona endémica para alguno de los siguientes eventos o presenta signos y síntomas? *</label>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
                         <div class="check-group" data-catalogo="CAT_ZONA_ENDEMICA" data-name="familias[0].integrantes[0].zonaEndemica"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="adherenciaTratamiento" data-rol="campoAdherencia">
+                      <div class="field field--full field--block" data-campo="adherenciaTratamiento" data-rol="campoAdherencia" style="margin-top: 24px;">
                         <label><span class="item-num">103.</span> Si en las tres preguntas anteriores se identifica alguna situación de salud, ¿está recibiendo atención y tratamiento para la enfermedad actual?</label>
                         <div class="radio-group" data-catalogo="CAT_SI_NO_NA" data-name="familias[0].integrantes[0].adherenciaTratamiento"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="motivoNoTratamiento" data-rol="campoMotivoNoTratamiento" hidden>
+                      <div class="field field--full field--block" data-campo="motivoNoTratamiento" data-rol="campoMotivoNoTratamiento" hidden style="margin-top: 24px;">
                         <label><span class="item-num">104.</span> Motivo(s) por el (los) cual(es) no ha recibido la atención: *</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_MOTIVO_NO_TRATAMIENTO" data-name="familias[0].integrantes[0].motivoNoTratamiento"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_MOTIVO_NO_TRATAMIENTO" data-name="familias[0].integrantes[0].motivoNoTratamiento"></div>
                       </div>
 
                       <!-- Salud mental y consumo (105-110) -->
                       <h3 class="card__subtitle">Salud mental y consumo de sustancias <span class="rule-tag">RN-105 a RN-110</span></h3>
 
-                      <div class="field field--full field--block" data-campo="riesgosSaludMentalJoven" data-rol="campoRiesgoJoven" hidden>
+                      <div class="field field--full field--block" data-campo="riesgosSaludMentalJoven" data-rol="campoRiesgoJoven" hidden style="margin-top: 24px;">
                         <label><span class="item-num">105.</span> ¿Identifica alguna de las siguientes situaciones o condiciones familiares o personales que pueden alterar o generar riesgo para su salud física o mental? *</label>
-                        <span class="field-hint field-hint--inline">Indagar sólo en personas entre los 14 y 28 años.</span>
+                        <span class="field-hint field-hint--inline">Selección múltiple. Indagar sólo en personas entre los 14 y 28 años.</span>
                         <div class="check-group" data-catalogo="CAT_RIESGOS_SALUD_MENTAL_JOVEN" data-name="familias[0].integrantes[0].riesgosSaludMentalJoven"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="sintomatologiaDepresiva" data-rol="campoDepresiva" hidden>
+                      <div class="field field--full field--block" data-campo="sintomatologiaDepresiva" data-rol="campoDepresiva" hidden style="margin-top: 24px;">
                         <label><span class="item-num">106.</span> Durante más de dos semanas (sólo personas mayores de 14 años): *</label>
-                        <div class="check-group check-group--una-columna" data-catalogo="CAT_SINTOMATOLOGIA_DEPRESIVA" data-name="familias[0].integrantes[0].sintomatologiaDepresiva"></div>
+                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
+                        <div class="check-group" data-catalogo="CAT_SINTOMATOLOGIA_DEPRESIVA" data-name="familias[0].integrantes[0].sintomatologiaDepresiva"></div>
                       </div>
 
-                      <div class="field field--full field--block campo-critico" data-campo="ideacionSuicida" data-rol="campoIdeacion" hidden>
+                      <div class="field field--full field--block campo-critico" data-campo="ideacionSuicida" data-rol="campoIdeacion" hidden style="margin-top: 24px;">
                         <label><span class="item-num">107.</span> Durante los últimos 8 días (sólo personas mayores de 14 años): *</label>
                         <span class="field-hint field-hint--inline">
                           ⚠ Una respuesta afirmativa activa protocolo de atención inmediata y no permite cerrar la ficha sin registrar la conducta.
@@ -1019,7 +1050,7 @@
                         <div class="radio-group radio-group--columna" data-catalogo="CAT_IDEACION_SUICIDA" data-name="familias[0].integrantes[0].ideacionSuicida"></div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="consumoSpa" data-rol="campoConsumo" hidden>
+                      <div class="field field--full field--block" data-campo="consumoSpa" data-rol="campoConsumo" hidden style="margin-top: 24px;">
                         <label><span class="item-num">108.</span> Consumo de sustancias psicoactivas, incluyendo alcohol y tabaco: *</label>
                         <span class="field-hint field-hint--inline" data-rol="hintConsumo">
                           En personas entre 14 y 17 años pregunte si ha consumido alguna vez en su vida; desde los 18, en los últimos tres meses.
@@ -1027,26 +1058,26 @@
                         <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].consumoSpa"></div>
                       </div>
 
-                      <div class="subpanel" data-rol="panelTamizajeSpa" hidden>
+                      <div class="subpanel" data-rol="panelTamizajeSpa" hidden style="margin-top: 24px;">
                         <span class="subpanel__titulo"><span class="item-num">109.</span> Resultados de riesgos, instrumentos de consumo (no obligatorio)</span>
                         <div class="form-grid">
                           <div class="field" data-campo="puntajeAssist">
                             <label>Puntaje riesgo ASSIST:</label>
-                            <input type="number" name="familias[0].integrantes[0].puntajeAssist" min="0" step="1">
+                            <input type="number" name="familias[0].integrantes[0].puntajeAssist" min="0" step="1" placeholder="Ej. 12">
                           </div>
                           <div class="field" data-campo="puntajeAudit">
                             <label>Puntaje riesgo AUDIT:</label>
-                            <input type="number" name="familias[0].integrantes[0].puntajeAudit" min="0" step="1">
+                            <input type="number" name="familias[0].integrantes[0].puntajeAudit" min="0" step="1" placeholder="Ej. 5">
                           </div>
                           <div class="field" data-campo="puntajeCrafft">
                             <label>Puntaje riesgo CRAFFT:</label>
-                            <input type="number" name="familias[0].integrantes[0].puntajeCrafft" min="0" step="1">
-                            <span class="field-hint field-hint--inline">Aplica a 14–17 años.</span>
+                            <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Aplica a 14–17 años.</span>
+                            <input type="number" name="familias[0].integrantes[0].puntajeCrafft" min="0" step="1" placeholder="Ej. 2">
                           </div>
                         </div>
                       </div>
 
-                      <div class="field field--full field--block" data-campo="limitacionCotidiana">
+                      <div class="field field--full field--block" data-campo="limitacionCotidiana" style="margin-top: 24px;">
                         <label><span class="item-num">110.</span> ¿Ha presentado alguna otra situación de salud que limite sus actividades cotidianas en la última semana? *</label>
                         <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].limitacionCotidiana"></div>
                       </div>
@@ -1101,18 +1132,18 @@
             <table class="plan-table plan-table--acciones">
               <thead>
                 <tr>
-                  <th style="width:110px"><span class="item-num">113.</span> Tipo ID</th>
-                  <th style="width:150px">Número</th>
-                  <th style="width:280px"><span class="item-num">114.</span> Acción / Intervención (CUPS / NoCUPS)</th>
-                  <th>Procedimiento realizado</th>
-                  <th style="width:190px"><span class="item-num">115.</span> Respuesta</th>
+                  <th style="min-width:130px"><span class="item-num">113.</span> Tipo ID</th>
+                  <th style="min-width:140px">Número</th>
+                  <th style="min-width:300px"><span class="item-num">114.</span> Acción / Intervención (CUPS / NoCUPS)</th>
+                  <th style="min-width:220px">Procedimiento realizado</th>
+                  <th style="min-width:170px"><span class="item-num">115.</span> Respuesta</th>
                   <th style="width:44px"></th>
                 </tr>
               </thead>
               <tbody id="filasAccionVivienda">
                 <tr data-fila="accion" data-indice="0">
                   <td><select name="planVivienda.acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                  <td><input type="text" name="planVivienda.acciones[0].ejecutorNumeroId"></td>
+                  <td><input type="text" name="planVivienda.acciones[0].ejecutorNumeroId" placeholder="Ej. 12345678"></td>
                   <td>
                     <div class="combo-cups" data-rol="comboCups">
                       <input type="text" name="planVivienda.acciones[0].codigoAccion"
@@ -1137,21 +1168,21 @@
             <table class="plan-table">
               <thead>
                 <tr>
-                  <th style="width:100px"><span class="item-num">116.</span> Tipo ID</th>
-                  <th style="width:140px">Número</th>
-                  <th><span class="item-num">117.</span> Acción de cuidado CONCERTADA</th>
-                  <th style="width:140px"><span class="item-num">118.</span> Fecha seg. 1</th>
-                  <th style="width:130px">Estado</th>
-                  <th style="width:140px"><span class="item-num">119.</span> Fecha seg. 2</th>
-                  <th style="width:130px">Estado</th>
+                  <th style="min-width:120px"><span class="item-num">116.</span> Tipo ID</th>
+                  <th style="min-width:140px">Número</th>
+                  <th style="min-width:250px"><span class="item-num">117.</span> Acción de cuidado CONCERTADA</th>
+                  <th style="min-width:150px"><span class="item-num">118.</span> Fecha seg. 1</th>
+                  <th style="min-width:140px">Estado</th>
+                  <th style="min-width:150px"><span class="item-num">119.</span> Fecha seg. 2</th>
+                  <th style="min-width:140px">Estado</th>
                   <th style="width:44px"></th>
                 </tr>
               </thead>
               <tbody id="filasSeguimientoVivienda">
                 <tr data-fila="seguimiento" data-indice="0">
                   <td><select name="planVivienda.seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                  <td><input type="text" name="planVivienda.seguimientos[0].seguimientoNumeroId"></td>
-                  <td><textarea name="planVivienda.seguimientos[0].accionConcertada" rows="2" placeholder="Compromiso de mejora locativa o de higiene acordado"></textarea></td>
+                  <td><input type="text" name="planVivienda.seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
+                  <td><input type="text" name="planVivienda.seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
                   <td><input type="date" name="planVivienda.seguimientos[0].seg1Fecha"></td>
                   <td><select name="planVivienda.seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
                   <td><input type="date" name="planVivienda.seguimientos[0].seg2Fecha"></td>
