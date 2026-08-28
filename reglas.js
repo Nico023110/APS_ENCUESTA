@@ -1410,6 +1410,16 @@ const REGLAS_INTEGRANTE = [
     mensaje: 'La tensión sistólica debe ser mayor que la diastólica.'
   },
   {
+    codigo: 'RN-098',
+    campo: 'tensionSistolica',
+    aplica: function (i) { return esNumeroPositivo(i.tensionSistolica) && esNumeroPositivo(i.tensionDiastolica); },
+    valida: function (i) {
+      return i.tensionSistolica >= 50 && i.tensionSistolica <= 300 &&
+             i.tensionDiastolica >= 30 && i.tensionDiastolica <= 200;
+    },
+    mensaje: 'Valores fuera de rango: sistólica (50-300) y diastólica (30-200).'
+  },
+  {
     // La clasificación es derivada: debe coincidir con el cálculo AHA 2024.
     codigo: 'RN-099',
     campo: 'clasificacionTension',
