@@ -1142,9 +1142,9 @@
               </thead>
               <tbody id="filasAccionVivienda">
                 <tr data-fila="accion" data-indice="0">
-                  <td><select name="planVivienda.acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                  <td><input type="text" name="planVivienda.acciones[0].ejecutorNumeroId" placeholder="Ej. 12345678"></td>
-                  <td>
+                  <td data-label="Tipo ID"><select name="planVivienda.acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                  <td data-label="Número"><input type="text" name="planVivienda.acciones[0].ejecutorNumeroId" placeholder="Ej. 12345678"></td>
+                  <td data-label="Acción / Intervención (CUPS / NoCUPS)">
                     <div class="combo-cups" data-rol="comboCups">
                       <input type="text" name="planVivienda.acciones[0].codigoAccion"
                              class="combo-cups__entrada" role="combobox" aria-expanded="false"
@@ -1154,8 +1154,8 @@
                       <p class="combo-cups__nombre"></p>
                     </div>
                   </td>
-                  <td><input type="text" name="planVivienda.acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                  <td><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planVivienda.acciones[0].tipoRespuesta"></div></td>
+                  <td data-label="Procedimiento realizado"><input type="text" name="planVivienda.acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
+                  <td data-label="Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planVivienda.acciones[0].tipoRespuesta"></div></td>
                   <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                 </tr>
               </tbody>
@@ -1180,13 +1180,13 @@
               </thead>
               <tbody id="filasSeguimientoVivienda">
                 <tr data-fila="seguimiento" data-indice="0">
-                  <td><select name="planVivienda.seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                  <td><input type="text" name="planVivienda.seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
-                  <td><input type="text" name="planVivienda.seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
-                  <td><input type="date" name="planVivienda.seguimientos[0].seg1Fecha"></td>
-                  <td><select name="planVivienda.seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
-                  <td><input type="date" name="planVivienda.seguimientos[0].seg2Fecha"></td>
-                  <td><select name="planVivienda.seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                  <td data-label="Tipo ID"><select name="planVivienda.seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                  <td data-label="Número"><input type="text" name="planVivienda.seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
+                  <td data-label="Acción concertada"><input type="text" name="planVivienda.seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
+                  <td data-label="Fecha seg. 1"><input type="date" name="planVivienda.seguimientos[0].seg1Fecha"></td>
+                  <td data-label="Estado 1"><select name="planVivienda.seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                  <td data-label="Fecha seg. 2"><input type="date" name="planVivienda.seguimientos[0].seg2Fecha"></td>
+                  <td data-label="Estado 2"><select name="planVivienda.seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
                   <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                 </tr>
               </tbody>
@@ -1241,19 +1241,19 @@
                 <table class="plan-table plan-table--acciones">
                   <thead>
                     <tr>
-                      <th style="width:110px"><span class="item-num">123.</span> Tipo ID</th>
-                      <th style="width:150px">Número</th>
-                      <th style="width:280px"><span class="item-num">124.</span> Acción / Intervención (CUPS / NoCUPS)</th>
-                      <th>Procedimiento realizado</th>
-                      <th style="width:190px"><span class="item-num">125.</span> Respuesta</th>
+                      <th style="min-width:130px"><span class="item-num">123.</span> Tipo ID</th>
+                      <th style="min-width:140px">Número</th>
+                      <th style="min-width:300px"><span class="item-num">124.</span> Acción / Intervención (CUPS / NoCUPS)</th>
+                      <th style="min-width:220px">Procedimiento realizado</th>
+                      <th style="min-width:170px"><span class="item-num">125.</span> Respuesta</th>
                       <th style="width:44px"></th>
                     </tr>
                   </thead>
                   <tbody data-rol="filasAccionFamilia">
                     <tr data-fila="accion" data-indice="0">
-                      <td><select name="planesFamilia[0].acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                      <td><input type="text" name="planesFamilia[0].acciones[0].ejecutorNumeroId"></td>
-                      <td>
+                      <td data-label="Tipo ID"><select name="planesFamilia[0].acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                      <td data-label="Número"><input type="text" name="planesFamilia[0].acciones[0].ejecutorNumeroId" placeholder="Ej. 12345678"></td>
+                      <td data-label="Acción / Intervención (CUPS / NoCUPS)">
                         <div class="combo-cups" data-rol="comboCups">
                           <input type="text" name="planesFamilia[0].acciones[0].codigoAccion"
                                  class="combo-cups__entrada" role="combobox" aria-expanded="false"
@@ -1263,8 +1263,8 @@
                           <p class="combo-cups__nombre"></p>
                         </div>
                       </td>
-                      <td><input type="text" name="planesFamilia[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                      <td><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesFamilia[0].acciones[0].tipoRespuesta"></div></td>
+                      <td data-label="Procedimiento realizado"><input type="text" name="planesFamilia[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
+                      <td data-label="Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesFamilia[0].acciones[0].tipoRespuesta"></div></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                     </tr>
                   </tbody>
@@ -1277,25 +1277,25 @@
                 <table class="plan-table">
                   <thead>
                     <tr>
-                      <th style="width:100px"><span class="item-num">126.</span> Tipo ID</th>
-                      <th style="width:140px">Número</th>
-                      <th><span class="item-num">127.</span> Acción de cuidado CONCERTADA</th>
-                      <th style="width:140px"><span class="item-num">128.</span> Fecha seg. 1</th>
-                      <th style="width:130px">Estado</th>
-                      <th style="width:140px"><span class="item-num">129.</span> Fecha seg. 2</th>
-                      <th style="width:130px">Estado</th>
+                      <th style="min-width:120px"><span class="item-num">126.</span> Tipo ID</th>
+                      <th style="min-width:140px">Número</th>
+                      <th style="min-width:250px"><span class="item-num">127.</span> Acción de cuidado CONCERTADA</th>
+                      <th style="min-width:150px"><span class="item-num">128.</span> Fecha seg. 1</th>
+                      <th style="min-width:140px">Estado</th>
+                      <th style="min-width:150px"><span class="item-num">129.</span> Fecha seg. 2</th>
+                      <th style="min-width:140px">Estado</th>
                       <th style="width:44px"></th>
                     </tr>
                   </thead>
                   <tbody data-rol="filasSeguimientoFamilia">
                     <tr data-fila="seguimiento" data-indice="0">
-                      <td><select name="planesFamilia[0].seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                      <td><input type="text" name="planesFamilia[0].seguimientos[0].seguimientoNumeroId"></td>
-                      <td><textarea name="planesFamilia[0].seguimientos[0].accionConcertada" rows="2" placeholder="Plan de cuidado mutuo acordado con el núcleo"></textarea></td>
-                      <td><input type="date" name="planesFamilia[0].seguimientos[0].seg1Fecha"></td>
-                      <td><select name="planesFamilia[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
-                      <td><input type="date" name="planesFamilia[0].seguimientos[0].seg2Fecha"></td>
-                      <td><select name="planesFamilia[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Tipo ID"><select name="planesFamilia[0].seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                      <td data-label="Número"><input type="text" name="planesFamilia[0].seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
+                      <td data-label="Acción concertada"><input type="text" name="planesFamilia[0].seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
+                      <td data-label="Fecha seg. 1"><input type="date" name="planesFamilia[0].seguimientos[0].seg1Fecha"></td>
+                      <td data-label="Estado 1"><select name="planesFamilia[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Fecha seg. 2"><input type="date" name="planesFamilia[0].seguimientos[0].seg2Fecha"></td>
+                      <td data-label="Estado 2"><select name="planesFamilia[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                     </tr>
                   </tbody>
@@ -1368,19 +1368,19 @@
                 <table class="plan-table plan-table--acciones">
                   <thead>
                     <tr>
-                      <th style="width:110px"><span class="item-num">135.</span> Tipo ID</th>
-                      <th style="width:150px">Número</th>
-                      <th style="width:280px"><span class="item-num">136.</span> Acción / Intervención (CUPS / NoCUPS)</th>
-                      <th>Procedimiento realizado</th>
-                      <th style="width:190px"><span class="item-num">136.</span> Respuesta</th>
+                      <th style="min-width:130px"><span class="item-num">135.</span> Tipo ID</th>
+                      <th style="min-width:140px">Número</th>
+                      <th style="min-width:300px"><span class="item-num">136.</span> Acción / Intervención (CUPS / NoCUPS)</th>
+                      <th style="min-width:220px">Procedimiento realizado</th>
+                      <th style="min-width:170px"><span class="item-num">136.</span> Respuesta</th>
                       <th style="width:44px"></th>
                     </tr>
                   </thead>
                   <tbody data-rol="filasAccionPersona">
                     <tr data-fila="accion" data-indice="0">
-                      <td><select name="planesPersona[0].acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                      <td><input type="text" name="planesPersona[0].acciones[0].ejecutorNumeroId"></td>
-                      <td>
+                      <td data-label="Tipo ID"><select name="planesPersona[0].acciones[0].ejecutorTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                      <td data-label="Número"><input type="text" name="planesPersona[0].acciones[0].ejecutorNumeroId" placeholder="Ej. 12345678"></td>
+                      <td data-label="Acción / Intervención (CUPS / NoCUPS)">
                         <div class="combo-cups" data-rol="comboCups">
                           <input type="text" name="planesPersona[0].acciones[0].codigoAccion"
                                  class="combo-cups__entrada" role="combobox" aria-expanded="false"
@@ -1390,8 +1390,8 @@
                           <p class="combo-cups__nombre"></p>
                         </div>
                       </td>
-                      <td><input type="text" name="planesPersona[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                      <td><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesPersona[0].acciones[0].tipoRespuesta"></div></td>
+                      <td data-label="Procedimiento realizado"><input type="text" name="planesPersona[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
+                      <td data-label="Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesPersona[0].acciones[0].tipoRespuesta"></div></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                     </tr>
                   </tbody>
@@ -1404,25 +1404,25 @@
                 <table class="plan-table">
                   <thead>
                     <tr>
-                      <th style="width:100px"><span class="item-num">137.</span> Tipo ID</th>
-                      <th style="width:140px">Número</th>
-                      <th><span class="item-num">138.</span> Acción de cuidado CONCERTADA</th>
-                      <th style="width:140px"><span class="item-num">139.</span> Fecha seg. 1</th>
-                      <th style="width:130px">Estado</th>
-                      <th style="width:140px"><span class="item-num">140.</span> Fecha seg. 2</th>
-                      <th style="width:130px">Estado</th>
+                      <th style="min-width:120px"><span class="item-num">137.</span> Tipo ID</th>
+                      <th style="min-width:140px">Número</th>
+                      <th style="min-width:250px"><span class="item-num">138.</span> Acción de cuidado CONCERTADA</th>
+                      <th style="min-width:150px"><span class="item-num">139.</span> Fecha seg. 1</th>
+                      <th style="min-width:140px">Estado</th>
+                      <th style="min-width:150px"><span class="item-num">140.</span> Fecha seg. 2</th>
+                      <th style="min-width:140px">Estado</th>
                       <th style="width:44px"></th>
                     </tr>
                   </thead>
                   <tbody data-rol="filasSeguimientoPersona">
                     <tr data-fila="seguimiento" data-indice="0">
-                      <td><select name="planesPersona[0].seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
-                      <td><input type="text" name="planesPersona[0].seguimientos[0].seguimientoNumeroId"></td>
-                      <td><textarea name="planesPersona[0].seguimientos[0].accionConcertada" rows="2" placeholder="Compromiso clínico o de autocuidado acordado"></textarea></td>
-                      <td><input type="date" name="planesPersona[0].seguimientos[0].seg1Fecha"></td>
-                      <td><select name="planesPersona[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
-                      <td><input type="date" name="planesPersona[0].seguimientos[0].seg2Fecha"></td>
-                      <td><select name="planesPersona[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Tipo ID"><select name="planesPersona[0].seguimientos[0].seguimientoTipoId" data-catalogo="CAT_TIPO_ID_EJECUTOR"></select></td>
+                      <td data-label="Número"><input type="text" name="planesPersona[0].seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
+                      <td data-label="Acción concertada"><input type="text" name="planesPersona[0].seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
+                      <td data-label="Fecha seg. 1"><input type="date" name="planesPersona[0].seguimientos[0].seg1Fecha"></td>
+                      <td data-label="Estado 1"><select name="planesPersona[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Fecha seg. 2"><input type="date" name="planesPersona[0].seguimientos[0].seg2Fecha"></td>
+                      <td data-label="Estado 2"><select name="planesPersona[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila">&times;</button></td>
                     </tr>
                   </tbody>
@@ -1518,7 +1518,7 @@
         <h2>Historial de encuestas</h2>
       </div>
       <div class="filters-bar">
-        <input type="text" id="filtroTexto" placeholder="Buscar por dirección, territorio, microterritorio o barrio...">
+        <input type="text" id="filtroTexto" placeholder="Buscar por número de ficha...">
         <select id="filtroHacinamiento">
           <option value="">Hacinamiento: todos</option>
           <option value="si">Con hacinamiento</option>

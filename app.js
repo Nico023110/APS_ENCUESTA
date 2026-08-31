@@ -1348,16 +1348,7 @@ function obtenerEncuestasFiltradas() {
   const filtroHacinamiento = document.getElementById('filtroHacinamiento').value;
 
   return obtenerEncuestasParaMostrar().filter(function (encuesta) {
-    const campos = [
-      encuesta.direccion,
-      encuesta.territorio,
-      encuesta.microterritorioNombre,
-      encuesta.divisionTerritorial
-    ];
-
-    const coincideTexto = !texto || campos
-      .filter(Boolean)
-      .some(function (campo) { return String(campo).toLowerCase().includes(texto); });
+    const coincideTexto = !texto || String(encuesta.codigoFicha).toLowerCase().includes(texto);
 
     const coincideHacinamiento = !filtroHacinamiento || encuesta.hacinamiento === filtroHacinamiento;
 
@@ -1402,16 +1393,16 @@ function renderizarHistorial() {
         /* El código y el estado hacen falta para poder actuar sobre la fila:
            los rechazos de la API nombran la ficha por su código, y sin verlo
            aquí no había manera de saber cuál de todas hay que corregir. */
-        '<td>' + textoSeguro(encuesta.codigoFicha) + '</td>' +
-        '<td>' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
-        '<td>' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
-        '<td>' + textoModificacion(encuesta) + '</td>' +
-        '<td>' + textoTerritorio(encuesta) + '</td>' +
-        '<td>' + textoMicroterritorio(encuesta) + '</td>' +
-        '<td>' + textoSeguro(encuesta.direccion) + '</td>' +
-        '<td>' + personasPorHabitacion + '</td>' +
-        '<td>' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
-        '<td>' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
+        '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
+        '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
+        '<td data-label="Fecha">' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
+        '<td data-label="Modificación">' + textoModificacion(encuesta) + '</td>' +
+        '<td data-label="Territorio">' + textoTerritorio(encuesta) + '</td>' +
+        '<td data-label="Microterritorio">' + textoMicroterritorio(encuesta) + '</td>' +
+        '<td data-label="Dirección">' + textoSeguro(encuesta.direccion) + '</td>' +
+        '<td data-label="Personas/Hab.">' + personasPorHabitacion + '</td>' +
+        '<td data-label="Hacinamiento">' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
+        '<td data-label="Situación inminente">' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
           '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + encuesta.id + '">Ver</button>' +
           '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + encuesta.id + '"' + deshabilitado + '>Corregir</button>' +

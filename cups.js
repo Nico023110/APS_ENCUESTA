@@ -245,6 +245,11 @@ function cerrarListaCups(combo) {
   lista.hidden = true;
   lista.innerHTML = '';
   if (entrada) entrada.setAttribute('aria-expanded', 'false');
+
+  const wrapper = combo.closest('.table-wrapper');
+  if (wrapper && !wrapper.querySelector('.combo-cups__lista:not([hidden])')) {
+    wrapper.style.paddingBottom = '';
+  }
 }
 
 function pintarListaCups(combo, filas, aviso) {
@@ -280,6 +285,9 @@ function pintarListaCups(combo, filas, aviso) {
   lista.innerHTML = partes.join('');
   lista.hidden = false;
   if (entrada) entrada.setAttribute('aria-expanded', 'true');
+
+  const wrapper = combo.closest('.table-wrapper');
+  if (wrapper) wrapper.style.paddingBottom = '300px';
 }
 
 /* =========================================================
