@@ -487,22 +487,24 @@ A partir de ella el sistema calcula automáticamente un campo derivado de sólo 
 
 **Coherencia obligatoria entre tipo de documento y edad:**
 
-| Tipo | Documento | Edad esperada | Validación |
-|---|---|---|---|
-| **NV** | Certificado de Nacido Vivo | 0 a 1 año | Advertencia |
-| **RC** | Registro Civil | 0 a 6 años | Advertencia |
-| **TI** | Tarjeta de Identidad | 7 a 17 años | Advertencia |
-| **CC** | Cédula de Ciudadanía | ≥ 18 años | Advertencia |
-| **MS** | Menor sin Identificación | < 18 años | **Bloqueo** |
-| **AS** | Adulto sin Identificación | ≥ 18 años | **Bloqueo** |
-| **CE** | Cédula de Extranjería | Cualquier edad | Exige nacionalidad ≠ Colombia |
-| **CD** | Carné Diplomático | Cualquier edad | Exige nacionalidad ≠ Colombia |
-| **PE** | Permiso Especial de Permanencia | Cualquier edad | Exige nacionalidad ≠ Colombia |
-| **PT** | Permiso por Protección Temporal | Cualquier edad | Exige nacionalidad ≠ Colombia |
+| Tipo | Documento | Edad esperada | Por debajo del mínimo | Por encima del máximo |
+|---|---|---|---|---|
+| **NV** | Certificado de Nacido Vivo | 0 a 1 año | — | Advertencia |
+| **RC** | Registro Civil | 0 a 6 años | — | Advertencia |
+| **TI** | Tarjeta de Identidad | 7 a 17 años | **Bloqueo** | Advertencia |
+| **CC** | Cédula de Ciudadanía | ≥ 18 años | **Bloqueo** | — |
+| **MS** | Menor sin Identificación | < 18 años | — | **Bloqueo** |
+| **AS** | Adulto sin Identificación | ≥ 18 años | **Bloqueo** | — |
+| **CE** | Cédula de Extranjería | Cualquier edad | Exige nacionalidad ≠ Colombia | |
+| **CD** | Carné Diplomático | Cualquier edad | Exige nacionalidad ≠ Colombia | |
+| **PE** | Permiso Especial de Permanencia | Cualquier edad | Exige nacionalidad ≠ Colombia | |
+| **PT** | Permiso por Protección Temporal | Cualquier edad | Exige nacionalidad ≠ Colombia | |
 
-**Criterio de severidad.** Las inconsistencias de NV, RC, TI y CC se resuelven con **advertencia y confirmación**, no con bloqueo, porque existen casos legítimos de trámite pendiente: un niño de 8 años que aún no ha tramitado la TI, o un joven de 18 que no ha renovado la CC, son situaciones frecuentes en territorio y no deben impedir la caracterización.
+**Criterio de severidad.** Un documento no puede existir antes de la edad a la que se expide: una **cédula en un menor de 18 años** o una **TI en un menor de 7** no es un trámite pendiente sino un dato mal digitado (el tipo o la fecha de nacimiento), y por eso **bloquea**. Por encima del rango sí existen casos legítimos de trámite pendiente —un niño de 8 años que aún no ha tramitado la TI, o un joven de 18 que no ha renovado la CC— y se resuelven con **advertencia y confirmación**, sin impedir la caracterización.
 
-Las inconsistencias de **MS y AS sí bloquean**, porque el rango de edad forma parte de la definición misma del tipo.
+Las inconsistencias de **MS y AS bloquean en ambos sentidos**, porque el rango de edad forma parte de la definición misma del tipo.
+
+**Validación en tiempo real.** Los datos de los integrantes (sección 5) se validan mientras se diligencian, con el mismo motor de reglas que corre al guardar: el aviso aparece al confirmar cada dato —al elegir una opción o salir del campo— y desaparece en cuanto se corrige. Los errores se muestran en rojo bajo el campo y las advertencias en ámbar. Los campos que aún no se han tocado no se marcan hasta que se intenta guardar.
 
 Los tipos **PE y PT** activan automáticamente la alerta de **población migrante** (RN-065), por corresponder al Estatuto Temporal de Protección para Migrantes Venezolanos.
 
@@ -1019,7 +1021,7 @@ Cuando el **ítem 107** registre "Ha pensado en lastimarse o en no querer seguir
 4. Exigir **notificación obligatoria a SIVIGILA** por intento o ideación suicida, evento de notificación individual inmediata.
 5. Cruzar con el ítem 54 ("Antecedentes de intento o muerte por suicidio en algún integrante"): si coexisten, el nivel de riesgo familiar se eleva y la intervención se extiende al núcleo.
 
-> Esta regla **no admite cierre de ficha sin acción registrada**. Es la única alerta del instrumento que bloquea la sincronización.
+> Esta regla **no admite que la ficha quede sin acción registrada**. La conducta se exige por la vía del plan diferido (RN-222): la ficha se guarda, pero permanece marcada como *plan de cuidado pendiente* —con la alerta INMEDIATA a la vista en el historial— hasta que se registre la conducta en el Plan de Cuidado de la Persona.
 
 ### RN-203 — 🔴 Crisis hipertensiva y riesgo cardiovascular
 
@@ -1213,12 +1215,19 @@ El sistema **no permite cerrar una ficha** mientras exista alguna de las siguien
 2. Campos obligatorios sin diligenciar en el nivel de vivienda o entorno.
 3. Familias declaradas en el ítem 28 sin caracterizar.
 4. Integrantes declarados en el ítem 51 sin caracterizar, o con instancias incompletas (RN-051).
-5. Alertas de prioridad INMEDIATA sin conducta registrada (RN-220).
+5. ~~Alertas de prioridad INMEDIATA sin conducta registrada (RN-220).~~ Pasa al plan diferido (ver abajo).
 6. Georreferenciación pendiente sin motivo de imposibilidad registrado (RN-022).
 7. Ausencia de medio de contacto en la familia sin la novedad correspondiente (RN-070).
 8. Inconsistencia de llaves relacionales del Plan de Cuidado (RN-130 / RN-131 / RN-132).
 
 El sistema debe presentar un **resumen de validación previo al cierre** que liste los incumplimientos agrupados por bloque, indicando el ítem y la regla incumplida, y permitiendo navegar directamente al campo. No se admite un mensaje genérico de error.
+
+**Plan de cuidado diferido.** El Plan de Cuidado (sección 6) **no es requisito para guardar la ficha**: puede diligenciarse durante la visita o después, desde *Historial → Corregir*, sin afectar lo ya registrado. En consecuencia:
+
+1. Las filas del plan en las que no se escribió nada no cuentan como acción ni como seguimiento y no generan incumplimiento; una fila con algún dato sí debe completarse (RN-113 a RN-119, RN-123 a RN-129, RN-135 a RN-140).
+2. La ficha lleva consigo la marca **plan de cuidado pendiente**, que se muestra en el historial y en el detalle como distintivo —no como error— mientras no exista ninguna acción registrada en ningún plan, o mientras alguna alerta siga sin conducta (RN-220).
+3. Las alertas sin conducta, incluida la de riesgo de suicidio (RN-202), se listan en el cierre bajo *Plan de cuidado* como pendientes y no impiden guardar ni sincronizar.
+4. La marca desaparece sola al completar el plan y volver a guardar la ficha.
 
 **Excepción de campo.** Una visita puede cerrarse como **"incompleta por causa externa"** —rechazo del informante, ausencia de los integrantes, condición de inseguridad en el territorio o urgencia vital conforme a RN-201— siempre que se registre el motivo. Estas fichas se sincronizan marcadas como incompletas, **no ingresan al denominador de cobertura** y quedan en cola para nueva visita.
 

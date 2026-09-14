@@ -604,8 +604,13 @@ async function validar(cliente, encuesta) {
      dos veces. Aquí sólo interesan los impedimentos que añade de su
      cosecha: consentimiento (RN-001), familias e integrantes declarados
      pero no caracterizados (RN-028, RN-051). */
+  let planCuidado = null;
+
   if (!encuesta.visitaIncompleta) {
     const cierre = m.validarCierre(ficha);
+    /* RN-220 (plan diferido): no bloquea; se devuelve para que la respuesta
+       diga si la ficha quedó con el plan pendiente. */
+    planCuidado = cierre.planCuidado || null;
 
     (cierre.impedimentos || []).forEach(function (impedimento) {
       const clave = impedimento.codigo + '|' + impedimento.mensaje;
@@ -642,6 +647,7 @@ async function validar(cliente, encuesta) {
     bloqueos: bloqueos,
     advertencias: advertencias,
     alertas: alertas,
+    planCuidado: planCuidado,
     /* La ficha con los derivados recompuestos: es la que debe escribirse. */
     ficha: ficha
   };

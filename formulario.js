@@ -576,10 +576,20 @@ function actualizarCondicionalesIntegrante(bloque) {
   mostrarCampo(bloque.querySelector('[data-rol="campoCintura"]'), entre(18 * 12, null));
   mostrarCampo(bloque.querySelector('[data-rol="campoSignos"]'), entre(3, 60));
   mostrarCampo(bloque.querySelector('[data-rol="campoTension"]'), entre(18 * 12, null));
+  const mayorOIgualA14 = entre(14 * 12, null);
+  const menorA14 = tieneEdad && meses < 14 * 12;
+
   mostrarCampo(bloque.querySelector('[data-rol="campoRiesgoJoven"]'), entre(14 * 12, 28 * 12 + 11));
-  mostrarCampo(bloque.querySelector('[data-rol="campoDepresiva"]'), entre(14 * 12, null));
-  mostrarCampo(bloque.querySelector('[data-rol="campoIdeacion"]'), entre(14 * 12, null));
-  mostrarCampo(bloque.querySelector('[data-rol="campoConsumo"]'), entre(14 * 12, null));
+  
+  ['campoDepresiva', 'campoIdeacion', 'campoConsumo'].forEach(function(rol) {
+    const contenedor = bloque.querySelector('[data-rol="' + rol + '"]');
+    mostrarCampo(contenedor, mayorOIgualA14);
+    if (contenedor && menorA14) {
+      Array.prototype.forEach.call(contenedor.querySelectorAll('input'), function (input) {
+        if (input.value === VALOR_NO_APLICA) autoasignar(input);
+      });
+    }
+  });
 
   // RN-108: el período indagado cambia entre adolescentes y adultos.
   const hint = bloque.querySelector('[data-rol="hintConsumo"]');
@@ -1061,9 +1071,29 @@ function recolectarBloquesRepetibles(formulario) {
   });
 
   normalizarListasVacias(formulario, datos);
+  descartarFilasVaciasDelPlan(datos);
   enrutarPlanes(datos);
 
   return datos;
+}
+
+/**
+ * Quita de cada plan las filas en las que no se escribió nada: la fila
+ * vacía que el formulario deja lista no es una acción ni un seguimiento, y
+ * el plan de cuidado puede quedar para después de guardar (RN-222, plan
+ * diferido). Lo que se persiste es sólo lo que el encuestador registró.
+ */
+function descartarFilasVaciasDelPlan(datos) {
+  const planes = [datos.planVivienda]
+    .concat(datos.planesFamilia || [], datos.planesPersona || []);
+
+  planes.forEach(function (plan) {
+    if (!plan || typeof plan !== 'object') return;
+    ['acciones', 'seguimientos'].forEach(function (coleccion) {
+      if (!Array.isArray(plan[coleccion])) return;
+      plan[coleccion] = plan[coleccion].filter(function (fila) { return !filaDePlanVacia(fila); });
+    });
+  });
 }
 
 /** Deja en [] los grupos de selección múltiple sin ninguna casilla marcada. */

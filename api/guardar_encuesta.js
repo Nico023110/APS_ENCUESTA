@@ -445,7 +445,7 @@ module.exports = async (req, res) => {
        Se hace con una conexión del pool pero fuera de la transacción: si la
        ficha no pasa, no se abre transacción alguna. */
     const validacion = await validar(cliente, req.body);
-    const { bloqueos, advertencias, alertas } = validacion;
+    const { bloqueos, advertencias, alertas, planCuidado } = validacion;
 
     if (bloqueos.length > 0) {
       /* El detalle viaja en la respuesta, pero el rechazo sólo se veía
@@ -897,7 +897,8 @@ module.exports = async (req, res) => {
 
     console.log('  Ficha guardada: ' + texto(encuesta.codigoFicha) +
       ' (id ' + fichaId + ') — ' + filasPuente + ' de selección múltiple, ' +
-      filasPlan + ' del plan, ' + filasAlerta + ' alerta(s)');
+      filasPlan + ' del plan, ' + filasAlerta + ' alerta(s)' +
+      (planCuidado && planCuidado.pendiente ? ' — plan de cuidado pendiente' : ''));
 
     res.status(200).json({
       mensaje: 'Ficha guardada',
@@ -906,7 +907,9 @@ module.exports = async (req, res) => {
       filasSeleccionMultiple: filasPuente,
       filasPlanCuidado: filasPlan,
       alertas: filasAlerta,
-      advertencias: advertencias
+      advertencias: advertencias,
+      /* RN-220 (plan diferido): la ficha entró; esto dice si aún le falta el plan. */
+      planCuidado: planCuidado
     });
   } catch (error) {
     if (cliente) {

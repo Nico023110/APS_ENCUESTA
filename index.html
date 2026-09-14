@@ -3,11 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Encuesta_APS · Sistema de recolección</title>
+<title>Encuesta APS · Red de Salud de Ladera E.S.E.</title>
+<meta name="description" content="Captura de la ficha de caracterización SI-APS por los Equipos Básicos de Salud de la Red de Salud de Ladera E.S.E.">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ccircle cx='16' cy='36' r='8' fill='%23009858'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23e02828'/%3E%3Ccircle cx='48' cy='36' r='8' fill='%230060a0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,10 +19,13 @@
 <!-- ===================== HEADER ===================== -->
 <header class="app-header">
   <div class="app-header__brand">
-    <div class="app-header__logo"><i class="ph ph-heartbeat"></i></div>
+    <a class="app-header__logo" href="#" data-goto="inicio" title="Red de Salud de Ladera E.S.E.">
+      <img src="logo-ladera.png" alt="Red de Salud de Ladera E.S.E." width="400" height="368">
+    </a>
+    <span class="app-header__divisor" aria-hidden="true"></span>
     <div class="app-header__title">
-      <h1>Encuesta_APS</h1>
-      <p>Identificación Equipos Básicos</p>
+      <span class="app-header__nombre">Encuesta APS</span>
+      <p>Caracterización SI-APS<span class="app-header__sub-largo"> · Equipos Básicos de Salud</span></p>
     </div>
   </div>
   <nav class="app-tabs" id="appTabs">
@@ -44,8 +51,8 @@
 
     <!-- Saludo y bienvenida -->
     <div class="hero-welcome">
-      <h2 class="hero-welcome__title">Bienvenido al Sistema de Encuestas APS</h2>
-      <p class="hero-welcome__subtitle">Gestiona las fichas de caracterización de los Equipos Básicos de Salud</p>
+      <h2 class="hero-welcome__title">Fichas de caracterización del territorio</h2>
+      <p class="hero-welcome__subtitle">Capture la ficha SI-APS durante la visita, revise las alertas y complete el plan de cuidado. Lo guardado sin red se sincroniza después.</p>
     </div>
 
     <div class="indicators-grid" id="indicatorsGrid">
@@ -1110,6 +1117,17 @@
           <span class="rule-tag">RN-111 a RN-140</span>
         </div>
 
+        <div class="aviso-plan-diferido">
+          <i class="ph ph-clock-countdown" aria-hidden="true"></i>
+          <div>
+            <strong>Puede diligenciarse ahora o después.</strong>
+            La ficha se guarda aunque el plan de cuidado quede vacío: aparecerá en el historial
+            marcada como <em>plan de cuidado pendiente</em> y podrá completarse desde
+            <strong>Historial → Corregir</strong> sin afectar lo ya registrado. Las filas que se dejen
+            en blanco no cuentan; las que se empiecen a llenar sí deben completarse.
+          </div>
+        </div>
+
         <div class="card card--plan" id="seccion-6-1">
           <div class="card__header">
             <h2>6.1 Cuidado de la vivienda</h2>
@@ -1470,6 +1488,23 @@
         </div>
       </div>
 
+      <div class="card card--cierre" id="tarjetaPlanCuidado">
+        <div class="card__header">
+          <h2>Plan de cuidado</h2>
+          <span class="rule-tag">RN-220 · plan diferido</span>
+        </div>
+        <div class="estado-plan estado-plan--pendiente" id="estadoPlanCuidado">
+          <i class="ph ph-clock-countdown estado-plan__icono" id="estadoPlanIcono"></i>
+          <div>
+            <span class="estado-plan__titulo" id="estadoPlanTitulo">Plan de cuidado pendiente</span>
+            <span class="estado-plan__detalle" id="estadoPlanDetalle">
+              No impide guardar. Puede registrarlo ahora en la sección 6 o después desde Historial → Corregir.
+            </span>
+          </div>
+        </div>
+        <div class="lista-pendientes-plan" id="listaPendientesPlan"></div>
+      </div>
+
       <div class="card card--cierre">
         <div class="card__header">
           <h2>Validación de completitud</h2>
@@ -1477,8 +1512,8 @@
         </div>
         <div class="lista-impedimentos" id="listaImpedimentos">
           <p class="empty-state empty-state--compacto" id="impedimentosEmptyState">
-            Al intentar guardar se listarán aquí los campos obligatorios pendientes, las familias o
-            integrantes sin caracterizar y las alertas sin conducta registrada.
+            Al intentar guardar se listarán aquí los campos obligatorios pendientes y las familias o
+            integrantes sin caracterizar. El plan de cuidado no se exige aquí: se muestra arriba.
           </p>
         </div>
 
@@ -1504,11 +1539,41 @@
         </div>
       </div>
 
-      <div class="form-actions">
+      <div class="form-actions" id="accionesFormulario">
         <button type="reset" class="btn btn--ghost" id="btnLimpiar">Limpiar formulario</button>
         <button type="submit" class="btn btn--primary" id="btnGuardar">Guardar encuesta</button>
       </div>
     </form>
+
+    <!-- ============ NAVEGADOR DE PENDIENTES ============
+         Aparece al intentar guardar con errores: permite saltar de un campo
+         pendiente al siguiente, ver la lista completa y volver a «Guardar». -->
+    <div class="nav-errores" id="navErrores" hidden>
+      <div class="nav-errores__lista" id="navErroresLista" hidden></div>
+      <div class="nav-errores__barra">
+        <button type="button" class="nav-errores__resumen" id="navErroresResumen"
+                title="Ver u ocultar la lista de pendientes" aria-expanded="false" aria-controls="navErroresLista">
+          <i class="ph ph-warning-circle nav-errores__icono" id="navErroresIcono"></i>
+          <span class="nav-errores__texto" id="navErroresTexto">0 pendientes</span>
+          <span class="nav-errores__posicion" id="navErroresPosicion"></span>
+          <i class="ph ph-caret-up nav-errores__flecha"></i>
+        </button>
+        <div class="nav-errores__botones">
+          <button type="button" class="nav-errores__btn" id="navErroresAnterior" title="Pendiente anterior (Alt + ↑)">
+            <i class="ph ph-arrow-up"></i><span>Anterior</span>
+          </button>
+          <button type="button" class="nav-errores__btn nav-errores__btn--principal" id="navErroresSiguiente" title="Siguiente pendiente (Alt + ↓)">
+            <span>Siguiente</span><i class="ph ph-arrow-down"></i>
+          </button>
+          <button type="button" class="nav-errores__btn nav-errores__btn--guardar" id="navErroresGuardar" title="Bajar hasta el botón Guardar (Alt + G)">
+            <i class="ph ph-floppy-disk"></i><span>Ir a guardar</span>
+          </button>
+          <button type="button" class="nav-errores__cerrar" id="navErroresCerrar" title="Ocultar la barra" aria-label="Ocultar la barra de pendientes">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== VISTA: HISTORIAL ===================== -->
@@ -1524,6 +1589,11 @@
           <option value="si">Con hacinamiento</option>
           <option value="no">Sin hacinamiento</option>
         </select>
+        <select id="filtroPlanCuidado">
+          <option value="">Plan de cuidado: todos</option>
+          <option value="pendiente">Plan pendiente</option>
+          <option value="registrado">Plan registrado</option>
+        </select>
         <button class="btn btn--ghost" id="btnLimpiarFiltros">Limpiar filtros</button>
       </div>
       <div class="table-wrapper">
@@ -1532,6 +1602,7 @@
             <tr>
               <th>Ficha</th>
               <th>Estado</th>
+              <th>Plan de cuidado</th>
               <th>Fecha</th>
               <th>Modificación</th>
               <th>Territorio</th>

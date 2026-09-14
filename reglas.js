@@ -329,6 +329,28 @@ function contextoIntegrante(integrante, datos) {
   };
 }
 
+/** «14 años», «7 meses» o «1 año y 3 meses», para los mensajes de RN-064. */
+function describirEdad(edad) {
+  if (!edad) return 'una edad desconocida';
+  if (edad.anios >= 2 || (edad.anios >= 1 && edad.meses === 0)) {
+    return edad.anios + (edad.anios === 1 ? ' año' : ' años');
+  }
+  if (edad.anios === 1) return '1 año y ' + edad.meses + (edad.meses === 1 ? ' mes' : ' meses');
+  return edad.totalMeses + (edad.totalMeses === 1 ? ' mes' : ' meses');
+}
+
+function describirEdadMinima(meses) {
+  return meses % 12 === 0 ? (meses / 12) + ' años o más' : meses + ' meses o más';
+}
+
+function describirRangoEdad(minMeses, maxMeses) {
+  const desde = minMeses || 0;
+  if (maxMeses === null || maxMeses === undefined) return describirEdadMinima(desde);
+  const hasta = maxMeses + 1; // el tope es inclusivo en meses: 215 => «menores de 18 años»
+  const aAnios = function (m) { return m % 12 === 0 ? (m / 12) + ' años' : m + ' meses'; };
+  return desde === 0 ? 'menores de ' + aAnios(hasta) : 'edades entre ' + aAnios(desde) + ' y menos de ' + aAnios(hasta);
+}
+
 function edadEntre(contexto, mesesMin, mesesMax) {
   if (contexto.edadMeses === null) return false;
   if (contexto.edadMeses < mesesMin) return false;
@@ -1079,17 +1101,42 @@ const REGLAS_INTEGRANTE = [
     }
   },
   {
-    // Coherencia tipo/edad para NV, RC, TI y CC — sólo advierte (trámite pendiente).
+    /* Coherencia tipo/edad para NV, RC, TI y CC, por debajo del mínimo: bloquea.
+
+       Un documento no puede existir antes de la edad a la que se expide: una
+       cédula a los 15 años o una tarjeta de identidad a los 4 no es un trámite
+       pendiente, es un dato mal digitado —el tipo o la fecha de nacimiento—.
+       Antes todo el rango se trataba como advertencia y la ficha se guardaba
+       con un menor cedulado. */
+    codigo: 'RN-064',
+    campo: 'tipoId',
+    aplica: function (i, c) {
+      return c.tipoId !== null && !c.tipoId.bloqueaEdad &&
+             c.tipoId.edadMinMeses !== null && c.tipoId.edadMinMeses > 0 && c.edadMeses !== null;
+    },
+    valida: function (i, c) { return c.edadMeses >= c.tipoId.edadMinMeses; },
+    mensaje: function (i, c) {
+      return 'El tipo ' + c.tipoId.valor + ' exige ' + describirEdadMinima(c.tipoId.edadMinMeses) +
+             ' y la fecha de nacimiento implica ' + describirEdad(c.edad) +
+             '. Corrija el tipo de documento o la fecha de nacimiento.';
+    }
+  },
+  {
+    /* Por encima del máximo sólo advierte: un niño de 8 años que aún no ha
+       tramitado la TI, o un joven de 18 que no ha renovado la CC, son casos
+       frecuentes en territorio y no deben impedir la caracterización. */
     codigo: 'RN-064',
     campo: 'tipoId',
     severidad: SEVERIDAD.ADVERTENCIA,
     aplica: function (i, c) {
       return c.tipoId !== null && !c.tipoId.bloqueaEdad &&
-             c.tipoId.edadMinMeses !== null && c.edadMeses !== null;
+             c.tipoId.edadMaxMeses !== null && c.edadMeses !== null;
     },
-    valida: function (i, c) { return edadEntre(c, c.tipoId.edadMinMeses, c.tipoId.edadMaxMeses); },
+    valida: function (i, c) { return c.edadMeses <= c.tipoId.edadMaxMeses; },
     mensaje: function (i, c) {
-      return 'El tipo ' + c.tipoId.valor + ' no corresponde a la edad calculada. Confirme si hay un trámite pendiente.';
+      return 'El tipo ' + c.tipoId.valor + ' corresponde a ' +
+             describirRangoEdad(c.tipoId.edadMinMeses, c.tipoId.edadMaxMeses) +
+             ' y la edad calculada es ' + describirEdad(c.edad) + '. Confirme si hay un trámite pendiente.';
     }
   },
   {
@@ -1790,8 +1837,14 @@ function evaluarPlan(plan, contenedor, datos, contexto, salida) {
     }
   });
 
+  /* Una fila sin nada escrito no es una acción a medias: es la fila vacía
+     que el formulario deja lista por si se necesita. Exigirle ejecutor y
+     código convertía en obligatorio todo el plan de cuidado, cuando éste
+     puede diligenciarse después de guardar (RN-222, plan diferido). Una fila
+     con algo escrito sí se valida completa. */
   const reglasAccion = reglasDeAcciones(plan.codigosAccion);
   (instancia.acciones || []).forEach(function (accion, indice) {
+    if (filaDePlanVacia(accion)) return;
     evaluarConjunto(reglasAccion, [accion, instancia, datos], {
       ruta: contexto.ruta + '.acciones[' + indice + ']',
       ambito: AMBITO.PLAN,
@@ -1801,11 +1854,21 @@ function evaluarPlan(plan, contenedor, datos, contexto, salida) {
 
   const reglasSeguimiento = reglasDeSeguimientos(plan.codigosSeguimiento);
   (instancia.seguimientos || []).forEach(function (seguimiento, indice) {
+    if (filaDePlanVacia(seguimiento)) return;
     evaluarConjunto(reglasSeguimiento, [seguimiento, instancia, datos], {
       ruta: contexto.ruta + '.seguimientos[' + indice + ']',
       ambito: AMBITO.PLAN,
       referencia: contexto.referencia
     }, salida);
+  });
+}
+
+/** Una acción o un seguimiento del plan en los que no se escribió nada. */
+function filaDePlanVacia(fila) {
+  if (!fila || typeof fila !== 'object') return true;
+  return Object.keys(fila).every(function (campo) {
+    const valor = fila[campo];
+    return Array.isArray(valor) ? valor.length === 0 : esVacio(valor);
   });
 }
 
@@ -2689,18 +2752,13 @@ function validarCierre(datos) {
     }
   });
 
-  // 5. Alertas inmediatas sin conducta registrada (RN-220)
+  /* 5. Alertas sin conducta registrada (RN-220).
+     Ya no impiden guardar: el plan de cuidado puede diligenciarse después
+     de la visita (RN-222, plan diferido). Se devuelven aparte, en
+     `planCuidado`, para que la ficha quede marcada como pendiente hasta que
+     cada alerta tenga su acción. */
   const alertas = evaluarAlertas(datos);
-  const sinAccion = verificarTrazabilidadAlertas(datos, alertas);
-  sinAccion
-    .filter(function (alerta) { return alerta.prioridad === PRIORIDAD.INMEDIATA; })
-    .forEach(function (alerta) {
-      impedimentos.push({
-        codigo: alerta.codigo, bloque: 'Plan de cuidado',
-        referencia: alerta.referencia,
-        mensaje: 'Alerta INMEDIATA sin conducta registrada: ' + alerta.titulo + '.'
-      });
-    });
+  const planCuidado = resumirPlanCuidado(datos, alertas);
 
   // 6. Georreferenciación pendiente sin motivo (RN-022)
   const sinCoordenadas = typeof datos.latitud !== 'number' || typeof datos.longitud !== 'number';
@@ -2724,22 +2782,68 @@ function validarCierre(datos) {
     }
   });
 
-  // 8. Alerta que bloquea la sincronización (RN-202)
-  const bloqueantes = sinAccion.filter(function (alerta) { return alerta.bloqueaSincronizacion; });
-  bloqueantes.forEach(function (alerta) {
-    impedimentos.push({
-      codigo: alerta.codigo, bloque: 'Salud mental',
-      referencia: alerta.referencia,
-      mensaje: 'La ficha no puede sincronizarse sin registrar la conducta ante riesgo de suicidio.'
-    });
-  });
+  /* 8. La conducta ante riesgo de suicidio (RN-202) sigue siendo obligatoria,
+     pero se exige por la misma vía que el resto del plan: la ficha queda
+     marcada como pendiente —con la alerta INMEDIATA a la vista— hasta que se
+     registre. Ver `planCuidado.pendientes`. */
 
   return {
     regla: 'RN-222',
     puedeCerrar: impedimentos.length === 0,
     impedimentos: impedimentos,
+    planCuidado: planCuidado,
     alertas: alertas,
     riesgoFamiliar: clasificarRiesgoFamiliar(datos, alertas),
     seguimientos: validarSeguimientos(datos, alertas)
+  };
+}
+
+/**
+ * Estado del plan de cuidado de una ficha (RN-220 / RN-222, plan diferido).
+ *
+ * El plan puede registrarse después de guardar la ficha, así que su ausencia
+ * no es un error sino un pendiente que la ficha lleva consigo hasta que se
+ * complete. Queda pendiente mientras no haya ninguna acción registrada en
+ * ningún plan, o mientras alguna alerta siga sin conducta.
+ */
+function resumirPlanCuidado(datos, alertas) {
+  const listaAlertas = alertas || evaluarAlertas(datos);
+  const sinAccion = verificarTrazabilidadAlertas(datos, listaAlertas);
+
+  let acciones = accionesRegistradas(datos.planVivienda);
+  (datos.familias || []).forEach(function (familia) {
+    acciones += accionesRegistradas(familia.planFamilia);
+    (familia.integrantes || []).forEach(function (integrante) {
+      acciones += accionesRegistradas(integrante.planPersona);
+    });
+  });
+
+  const pendientes = sinAccion.map(function (alerta) {
+    return {
+      codigo: alerta.codigo,
+      bloque: 'Plan de cuidado',
+      referencia: alerta.referencia || null,
+      prioridad: alerta.prioridad,
+      plan: alerta.plan,
+      ruta: alerta.ruta || null,
+      mensaje: alerta.bloqueaSincronizacion
+        ? 'Registre la conducta ante riesgo de suicidio en el plan de cuidado de la persona: ' + alerta.titulo + '.'
+        : 'Alerta ' + String(alerta.prioridad || '').toUpperCase() + ' sin conducta registrada: ' + alerta.titulo + '.'
+    };
+  });
+
+  if (acciones === 0 && pendientes.length === 0) {
+    pendientes.push({
+      codigo: 'RN-220', bloque: 'Plan de cuidado', referencia: null, prioridad: null, plan: null, ruta: null,
+      mensaje: 'No se ha registrado ninguna acción en el plan de cuidado.'
+    });
+  }
+
+  return {
+    regla: 'RN-220',
+    pendiente: acciones === 0 || sinAccion.length > 0,
+    accionesRegistradas: acciones,
+    alertasSinConducta: sinAccion.length,
+    pendientes: pendientes
   };
 }

@@ -27,6 +27,7 @@
 'use strict';
 
 const { consultar } = require('./_db');
+const { COLUMNAS_PLAN, resumenPlanDesdeFila } = require('./_plan_cuidado');
 
 /* Techo del listado. La app no pagina el historial —lo pinta entero—, así
    que sin un límite una base con años de fichas tumbaría el navegador antes
@@ -52,7 +53,8 @@ module.exports = async (req, res) => {
         h.division_territorial,
         h.direccion_normalizada   AS direccion,
         v.personas_por_habitacion,
-        v.hacinamiento
+        v.hacinamiento,
+        ${COLUMNAS_PLAN}
       FROM aps.ficha f
       JOIN aps.hogar h        ON h.id = f.hogar_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
@@ -79,7 +81,10 @@ module.exports = async (req, res) => {
           ? null : Number(fila.personas_por_habitacion),
         /* La base la guarda boolean; el resto de la app —badgeHacinamiento,
            los filtros del historial— habla en 'si'/'no', como en el formulario. */
-        hacinamiento: fila.hacinamiento === null ? null : (fila.hacinamiento ? 'si' : 'no')
+        hacinamiento: fila.hacinamiento === null ? null : (fila.hacinamiento ? 'si' : 'no'),
+        /* RN-220 (plan diferido): el historial distingue las fichas cuyo plan
+           de cuidado sigue pendiente. */
+        planCuidado: resumenPlanDesdeFila(fila)
       };
     });
 

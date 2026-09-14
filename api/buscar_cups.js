@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
              (apto_aps OR codigo LIKE 'NC-%') AS apto_aps
         FROM cat.cups
        WHERE habilitado
-         AND (codigo ILIKE $1 || '%' ESCAPE '\\' OR nombre ILIKE '%' || $1 || '%' ESCAPE '\\')
+         AND (codigo ILIKE $1 || '%.' ESCAPE '\\' OR nombre ILIKE '.%' || $1 || '%' ESCAPE '\\')
        ORDER BY (codigo ILIKE $1 || '%' ESCAPE '\\') DESC,
                 (apto_aps OR codigo LIKE 'NC-%') DESC,
                 codigo

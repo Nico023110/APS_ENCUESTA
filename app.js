@@ -1194,20 +1194,33 @@ const TITULOS_TOAST = {
   info: 'Información'
 };
 
-function mostrarNotificacion(mensaje, tipo) {
+/**
+ * `alCerrar` se ejecuta cuando el aviso ya se cerró del todo. Es el momento
+ * para desplazar la página: mientras el aviso está abierto el cuerpo no se
+ * puede desplazar, y al cerrarse devuelve el foco a donde estaba, lo que
+ * desharía cualquier salto hecho antes.
+ */
+function mostrarNotificacion(mensaje, tipo, alCerrar) {
   tipo = tipo || 'info';
-  const contenedor = document.getElementById('toastContainer');
 
-  const toast = document.createElement('div');
-  toast.className = 'toast toast--' + tipo;
-  toast.innerHTML = '<strong>' + TITULOS_TOAST[tipo] + '</strong>' + escaparHtml(mensaje);
+  /* Sin SweetAlert (pruebas en jsdom, CDN caído) el aviso no puede bloquear
+     el flujo: se deja constancia en consola y se sigue. */
+  if (typeof Swal === 'undefined') {
+    console.log('[' + TITULOS_TOAST[tipo] + '] ' + mensaje);
+    if (typeof alCerrar === 'function') setTimeout(alCerrar, 0);
+    return;
+  }
 
-  contenedor.appendChild(toast);
-
-  setTimeout(function () {
-    toast.classList.add('is-leaving');
-    setTimeout(function () { toast.remove(); }, 250);
-  }, 4200);
+  Swal.fire({
+    title: TITULOS_TOAST[tipo],
+    text: mensaje,
+    icon: tipo,
+    confirmButtonText: 'Entendido',
+    confirmButtonColor: '#0060a0',
+    background: '#ffffff',
+    color: '#1f2937',
+    didClose: typeof alCerrar === 'function' ? alCerrar : undefined
+  });
 }
 
 /* ---------------------------------------------------------
@@ -1221,6 +1234,7 @@ function cambiarVista(nombreVista) {
   document.querySelectorAll('.app-tabs__btn').forEach(function (boton) {
     boton.classList.toggle('is-active', boton.dataset.view === nombreVista);
   });
+  moverIndicadorDeTabs();
 
   if (nombreVista === 'inicio') {
     renderizarInicio();
@@ -1235,6 +1249,20 @@ function cambiarVista(nombreVista) {
   }
 }
 
+/* El indicador azul de las pestañas es un solo elemento que se desliza
+   hasta la pestaña activa, en vez de pintar y despintar cada botón. Se
+   mide en pantalla porque las etiquetas cambian de ancho con la fuente y
+   se ocultan en móvil. */
+function moverIndicadorDeTabs() {
+  const tabs = document.getElementById('appTabs');
+  const activa = tabs && tabs.querySelector('.app-tabs__btn.is-active');
+  if (!tabs || !activa) return;
+  tabs.style.setProperty('--tab-x', activa.offsetLeft + 'px');
+  tabs.style.setProperty('--tab-w', activa.offsetWidth + 'px');
+  tabs.style.setProperty('--tab-ready', '1');
+  tabs.classList.add('app-tabs--listo');
+}
+
 function inicializarNavegacion() {
   document.querySelectorAll('.app-tabs__btn').forEach(function (boton) {
     boton.addEventListener('click', function () {
@@ -1243,10 +1271,16 @@ function inicializarNavegacion() {
   });
 
   document.querySelectorAll('[data-goto]').forEach(function (elemento) {
-    elemento.addEventListener('click', function () {
+    elemento.addEventListener('click', function (evento) {
+      evento.preventDefault();
       cambiarVista(elemento.dataset.goto);
     });
   });
+
+  /* La medida depende de la fuente cargada y del ancho de la ventana. */
+  window.addEventListener('resize', moverIndicadorDeTabs);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(moverIndicadorDeTabs);
+  moverIndicadorDeTabs();
 }
 
 /* ---------------------------------------------------------
@@ -1262,11 +1296,16 @@ function calcularIndicadores(encuestas) {
     encuestas.map(function (e) { return e.territorio; }).filter(Boolean)
   );
 
+  const planPendiente = encuestas.filter(function (e) {
+    return e.planCuidado && e.planCuidado.pendiente === true;
+  }).length;
+
   return {
     totalEncuestas: encuestas.length,
     conHacinamiento: conHacinamiento,
     situacionesInminentes: situacionesInminentes,
-    territoriosCubiertos: territorios.size
+    territoriosCubiertos: territorios.size,
+    planPendiente: planPendiente
   };
 }
 
@@ -1278,7 +1317,8 @@ function renderizarIndicadores(encuestas) {
     { icono: '<i class="ph ph-files"></i>', clase: 'teal', valor: indicadores.totalEncuestas, etiqueta: 'Encuestas registradas' },
     { icono: '<i class="ph ph-bed"></i>', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento' },
     { icono: '<i class="ph ph-warning-circle"></i>', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes detectadas' },
-    { icono: '<i class="ph ph-map-pin"></i>', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' }
+    { icono: '<i class="ph ph-map-pin"></i>', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' },
+    { icono: '<i class="ph ph-clock-countdown"></i>', clase: 'amber', valor: indicadores.planPendiente, etiqueta: 'Con plan de cuidado pendiente' }
   ];
 
   contenedor.innerHTML = tarjetas.map(function (tarjeta) {
@@ -1309,6 +1349,24 @@ function badgeSincronizacion(sincronizada) {
   return sincronizada === true
     ? '<span class="badge badge--success">En la base</span>'
     : '<span class="badge badge--warning">Pendiente</span>';
+}
+
+/* RN-220 (plan diferido): distintivo del historial. Es una muestra, no un
+   error: ámbar para el pendiente, verde para el registrado, y un guion
+   cuando la fila no trae el dato (fichas anteriores a esta marca). */
+function badgePlanCuidado(encuesta) {
+  const plan = encuesta && encuesta.planCuidado;
+  if (!plan || typeof plan.pendiente !== 'boolean') return '<span class="badge badge--neutral">—</span>';
+
+  if (plan.pendiente) {
+    const detalle = plan.alertasSinConducta > 0
+      ? plan.alertasSinConducta + ' alerta(s) sin conducta'
+      : 'sin acciones registradas';
+    return '<span class="badge badge--plan-pendiente" title="' + escaparHtml(detalle) +
+      '. Complételo desde Corregir."><i class="ph ph-clock-countdown"></i>Pendiente</span>';
+  }
+  return '<span class="badge badge--plan-registrado" title="' + plan.accionesRegistradas +
+    ' acción(es) registrada(s)">Registrado</span>';
 }
 
 function badgeSituacion(valor) {
@@ -1346,13 +1404,18 @@ function renderizarInicio() {
 function obtenerEncuestasFiltradas() {
   const texto = document.getElementById('filtroTexto').value.trim().toLowerCase();
   const filtroHacinamiento = document.getElementById('filtroHacinamiento').value;
+  const filtroPlan = document.getElementById('filtroPlanCuidado').value;
 
   return obtenerEncuestasParaMostrar().filter(function (encuesta) {
     const coincideTexto = !texto || String(encuesta.codigoFicha).toLowerCase().includes(texto);
 
     const coincideHacinamiento = !filtroHacinamiento || encuesta.hacinamiento === filtroHacinamiento;
 
-    return coincideTexto && coincideHacinamiento;
+    const plan = encuesta.planCuidado;
+    const coincidePlan = !filtroPlan ||
+      (filtroPlan === 'pendiente' ? !!(plan && plan.pendiente) : !!(plan && plan.pendiente === false));
+
+    return coincideTexto && coincideHacinamiento && coincidePlan;
   });
 }
 
@@ -1395,6 +1458,7 @@ function renderizarHistorial() {
            aquí no había manera de saber cuál de todas hay que corregir. */
         '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
         '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
+        '<td data-label="Plan de cuidado">' + badgePlanCuidado(encuesta) + '</td>' +
         '<td data-label="Fecha">' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
         '<td data-label="Modificación">' + textoModificacion(encuesta) + '</td>' +
         '<td data-label="Territorio">' + textoTerritorio(encuesta) + '</td>' +
@@ -1426,9 +1490,11 @@ function renderizarHistorial() {
 function inicializarFiltrosHistorial() {
   document.getElementById('filtroTexto').addEventListener('input', renderizarHistorial);
   document.getElementById('filtroHacinamiento').addEventListener('change', renderizarHistorial);
+  document.getElementById('filtroPlanCuidado').addEventListener('change', renderizarHistorial);
   document.getElementById('btnLimpiarFiltros').addEventListener('click', function () {
     document.getElementById('filtroTexto').value = '';
     document.getElementById('filtroHacinamiento').value = '';
+    document.getElementById('filtroPlanCuidado').value = '';
     renderizarHistorial();
   });
 }
@@ -1573,9 +1639,21 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Escenarios de riesgo de accidente', valor: etiquetasDeCatalogo(CAT_RIESGOS_ACCIDENTE, encuesta.riesgosAccidente) },
       { etiqueta: 'Criaderos o reservorios de vectores', valor: textoSiNo(encuesta.vectores) },
       { etiqueta: 'Factores de contaminación', valor: etiquetasDeCatalogo(CAT_FACTORES_CONTAMINACION, encuesta.factoresContaminacion) }
+    ]) +
+    construirSeccionDetalle('Plan de cuidado (RN-220)', [
+      { etiqueta: 'Estado', valor: describirEstadoPlan(encuesta.planCuidado) },
+      { etiqueta: 'Acciones registradas', valor: encuesta.planCuidado ? encuesta.planCuidado.accionesRegistradas : null },
+      { etiqueta: 'Alertas sin conducta', valor: encuesta.planCuidado ? encuesta.planCuidado.alertasSinConducta : null }
     ]);
 
   document.getElementById('modalDetalle').hidden = false;
+}
+
+function describirEstadoPlan(plan) {
+  if (!plan || typeof plan.pendiente !== 'boolean') return null;
+  return plan.pendiente
+    ? 'Pendiente — puede completarse desde Historial → Corregir'
+    : 'Registrado';
 }
 
 function cerrarModalDetalle() {
@@ -1773,17 +1851,58 @@ function recolectarSaneamiento(fd) {
 }
 
 function limpiarErroresFormulario(formulario) {
-  formulario.querySelectorAll('.field.has-error').forEach(function (campo) {
-    campo.classList.remove('has-error');
-    const mensaje = campo.querySelector('.field-error-msg');
-    if (mensaje) mensaje.remove();
+  formulario.querySelectorAll('.has-error, .has-warning').forEach(limpiarMarcaDeCampo);
+}
+
+/** Quita de un contenedor la marca de error o de advertencia y su mensaje. */
+function limpiarMarcaDeCampo(contenedor) {
+  contenedor.classList.remove('has-error', 'has-warning');
+  contenedor.querySelectorAll('.field-error-msg, .field-warning-msg').forEach(function (aviso) {
+    aviso.remove();
   });
+}
+
+/**
+ * Traduce la ruta con la que las reglas nombran un control a la que lleva en
+ * el DOM. Coinciden salvo en los planes 6.2 y 6.3: las reglas los ven colgados
+ * de su familia o integrante (`familias[0].planFamilia.acciones[0].x`), pero
+ * en pantalla viven en su propia colección (`planesFamilia[2].acciones[0].x`)
+ * y se enlazan por el selector de familia o de integrante.
+ */
+function rutaEnPantalla(formulario, ruta) {
+  if (!ruta) return ruta;
+
+  const planFamilia = /^familias\[(\d+)\]\.planFamilia(.*)$/.exec(ruta);
+  if (planFamilia) {
+    const selector = Array.prototype.find.call(
+      formulario.querySelectorAll('[data-rol="selectorFamilia"]'),
+      function (s) { return s.value === planFamilia[1]; });
+    if (!selector) return ruta;
+    return selector.name.replace(/\.familiaRef$/, '') + planFamilia[2];
+  }
+
+  const planPersona = /^familias\[(\d+)\]\.integrantes\[(\d+)\]\.planPersona(.*)$/.exec(ruta);
+  if (planPersona) {
+    const clave = planPersona[1] + ':' + planPersona[2];
+    const selector = Array.prototype.find.call(
+      formulario.querySelectorAll('[data-rol="selectorIntegrante"]'),
+      function (s) { return s.value === clave; });
+    if (!selector) return ruta;
+    return selector.name.replace(/\.integranteRef$/, '') + planPersona[3];
+  }
+
+  return ruta;
+}
+
+/** El control que una regla señala por su ruta, o null si no hay uno con ese nombre. */
+function controlPorRuta(formulario, ruta) {
+  if (!ruta) return null;
+  return formulario.querySelector('[name="' + rutaEnPantalla(formulario, ruta) + '"]');
 }
 
 /** El contenedor donde se pinta el error de un control, buscado por su ruta. */
 function contenedorPorRuta(formulario, ruta) {
-  if (!ruta) return null;
-  const control = formulario.querySelector('[name="' + ruta + '"]');
+  const control = controlPorRuta(formulario, ruta);
   return control ? control.closest('.field, td') : null;
 }
 
@@ -1805,6 +1924,22 @@ function marcarIncumplimiento(formulario, incumplimiento) {
   return contenedor;
 }
 
+/** Igual que marcarIncumplimiento, en ámbar: la advertencia no bloquea. */
+function marcarAdvertencia(formulario, advertencia) {
+  const contenedor = contenedorPorRuta(formulario, advertencia.ruta) ||
+    formulario.querySelector('[data-campo="' + advertencia.campo + '"]');
+
+  // Un error ya visible manda sobre la advertencia.
+  if (!contenedor || contenedor.querySelector('.field-error-msg, .field-warning-msg')) return contenedor;
+
+  contenedor.classList.add('has-warning');
+  const aviso = document.createElement('span');
+  aviso.className = 'field-warning-msg';
+  aviso.textContent = advertencia.codigo + ': ' + advertencia.mensaje;
+  contenedor.appendChild(aviso);
+  return contenedor;
+}
+
 function construirEncuestaDesdeDatos(datos) {
   const resultadoCalculo = calcularHacinamiento(datos.personasEnVivienda, datos.habitacionesVivienda);
   const alertas = evaluarAlertas(datos);
@@ -1817,6 +1952,9 @@ function construirEncuestaDesdeDatos(datos) {
     hacinamiento: resultadoCalculo.hacinamiento,
     // RN-221: el nivel de riesgo se persiste para priorizar la agenda del EBS.
     riesgoFamiliar: clasificarRiesgoFamiliar(datos, alertas),
+    /* RN-220 (plan diferido): la ficha lleva consigo si su plan de cuidado
+       quedó pendiente, para distinguirla en el historial sin reevaluarla. */
+    planCuidado: resumenPlanParaGuardar(resumirPlanCuidado(datos, alertas)),
     alertas: alertas.map(function (alerta) {
       return {
         codigo: alerta.codigo, prioridad: alerta.prioridad, titulo: alerta.titulo,
@@ -1899,7 +2037,7 @@ function renderizarAlertas(alertas, sinAccion) {
     pies.push('<span class="pill-meta">Plan: ' + escaparHtml(alerta.plan) + '</span>');
     if (alerta.referencia) pies.push('<span class="pill-meta">' + escaparHtml(alerta.referencia) + '</span>');
     if (alerta.notificaSivigila) pies.push('<span class="pill-meta pill-meta--sivigila">Notificar a SIVIGILA</span>');
-    if (alerta.bloqueaSincronizacion) pies.push('<span class="pill-meta pill-meta--bloquea">Bloquea sincronización</span>');
+    if (alerta.bloqueaSincronizacion) pies.push('<span class="pill-meta pill-meta--bloquea">Conducta obligatoria</span>');
     if (pendiente) pies.push('<span class="pill-meta pill-meta--bloquea">Sin acción registrada</span>');
 
     return '<div class="alerta-item alerta-item--' + alerta.prioridad + '">' +
@@ -1912,19 +2050,89 @@ function renderizarAlertas(alertas, sinAccion) {
   }).join('');
 }
 
+/** Lo que de `resumirPlanCuidado` se persiste con la ficha. */
+function resumenPlanParaGuardar(resumen) {
+  return {
+    pendiente: resumen.pendiente,
+    accionesRegistradas: resumen.accionesRegistradas,
+    alertasSinConducta: resumen.alertasSinConducta
+  };
+}
+
+/**
+ * RN-220 (plan diferido) — Pinta el estado del plan de cuidado en el cierre.
+ * Es un pendiente, no un impedimento: la ficha se guarda igual y queda
+ * marcada hasta que el plan se complete.
+ */
+function renderizarPlanCuidado(resumen) {
+  const estado = document.getElementById('estadoPlanCuidado');
+  const lista = document.getElementById('listaPendientesPlan');
+  if (!estado || !lista) return;
+
+  const pendiente = !resumen || resumen.pendiente;
+  estado.className = 'estado-plan ' + (pendiente ? 'estado-plan--pendiente' : 'estado-plan--registrado');
+  document.getElementById('estadoPlanIcono').className =
+    'estado-plan__icono ph ' + (pendiente ? 'ph-clock-countdown' : 'ph-check-circle');
+
+  const acciones = resumen ? resumen.accionesRegistradas : 0;
+  const sinConducta = resumen ? resumen.alertasSinConducta : 0;
+  const textoAcciones = acciones === 1 ? '1 acción registrada' : acciones + ' acciones registradas';
+
+  let detalle;
+  if (!pendiente) {
+    detalle = textoAcciones + ' y todas las alertas tienen conducta.';
+  } else if (acciones === 0 && sinConducta === 0) {
+    detalle = 'No impide guardar. No hay ninguna acción registrada. ' +
+      'Puede completarlo ahora en la sección 6 o después desde Historial → Corregir.';
+  } else {
+    detalle = 'No impide guardar. ' + textoAcciones + ' y ' + sinConducta +
+      ' alerta(s) sin conducta. Puede completarlo ahora en la sección 6 o después desde Historial → Corregir.';
+  }
+
+  document.getElementById('estadoPlanTitulo').textContent = pendiente
+    ? 'Plan de cuidado pendiente' : 'Plan de cuidado registrado';
+  document.getElementById('estadoPlanDetalle').textContent = detalle;
+
+  lista.innerHTML = pendiente && resumen
+    ? resumen.pendientes.map(function (item) {
+        const referencia = item.referencia
+          ? '<span class="pill-meta">' + escaparHtml(item.referencia) + '</span>' : '';
+        const prioridad = item.prioridad
+          ? '<span class="pill-meta">' + escaparHtml(ETIQUETA_PRIORIDAD[item.prioridad] || item.prioridad) + '</span>' : '';
+        return '<div class="alerta-item alerta-item--pendiente-plan">' +
+          '<div class="alerta-item__cuerpo">' +
+            '<span class="alerta-item__titulo">' + escaparHtml(item.mensaje) + '</span>' +
+            '<div class="alerta-item__pies">' +
+              '<span class="pill-meta">' + escaparHtml(item.codigo) + '</span>' + prioridad + referencia +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '';
+}
+
+/* Los impedimentos de la lista de cierre se pintan en el orden que los devuelve
+   validarCierre, mientras que el navegador los ordena por posición; al hacer
+   clic en uno se resuelve su destino desde aquí y no por índice del navegador. */
+let ultimosImpedimentos = [];
+
 /** RN-222 — Lista los impedimentos que bloquean el cierre. */
 function renderizarImpedimentos(impedimentos) {
   const contenedor = document.getElementById('listaImpedimentos');
+  ultimosImpedimentos = impedimentos;
 
   if (impedimentos.length === 0) {
     contenedor.innerHTML = estadoVacioHtml('impedimentosEmptyState', TEXTO_SIN_IMPEDIMENTOS);
     return;
   }
 
-  contenedor.innerHTML = impedimentos.map(function (item) {
+  /* Cada impedimento es un enlace al campo que lo causa: el índice en
+     `data-pendiente` lo conecta con el navegador de pendientes. */
+  contenedor.innerHTML = impedimentos.map(function (item, indice) {
     const referencia = item.referencia
       ? '<span class="pill-meta">' + escaparHtml(item.referencia) + '</span>' : '';
-    return '<div class="alerta-item alerta-item--inmediata">' +
+    return '<div class="alerta-item alerta-item--inmediata alerta-item--enlace" role="button" tabindex="0" ' +
+        'data-pendiente="' + indice + '" title="Ir al campo">' +
       '<div class="alerta-item__cuerpo">' +
         '<span class="alerta-item__titulo">' + escaparHtml(item.mensaje) + '</span>' +
         '<div class="alerta-item__pies">' +
@@ -1933,8 +2141,523 @@ function renderizarImpedimentos(impedimentos) {
           referencia +
         '</div>' +
       '</div>' +
+      '<i class="ph ph-arrow-bend-up-left alerta-item__ir" aria-hidden="true"></i>' +
     '</div>';
   }).join('');
+}
+
+/* ---------------------------------------------------------
+   18.2 NAVEGADOR DE PENDIENTES
+   Al intentar guardar con errores aparece una barra fija al pie que recorre
+   los campos pendientes de uno en uno, lista todos y, cuando ya no queda
+   ninguno, devuelve al botón Guardar. Se recalcula con cada cambio del
+   formulario para que el conteo baje a medida que se corrige.
+   --------------------------------------------------------- */
+
+const navegadorPendientes = {
+  activo: false,       // se enciende al intentar guardar con errores
+  origen: 'local',     // 'local': reglas del navegador · 'servidor': rechazo del API
+  items: [],           // [{ destino, control, codigo, mensaje, referencia, etiqueta }]
+  indice: -1,
+  temporizador: null
+};
+
+/* Sección a la que se salta cuando un impedimento no señala un control
+   concreto (familias sin caracterizar, alertas sin conducta, etc.). */
+const SECCION_POR_BLOQUE = {
+  'Autorización': 'seccion-1',
+  ficha: 'seccion-2',
+  vivienda: 'seccion-3', Vivienda: 'seccion-3',
+  saneamiento: 'seccion-3-3',
+  familia: 'seccion-4', Familia: 'seccion-4', integrante: 'seccion-4',
+  plan: 'seccion-6', 'Plan de cuidado': 'seccion-6',
+  'Salud mental': 'seccion-6-3'
+};
+
+function bloquesDeFamilia() {
+  return document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]');
+}
+
+/** El bloque de familia que nombra una referencia («Familia 2 · Ana Pérez»). */
+function familiaPorReferencia(referencia) {
+  const coincidencia = /Familia\s+(\d+)/.exec(referencia || '');
+  return coincidencia ? bloquesDeFamilia()[parseInt(coincidencia[1], 10) - 1] || null : null;
+}
+
+/** El bloque (familia, integrante o plan) al que apunta una ruta sin control propio. */
+function bloquePorRuta(formulario, ruta) {
+  const enPantalla = rutaEnPantalla(formulario, ruta || '');
+
+  const plan = /^(planesFamilia|planesPersona)\[(\d+)\]/.exec(enPantalla);
+  if (plan) {
+    const tipo = plan[1] === 'planesFamilia' ? 'planFamilia' : 'planPersona';
+    return formulario.querySelector('[data-bloque="' + tipo + '"][data-indice="' + plan[2] + '"]');
+  }
+  if (/^planVivienda/.test(enPantalla)) return document.getElementById('seccion-6-1');
+
+  const familia = /^familias\[(\d+)\]/.exec(enPantalla);
+  if (!familia) return null;
+  const bloqueFamilia = bloquesDeFamilia()[parseInt(familia[1], 10)];
+  if (!bloqueFamilia) return null;
+
+  const integrante = /integrantes\[(\d+)\]/.exec(enPantalla);
+  if (!integrante) return bloqueFamilia;
+  return bloqueFamilia.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]')[
+    parseInt(integrante[1], 10)] || bloqueFamilia;
+}
+
+/**
+ * Resuelve a qué elemento de la pantalla lleva un impedimento. Devuelve
+ * `{ destino, control }`: `destino` es lo que se enfoca y resalta; `control`
+ * el input que recibe el foco del teclado, si lo hay.
+ */
+function destinoDePendiente(formulario, item) {
+  const control = controlPorRuta(formulario, item.ruta);
+  if (control) {
+    return { destino: control.closest('.field, td') || control, control: control };
+  }
+
+  const bloque = bloquePorRuta(formulario, item.ruta);
+  if (bloque) return { destino: bloque, control: null };
+
+  const familia = familiaPorReferencia(item.referencia);
+  switch (item.codigo) {
+    case 'RN-028': {
+      const boton = document.getElementById('btnAgregarFamilia');
+      return { destino: boton, control: boton };
+    }
+    case 'RN-051': {
+      const boton = familia && familia.querySelector('[data-accion="agregarIntegrante"]');
+      if (boton) return { destino: boton, control: boton };
+      break;
+    }
+    case 'RN-070': {
+      const casilla = familia && familia.querySelector('[name$=".sinContactoTelefonico"]');
+      if (casilla) return { destino: casilla.closest('.field') || casilla, control: casilla };
+      break;
+    }
+    case 'RN-022': {
+      const motivo = document.getElementById('campoMotivoGeo');
+      if (motivo && !motivo.hidden) {
+        return { destino: motivo, control: document.getElementById('motivoSinGeorreferenciacion') };
+      }
+      const latitud = document.getElementById('latitud');
+      if (latitud) return { destino: latitud.closest('.field') || latitud, control: null };
+      break;
+    }
+  }
+
+  if (item.campo) {
+    const porCampo = formulario.querySelector('[data-campo="' + item.campo + '"]');
+    if (porCampo) return { destino: porCampo, control: null };
+  }
+
+  if (familia) return { destino: familia, control: null };
+
+  const seccion = document.getElementById(SECCION_POR_BLOQUE[item.bloque] || 'seccion-cierre');
+  return { destino: seccion, control: null };
+}
+
+/** Texto corto con el que se presenta un pendiente en la lista. */
+function etiquetaDePendiente(destino, control) {
+  const campo = destino && destino.closest ? destino.closest('.field, td') : null;
+  if (campo) {
+    if (campo.tagName === 'TD') {
+      const columna = campo.getAttribute('data-label');
+      if (columna) return columna;
+    }
+    const etiqueta = campo.querySelector('label');
+    if (etiqueta) {
+      return etiqueta.textContent.replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim().slice(0, 90);
+    }
+  }
+  if (control && control.tagName === 'BUTTON') return control.textContent.trim();
+  if (destino && destino.matches) {
+    if (destino.matches('.section-banner')) return destino.textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
+    const titulo = destino.querySelector('summary, .card__header h2, h2, h3');
+    if (titulo) return titulo.textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
+  }
+  return '';
+}
+
+/** Compara dos nodos por su posición en el documento, para recorrer de arriba abajo. */
+function ordenEnDocumento(a, b) {
+  if (a === b) return 0;
+  return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+}
+
+/**
+ * Enciende el navegador con la lista de impedimentos dada. Cada uno se
+ * resuelve a un elemento en pantalla y se ordena de arriba abajo, que es el
+ * orden natural para corregir.
+ */
+function activarNavegadorPendientes(formulario, impedimentos, origen) {
+  navegadorPendientes.activo = true;
+  navegadorPendientes.origen = origen || 'local';
+  navegadorPendientes.indice = -1;
+  navegadorPendientes.items = (impedimentos || []).map(function (item) {
+    const resuelto = destinoDePendiente(formulario, item);
+    return {
+      destino: resuelto.destino,
+      control: resuelto.control,
+      codigo: item.codigo,
+      mensaje: item.mensaje,
+      referencia: item.referencia || null,
+      etiqueta: etiquetaDePendiente(resuelto.destino, resuelto.control)
+    };
+  }).filter(function (item) { return !!item.destino; })
+    .sort(function (a, b) { return ordenEnDocumento(a.destino, b.destino); });
+
+  renderizarNavegadorPendientes();
+}
+
+function apagarNavegadorPendientes() {
+  navegadorPendientes.activo = false;
+  navegadorPendientes.items = [];
+  navegadorPendientes.indice = -1;
+  clearTimeout(navegadorPendientes.temporizador);
+
+  const barra = document.getElementById('navErrores');
+  if (barra) barra.hidden = true;
+  desplegarListaPendientes(false);
+}
+
+function desplegarListaPendientes(abierta) {
+  const lista = document.getElementById('navErroresLista');
+  const resumen = document.getElementById('navErroresResumen');
+  if (!lista || !resumen) return;
+  lista.hidden = !abierta;
+  resumen.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+}
+
+function renderizarNavegadorPendientes() {
+  const barra = document.getElementById('navErrores');
+  if (!barra) return;
+
+  const items = navegadorPendientes.items;
+  const total = items.length;
+  const listo = total === 0;
+
+  barra.hidden = !navegadorPendientes.activo;
+  barra.classList.toggle('nav-errores--listo', listo);
+
+  const icono = document.getElementById('navErroresIcono');
+  icono.className = 'nav-errores__icono ph ' + (listo ? 'ph-check-circle' : 'ph-warning-circle');
+
+  document.getElementById('navErroresTexto').textContent = listo
+    ? 'Sin pendientes: ya puede guardar'
+    : total + (total === 1 ? ' pendiente' : ' pendientes');
+
+  document.getElementById('navErroresPosicion').textContent =
+    !listo && navegadorPendientes.indice >= 0
+      ? '· ' + (navegadorPendientes.indice + 1) + ' de ' + total : '';
+
+  document.getElementById('navErroresAnterior').disabled = listo;
+  document.getElementById('navErroresSiguiente').disabled = listo;
+
+  const lista = document.getElementById('navErroresLista');
+  if (listo) {
+    lista.innerHTML = '';
+    desplegarListaPendientes(false);
+    return;
+  }
+
+  lista.innerHTML = items.map(function (item, indice) {
+    const activo = indice === navegadorPendientes.indice ? ' is-activo' : '';
+    const referencia = item.referencia
+      ? '<span class="nav-errores__item-ref">' + escaparHtml(item.referencia) + '</span>' : '';
+    const titulo = item.etiqueta || item.codigo;
+    return '<button type="button" class="nav-errores__item' + activo + '" data-indice="' + indice + '">' +
+      '<span class="nav-errores__item-num">' + (indice + 1) + '</span>' +
+      '<span class="nav-errores__item-cuerpo">' +
+        '<span class="nav-errores__item-titulo">' + escaparHtml(titulo) + referencia + '</span>' +
+        '<span class="nav-errores__item-detalle">' + escaparHtml(item.codigo + ': ' + item.mensaje) + '</span>' +
+      '</span>' +
+    '</button>';
+  }).join('');
+}
+
+/**
+ * Hace visible un elemento: abre los bloques plegados que lo contienen y, si
+ * está dentro de un campo condicionado oculto, enciende el modo revisión.
+ */
+function revelarElemento(elemento) {
+  let nodo = elemento;
+  let oculto = false;
+  while (nodo && nodo !== document.body) {
+    if (nodo.tagName === 'DETAILS' && !nodo.open) nodo.open = true;
+    if (nodo.hidden) oculto = true;
+    nodo = nodo.parentElement;
+  }
+
+  if (oculto) {
+    const interruptor = document.getElementById('modoRevision');
+    if (interruptor && !interruptor.checked) {
+      interruptor.checked = true;
+      interruptor.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+}
+
+/** Lleva la vista hasta un elemento, lo destaca y le da el foco. */
+function enfocarElemento(destino, control) {
+  if (!destino) return;
+  revelarElemento(destino);
+
+  if (typeof destino.scrollIntoView === 'function') {
+    destino.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  destino.classList.remove('is-error-foco');
+  void destino.offsetWidth; // reinicia la animación si se salta dos veces al mismo campo
+  destino.classList.add('is-error-foco');
+  setTimeout(function () { destino.classList.remove('is-error-foco'); }, 1700);
+
+  const objetivo = control || (destino.matches && destino.matches('input, select, textarea, button')
+    ? destino
+    : destino.querySelector && destino.querySelector('input:not([type="hidden"]), select, textarea'));
+  if (objetivo && typeof objetivo.focus === 'function' && !objetivo.disabled) {
+    try { objetivo.focus({ preventScroll: true }); } catch (e) { objetivo.focus(); }
+  }
+}
+
+function irAPendiente(indice) {
+  const items = navegadorPendientes.items;
+  if (items.length === 0) return;
+
+  navegadorPendientes.indice = ((indice % items.length) + items.length) % items.length;
+  const item = items[navegadorPendientes.indice];
+  enfocarElemento(item.destino, item.control);
+  renderizarNavegadorPendientes();
+}
+
+function irAlSiguientePendiente() {
+  irAPendiente(navegadorPendientes.indice + 1);
+}
+
+function irAlPendienteAnterior() {
+  irAPendiente(navegadorPendientes.indice <= 0 ? -1 : navegadorPendientes.indice - 1);
+}
+
+function irAGuardar() {
+  desplegarListaPendientes(false);
+  const acciones = document.getElementById('accionesFormulario');
+  const boton = document.getElementById('btnGuardar');
+  enfocarElemento(acciones || boton, boton);
+}
+
+/**
+ * Vuelve a evaluar la ficha tras un cambio y refresca marcas, resumen de
+ * cierre y navegador. Sólo aplica a los errores locales: los que señaló el
+ * servidor no pueden recalcularse aquí, así que en ese caso se retira la
+ * marca del campo tocado y se confía en el siguiente envío.
+ */
+function refrescarPendientesTrasCambio(formulario, objetivo) {
+  if (!navegadorPendientes.activo) return;
+
+  if (navegadorPendientes.origen === 'servidor') {
+    const contenedor = objetivo && objetivo.closest ? objetivo.closest('.has-error') : null;
+    if (!contenedor) return;
+    contenedor.classList.remove('has-error');
+    const aviso = contenedor.querySelector('.field-error-msg');
+    if (aviso) aviso.remove();
+    navegadorPendientes.items = navegadorPendientes.items.filter(function (item) {
+      return item.destino !== contenedor && !contenedor.contains(item.destino);
+    });
+    if (navegadorPendientes.indice >= navegadorPendientes.items.length) navegadorPendientes.indice = -1;
+    renderizarNavegadorPendientes();
+    return;
+  }
+
+  const posicionActual = navegadorPendientes.items[navegadorPendientes.indice];
+  const datos = recolectarDatosFormulario(formulario);
+
+  limpiarErroresFormulario(formulario);
+  validarReglas(datos).forEach(function (incumplimiento) {
+    marcarIncumplimiento(formulario, incumplimiento);
+  });
+  evaluarAdvertencias(datos).forEach(function (advertencia) {
+    marcarAdvertencia(formulario, advertencia);
+  });
+
+  const cierre = validarCierre(datos);
+  renderizarImpedimentos(cierre.impedimentos);
+  renderizarPlanCuidado(cierre.planCuidado);
+  activarNavegadorPendientes(formulario, cierre.impedimentos, 'local');
+
+  /* Conserva la posición para que «Siguiente» avance desde donde el
+     encuestador está y no vuelva al principio: si el campo corregido ya no
+     está en la lista, se queda justo antes del que le seguía. */
+  if (posicionActual) {
+    const items = navegadorPendientes.items;
+    let indice = items.findIndex(function (item) { return item.destino === posicionActual.destino; });
+    if (indice === -1) {
+      const siguiente = items.findIndex(function (item) {
+        return ordenEnDocumento(posicionActual.destino, item.destino) < 0;
+      });
+      indice = (siguiente === -1 ? items.length : siguiente) - 1;
+    }
+    navegadorPendientes.indice = indice;
+    renderizarNavegadorPendientes();
+  }
+}
+
+function programarRefrescoDePendientes(formulario, objetivo) {
+  if (!navegadorPendientes.activo) return;
+  clearTimeout(navegadorPendientes.temporizador);
+  navegadorPendientes.temporizador = setTimeout(function () {
+    refrescarPendientesTrasCambio(formulario, objetivo);
+  }, 120);
+}
+
+/* ---------------------------------------------------------
+   18.3 VALIDACIÓN EN VIVO
+   Mientras se diligencia, cada campo que el encuestador ya tocó se valida
+   con el mismo motor que corre al guardar (reglas.js): el aviso aparece al
+   confirmar el dato y desaparece en cuanto se corrige. Los campos que aún
+   no ha tocado se dejan en paz hasta que intente guardar, para no llenar
+   de rojo un formulario que apenas empieza.
+
+   Es lo que hace que una cédula en un menor de edad (RN-064) se vea al
+   momento de digitar la fecha de nacimiento, y no al final de la visita.
+   --------------------------------------------------------- */
+
+const validacionEnVivo = { tocados: new Set(), temporizador: null };
+
+function registrarCampoTocado(control) {
+  const nombre = control && control.getAttribute ? control.getAttribute('name') : null;
+  if (nombre) validacionEnVivo.tocados.add(nombre);
+}
+
+function olvidarCamposTocados() {
+  validacionEnVivo.tocados.clear();
+  clearTimeout(validacionEnVivo.temporizador);
+}
+
+function validarEnVivo(formulario) {
+  /* Tras intentar guardar, el navegador de pendientes ya repinta el
+     formulario entero con cada cambio; aquí no hay nada que añadir. */
+  if (navegadorPendientes.activo) return;
+  if (validacionEnVivo.tocados.size === 0) return;
+
+  const datos = recolectarDatosFormulario(formulario);
+  const incumplimientos = validarReglas(datos);
+  const advertencias = evaluarAdvertencias(datos);
+
+  validacionEnVivo.tocados.forEach(function (nombre) {
+    const contenedor = contenedorPorRuta(formulario, nombre);
+    // Un control tocado que ya no existe (bloque eliminado) se olvida.
+    if (!contenedor) { validacionEnVivo.tocados.delete(nombre); return; }
+    limpiarMarcaDeCampo(contenedor);
+  });
+
+  const tocado = function (item) {
+    return validacionEnVivo.tocados.has(rutaEnPantalla(formulario, item.ruta));
+  };
+  incumplimientos.filter(tocado).forEach(function (incumplimiento) {
+    marcarIncumplimiento(formulario, incumplimiento);
+  });
+  advertencias.filter(tocado).forEach(function (advertencia) {
+    marcarAdvertencia(formulario, advertencia);
+  });
+}
+
+function programarValidacionEnVivo(formulario) {
+  clearTimeout(validacionEnVivo.temporizador);
+  validacionEnVivo.temporizador = setTimeout(function () { validarEnVivo(formulario); }, 150);
+}
+
+function inicializarValidacionEnVivo() {
+  const formulario = document.getElementById('encuestaForm');
+  if (!formulario) return;
+
+  // Al confirmar un dato (salir del campo, elegir una opción) se valida.
+  formulario.addEventListener('change', function (evento) {
+    registrarCampoTocado(evento.target);
+    programarValidacionEnVivo(formulario);
+  });
+
+  /* Mientras se escribe sólo se revalida lo que ya está marcado: así el aviso
+     desaparece en cuanto el dato queda bien, sin aparecer antes de terminar
+     de escribirlo. */
+  formulario.addEventListener('input', function (evento) {
+    const marcado = evento.target.closest ? evento.target.closest('.has-error, .has-warning') : null;
+    if (marcado) programarValidacionEnVivo(formulario);
+  });
+
+  formulario.addEventListener('reset', olvidarCamposTocados);
+}
+
+function inicializarNavegadorPendientes() {
+  const formulario = document.getElementById('encuestaForm');
+  const barra = document.getElementById('navErrores');
+  if (!formulario || !barra) return;
+
+  document.getElementById('navErroresSiguiente').addEventListener('click', irAlSiguientePendiente);
+  document.getElementById('navErroresAnterior').addEventListener('click', irAlPendienteAnterior);
+  document.getElementById('navErroresGuardar').addEventListener('click', irAGuardar);
+  document.getElementById('navErroresCerrar').addEventListener('click', apagarNavegadorPendientes);
+
+  document.getElementById('navErroresResumen').addEventListener('click', function () {
+    const lista = document.getElementById('navErroresLista');
+    if (navegadorPendientes.items.length === 0) return;
+    desplegarListaPendientes(lista.hidden);
+  });
+
+  document.getElementById('navErroresLista').addEventListener('click', function (evento) {
+    const item = evento.target.closest('[data-indice]');
+    if (!item) return;
+    desplegarListaPendientes(false);
+    irAPendiente(parseInt(item.dataset.indice, 10));
+  });
+
+  // El mensaje rojo bajo un campo y los impedimentos del cierre llevan al campo.
+  formulario.addEventListener('click', function (evento) {
+    const aviso = evento.target.closest('.field-error-msg');
+    if (aviso) {
+      const contenedor = aviso.closest('.has-error') || aviso.parentElement;
+      enfocarElemento(contenedor, null);
+      return;
+    }
+
+    const impedimento = evento.target.closest('[data-pendiente]');
+    if (impedimento) irAImpedimento(formulario, parseInt(impedimento.dataset.pendiente, 10));
+  });
+
+  formulario.addEventListener('keydown', function (evento) {
+    if (evento.key !== 'Enter' && evento.key !== ' ') return;
+    const impedimento = evento.target.closest ? evento.target.closest('[data-pendiente]') : null;
+    if (!impedimento) return;
+    evento.preventDefault();
+    irAImpedimento(formulario, parseInt(impedimento.dataset.pendiente, 10));
+  });
+
+  /* Cada cambio confirmado (change: al salir de un texto, al marcar una
+     opción) recalcula el conteo, para que baje a medida que se corrige. */
+  formulario.addEventListener('change', function (evento) {
+    programarRefrescoDePendientes(formulario, evento.target);
+  });
+
+  // Atajos: Alt + ↓ siguiente, Alt + ↑ anterior, Alt + G ir a guardar.
+  document.addEventListener('keydown', function (evento) {
+    if (!navegadorPendientes.activo || !evento.altKey || barra.hidden) return;
+    if (evento.key === 'ArrowDown') { evento.preventDefault(); irAlSiguientePendiente(); }
+    else if (evento.key === 'ArrowUp') { evento.preventDefault(); irAlPendienteAnterior(); }
+    else if (evento.key === 'g' || evento.key === 'G') { evento.preventDefault(); irAGuardar(); }
+  });
+}
+
+function irAImpedimento(formulario, indice) {
+  const item = ultimosImpedimentos[indice];
+  if (!item) return;
+  const resuelto = destinoDePendiente(formulario, item);
+  enfocarElemento(resuelto.destino, resuelto.control);
+
+  const posicion = navegadorPendientes.items.findIndex(function (p) { return p.destino === resuelto.destino; });
+  if (posicion !== -1) {
+    navegadorPendientes.indice = posicion;
+    renderizarNavegadorPendientes();
+  }
 }
 
 /** Evalúa y pinta el estado completo de la ficha sin guardarla. */
@@ -1944,6 +2667,7 @@ function actualizarTableroDeRiesgo(datos) {
 
   renderizarSemaforo(clasificarRiesgoFamiliar(datos, alertas));
   renderizarAlertas(alertas, sinAccion);
+  renderizarPlanCuidado(resumirPlanCuidado(datos, alertas));
 
   // RN-022: el motivo sólo se pide cuando falta la georreferenciación.
   const faltaGeo = typeof datos.latitud !== 'number' || typeof datos.longitud !== 'number';
@@ -1965,8 +2689,9 @@ async function manejarEnvioFormulario(evento) {
   // que quede registrado el motivo, y no entra al denominador de cobertura.
   if (datos.visitaIncompleta) {
     if (esVacioTexto(datos.motivoVisitaIncompleta)) {
-      mostrarNotificacion('Registre el motivo del cierre por causa externa.', 'error');
-      document.getElementById('campoMotivoIncompleta').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      mostrarNotificacion('Registre el motivo del cierre por causa externa.', 'error', function () {
+        enfocarElemento(document.getElementById('campoMotivoIncompleta'), document.getElementById('motivoVisitaIncompleta'));
+      });
       return;
     }
     await guardarYReiniciar(datos, formulario, 'La visita se guardó como incompleta por causa externa.');
@@ -1978,33 +2703,43 @@ async function manejarEnvioFormulario(evento) {
 
   renderizarImpedimentos(resultadoCierre.impedimentos);
 
+  incumplimientos.forEach(function (incumplimiento) {
+    marcarIncumplimiento(formulario, incumplimiento);
+  });
+  /* Las advertencias se pintan en ámbar junto al campo; no impiden guardar.
+     Van después de los errores: donde ya hay uno, el error manda. */
+  const advertencias = evaluarAdvertencias(datos);
+  advertencias.forEach(function (advertencia) {
+    marcarAdvertencia(formulario, advertencia);
+  });
+
   if (incumplimientos.length > 0) {
-    let primerContenedor = null;
-    incumplimientos.forEach(function (incumplimiento) {
-      const contenedor = marcarIncumplimiento(formulario, incumplimiento);
-      if (!primerContenedor && contenedor) primerContenedor = contenedor;
-    });
-
-    if (primerContenedor) primerContenedor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
+    /* La barra de pendientes recorre todos los impedimentos (los de reglas y
+       los de cierre) de arriba abajo. El salto al primero espera a que se
+       cierre el aviso: mientras está abierto la página no puede desplazarse. */
+    activarNavegadorPendientes(formulario, resultadoCierre.impedimentos, 'local');
     mostrarNotificacion(
-      'Se encontraron ' + incumplimientos.length + ' incumplimientos de reglas de negocio. Revise los campos marcados.',
-      'error'
+      'Se encontraron ' + incumplimientos.length + ' incumplimientos de reglas de negocio. ' +
+      'Use la barra inferior para ir de un pendiente al siguiente.',
+      'error',
+      function () { irAPendiente(0); }
     );
     return;
   }
 
   if (!resultadoCierre.puedeCerrar) {
-    document.getElementById('seccion-cierre').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    activarNavegadorPendientes(formulario, resultadoCierre.impedimentos, 'local');
     mostrarNotificacion(
       'La ficha no puede cerrarse: ' + resultadoCierre.impedimentos.length +
-      ' impedimento(s) pendiente(s). Revise el resumen de cierre.',
-      'error'
+      ' impedimento(s) pendiente(s). Use la barra inferior para ir a cada uno.',
+      'error',
+      function () { irAPendiente(0); }
     );
     return;
   }
 
-  const advertencias = evaluarAdvertencias(datos);
+  apagarNavegadorPendientes();
+
   if (advertencias.length > 0) {
     mostrarNotificacion(
       advertencias.length + ' advertencia(s) registrada(s): ' + advertencias[0].mensaje,
@@ -2048,6 +2783,12 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
   }
 
   encuesta.sincronizada = resultado.estado === 'guardada';
+
+  /* El plan diferido no es error: se avisa una vez, al guardar, dónde se
+     completa después. */
+  if (encuesta.planCuidado && encuesta.planCuidado.pendiente) {
+    mensaje += ' El plan de cuidado quedó pendiente: puede completarlo desde Historial → Corregir.';
+  }
 
   /* Corrigiendo se reemplaza la ficha existente; capturando se agrega una
      nueva. Sin esta distinción, arreglar un dato dejaría dos copias de la
@@ -2154,11 +2895,9 @@ function mostrarBloqueosDelServidor(formulario, bloqueos) {
     };
   }));
 
-  let primerControl = null;
-
   lista.forEach(function (b) {
     if (!b.ruta) return;
-    const control = formulario.querySelector('[name="' + b.ruta + '"]');
+    const control = controlPorRuta(formulario, b.ruta);
     if (!control) return;
 
     const contenedor = control.closest('.field, td');
@@ -2169,23 +2908,36 @@ function mostrarBloqueosDelServidor(formulario, bloqueos) {
       aviso.textContent = (b.codigo || 'BD') + ': ' + b.mensaje;
       contenedor.appendChild(aviso);
     }
-    if (!primerControl) primerControl = control;
   });
 
-  if (primerControl) {
-    primerControl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } else {
-    document.getElementById('seccion-cierre').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  activarNavegadorPendientes(formulario, lista.map(function (b) {
+    return {
+      codigo: b.codigo || 'BD',
+      mensaje: b.mensaje,
+      bloque: b.ambito || null,
+      ruta: b.ruta || null,
+      referencia: b.referencia || null
+    };
+  }), 'servidor');
 
   mostrarNotificacion(
     'El servidor no aceptó la ficha: ' + lista.length + ' campo(s) por corregir. ' +
-    'Revise lo señalado en rojo.', 'error');
+    'Use la barra inferior para ir a cada uno.', 'error',
+    function () {
+      if (navegadorPendientes.items.length > 0) {
+        irAPendiente(0);
+      } else {
+        document.getElementById('seccion-cierre').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  );
 }
 
 function reiniciarEstadoFormulario() {
   const formulario = document.getElementById('encuestaForm');
   limpiarErroresFormulario(formulario);
+  apagarNavegadorPendientes();
+  olvidarCamposTocados();
   aplicarBloqueoPorConsentimiento();
   actualizarAlertaSituacionInminente();
   actualizarMicroterritorios();
@@ -2215,6 +2967,7 @@ function reiniciarEstadoFormulario() {
   renderizarSemaforo(clasificarRiesgoFamiliar(vacio, []));
   renderizarAlertas([], []);
   renderizarImpedimentos([]);
+  renderizarPlanCuidado(resumirPlanCuidado(vacio, []));
   document.getElementById('campoMotivoIncompleta').hidden = true;
 }
 
@@ -2351,6 +3104,8 @@ function inicializarAplicacion() {
   inicializarFormularioDinamico();
   inicializarBuscadorCups();
   inicializarCierreIncompleto();
+  inicializarNavegadorPendientes();
+  inicializarValidacionEnVivo();
   retirarDatosDemostracion();
   inicializarNavegacion();
   inicializarFiltrosHistorial();
@@ -2369,7 +3124,6 @@ function inicializarAplicacion() {
     renderizarHistorial();
   });
 
-  mostrarNotificacion('Bienvenido a Encuesta_APS. Se cargaron datos de demostración.', 'info');
 }
 
 document.addEventListener('DOMContentLoaded', inicializarAplicacion);

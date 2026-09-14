@@ -321,8 +321,12 @@ check('Semáforo en riesgo alto', $('#semaforoEtiqueta').textContent === 'Riesgo
 check('Conteo de inmediatas mayor a cero', Number($('#conteoInmediatas').textContent) > 0);
 check('La alerta muestra la etiqueta de SIVIGILA',
   $('#listaAlertas').innerHTML.indexOf('SIVIGILA') !== -1);
-check('La alerta muestra que bloquea la sincronización',
-  $('#listaAlertas').innerHTML.indexOf('Bloquea sincronización') !== -1);
+check('La alerta muestra que la conducta es obligatoria (RN-202)',
+  $('#listaAlertas').innerHTML.indexOf('Conducta obligatoria') !== -1);
+check('El plan de cuidado se muestra como pendiente, no como impedimento',
+  $('#estadoPlanCuidado').classList.contains('estado-plan--pendiente') &&
+  $('#listaPendientesPlan').innerHTML.indexOf('RN-202') !== -1 &&
+  $('#listaImpedimentos').innerHTML.indexOf('conducta ante riesgo de suicidio') === -1);
 
 /* De aquí al final se espera el guardado, que pasa por el servidor. */
 function esperarUnTurno() { return new Promise(function (r) { setTimeout(r, 0); }); }
@@ -354,7 +358,56 @@ async function cerrarPruebas() {
     nueva && JSON.stringify(nueva.riesgoFamiliar));
   check('Se persistieron las alertas', nueva && nueva.alertas.length > 0);
   
-  console.log('\n=== 14. Sin errores de JS en toda la sesión ===');
+  console.log('\n=== 14. Validación en vivo de los integrantes (RN-062 a RN-064) ===');
+  /* Después de guardar, el formulario queda limpio y sin campos «tocados»:
+     nada debe estar en rojo hasta que el encuestador confirme un dato. */
+  function esperarValidacionEnVivo() { return new Promise(function (r) { setTimeout(r, 250); }); }
+  const famVivo = $('#contenedorFamilias > [data-bloque="familia"]');
+  const intVivo = famVivo.querySelector('[data-bloque="integrante"]');
+  const campoTipo = intVivo.querySelector('[data-campo="tipoId"]');
+  const campoNumero = intVivo.querySelector('[data-campo="numeroId"]');
+  check('Tras reiniciar no hay campos marcados', $$('.has-error, .has-warning').length === 0,
+    String($$('.has-error, .has-warning').length));
+
+  setVal('#fechaDiligenciamiento', '2026-08-12');
+  marcar('.tipoId', 'CC', intVivo);
+  await esperarValidacionEnVivo();
+  check('Elegir CC sin fecha de nacimiento aún no marca nada', !campoTipo.classList.contains('has-error'));
+
+  setVal(intVivo.querySelector('[data-rol="fechaNacimiento"]'), '2011-05-10');
+  await esperarValidacionEnVivo();
+  check('CC + fecha de un menor => error RN-064 en vivo sobre el tipo de documento',
+    campoTipo.classList.contains('has-error') &&
+    campoTipo.querySelector('.field-error-msg') !== null &&
+    /RN-064/.test(campoTipo.querySelector('.field-error-msg').textContent),
+    campoTipo.querySelector('.field-error-msg') && campoTipo.querySelector('.field-error-msg').textContent);
+
+  setVal(intVivo.querySelector('[data-rol="fechaNacimiento"]'), '1990-02-10');
+  await esperarValidacionEnVivo();
+  check('Corregir la fecha retira el error sin volver a guardar', !campoTipo.classList.contains('has-error'));
+
+  marcar('.tipoId', 'TI', intVivo);
+  await esperarValidacionEnVivo();
+  check('TI en un adulto => advertencia en ámbar, no error',
+    campoTipo.classList.contains('has-warning') && !campoTipo.classList.contains('has-error') &&
+    /trámite pendiente/.test(campoTipo.querySelector('.field-warning-msg').textContent));
+
+  const inputNumero = campoNumero.querySelector('input');
+  setVal(inputNumero, '12');
+  await esperarValidacionEnVivo();
+  check('Número de documento corto => error RN-063 al confirmar el campo',
+    campoNumero.classList.contains('has-error'));
+
+  /* Mientras se escribe, un campo ya marcado se revalida sin esperar al change. */
+  inputNumero.value = '1144099887';
+  inputNumero.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await esperarValidacionEnVivo();
+  check('Al terminar de escribir un número válido el error desaparece', !campoNumero.classList.contains('has-error'));
+
+  const campoNombre = intVivo.querySelector('[data-campo="primerNombre"]');
+  check('Un campo que no se ha tocado sigue sin marcar', !!campoNombre && !campoNombre.classList.contains('has-error'));
+
+  console.log('\n=== 15. Sin errores de JS en toda la sesión ===');
   check('Ningún error capturado', errores.length === 0, errores.join(' | '));
   
   console.log('\n---------------------------------------------');

@@ -149,6 +149,36 @@ verificar('TI en un adulto => advertencia, no bloqueo',
   validarReglas(datosTI).filter(e => e.codigo === 'RN-064').length === 0 &&
   evaluarAdvertencias(datosTI).some(e => e.codigo === 'RN-064'));
 
+/* Por debajo de la edad mínima del documento no hay trámite pendiente que
+   valga: el documento aún no puede existir. */
+const menorConCC = familiaValida([Object.assign(adultaValida(), {
+  tipoId: 'CC', numeroId: '1144099887', fechaNacimiento: '2011-05-10'
+})]);
+const datosCC = Object.assign(fichaBase(), { familias: [menorConCC] });
+const bloqueoCC = validarReglas(datosCC).find(e => e.codigo === 'RN-064' && e.campo === 'tipoId');
+verificar('CC en un menor de edad => bloqueo RN-064 sobre tipoId', !!bloqueoCC,
+  JSON.stringify(validarReglas(datosCC).map(e => e.codigo + ':' + e.campo)));
+verificar('  el mensaje nombra la edad exigida y la calculada',
+  !!bloqueoCC && /18 años o más/.test(bloqueoCC.mensaje) && /15 años/.test(bloqueoCC.mensaje),
+  bloqueoCC && bloqueoCC.mensaje);
+verificar('  y no se duplica como advertencia',
+  evaluarAdvertencias(datosCC).filter(e => e.codigo === 'RN-064').length === 0);
+
+const ninoConTI = familiaValida([Object.assign(adultaValida(), {
+  tipoId: 'TI', numeroId: '1144099887', fechaNacimiento: '2022-05-10'
+})]);
+verificar('TI a los 4 años => bloqueo RN-064',
+  validarReglas(Object.assign(fichaBase(), { familias: [ninoConTI] }))
+    .some(e => e.codigo === 'RN-064' && e.campo === 'tipoId'));
+
+const recienCedulado = familiaValida([Object.assign(adultaValida(), {
+  tipoId: 'CC', numeroId: '1144099887',
+  fechaNacimiento: iso(new Date(HOY.getFullYear() - 18, HOY.getMonth(), HOY.getDate()))
+})]);
+verificar('CC el día que cumple 18 => sin incumplimiento ni advertencia',
+  validarReglas(Object.assign(fichaBase(), { familias: [recienCedulado] })).filter(e => e.codigo === 'RN-064').length === 0 &&
+  evaluarAdvertencias(Object.assign(fichaBase(), { familias: [recienCedulado] })).filter(e => e.codigo === 'RN-064').length === 0);
+
 console.log('\n=== 5. RN-087 — Matriz de tamizajes por edad y sexo ===');
 const paraMujer30 = atencionesRpmsExigibles(30 * 12, 'mujer', false).map(a => a.valor);
 const paraHombre55 = atencionesRpmsExigibles(55 * 12, 'hombre', false).map(a => a.valor);
@@ -274,9 +304,47 @@ verificar('Ficha completa y sin riesgo => puede cerrar', cierreLimpio.puedeCerra
   JSON.stringify(cierreLimpio.impedimentos.map(i => i.codigo + ': ' + i.mensaje)));
 verificar('Sin alertas => "Sin riesgo identificado"', cierreLimpio.riesgoFamiliar.nivel === 'sin_riesgo');
 
+/* Plan de cuidado diferido: la ficha se guarda sin plan y queda marcada como
+   pendiente; la conducta ante riesgo de suicidio se exige por esa vía. */
 const cierreConSuicidio = validarCierre(Object.assign(fichaBase(), { familias: [conSuicidio] }));
-verificar('Riesgo suicida sin plan => no puede cerrar', cierreConSuicidio.puedeCerrar === false);
+verificar('Riesgo suicida sin plan => puede guardar (plan diferido)', cierreConSuicidio.puedeCerrar === true,
+  JSON.stringify(cierreConSuicidio.impedimentos.map(i => i.codigo + ': ' + i.mensaje)));
+verificar('Riesgo suicida sin plan => plan de cuidado pendiente',
+  cierreConSuicidio.planCuidado.pendiente === true && cierreConSuicidio.planCuidado.alertasSinConducta > 0);
+verificar('El pendiente nombra la conducta ante riesgo de suicidio',
+  cierreConSuicidio.planCuidado.pendientes.some(p => p.codigo === 'RN-202' && /suicidio/.test(p.mensaje)));
 verificar('Riesgo suicida => semáforo en riesgo alto', cierreConSuicidio.riesgoFamiliar.nivel === 'alto');
+
+verificar('Ficha sin alertas y sin acciones => plan pendiente (sin acciones registradas)',
+  cierreLimpio.planCuidado.pendiente === true && cierreLimpio.planCuidado.accionesRegistradas === 0 &&
+  cierreLimpio.planCuidado.pendientes.length === 1);
+
+const planVacio = {
+  codigoEbs: 'EBS001', codigoVivienda: 'HOG-001',
+  acciones: [{ ejecutorTipoId: null, ejecutorNumeroId: '', codigoAccion: null, procedimientoRealizado: '' }],
+  seguimientos: [{ seguimientoTipoId: '', seguimientoNumeroId: null, accionConcertada: null, seg1Fecha: null, seg1Estado: null }]
+};
+const conFilaVacia = Object.assign(fichaBase(), { planVivienda: planVacio });
+errores = validarReglas(conFilaVacia);
+verificar('Fila vacía del plan => no genera incumplimientos', errores.length === 0,
+  JSON.stringify(errores.map(e => e.codigo + ':' + e.ruta)));
+
+const filaAMedias = Object.assign(fichaBase(), { planVivienda: Object.assign({}, planVacio, {
+  acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: null }]
+}) });
+errores = validarReglas(filaAMedias);
+verificar('Fila del plan a medias => sí se exige completarla', errores.some(e => e.codigo === 'RN-114'),
+  JSON.stringify(errores.map(e => e.codigo)));
+
+const conPlan = Object.assign(fichaBase(), { familias: [familiaValida([adultaValida()])], planVivienda: Object.assign({}, planVacio, {
+  acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: '890201', tipoRespuesta: 'en_sitio' }],
+  seguimientos: []
+}) });
+const cierreConPlan = validarCierre(conPlan);
+verificar('Ficha con una acción y sin alertas => plan registrado',
+  cierreConPlan.puedeCerrar && cierreConPlan.planCuidado.pendiente === false &&
+  cierreConPlan.planCuidado.accionesRegistradas === 1,
+  JSON.stringify(cierreConPlan.impedimentos.map(i => i.codigo + ': ' + i.mensaje)));
 verificar('Riesgo alto => seguimiento a 30 días con gestor de caso',
   cierreConSuicidio.riesgoFamiliar.diasSeguimiento === 30 && cierreConSuicidio.riesgoFamiliar.gestorDeCaso);
 

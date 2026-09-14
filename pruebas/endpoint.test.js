@@ -599,6 +599,63 @@ async function correrPruebas() {
       rp.estado === 400, 'estado ' + rp.estado);
     verificar('  señala seguimientoNumeroId', bloqueoEn(rp.cuerpo, 'seguimientoNumeroId'));
 
+    console.log('\n=== 12. Plan de cuidado diferido (RN-220 / RN-222) ===');
+
+    /* La ficha entra sin plan: la fila vacía que deja el formulario no cuenta
+       como acción, y una alerta INMEDIATA sin conducta ya no bloquea. Queda
+       marcada como pendiente, y el historial lo dice. */
+    const sinPlan = fichaValida(sello + 'p');
+    sinPlan.familias[0].integrantes[0].ideacionSuicida = 'ha_pensado';   // RN-202, INMEDIATA
+    sinPlan.planVivienda = {
+      codigoEbs: sinPlan.equipoSaludId, codigoVivienda: sinPlan.idHogar,
+      acciones: [{ ejecutorTipoId: null, ejecutorNumeroId: '', codigoAccion: null, procedimientoRealizado: '' }],
+      seguimientos: [{ seguimientoTipoId: '', seguimientoNumeroId: null, accionConcertada: null }]
+    };
+    rp = await enviar(sinPlan);
+    verificar('Riesgo suicida sin plan y con fila vacía => 200', rp.estado === 200,
+      'estado ' + rp.estado + ' ' + JSON.stringify(rp.cuerpo).slice(0, 250));
+    verificar('  la respuesta marca el plan como pendiente',
+      rp.cuerpo.planCuidado && rp.cuerpo.planCuidado.pendiente === true &&
+      rp.cuerpo.planCuidado.alertasSinConducta === 1,
+      JSON.stringify(rp.cuerpo.planCuidado));
+
+    const listado = await fetch(BASE + '/api/listar_fichas').then(function (r) { return r.json(); });
+    const filaSinPlan = (Array.isArray(listado) ? listado : []).find(function (f) {
+      return f.codigoFicha === 'F-TEST-' + sello + 'p';
+    });
+    verificar('  el historial la lista con plan pendiente',
+      !!filaSinPlan && filaSinPlan.planCuidado && filaSinPlan.planCuidado.pendiente === true &&
+      filaSinPlan.planCuidado.accionesRegistradas === 0,
+      JSON.stringify(filaSinPlan && filaSinPlan.planCuidado));
+
+    /* Completar el plan después: la misma ficha se reenvía con la conducta y
+       la marca desaparece, sin crear otra ficha. */
+    const conPlan = fichaValida(sello + 'p');
+    conPlan.familias[0].integrantes[0].ideacionSuicida = 'ha_pensado';
+    conPlan.familias[0].integrantes[0].planPersona = {
+      codigoEbs: conPlan.equipoSaludId, codigoVivienda: conPlan.idHogar, codigoFamilia: conPlan.idFamilia,
+      tipoIdIntegrante: 'CC', numeroIdIntegrante: '1144099887',
+      acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345',
+        codigoAccion: 'NC-FAM-01', tipoRespuesta: 'derivada', institucionDestino: 'ESE Ladera' }],
+      seguimientos: []
+    };
+    rp = await enviar(conPlan);
+    verificar('Al completar el plan después => 200', rp.estado === 200,
+      'estado ' + rp.estado + ' ' + JSON.stringify(rp.cuerpo).slice(0, 250));
+    verificar('  y el plan deja de estar pendiente',
+      rp.cuerpo.planCuidado && rp.cuerpo.planCuidado.pendiente === false,
+      JSON.stringify(rp.cuerpo.planCuidado));
+    const unaSola = await cliente.query('SELECT count(*)::int AS n FROM aps.ficha WHERE codigo = $1',
+      ['F-TEST-' + sello + 'p']);
+    verificar('  sin duplicar la ficha', unaSola.rows[0].n === 1, String(unaSola.rows[0].n));
+    const listado2 = await fetch(BASE + '/api/listar_fichas').then(function (r) { return r.json(); });
+    const filaConPlan = (Array.isArray(listado2) ? listado2 : []).find(function (f) {
+      return f.codigoFicha === 'F-TEST-' + sello + 'p';
+    });
+    verificar('  el historial la muestra con plan registrado',
+      !!filaConPlan && filaConPlan.planCuidado && filaConPlan.planCuidado.pendiente === false,
+      JSON.stringify(filaConPlan && filaConPlan.planCuidado));
+
     /* Limpieza. El orden importa: `familia` cuelga de `hogar` y la ficha
        arrastra en cascada su vivienda, familia_ficha e integrantes, pero no
        la identidad persistente del hogar ni la de la familia (RN-025/026). */

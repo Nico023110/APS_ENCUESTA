@@ -22,6 +22,7 @@
 'use strict';
 
 const { consultar } = require('./_db');
+const { COLUMNAS_PLAN, resumenPlanDesdeFila } = require('./_plan_cuidado');
 
 function aSiNo(booleano) {
   if (booleano === null || booleano === undefined) return null;
@@ -83,7 +84,8 @@ module.exports = async (req, res) => {
         (SELECT array_agg(codigo ORDER BY codigo)
            FROM aps.vivienda_riesgo_accidente WHERE ficha_id = f.id) AS riesgos_accidente,
         (SELECT array_agg(codigo ORDER BY codigo)
-           FROM aps.vivienda_factor_contaminacion WHERE ficha_id = f.id) AS factores_contaminacion
+           FROM aps.vivienda_factor_contaminacion WHERE ficha_id = f.id) AS factores_contaminacion,
+        ${COLUMNAS_PLAN}
 
       FROM aps.ficha f
       JOIN aps.hogar h        ON h.id = f.hogar_id
@@ -143,7 +145,8 @@ module.exports = async (req, res) => {
       materialTecho: fila.material_techo,
       vectores: fila.vectores,
       riesgosAccidente: fila.riesgos_accidente || [],
-      factoresContaminacion: fila.factores_contaminacion || []
+      factoresContaminacion: fila.factores_contaminacion || [],
+      planCuidado: resumenPlanDesdeFila(fila)
     });
   } catch (err) {
     console.error('Error al obtener el detalle de la ficha:', err);
