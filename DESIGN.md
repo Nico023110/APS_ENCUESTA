@@ -228,6 +228,9 @@ Dos niveles, siempre con desplazamiento y desenfoque, en negro a baja opacidad:
 ### Cinta tricolor (signature)
 - `.app-header::after`: 3px de alto, tres segmentos iguales verde `#009858` · rojo `#e02828` · azul `#0060a0`, pegada al borde inferior de la cabecera. Favicon: tres círculos con los mismos colores sobre blanco redondeado.
 
+### Logo (procedencia)
+- `logo-ladera.png` (400×368, RGBA) se derivó de `logo ladera.jpg`, el original de la entidad: se volvió transparente el blanco con una rampa de alfa (opaco ≤ 215, transparente ≥ 250 en el canal mínimo), se recuperó el color puro del borde y se erosionó el alfa 1px para retirar el halo del JPG. Si la entidad entrega un vector oficial, reemplaza este PNG.
+
 ## Do's and Don'ts
 
 ### Do:
