@@ -1218,7 +1218,7 @@ function mostrarNotificacion(mensaje, tipo, alCerrar) {
     confirmButtonText: 'Entendido',
     confirmButtonColor: '#0060a0',
     background: '#ffffff',
-    color: '#1f2937',
+    color: '#0b1220',
     didClose: typeof alCerrar === 'function' ? alCerrar : undefined
   });
 }
@@ -1309,29 +1309,155 @@ function calcularIndicadores(encuestas) {
   };
 }
 
+/* Dice si el equipo pidió menos movimiento. Se consulta en cada uso y no se
+   guarda en caché: se puede cambiar en el sistema con la página abierta. */
+function prefiereMenosMovimiento() {
+  return window.matchMedia &&
+         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Lleva la cifra de un indicador desde lo que hay en pantalla hasta su nuevo
+ * valor contando. No es adorno: Inicio se repinta dos veces seguidas (primero
+ * con la caché, después con lo que conteste la base) y el conteo es lo que
+ * hace visible que una cifra acaba de cambiar, en vez de que salte sin aviso.
+ *
+ * Arranca desde el valor que se esté mostrando, no desde cero: si la base
+ * contesta a mitad de cuenta, la cifra sigue desde donde va en lugar de
+ * reiniciarse.
+ */
+function animarCifra(elemento, destino, retardo) {
+  const actual = Number(elemento.dataset.valor || 0);
+
+  if (elemento.rafCifra) cancelAnimationFrame(elemento.rafCifra);
+  elemento.dataset.valor = destino;
+
+  if (actual === destino || prefiereMenosMovimiento()) {
+    elemento.textContent = destino;
+    elemento.rafCifra = null;
+    return;
+  }
+
+  /* 90 ms por unidad con techo de 900: contar tres fichas no puede tardar lo
+     mismo que contar trescientas. */
+  const distancia = Math.abs(destino - actual);
+  const duracion = Math.min(900, 320 + distancia * 90);
+  const arranque = performance.now() + (retardo || 0);
+
+  function paso(ahora) {
+    const t = Math.max(0, Math.min(1, (ahora - arranque) / duracion));
+    const suave = 1 - Math.pow(1 - t, 3);        /* ease-out cúbico */
+    elemento.textContent = Math.round(actual + (destino - actual) * suave);
+    if (t < 1) {
+      elemento.rafCifra = requestAnimationFrame(paso);
+    } else {
+      elemento.textContent = destino;
+      elemento.rafCifra = null;
+    }
+  }
+
+  elemento.textContent = actual;
+  elemento.rafCifra = requestAnimationFrame(paso);
+}
+
+function plantillaIndicador(tarjeta, orden) {
+  return (
+    '<div class="indicator-card entra" style="--orden: ' + orden + '">' +
+      '<div class="indicator-card__icon indicator-card__icon--' + tarjeta.clase + '">' + tarjeta.icono + '</div>' +
+      '<div class="indicator-card__datos">' +
+        '<div class="indicator-card__cifra">' +
+          '<span class="indicator-card__value">0</span>' +
+        '</div>' +
+        '<div class="indicator-card__label">' +
+          '<span>' + tarjeta.etiqueta + '</span>' +
+          '<span class="indicator-card__punto" aria-hidden="true"></span>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
 function renderizarIndicadores(encuestas) {
   const indicadores = calcularIndicadores(encuestas);
   const contenedor = document.getElementById('indicatorsGrid');
+  if (!contenedor) return;
+
+  /* El total ya no es una teja más: vive en el marcador del bento, con su
+     propio peso. Aquí quedan las cuatro cifras de estado del territorio.
+
+     "estado" tiñe la cifra y enciende el punto de 6 px, pero sólo cuando el
+     valor es mayor que cero: «0 situaciones inminentes» es una buena noticia,
+     no una alerta. Territorios cubiertos no es un estado, es un recuento, y
+     por eso no lleva "estado". */
+  const marcador = document.getElementById('totalFichas');
+  if (marcador) animarCifra(marcador, indicadores.totalEncuestas, 0);
 
   const tarjetas = [
-    { icono: '<i class="ph ph-files"></i>', clase: 'teal', valor: indicadores.totalEncuestas, etiqueta: 'Encuestas registradas' },
-    { icono: '<i class="ph ph-bed"></i>', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento' },
-    { icono: '<i class="ph ph-warning-circle"></i>', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes detectadas' },
+    { icono: '<i class="ph ph-bed"></i>', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento', estado: 'alerta' },
+    { icono: '<i class="ph ph-warning-circle"></i>', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes', estado: 'alerta' },
     { icono: '<i class="ph ph-map-pin"></i>', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' },
-    { icono: '<i class="ph ph-clock-countdown"></i>', clase: 'amber', valor: indicadores.planPendiente, etiqueta: 'Con plan de cuidado pendiente' }
+    { icono: '<i class="ph ph-clock-countdown"></i>', clase: 'amber', valor: indicadores.planPendiente, etiqueta: 'Plan de cuidado pendiente', estado: 'aviso' }
   ];
 
-  contenedor.innerHTML = tarjetas.map(function (tarjeta) {
-    return (
-      '<div class="indicator-card">' +
-        '<div class="indicator-card__icon indicator-card__icon--' + tarjeta.clase + '">' + tarjeta.icono + '</div>' +
-        '<div>' +
-          '<div class="indicator-card__value">' + tarjeta.valor + '</div>' +
-          '<div class="indicator-card__label">' + tarjeta.etiqueta + '</div>' +
-        '</div>' +
-      '</div>'
-    );
-  }).join('');
+  /* Las tejas se construyen una sola vez y después se parchean en sitio. Si
+     se reescribiera el innerHTML en cada repintado, la entrada escalonada se
+     dispararía otra vez cada vez que contesta la base y la pantalla parecería
+     estar recargándose sola. */
+  const primeraPintura = contenedor.children.length !== tarjetas.length;
+  if (primeraPintura) {
+    contenedor.innerHTML = tarjetas.map(function (tarjeta, i) {
+      return plantillaIndicador(tarjeta, i + 1);
+    }).join('');
+  }
+
+  tarjetas.forEach(function (tarjeta, i) {
+    const teja = contenedor.children[i];
+    if (!teja) return;
+    const activo = tarjeta.valor > 0;
+
+    teja.classList.toggle('indicator-card--cero', !activo);
+    teja.classList.toggle('indicator-card--alerta', activo && tarjeta.estado === 'alerta');
+    teja.classList.toggle('indicator-card--aviso', activo && tarjeta.estado === 'aviso');
+
+    const cifra = teja.querySelector('.indicator-card__value');
+    /* El conteo empieza cuando la teja termina de entrar (55 ms por hermano,
+       el mismo --stagger del CSS), para que no cuente detrás de una tarjeta
+       que todavía se está desplazando. */
+    if (cifra) animarCifra(cifra, tarjeta.valor, primeraPintura ? (i + 1) * 55 : 0);
+  });
+}
+
+/**
+ * Píldora de sincronización del encabezado de Inicio. Cuenta exactamente lo
+ * mismo que cuenta sincronizarEncuestas(): fichas de este equipo que aún no
+ * están en la base. Verde y quieta cuando no queda nada; ámbar y pulsable
+ * cuando sí, con la acción que resuelve el estado en el mismo sitio donde se
+ * lee el estado.
+ */
+function renderizarEstadoSync() {
+  const caja = document.getElementById('estadoSync');
+  if (!caja) return;
+
+  const locales = obtenerEncuestas();
+  const pendientes = locales.filter(function (e) { return e.sincronizada !== true; }).length;
+  const punto = '<span class="estado-sync__punto" aria-hidden="true"></span>';
+
+  if (pendientes === 0) {
+    caja.innerHTML =
+      '<span class="estado-sync estado-sync--listo">' + punto +
+        (locales.length === 0 ? 'Sin fichas por subir' : 'Todo sincronizado') +
+      '</span>';
+    return;
+  }
+
+  caja.innerHTML =
+    '<button type="button" class="estado-sync estado-sync--pendiente" ' +
+      'onclick="sincronizarEncuestas()" ' +
+      'title="Subir ahora las fichas que sólo están en este equipo">' + punto +
+      '<span><span class="estado-sync__contador">' + pendientes + '</span> ' +
+        (pendientes === 1 ? 'ficha sin subir' : 'fichas sin subir') +
+      '</span>' +
+    '</button>';
 }
 
 function badgeHacinamiento(valor) {
@@ -1381,9 +1507,9 @@ function textoTerritorio(encuesta) {
 
 function textoModificacion(encuesta) {
   const fechas = encuesta.fechasModificacion || [];
-  if (fechas.length === 0) return '<span class="badge badge--neutral" style="font-size: 0.75rem; color: #666; background: #eee;">Sin modificaciones</span>';
+  if (fechas.length === 0) return '<span class="badge badge--neutral">Sin modificaciones</span>';
   const ultima = fechas[fechas.length - 1];
-  return '<span class="badge badge--info" title="' + fechas.length + ' modificaciones" style="font-size: 0.75rem; color: #0056b3; background: #cce5ff;">' + formatearFecha(ultima) + ' (' + fechas.length + ')</span>';
+  return '<span class="badge badge--info" title="' + fechas.length + ' modificaciones">' + formatearFecha(ultima) + ' (' + fechas.length + ')</span>';
 }
 
 function textoMicroterritorio(encuesta) {
@@ -1395,6 +1521,13 @@ function textoMicroterritorio(encuesta) {
 function renderizarInicio() {
   const encuestas = obtenerEncuestasParaMostrar();
   renderizarIndicadores(encuestas);
+  renderizarEstadoSync();
+
+  /* El panel de «todavía no hay fichas» sólo tiene sentido cuando de verdad
+     no hay ninguna: en cuanto entra la primera, los indicadores ya cuentan la
+     historia y el panel estorba. */
+  const vacio = document.getElementById('inicioVacio');
+  if (vacio) vacio.hidden = encuestas.length > 0;
 }
 
 /* ---------------------------------------------------------
@@ -3098,7 +3231,86 @@ function inicializarModales() {
   });
 }
 
+/**
+ * La cabecera es plana mientras la página está arriba del todo y se eleva en
+ * cuanto hay contenido pasando por debajo. La sombra deja de ser un adorno
+ * permanente y pasa a decir algo: «esto está flotando sobre la página».
+ *
+ * El listener es pasivo y sólo toca el DOM cuando el estado cambia de verdad;
+ * classList.toggle en cada scroll invalidaría estilos sesenta veces por
+ * segundo en las tablets del terreno.
+ */
+function inicializarCabeceraAlDesplazar() {
+  const cabecera = document.querySelector('.app-header');
+  if (!cabecera) return;
+
+  let elevada = null;
+
+  function revisar() {
+    const debeElevarse = window.scrollY > 8;
+    if (debeElevarse === elevada) return;
+    elevada = debeElevarse;
+    cabecera.classList.toggle('is-scrolled', debeElevarse);
+  }
+
+  revisar();
+  window.addEventListener('scroll', revisar, { passive: true });
+}
+
+/**
+ * Enciende en el índice el enlace de la sección que se está mirando. El
+ * formulario mide varias pantallas y el índice sólo decía a dónde se puede
+ * ir, nunca dónde se está.
+ *
+ * Con IntersectionObserver y no con un listener de scroll: el observador
+ * avisa sólo cuando una sección cruza el umbral, mientras que un listener de
+ * scroll obliga a medir posiciones en cada fotograma —justo lo que tumba los
+ * fps en las tablets del terreno.
+ *
+ * El margen superior descuenta la cabecera más la isla del índice, para que
+ * la sección se considere «actual» cuando llega bajo ellas, no cuando asoma
+ * por el borde de la ventana.
+ */
+function inicializarIndiceActivo() {
+  const indice = document.getElementById('formNav');
+  if (!indice || typeof IntersectionObserver === 'undefined') return;
+
+  const enlaces = new Map();
+  indice.querySelectorAll('.form-nav__link[href^="#"]').forEach(function (enlace) {
+    const seccion = document.getElementById(enlace.getAttribute('href').slice(1));
+    if (seccion) enlaces.set(seccion, enlace);
+  });
+  if (enlaces.size === 0) return;
+
+  const visibles = new Set();
+
+  function repintar() {
+    /* Cuando hay varias secciones a la vista gana la más alta, que es la que
+       el usuario percibe como «en la que estoy». */
+    let elegida = null;
+    enlaces.forEach(function (_, seccion) {
+      if (!visibles.has(seccion)) return;
+      if (!elegida || seccion.offsetTop < elegida.offsetTop) elegida = seccion;
+    });
+    enlaces.forEach(function (enlace, seccion) {
+      enlace.classList.toggle('is-actual', seccion === elegida);
+    });
+  }
+
+  const observador = new IntersectionObserver(function (entradas) {
+    entradas.forEach(function (entrada) {
+      if (entrada.isIntersecting) visibles.add(entrada.target);
+      else visibles.delete(entrada.target);
+    });
+    repintar();
+  }, { rootMargin: '-140px 0px -55% 0px' });
+
+  enlaces.forEach(function (_, seccion) { observador.observe(seccion); });
+}
+
 function inicializarAplicacion() {
+  inicializarCabeceraAlDesplazar();
+  inicializarIndiceActivo();
   inicializarCatalogosDelFormulario();
   inicializarModoRevision();
   inicializarFormularioDinamico();

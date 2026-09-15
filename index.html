@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ccircle cx='16' cy='36' r='8' fill='%23009858'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23e02828'/%3E%3Ccircle cx='48' cy='36' r='8' fill='%230060a0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="styles.css">
@@ -49,34 +49,67 @@
   <!-- ===================== VISTA: INICIO ===================== -->
   <section class="view is-active" id="view-inicio">
 
-    <!-- Saludo y bienvenida -->
-    <div class="hero-welcome">
-      <h2 class="hero-welcome__title">Fichas de caracterización del territorio</h2>
-      <p class="hero-welcome__subtitle">Capture la ficha SI-APS durante la visita, revise las alertas y complete el plan de cuidado. Lo guardado sin red se sincroniza después.</p>
+    <!-- Rejilla bento: el panel de encabezado y el marcador de total pesan
+         distinto y ocupan distinto. Antes eran cinco tejas idénticas y tres
+         tarjetas idénticas, y nada en la pantalla decía qué importaba más. -->
+    <div class="bento">
+
+      <!-- Panel principal: identidad de la vista y la acción a la que se
+           viene. El botón vive aquí, no como una tarjeta más entre iguales. -->
+      <section class="bento__principal entra" style="--orden: 0">
+        <span class="eyebrow">Caracterización SI-APS</span>
+        <h2 class="bento__titulo">Fichas de caracterización del territorio</h2>
+        <p class="bento__subtitulo">Capture la ficha durante la visita, revise las alertas y complete el plan de cuidado. Lo que guarde sin señal se sincroniza cuando vuelva la red.</p>
+        <button class="btn-cta" data-goto="nueva">
+          <span>Nueva encuesta</span>
+          <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+        </button>
+      </section>
+
+      <!-- Marcador de total: carcasa blanca con núcleo teñido dentro, radios
+           concéntricos. Es la cifra que resume la jornada. -->
+      <section class="bento__total entra" style="--orden: 1">
+        <div class="marcador">
+          <span class="eyebrow">Acumulado</span>
+          <span class="marcador__valor" id="totalFichas">0</span>
+          <span class="marcador__etiqueta">fichas registradas en este equipo</span>
+        </div>
+        <!-- Píldora de sincronización pintada por JS: verde si no queda nada
+             por subir, ámbar y pulsable si hay fichas sólo en este equipo. -->
+        <div class="hero-welcome__estado" id="estadoSync"></div>
+      </section>
+
+      <div class="indicators-grid" id="indicatorsGrid">
+        <!-- Tejas de estado generadas por JS -->
+      </div>
+
+      <div class="bento__acciones">
+        <button class="accion-ancha entra" style="--orden: 6" data-goto="historial">
+          <span class="accion-ancha__icono" aria-hidden="true"><i class="ph ph-list-dashes"></i></span>
+          <span class="accion-ancha__texto">
+            <span class="accion-ancha__titulo">Ver historial</span>
+            <span class="accion-ancha__desc">Consultar, corregir o eliminar fichas registradas</span>
+          </span>
+          <span class="accion-ancha__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+        </button>
+        <button class="accion-ancha entra" style="--orden: 7" onclick="sincronizarEncuestas()">
+          <span class="accion-ancha__icono" aria-hidden="true"><i class="ph ph-cloud-arrow-up"></i></span>
+          <span class="accion-ancha__texto">
+            <span class="accion-ancha__titulo">Sincronizar a la nube</span>
+            <span class="accion-ancha__desc">Subir a la base las fichas que siguen en este equipo</span>
+          </span>
+          <span class="accion-ancha__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+        </button>
+      </div>
     </div>
 
-    <div class="indicators-grid" id="indicatorsGrid">
-      <!-- Tarjetas de indicadores generadas por JS -->
-    </div>
-
-    <!-- Acciones rápidas -->
-    <h3 class="section-title">Acciones rápidas</h3>
-    <div class="quick-actions">
-      <button class="quick-action-card quick-action-card--primary" data-goto="nueva">
-        <i class="ph ph-file-plus quick-action-card__icon"></i>
-        <span class="quick-action-card__title">Nueva Encuesta</span>
-        <span class="quick-action-card__desc">Diligenciar una nueva ficha de caracterización</span>
-      </button>
-      <button class="quick-action-card quick-action-card--blue" data-goto="historial">
-        <i class="ph ph-list-dashes quick-action-card__icon"></i>
-        <span class="quick-action-card__title">Ver Historial</span>
-        <span class="quick-action-card__desc">Consultar, corregir o eliminar fichas registradas</span>
-      </button>
-      <button class="quick-action-card quick-action-card--teal" onclick="sincronizarEncuestas()">
-        <i class="ph ph-cloud-arrow-up quick-action-card__icon"></i>
-        <span class="quick-action-card__title">Sincronizar a la Nube</span>
-        <span class="quick-action-card__desc">Subir fichas pendientes a la base de datos</span>
-      </button>
+    <!-- Sólo cuando no hay ninguna ficha todavía -->
+    <div class="inicio-vacio entra" style="--orden: 10" id="inicioVacio" hidden>
+      <div class="inicio-vacio__icono"><i class="ph ph-clipboard-text" aria-hidden="true"></i></div>
+      <div>
+        <div class="inicio-vacio__titulo">Todavía no hay fichas en este equipo</div>
+        <p class="inicio-vacio__texto">Abra «Nueva Encuesta» para diligenciar la primera caracterización. Puede trabajar sin señal: la ficha queda guardada aquí y se sube a la base cuando vuelva la red.</p>
+      </div>
     </div>
   </section>
 
@@ -108,7 +141,7 @@
       </p>
 
       <!-- ============ 1. POLÍTICA GENERAL DE SEGURIDAD DE LA INFORMACIÓN ============ -->
-      <div class="section-banner" id="seccion-1">1. Política general de seguridad de la información del Ministerio de Salud y Protección Social</div>
+      <div class="section-banner" id="seccion-1"><span class="section-banner__num">1</span><span class="section-banner__texto">Política general de seguridad de la información del Ministerio de Salud y Protección Social</span></div>
 
       <div class="card card--consent">
         <div class="card__header">
@@ -133,7 +166,7 @@
       <fieldset class="capture-fieldset" id="bloquesCaptura">
 
         <!-- ============ 2. INFORMACIÓN GENERAL ============ -->
-        <div class="section-banner" id="seccion-2">2. Información general</div>
+        <div class="section-banner" id="seccion-2"><span class="section-banner__num">2</span><span class="section-banner__texto">Información general</span></div>
 
         <div class="card">
           <div class="card__header">
@@ -477,7 +510,7 @@
         </div>
 
         <!-- ============ 3. CONDICIONES DEL ENTORNO Y LA VIVIENDA ============ -->
-        <div class="section-banner" id="seccion-3">3. Identificación de las condiciones del entorno y la vivienda</div>
+        <div class="section-banner" id="seccion-3"><span class="section-banner__num">3</span><span class="section-banner__texto">Identificación de las condiciones del entorno y la vivienda</span></div>
 
         <div class="card">
           <div class="card__header">
@@ -603,7 +636,7 @@
         </div>
 
         <!-- ============ 4 y 5. FAMILIAS E INTEGRANTES (bloques repetibles) ============ -->
-        <div class="section-banner" id="seccion-4">4. Identificación de procesos cuidadores, deteriorantes y condiciones de salud relacionadas con la familia</div>
+        <div class="section-banner" id="seccion-4"><span class="section-banner__num">4</span><span class="section-banner__texto">Identificación de procesos cuidadores, deteriorantes y condiciones de salud relacionadas con la familia</span></div>
 
         <div class="cardinalidad-aviso">
           <strong>Bloques repetibles.</strong>
@@ -706,7 +739,7 @@
               </div>
 
               <!-- ============ 5. INTEGRANTES DE LA FAMILIA ============ -->
-              <div class="section-banner section-banner--anidado">5. Identificación de procesos cuidadores, deteriorantes y condiciones de salud de los integrantes de la familia</div>
+              <div class="section-banner section-banner--anidado"><span class="section-banner__num">5</span><span class="section-banner__texto">Identificación de procesos cuidadores, deteriorantes y condiciones de salud de los integrantes de la familia</span></div>
 
               <div class="contenedor-integrantes" data-rol="contenedorIntegrantes">
 
@@ -1107,7 +1140,7 @@
         <button type="button" class="btn btn--ghost btn--bloque" id="btnAgregarFamilia">+ Agregar otra familia a la vivienda</button>
 
         <!-- ============ 6. PLAN DE CUIDADO ============ -->
-        <div class="section-banner" id="seccion-6">6. Plan de cuidado</div>
+        <div class="section-banner" id="seccion-6"><span class="section-banner__num">6</span><span class="section-banner__texto">Plan de cuidado</span></div>
 
         <div class="cardinalidad-aviso">
           <strong>Orden del instrumento.</strong>
@@ -1457,7 +1490,7 @@
       </fieldset>
 
       <!-- ============ CIERRE: ALERTAS Y VALIDACIÓN ============ -->
-      <div class="section-banner section-banner--cierre" id="seccion-cierre">Resumen de riesgo y cierre de la ficha</div>
+      <div class="section-banner section-banner--cierre" id="seccion-cierre"><span class="section-banner__num"><i class="ph ph-flag-checkered" aria-hidden="true"></i></span><span class="section-banner__texto">Resumen de riesgo y cierre de la ficha</span></div>
 
       <div class="card card--cierre">
         <div class="card__header">

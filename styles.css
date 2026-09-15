@@ -1,59 +1,167 @@
 /* =========================================================
-   Encuesta_APS — Estilos generales
+   Encuesta_APS — Sistema de diseño
    ---------------------------------------------------------
-   Identidad: Red de Salud de Ladera E.S.E. Un solo azul institucional
-   (el del logo) lleva toda la estructura; el verde y el rojo del logo
-   aparecen sólo como estados, y la cinta tricolor una única vez, como
-   hilo bajo la cabecera. Fuente Nunito, redondeada como el logotipo.
+   Identidad: Red de Salud de Ladera E.S.E. Del sistema anterior se
+   conservan exactamente dos cosas —el logo y los tres colores medidos
+   del logotipo—; todo lo demás (tipografía, escala, superficies,
+   profundidad, radios, densidad y movimiento) se reconstruyó.
+
+   Dirección: «Soft Structuralism» — fondo plata, tarjetas blancas
+   flotando sobre sombras ambientales muy difusas, tipografía grotesca
+   de peso alto, y arquitectura anidada (carcasa exterior + núcleo
+   interior con radios concéntricos) en lugar de cajas planas.
+
+   Lo que NO se trajo de la referencia de agencia, y por qué: esto es
+   un instrumento de captura denso que se diligencia en tablet, a pleno
+   sol y a veces sin red. Por eso no hay ruido ni grano, ni gradientes
+   mesh, ni cristal esmerilado sobre contenido que se desplaza, ni
+   solapamientos rotados (conflictan con el área de toque), ni
+   respiraciones de 100-160 px entre secciones: duplicar el aire
+   duplicaría el recorrido de un formulario que ya es largo.
    ========================================================= */
 
 :root {
-  /* Colores medidos del logo */
+  /* ---- Los tres colores del logo. Medidos, intocables. ---- */
   --ladera-azul: #0060a0;
   --ladera-rojo: #e02828;
   --ladera-verde: #009858;
 
-  /* Marca: estructura, acciones y selección */
-  --color-primary: #0060a0;
-  --color-primary-dark: #004a7c;
-  --color-primary-deep: #13294b;      /* navy: texto y bandas de cierre */
-  --color-primary-light: #e4eff8;
-  --color-primary-mid: #c7dcee;
-  --color-accent: #0060a0;             /* un solo acento: el azul */
+  /* ---- Tinta: neutros de croma bajísimo, apenas fríos --------------
+     Un solo matiz para todos los grises. El texto principal no es negro
+     (#000 vibra sobre blanco): es un casi-negro azulado. */
+  --ink-900: #0b1220;
+  --ink-800: #182233;
+  --ink-700: #2b3648;
+  --ink-600: #414d60;
+  --ink-500: #5a6578;
+  --ink-400: #7e8799;
+  --ink-300: #a8b0bf;
+  --ink-200: #d3d8e1;
+  --ink-150: #e3e7ed;
+  --ink-100: #eef0f4;
+  --ink-50: #f6f7f9;
 
-  /* Estados semánticos (verde y rojo del logo; ámbar para lo pendiente) */
-  --color-danger: #d42323;
-  --color-danger-text: #a51818;
-  --color-danger-light: #fde8e8;
-  --color-warning: #d97706;
-  --color-warning-text: #8a4b06;
-  --color-warning-light: #fdf1dc;
-  --color-success: #009858;
-  --color-success-text: #056d41;
-  --color-success-light: #dff4e9;
-  --color-neutral-light: #eef2f7;
+  /* ---- Marca ---- */
+  --brand-800: #00365a;
+  --brand-700: #004a7c;
+  --brand-600: #0060a0;
+  --brand-300: #9cc4e2;
+  --brand-100: #dfecf8;
+  --brand-50: #f1f7fc;
+  --brand-ring: rgba(0, 96, 160, 0.18);
 
-  /* Neutros fríos, teñidos del azul */
-  --bg-page: #f4f7fb;
+  /* ---- Estados. Verde y rojo son los del logo. --------------------
+     El ámbar no está en el logotipo y existe porque el instrumento
+     necesita un tercer estado que no sea error: lo pendiente. */
+  --ok-700: #06724a;
+  --ok-600: #009858;
+  --ok-100: #d8f0e4;
+  --ok-50: #edf8f2;
+  --alert-700: #a81c1c;
+  --alert-600: #d42323;
+  --alert-500: #e02828;
+  --alert-100: #fbdcdc;
+  --alert-50: #fdeeee;
+  --warn-700: #8a4e05;
+  --warn-600: #c2700a;
+  --warn-100: #f7e3c4;
+  --warn-50: #fcf4e8;
+
+  /* ---- Tipografía -------------------------------------------------
+     Plus Jakarta Sans: grotesca geométrica con humanismo suficiente
+     para no confundir 1/l/I en un dato clínico, y con 500 y 600 reales
+     —no sólo 400 y 700— que es lo que permite construir jerarquía sin
+     subir de tamaño. Los códigos van en monoespaciada de verdad. */
+  --font-ui: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+  --fs-display: 38px;
+  --fs-h1: 27px;
+  --fs-h2: 19px;
+  --fs-h3: 15px;
+  --fs-body: 14.5px;
+  --fs-label: 13px;
+  --fs-small: 12.5px;
+  --fs-micro: 11.5px;
+  --fs-eyebrow: 10.5px;
+
+  /* ---- Espaciado: base 4 ---- */
+  --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
+  --s-5: 20px;  --s-6: 24px;  --s-8: 32px;  --s-10: 40px;
+  --s-12: 48px; --s-16: 64px;
+
+  /* ---- Radios concéntricos ----------------------------------------
+     Una carcasa de 20 con 6 de padding pide un núcleo de 14, no de 20:
+     si los dos radios son iguales, la curva interior se ve apretada
+     contra la exterior. --r-core = --r-shell menos el padding. */
+  --r-shell: 20px;
+  --r-core: 14px;
+  --r-card: 16px;
+  --r-control: 10px;
+  --r-chip: 999px;
+
+  /* ---- Profundidad ------------------------------------------------
+     Sombras teñidas del mismo azul de la tinta, nunca negro puro, y
+     muy difusas: luz ambiental desde arriba, una sola dirección.
+     --sh-hair es el pelo de 1 px que sustituye al borde gris genérico:
+     al ser sombra y no borde, no ocupa caja ni desplaza el layout. */
+  --sh-hair: 0 0 0 1px rgba(11, 18, 32, 0.07);
+  --sh-1: 0 1px 2px rgba(11, 18, 32, 0.04), 0 2px 8px -2px rgba(11, 18, 32, 0.06);
+  --sh-2: 0 2px 4px rgba(11, 18, 32, 0.04), 0 8px 24px -6px rgba(11, 18, 32, 0.10);
+  --sh-3: 0 4px 10px rgba(11, 18, 32, 0.05), 0 18px 48px -12px rgba(11, 18, 32, 0.16);
+  --sh-brillo: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* ---- Alias del sistema anterior ---------------------------------
+     Toda la hoja (2.700 líneas, escritas contra los nombres viejos)
+     adopta la paleta nueva a través de estos alias. Son el puente, no
+     el sistema: lo nuevo se escribe con --ink-*, --brand-* y --s-*. */
+  --color-primary: var(--brand-600);
+  --color-primary-dark: var(--brand-700);
+  --color-primary-deep: var(--ink-900);
+  --color-primary-light: var(--brand-100);
+  --color-primary-mid: var(--brand-300);
+  --color-accent: var(--brand-600);
+
+  --color-danger: var(--alert-600);
+  --color-danger-text: var(--alert-700);
+  --color-danger-light: var(--alert-50);
+  --color-warning: var(--warn-600);
+  --color-warning-text: var(--warn-700);
+  --color-warning-light: var(--warn-50);
+  --color-success: var(--ok-600);
+  --color-success-text: var(--ok-700);
+  --color-success-light: var(--ok-50);
+  --color-neutral-light: var(--ink-100);
+
+  --bg-page: var(--ink-50);
   --bg-card: #ffffff;
-  --bg-panel: #eef3f8;
-  --text-primary: #13294b;
-  --text-secondary: #55667f;
-  --border-color: #d9e3ee;
-  --border-strong: #b9cadb;
+  --bg-panel: var(--ink-100);
+  --text-primary: var(--ink-900);
+  --text-secondary: var(--ink-500);
+  --border-color: var(--ink-150);
+  --border-strong: var(--ink-200);
 
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.05);
-  --shadow-medium: 0 2px 6px rgba(0, 0, 0, 0.07), 0 12px 32px rgba(0, 0, 0, 0.11);
-  --radius-sm: 8px;      /* inputs */
-  --radius-btn: 10px;    /* botones */
+  --shadow-soft: var(--sh-1);
+  --shadow-medium: var(--sh-2);
+  --radius-sm: var(--r-control);
+  --radius-btn: var(--r-control);
   --radius-md: 12px;
-  --radius-lg: 16px;     /* tarjetas */
-  --radius-full: 999px;  /* chips y pastillas */
+  --radius-lg: var(--r-card);
+  --radius-full: var(--r-chip);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --transition-fast: 0.16s var(--ease-out);
   --transition-medium: 0.22s var(--ease-out);
+
+  /* Duraciones del movimiento. Una sola escala para toda la interfaz: si un
+     componente pide otra, es que hace algo distinto y debe justificarlo.
+     Todo lo de interfaz vive bajo 300 ms; sólo la revelación de cifras
+     (contador de los indicadores) se permite más, porque hay que leerla. */
+  --dur-press: 0.14s;      /* respuesta al toque */
+  --dur-hover: 0.18s;      /* hover y cambio de color */
+  --dur-enter: 0.28s;      /* entrada de tarjetas y vistas */
+  --stagger: 55ms;         /* separación entre hermanos que entran */
 
   --header-height: 74px;
   accent-color: var(--color-primary);
@@ -65,136 +173,105 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  font-family: 'Nunito', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-ui);
   background: var(--bg-page);
   color: var(--text-primary);
-  line-height: 1.5;
-  font-size: 15px;
+  line-height: 1.55;
+  font-size: var(--fs-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Las cifras de un instrumento clínico no pueden bailar de ancho al
+     cambiar: se tabulan en toda la interfaz, no sólo en las tablas. */
+  font-variant-numeric: tabular-nums;
 }
 
-h1, h2, h3 { margin: 0; text-wrap: balance; }
+/* Los títulos van apretados de tracking: a 27-38 px el espaciado por
+   defecto deja el texto suelto y pierde presencia. */
+h1, h2, h3 {
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: -0.018em;
+  line-height: 1.18;
+}
+p { text-wrap: pretty; }
+
+/* Etiqueta microscópica sobre un título. Es el único sitio donde el
+   sistema usa versalitas, y por eso el tracking es tan abierto. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+}
 
 /* Superficies del navegador, teñidas de la marca */
-::selection { background: var(--color-primary-mid); color: var(--color-primary-deep); }
-input, textarea, select { caret-color: var(--color-primary); }
-:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 4px; }
-* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::selection { background: var(--brand-100); color: var(--brand-800); }
+input, textarea, select { caret-color: var(--brand-600); }
+:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; border-radius: 4px; }
+* { scrollbar-width: thin; scrollbar-color: var(--ink-200) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 2px solid var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--ink-200); border-radius: 999px; border: 2px solid var(--bg-page); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-300); }
 ::-webkit-scrollbar-track { background: transparent; }
-table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
+code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-small); }
 
-/* ================= APP LAYOUT ================= */
-.app-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  min-height: 100vh;
-}
-
-/* ================= SIDEBAR ================= */
-.app-sidebar {
-  background: #ffffff;
-  border-right: 1px solid var(--border-color);
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.03);
-  z-index: 20;
-}
-
-.app-sidebar__brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.app-sidebar__logo {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
 
 /* ================= MENÚ DE SECCIONES ================= */
-.form-nav {
-  position: sticky;
-  top: calc(var(--header-height) + 14px);
-  z-index: 10;
-  background: var(--bg-card);
-  padding: 12px 18px;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  box-shadow: var(--shadow-medium);
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  border: 1px solid var(--border-color);
-}
+/* ---- Índice flotante ---------------------------------------------------
+   Isla pegajosa bajo la cabecera. Lleva el mismo cristal esmerilado que la
+   cabecera —también es fija, así que el desenfoque es barato— y una sombra
+   ambiental que la despega del formulario que pasa por debajo. */
 
-.form-nav__titulo {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
-  font-weight: 700;
-}
-
-.form-nav__link {
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 13.5px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: var(--radius-full);
-  transition: all var(--transition-fast);
-}
-
-.form-nav__link:hover {
-  background: var(--bg-page);
-  color: var(--text-primary);
-}
-
-/* ================= HEADER ================= */
 /* Blanca, para que el logo de la entidad se lea tal cual; el hilo tricolor
    del logo (verde · rojo · azul) cierra la cabecera por abajo. Es la única
    vez que los tres colores aparecen juntos como decoración. */
+/* La cabecera es la única superficie que se permite cristal esmerilado: es
+   fija, así que el desenfoque se compone una vez y no repinta en cada
+   desplazamiento. Sobre contenido que se mueve estaría prohibido. */
 .app-header {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
   color: var(--text-primary);
   min-height: var(--header-height);
-  padding: 10px 32px;
+  padding: var(--s-3) var(--s-8);
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 24px;
+  gap: var(--s-3) var(--s-6);
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
   position: sticky;
   top: 0;
   z-index: 20;
+  box-shadow: 0 1px 0 rgba(11, 18, 32, 0.06);
+  transition: box-shadow var(--dur-enter) var(--ease-out),
+              background var(--dur-enter) var(--ease-out);
 }
 
+/* Arriba del todo la cabecera es plana y opaca; en cuanto pasa contenido por
+   debajo se despega con una sombra ambiental. La sombra deja de ser adorno
+   permanente y pasa a decir «esto flota sobre la página». */
+.app-header.is-scrolled {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 1px 0 rgba(11, 18, 32, 0.06),
+              0 12px 32px -12px rgba(11, 18, 32, 0.18);
+}
+
+/* Hilo tricolor: los tres colores medidos del logotipo, juntos una sola vez
+   en toda la aplicación y a 2 px. Antes eran 3 px a todo el ancho y competían
+   con el contenido; a 2 px leen como el canto de una tapa, no como una banda
+   decorativa. Es la firma del sistema y no se repite en ningún otro sitio. */
 .app-header::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
-  height: 3px;
+  bottom: 0;
+  height: 2px;
   background: linear-gradient(90deg,
     var(--ladera-verde) 0 33.4%,
     var(--ladera-rojo) 33.4% 66.7%,
@@ -230,43 +307,49 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .app-header__nombre {
   display: block;
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1.15;
-  color: var(--color-primary-deep);
+  color: var(--ink-900);
 }
 
 .app-header__title p {
-  margin: 1px 0 0;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  margin: 2px 0 0;
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink-400);
 }
 
-/* Control segmentado: el indicador azul se desliza entre las vistas */
+/* ---- Control segmentado ------------------------------------------------
+   Carcasa exterior con núcleo deslizante: el indicador es un solo elemento
+   que viaja hasta la pestaña activa en vez de encenderse y apagarse en cada
+   botón. El radio del núcleo es menor que el de la carcasa por el padding de
+   5 px, para que las dos curvas queden concéntricas. */
 .app-tabs {
   position: relative;
   display: flex;
-  gap: 4px;
-  background: var(--bg-panel);
-  padding: 4px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
+  gap: 2px;
+  background: var(--ink-100);
+  padding: 5px;
+  border-radius: var(--r-chip);
+  box-shadow: var(--sh-hair);
   isolation: isolate;
 }
 
 .app-tabs::before {
   content: '';
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 5px;
+  bottom: 5px;
   left: 0;
-  width: 0;
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transform: translateX(var(--tab-x, 4px));
+  border-radius: var(--r-chip);
+  background: var(--brand-600);
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28),
+              0 6px 16px -4px rgba(0, 54, 90, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transform: translateX(var(--tab-x, 5px));
   width: var(--tab-w, 0px);
   /* impeccable-disable-next-line layout-transition: pseudoelemento absoluto de 3 pestañas; no reordena nada */
   transition: transform 0.28s var(--ease-out), width 0.28s var(--ease-out);
@@ -279,21 +362,25 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   z-index: 1;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--ink-500);
   padding: 9px 18px;
-  border-radius: var(--radius-full);
-  font-size: 14px;
-  font-weight: 700;
+  border-radius: var(--r-chip);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: -0.005em;
   cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast), transform 0.12s var(--ease-out);
+  transition: color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   font-family: inherit;
 }
 
-.app-tabs__btn:hover { color: var(--color-primary-deep); background: rgba(0, 96, 160, 0.06); }
+@media (hover: hover) and (pointer: fine) {
+  .app-tabs__btn:hover { color: var(--ink-900); }
+}
 .app-tabs__btn:active { transform: scale(0.97); }
 
 .app-tabs__btn.is-active {
@@ -313,51 +400,88 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   line-height: 1;
 }
 
-/* ================= MAIN / LAYOUT ================= */
+/* ================= MAIN / LAYOUT =================
+   1180 px de contenedor y 40 px de guardia lateral. El aire vertical subió de
+   32 a 48 px arriba, que es lo que hace que el contenido deje de estar pegado
+   a la cabecera; no subió más porque el formulario ya mide varias pantallas y
+   cada píxel de respiración se paga multiplicado por sus secciones. */
 .app-main {
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 32px 40px 80px;
+  padding: var(--s-12) var(--s-10) var(--s-16);
 }
 
-.view { display: none; animation: fadeIn 0.22s var(--ease-out); }
-.view.is-active { display: block; }
+.view { display: none; }
+.view.is-active { display: block; animation: fadeIn 0.2s var(--ease-out); }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Entrada escalonada -------------------------------------------------
+   Los hijos de una vista no aparecen todos a la vez: suben 10 px con un
+   desfase de 55 ms entre hermanos. Sólo opacidad y transform (compuestas en
+   GPU), y el retardo se declara en el propio hijo con --orden, nunca
+   heredando un transform del padre.
+   El valor backwards mantiene el estado inicial durante el retardo: sin él, las
+   tarjetas con retardo parpadean visibles antes de empezar. */
+.entra {
+  animation: entraArriba var(--dur-enter) var(--ease-out) backwards;
+  animation-delay: calc(var(--orden, 0) * var(--stagger));
+}
+
+@keyframes entraArriba {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .view { animation: none; }
+  /* Menos y más suave, no cero: se conserva el fundido, que ayuda a entender
+     que la vista cambió, y se retira todo desplazamiento. */
+  .view.is-active { animation-duration: 0.12s; }
   .app-tabs::before { transition: none; }
+  .entra {
+    animation-name: entraSuave;
+    animation-delay: 0s;
+    animation-duration: 0.14s;
+  }
+  @keyframes entraSuave {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
 /* ================= CARDS ================= */
+/* ---- Tarjeta -----------------------------------------------------------
+   Sin borde gris genérico: el contorno es un pelo de sombra, que no ocupa
+   caja y por tanto no desplaza nada al aparecer o desaparecer. La sombra es
+   ambiental y teñida de la tinta, no negra. */
 .card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-  padding: 22px 24px;
-  margin-bottom: 22px;
-  border: 1px solid var(--border-color);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  padding: var(--s-6) var(--s-6) var(--s-5);
+  margin-bottom: var(--s-4);
 }
 
 .card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--ink-100);
   flex-wrap: wrap;
 }
 
 .card__header h2 {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--color-primary-deep);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
 }
 
 .card__subtitle {
@@ -368,18 +492,42 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   border-top: 1px dashed var(--border-color);
 }
 
-/* ================= INDICATORS ================= */
+/* ================= INDICATORS =================
+   Cinco tejas en columna (icono arriba, cifra, etiqueta). El apilado vertical
+   existe por una razón concreta: con el icono al lado, etiquetas como
+   «Situaciones inminentes detectadas» sólo disponían de la mitad del ancho y
+   caían a tres renglones desiguales. En vertical la etiqueta usa la teja
+   entera y las cinco quedan a la misma altura.
+   Las tejas NO reaccionan al hover: no se pueden pulsar, y una teja que se
+   levanta al pasar el cursor promete un clic que no existe. */
 .indicators-grid {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-4);
+  align-items: stretch;
 }
 
-/* Medio: la teja principal ocupa la fila y las cuatro restantes van de a dos */
+/* Medio: la teja principal ocupa la fila y las cuatro restantes van de a dos.
+   Aquí la teja vuelve a ser una fila (icono a la izquierda, cifra y etiqueta
+   a la derecha): con menos columnas hay ancho de sobra para la etiqueta, y el
+   apilado vertical sólo serviría para triplicar el alto de la pantalla —en un
+   celular las cinco tejas en columna obligaban a desplazarse para ver la
+   quinta. */
 @media (max-width: 1000px) {
   .indicators-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .indicators-grid .indicator-card:first-child { grid-column: 1 / -1; }
+
+  /* Se califica con .indicators-grid a propósito: las reglas base de la teja
+     están declaradas más abajo en la hoja y, a igual especificidad, ganarían
+     por orden aunque la consulta de medios coincida. */
+  .indicators-grid .indicator-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+  }
+  .indicators-grid .indicator-card__datos { margin-top: 0; flex: 1; }
+  .indicators-grid .indicator-card__label { min-height: 0; margin-top: 2px; }
 }
 
 @media (max-width: 420px) {
@@ -387,52 +535,101 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 }
 
 .indicator-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-soft);
-  padding: 16px 18px;
+  position: relative;
+  background: #fff;
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  padding: var(--s-5);
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+  transition: box-shadow var(--dur-hover) var(--ease-out);
+}
+
+/* El icono va en su propia placa, con un pelo interior de su misma familia
+   de color. Es la misma arquitectura anidada del marcador, a escala de 40 px. */
+.indicator-card__icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: var(--r-control);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+}
+
+.indicator-card__icon--teal { background: var(--brand-50); color: var(--brand-600); box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1); }
+.indicator-card__icon--red { background: var(--alert-50); color: var(--alert-700); box-shadow: inset 0 0 0 1px rgba(212, 35, 35, 0.1); }
+.indicator-card__icon--amber { background: var(--warn-50); color: var(--warn-700); box-shadow: inset 0 0 0 1px rgba(194, 112, 10, 0.12); }
+.indicator-card__icon--blue { background: var(--brand-50); color: var(--brand-600); box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1); }
+
+/* La cifra y su etiqueta se pegan al fondo de la teja (margin-top: auto), de
+   modo que los cinco iconos quedan alineados arriba y las cinco cifras
+   abajo, sin importar que una etiqueta ocupe uno o dos renglones. */
+.indicator-card__datos {
+  margin-top: auto;
   min-width: 0;
 }
-
-.indicator-card__icon {
-  width: 50px;
-  height: 50px;
-  min-width: 50px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-}
-
-.indicator-card__icon--teal { background: var(--color-primary-light); color: var(--color-primary); }
-.indicator-card__icon--red { background: var(--color-danger-light); color: var(--color-danger-text); }
-.indicator-card__icon--amber { background: var(--color-warning-light); color: var(--color-warning-text); }
-.indicator-card__icon--blue { background: var(--color-primary-light); color: var(--color-primary); }
 
 .indicator-card__value {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: var(--color-primary-deep);
+  display: block;
+  transition: color var(--dur-enter) var(--ease-out);
 }
 
+/* Dos renglones reservados siempre. Sin esta reserva, una etiqueta de un
+   renglón y otra de dos dejan sus cifras a alturas distintas y la fila de
+   números deja de leerse como una fila. */
 .indicator-card__label {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 2px;
+  line-height: 1.35;
+  margin-top: 5px;
+  min-height: calc(2 * 1.35em);
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
 }
+
+/* Cero no es un dato: es la ausencia de uno. Se apaga a texto secundario para
+   que la vista se vaya sola a las cifras que sí tienen algo que contar
+   (contraste 6.4:1, sigue siendo legible en pantalla a pleno sol). */
+.indicator-card--cero .indicator-card__value { color: var(--text-secondary); }
+
+/* Estados: rojo cuando hay algo que atender hoy, ámbar cuando queda
+   pendiente. El color nunca va solo — lo acompaña el punto de 6 px, que es
+   como este sistema marca prioridad. */
+.indicator-card--alerta {
+  box-shadow: inset 0 0 0 1px var(--alert-100), var(--sh-1);
+}
+.indicator-card--alerta .indicator-card__value { color: var(--alert-700); }
+.indicator-card--aviso {
+  box-shadow: inset 0 0 0 1px var(--warn-100), var(--sh-1);
+}
+.indicator-card--aviso .indicator-card__value { color: var(--warn-700); }
+
+.indicator-card__punto {
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  border-radius: 50%;
+  align-self: center;
+  margin-left: auto;
+}
+.indicator-card--alerta .indicator-card__punto { background: var(--color-danger); }
+.indicator-card--aviso .indicator-card__punto { background: var(--color-warning); }
 
 /* ================= FORMS ================= */
 .field-hint {
-  color: var(--text-secondary);
-  font-size: 13.5px;
-  margin: -6px 0 14px;
+  color: var(--ink-400);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  margin: -6px 0 var(--s-4);
 }
 
 .form-grid {
@@ -460,10 +657,14 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .field--full { grid-column: 1 / -1; }
 
+/* La etiqueta pesa 500, no 600: en un formulario de doscientos campos, cada
+   etiqueta en seminegrita compite con el dato que la sigue. El peso vuelve a
+   subir sólo en los títulos de tarjeta. */
 .field label {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink-700);
 }
 
 .field-auto {
@@ -480,39 +681,58 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   margin-top: auto;
 }
 
+/* ---- Controles ---------------------------------------------------------
+   El contorno es sombra, no borde: así el foco puede engordar el anillo sin
+   que el campo cambie de tamaño ni empuje a sus vecinos. Fondo apenas
+   apagado en reposo y blanco puro al enfocar — el campo activo se enciende.
+   font-size 16px en móvil es obligatorio: por debajo, iOS hace zoom sobre el
+   campo al tocarlo y descuadra la pantalla en plena captura. */
 .field input,
 .field select {
-  padding: 10px 12px;
-  border: 1.5px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 14.5px;
+  padding: 10px var(--s-3);
+  border: none;
+  border-radius: var(--r-control);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  font-size: var(--fs-body);
   font-family: inherit;
-  color: var(--text-primary);
-  background: #fff;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  color: var(--ink-900);
+  background: var(--ink-50);
+  transition: box-shadow var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out);
 }
 
-.field input::placeholder { color: #7a8aa3; }
+@media (hover: hover) and (pointer: fine) {
+  .field input:hover,
+  .field select:hover { box-shadow: inset 0 0 0 1px var(--ink-300); }
+}
 
-.field input:hover,
-.field select:hover { border-color: var(--color-primary); }
+@media (max-width: 720px) {
+  .field input,
+  .field select,
+  .field textarea { font-size: 16px; }
+}
+
+.field input::placeholder { color: var(--ink-300); }
 
 .field input:focus,
 .field select:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(19, 41, 75, 0.18);
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
 }
 
+/* Sólo lectura: el campo pierde el blanco y se apaga a tinta secundaria. Se
+   distingue de uno vacío porque no reacciona al foco ni al cursor. */
 .field input[readonly] {
-  background: var(--bg-page);
-  color: var(--text-secondary);
+  background: var(--ink-100);
+  color: var(--ink-500);
+  box-shadow: inset 0 0 0 1px var(--ink-150);
 }
 
 .field.has-error input,
 .field.has-error select {
-  border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+  background: var(--alert-50);
+  box-shadow: inset 0 0 0 1.5px var(--alert-600), 0 0 0 3px rgba(212, 35, 35, 0.14);
 }
 
 /* Los grupos de opciones se marcan en el contenedor, no en cada control */
@@ -526,12 +746,15 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .field.has-error > label { color: var(--color-danger-text); }
 
+/* El mensaje de error nombra la regla («RN-098: …») y es pulsable: lleva al
+   campo que lo produjo. */
 .field-error-msg {
   display: block;
-  color: var(--color-danger-text);
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
+  color: var(--alert-700);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1.45;
+  margin-top: var(--s-1);
 }
 
 /* Advertencias (validación en vivo): ámbar, no bloquean */
@@ -549,11 +772,11 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   background: rgba(217, 119, 6, 0.05);
 }
 
-.field.has-warning > label { color: #92400e; }
+.field.has-warning > label { color: var(--warn-700); }
 
 .field-warning-msg {
   display: block;
-  color: #92400e;
+  color: var(--warn-700);
   font-size: 12px;
   font-weight: 600;
   margin-top: 4px;
@@ -580,27 +803,47 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   gap: 8px 14px;
 }
 
+/* ---- Píldoras de opción ------------------------------------------------
+   Contorno por sombra en vez de borde de 1,5 px: con borde, la píldora
+   seleccionada crecía medio píxel y el grupo entero temblaba al elegir. */
 .radio-pill {
   display: flex;
   align-items: center;
   height: 100%;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-full);
-  font-size: 13.5px;
+  gap: var(--s-2);
+  padding: 9px var(--s-4);
+  border: none;
+  border-radius: var(--r-chip);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--ink-700);
   cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: box-shadow var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
 }
 
-.radio-pill:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
-.radio-pill:has(input:checked) { border-color: var(--color-primary); background: var(--color-primary-light); color: var(--color-primary-deep); font-weight: 700; }
+@media (hover: hover) and (pointer: fine) {
+  .radio-pill:hover { box-shadow: inset 0 0 0 1px var(--brand-300); background: var(--brand-50); }
+  .radio-pill--negativa:hover { box-shadow: inset 0 0 0 1px var(--alert-100); background: var(--alert-50); }
+}
+
+.radio-pill:has(input:checked) {
+  box-shadow: inset 0 0 0 1.5px var(--brand-600);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-weight: 600;
+}
+
 .radio-pill:active { transform: scale(0.98); }
+.radio-pill:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring); }
 
-.radio-pill input { accent-color: var(--color-primary); }
+.radio-pill input { accent-color: var(--brand-600); }
+.radio-pill--negativa input { accent-color: var(--alert-600); }
 
-.radio-pill--negativa:hover { border-color: var(--color-danger); background: var(--color-danger-light); }
-.radio-pill--negativa input { accent-color: var(--color-danger); }
 
 /* Opciones apiladas cuando el texto es largo (ítem 2) */
 .radio-group--columna { flex-direction: column; align-items: flex-start; }
@@ -617,33 +860,53 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   display: flex;
   align-items: flex-start;
   height: 100%;
-  gap: 9px;
-  padding: 9px 12px;
-  border: 1.5px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 13.5px;
-  line-height: 1.35;
+  gap: var(--s-2);
+  padding: 9px var(--s-3);
+  border: none;
+  border-radius: var(--r-control);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  background: #fff;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink-700);
   cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: box-shadow var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
 }
 
-.check-pill:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
-.check-pill:has(input:checked) { border-color: var(--color-primary); background: var(--color-primary-light); color: var(--color-primary-deep); }
+@media (hover: hover) and (pointer: fine) {
+  .check-pill:hover { box-shadow: inset 0 0 0 1px var(--brand-300); background: var(--brand-50); }
+  .check-pill--excluyente:hover { box-shadow: inset 0 0 0 1px var(--ink-300); background: var(--ink-100); }
+}
+
+.check-pill:has(input:checked) {
+  box-shadow: inset 0 0 0 1.5px var(--brand-600);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-weight: 600;
+}
+
+.check-pill:active { transform: scale(0.99); }
+.check-pill:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring); }
 
 .check-pill input {
-  accent-color: var(--color-primary);
+  accent-color: var(--brand-600);
   margin-top: 2px;
   flex-shrink: 0;
 }
 
+/* «Ninguna de las anteriores» ocupa la fila entera y va sobre lienzo: es la
+   opción que anula a las demás, así que no debe parecer una más de la lista. */
 .check-pill--excluyente {
   grid-column: 1 / -1;
   font-weight: 600;
-  background: var(--bg-page);
+  background: var(--ink-50);
 }
 
-.check-pill--excluyente:hover { border-color: var(--text-secondary); background: var(--color-neutral-light); }
-.check-pill--excluyente input { accent-color: var(--text-secondary); }
+.check-pill--excluyente input { accent-color: var(--ink-500); }
 
 /* Campos de valor fijo por regla de negocio (RN-005) */
 .field select.is-fijo {
@@ -654,15 +917,18 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 }
 
 /* Etiqueta de trazabilidad con la regla de negocio */
+/* El código de regla es un dato técnico, no una etiqueta de marca: va en
+   monoespaciada y en gris, para que no compita con el título de la tarjeta. */
 .rule-tag {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  padding: 3px var(--s-2);
+  border-radius: 6px;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -685,23 +951,63 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 .card--consent { border-color: var(--color-primary-mid); }
 
 /* ================= SECCIONES NUMERADAS DEL INSTRUMENTO ================= */
+/* ---- Banda de sección --------------------------------------------------
+   Era una barra azul sólida a todo el ancho. Repetida ocho veces a lo largo
+   del formulario, el azul dejaba de significar «marca» y pasaba a ser ruido
+   de fondo, y competía con el único azul que sí debe llamar: el de los
+   controles que se tocan.
+   Ahora la sección se anuncia como un encabezado tipográfico sobre el propio
+   lienzo: número en una placa teñida, título en tinta, y una regla de un pelo
+   que cierra por abajo. Pesa por posición y por aire, no por relleno. */
 .section-banner {
-  background: var(--color-primary);
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: var(--radius-md);
-  font-size: 14.5px;
-  font-weight: 800;
-  letter-spacing: 0.005em;
-  margin: 6px 0 16px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 12px rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  color: var(--ink-900);
+  padding: 0 0 var(--s-3);
+  margin: var(--s-10) 0 var(--s-5);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  border-bottom: 1px solid var(--ink-150);
+  scroll-margin-top: calc(var(--header-height) + 90px);
 }
 
+/* La primera banda no necesita separarse de nada: arranca la vista. */
+.section-banner:first-of-type { margin-top: var(--s-2); }
+
+/* La placa del número: el único sitio del formulario donde el azul de marca
+   aparece como superficie llena. Sirve de mojón visual al desplazarse por un
+   instrumento que mide varias pantallas. */
+.section-banner__num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 9px;
+  background: var(--brand-600);
+  color: #fff;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0;
+  align-self: center;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.section-banner__texto { flex: 1; min-width: 0; }
+
+/* El número de ítem del instrumento SI-APS. Va en monoespaciada porque es un
+   identificador que se dicta y se coteja contra el formulario en papel. */
 .item-num {
   display: inline-block;
   min-width: 26px;
-  color: var(--color-primary-dark);
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--ink-400);
+  font-weight: 500;
 }
 
 /* ================= DIRECCIÓN NORMALIZADA (ítem 21) ================= */
@@ -840,7 +1146,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   margin-top: 24px;
   padding: 20px;
   border-radius: var(--radius-md);
-  background: #f8fafc;
+  background: var(--ink-50);
   border: 1.5px dashed var(--border-color);
   transition: all var(--transition-medium);
 }
@@ -849,7 +1155,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   background: var(--color-primary-light);
   border-color: var(--color-primary);
   border-style: solid;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sh-1);
 }
 
 .direccion-resultado__fila {
@@ -910,23 +1216,30 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 }
 
 /* Alertas de bloque */
+/* ---- Avisos ------------------------------------------------------------
+   Fondo teñido y pelo de 1 px de la misma familia. Sin borde lateral grueso:
+   una franja de color a la izquierda grita el estado antes de que se lea el
+   texto, y aquí el texto es el que manda. */
 .alert {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  font-size: 13.5px;
-  border: 1px solid var(--color-primary-mid);
-  background: var(--color-primary-light);
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-control);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.16);
+  background: var(--brand-50);
+  color: var(--brand-800);
 }
 
 .alert[hidden] { display: none; }
 
-.alert strong { display: block; margin-bottom: 3px; }
+.alert strong { display: block; margin-bottom: 3px; font-weight: 700; }
 
 .alert--danger {
-  background: var(--color-danger-light);
-  border-color: #f3b8b8;
-  color: var(--color-danger-text);
+  background: var(--alert-50);
+  box-shadow: inset 0 0 0 1px var(--alert-100);
+  color: var(--alert-700);
 }
 
 .alert--urgent {
@@ -952,18 +1265,35 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 }
 
 /* ================= BUTTONS ================= */
+/* ---- Botones -----------------------------------------------------------
+   Pastilla completa, tipografía de 13 px en peso 600 y compresión al pulsar.
+   El :active de escala es lo que hace que el botón parezca escuchar: la
+   respuesta es instantánea aunque la acción tarde. */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
   border: none;
-  border-radius: var(--radius-btn);
-  padding: 11px 22px;
-  font-size: 14px;
-  font-weight: 700;
+  border-radius: var(--r-chip);
+  padding: 10px var(--s-5);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: -0.005em;
   cursor: pointer;
-  transition: transform 0.14s var(--ease-out), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  transition: transform var(--dur-press) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
   font-family: inherit;
 }
 
 .btn:active { transform: scale(0.97); }
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
 
 /* Sin esto un botón deshabilitado se ve idéntico a uno activo: el cursor
    cambia, pero nada más lo distingue. Es el caso de Corregir/Eliminar sobre
@@ -971,51 +1301,58 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
    en app.js): el título explica por qué, y esta regla hace que se note que
    hay un motivo antes de leerlo. */
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
 }
 
 .btn--primary {
-  background: var(--color-primary);
+  background: var(--brand-600);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16), 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-
-.btn--primary:hover {
-  background: var(--color-primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18), 0 10px 22px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28),
+              0 8px 20px -8px rgba(0, 54, 90, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .btn--ghost {
   background: #fff;
-  color: var(--color-primary-dark);
-  border: 1.5px solid var(--border-strong);
-}
-
-.btn--ghost:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-light);
-  transform: translateY(-1px);
+  color: var(--ink-700);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
 }
 
 .btn--danger {
-  background: var(--color-danger);
+  background: var(--alert-600);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(168, 28, 28, 0.28),
+              0 8px 20px -8px rgba(168, 28, 28, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-.btn--danger:hover {
-  background: #b71c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover {
+    background: var(--brand-700);
+    box-shadow: 0 1px 2px rgba(0, 54, 90, 0.3),
+                0 12px 26px -8px rgba(0, 54, 90, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .btn--ghost:hover {
+    box-shadow: inset 0 0 0 1px var(--brand-300);
+    background: var(--brand-50);
+    color: var(--brand-800);
+  }
+  .btn--danger:hover {
+    background: var(--alert-700);
+    box-shadow: 0 1px 2px rgba(168, 28, 28, 0.3),
+                0 12px 26px -8px rgba(168, 28, 28, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
 }
 
 .btn--icon {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: 8px;
+  padding: 6px var(--s-3);
+  font-size: var(--fs-small);
+  border-radius: var(--r-chip);
 }
 
 .form-actions {
@@ -1028,35 +1365,50 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 /* ================= TABLES ================= */
 .table-wrapper { overflow-x: auto; }
 
+/* ---- Tabla del historial ----------------------------------------------
+   La cabecera se queda pegada al desplazar: en una tabla de doce columnas,
+   saber qué columna se está leyendo importa más que ver una fila extra.
+   Los encabezados van en versalitas microscópicas para que no compitan con
+   los datos, que son lo que se viene a leer. */
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-small);
   min-width: 640px;
 }
 
 .data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   text-align: left;
-  padding: 10px 12px;
-  background: var(--bg-page);
-  color: var(--text-secondary);
+  padding: var(--s-3);
+  background: var(--ink-50);
+  color: var(--ink-400);
+  font-size: var(--fs-eyebrow);
   font-weight: 600;
-  border-bottom: 2px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--ink-150);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--ink-100);
   vertical-align: middle;
+  color: var(--ink-700);
 }
+
+.data-table tbody tr:last-child td { border-bottom: none; }
 
 .data-table tbody tr {
   transition: background var(--transition-fast);
 }
 
-.data-table tbody tr:hover {
-  background: var(--color-primary-light);
+@media (hover: hover) and (pointer: fine) {
+  .data-table tbody tr:hover { background: var(--brand-50); }
 }
 
 .actions-cell {
@@ -1073,52 +1425,73 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 #historialTable thead {
   display: none; /* Ocultamos la cabecera */
 }
+/* La tabla del historial nunca se pinta como tabla: doce columnas no caben
+   ni en escritorio sin desplazamiento horizontal, y una ficha se lee mejor
+   como una ficha. El marcado sigue siendo <table> por semántica —encabezados
+   asociados a celdas para el lector de pantalla— y el CSS la reorganiza. */
 #historialTable tbody {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--s-4);
 }
+
 #historialTable tr {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px 12px;
-  background: var(--bg-card);
-  padding: 20px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-soft);
+  gap: var(--s-4) var(--s-3);
+  align-content: start;
+  background: #fff;
+  padding: var(--s-5);
+  border-radius: var(--r-shell);
+  border: none;
+  box-shadow: var(--sh-hair), var(--sh-1);
   position: relative;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out);
 }
-#historialTable tr:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-medium);
-  background: var(--bg-card);
+
+@media (hover: hover) and (pointer: fine) {
+  #historialTable tr:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sh-hair), var(--sh-2);
+  }
 }
+
 #historialTable td {
   padding: 0;
   border: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
+  /* Sin esto, un distintivo dentro de la celda se estira a todo el ancho de
+     la columna y deja de parecer una píldora. */
+  align-items: flex-start;
+  gap: 3px;
+  font-size: var(--fs-small);
+  color: var(--ink-800);
+  min-width: 0;
 }
+
 #historialTable td::before {
   content: attr(data-label);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  color: var(--ink-400);
   text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 /* Posicionamiento específico dentro de la tarjeta */
+/* El número de ficha es un código, no una palabra: va en monoespaciada, que
+   es como este sistema escribe todo lo que se dicta, se teclea o se compara
+   carácter a carácter. */
 #historialTable td:nth-child(1) {
   grid-column: 1 / -1;
+  font-family: var(--font-mono);
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--color-primary-deep);
-  padding-right: 90px; /* Espacio para el badge */
+  color: var(--ink-900);
+  padding-right: 96px; /* Espacio para el distintivo de estado */
 }
 #historialTable td:nth-child(1)::before {
   content: "Ficha N°";
@@ -1126,8 +1499,8 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 #historialTable td:nth-child(2) { /* Estado */
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: var(--s-5);
+  right: var(--s-5);
 }
 #historialTable td:nth-child(2)::before { display: none; }
 
@@ -1142,32 +1515,38 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 #historialTable td.actions-cell {
   grid-column: 1 / -1;
   flex-direction: row;
+  align-items: center;
   justify-content: flex-end;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--border-color);
+  margin-top: var(--s-1);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--ink-100);
 }
 
 .empty-state {
   text-align: center;
-  color: var(--text-secondary);
-  padding: 30px 10px;
-  font-size: 14px;
+  color: var(--ink-400);
+  padding: var(--s-12) var(--s-3);
+  font-size: var(--fs-body);
 }
 
 /* ================= BADGES ================= */
 .badge {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--s-3);
+  border-radius: var(--r-chip);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
 }
 
-.badge--danger { background: var(--color-danger-light); color: var(--color-danger-text); }
-.badge--success { background: var(--color-success-light); color: var(--color-success-text); }
-.badge--warning { background: var(--color-warning-light); color: var(--color-warning-text); }
-.badge--neutral { background: var(--color-neutral-light); color: var(--text-secondary); }
+.badge--danger { background: var(--alert-50); color: var(--alert-700); box-shadow: inset 0 0 0 1px var(--alert-100); }
+.badge--success { background: var(--ok-50); color: var(--ok-700); box-shadow: inset 0 0 0 1px var(--ok-100); }
+.badge--warning { background: var(--warn-50); color: var(--warn-700); box-shadow: inset 0 0 0 1px var(--warn-100); }
+.badge--neutral { background: var(--ink-100); color: var(--ink-500); box-shadow: inset 0 0 0 1px var(--ink-150); }
+.badge--info { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1px var(--brand-100); }
 
 /* ================= FILTERS ================= */
 .filters-bar {
@@ -1179,79 +1558,98 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .filters-bar input,
 .filters-bar select {
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border-strong);
-  font-size: 13.5px;
+  padding: 9px var(--s-4);
+  border-radius: var(--r-chip);
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  font-size: var(--fs-small);
   font-family: inherit;
-  color: var(--text-primary);
-  background: #fff;
+  color: var(--ink-900);
+  background: var(--ink-50);
+  transition: box-shadow var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out);
 }
 
 .filters-bar input:focus,
 .filters-bar select:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(19, 41, 75, 0.18);
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
 }
 
 .filters-bar input { flex: 1; min-width: 200px; }
 
 /* ================= MODAL ================= */
+/* El velo también lleva desenfoque: es fijo, no se desplaza, y el fondo
+   difuminado aparta visualmente el formulario en vez de sólo oscurecerlo. */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(11, 18, 32, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: 20px;
-  animation: fadeIn var(--transition-fast);
+  padding: var(--s-5);
+  animation: fadeIn 0.18s var(--ease-out);
 }
 
 .modal-overlay[hidden] { display: none; }
 
 .modal {
   background: #fff;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-shell);
   width: 100%;
   max-width: 720px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-  animation: slideUp var(--transition-medium);
+  box-shadow: 0 24px 64px -16px rgba(11, 18, 32, 0.45), var(--sh-hair);
+  animation: modalEntra 0.24s var(--ease-out);
 }
 
 .modal--small { max-width: 420px; }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Entra desde 0.97, nunca desde 0: nada en el mundo real aparece de la nada,
+   y una escala inicial visible hace que el diálogo parezca acercarse en vez
+   de materializarse. No lleva transform-origin del disparador porque un
+   modal no está anclado a ningún botón: nace centrado. */
+@keyframes modalEntra {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--border-color);
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-6);
+  border-bottom: 1px solid var(--ink-100);
 }
 
 .modal__close {
   border: none;
-  background: var(--bg-page);
-  width: 34px;
-  height: 34px;
+  background: var(--ink-100);
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 19px;
+  line-height: 1;
   cursor: pointer;
-  color: var(--text-secondary);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  color: var(--ink-500);
+  transition: background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
 }
 
-.modal__close:hover { background: var(--color-danger-light); color: var(--color-danger-text); }
+@media (hover: hover) and (pointer: fine) {
+  .modal__close:hover { background: var(--alert-50); color: var(--alert-700); }
+}
+.modal__close:active { transform: scale(0.94); }
 
 .modal__body {
   padding: 22px;
@@ -1307,23 +1705,40 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   max-width: 340px;
 }
 
+/* El aviso flotante dice su estado con un punto de color a la izquierda, no
+   con una franja lateral gruesa ni tiñendo todo el fondo: así el texto se
+   lee sobre blanco puro, que es donde mejor contrasta a pleno sol. */
 .toast {
+  display: flex;
+  gap: var(--s-3);
   background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow-medium);
-  padding: 14px 16px;
-  border: 1px solid var(--color-primary-mid);
-  animation: toastIn var(--transition-medium);
-  font-size: 13.5px;
+  border-radius: var(--r-control);
+  box-shadow: var(--sh-hair), var(--sh-3);
+  padding: var(--s-3) var(--s-4);
+  border: none;
+  animation: toastIn 0.24s var(--ease-out);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--ink-700);
   position: relative;
 }
 
-.toast strong { display: block; margin-bottom: 2px; font-size: 13.5px; }
+.toast::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--brand-600);
+}
 
-.toast--success { border-left-color: var(--color-success); }
-.toast--error { border-left-color: var(--color-danger); }
-.toast--warning { border-left-color: var(--color-warning); }
-.toast--info { border-left-color: var(--color-accent); }
+.toast strong { display: block; margin-bottom: 2px; font-size: var(--fs-label); color: var(--ink-900); }
+
+.toast--success::before { background: var(--ok-600); }
+.toast--error::before { background: var(--alert-600); }
+.toast--warning::before { background: var(--warn-600); }
+.toast--info::before { background: var(--brand-600); }
 
 .toast.is-leaving { animation: toastOut var(--transition-medium) forwards; }
 
@@ -1340,59 +1755,82 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 /* =========================================================
    ÍNDICE DE SECCIONES DEL FORMULARIO
    ========================================================= */
+/* ---- Índice flotante ---------------------------------------------------
+   Isla pegajosa bajo la cabecera. Lleva el mismo cristal esmerilado que la
+   cabecera —también es fija, así que el desenfoque se compone una vez y no
+   repinta al desplazarse— y la sombra ambiental que la despega del
+   formulario que le pasa por debajo. */
 .form-nav {
   position: sticky;
-  top: calc(var(--header-height) + 14px);
+  top: calc(var(--header-height) + var(--s-3));
   z-index: 15;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 10px 12px;
-  padding: 12px 18px;
-  margin-bottom: 18px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-medium);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-5);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  border: none;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-2);
 }
 
 .form-nav__titulo {
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  margin-right: 4px;
+  letter-spacing: 0.18em;
+  color: var(--ink-400);
+  padding-left: var(--s-2);
+  margin-right: var(--s-1);
 }
 
+/* Los enlaces del índice no van todos teñidos de azul: con ocho chips azules
+   el índice pesaba más que el formulario. En reposo son neutros; el azul se
+   reserva para el único que importa, el de la sección que se está mirando. */
 .form-nav__link {
-  padding: 6px 13px;
-  border-radius: var(--radius-full);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-primary-dark);
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-600);
   text-decoration: none;
-  background: var(--color-primary-light);
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  background: transparent;
+  transition: background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
   white-space: nowrap;
 }
 
-.form-nav__link:hover {
-  background: var(--color-primary);
+@media (hover: hover) and (pointer: fine) {
+  .form-nav__link:hover {
+    background: var(--brand-50);
+    color: var(--brand-800);
+  }
+}
+
+/* La sección que se está mirando. La enciende el observador de intersección
+   de inicializarIndiceActivo(): el índice dice dónde estás, no sólo a dónde
+   puedes ir. */
+.form-nav__link.is-actual {
+  background: var(--brand-600);
   color: #fff;
-  transform: translateY(-1px);
+  font-weight: 600;
 }
 
 .form-nav__link--cierre {
-  background: var(--color-primary-deep);
+  background: var(--ink-900);
   color: #fff;
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  .form-nav__link--cierre:hover { background: var(--ink-800); color: #fff; }
 }
 
-.form-nav__link--cierre:hover { background: #0b1d38; color: #fff; }
-
-/* Compensa la barra fija al saltar con anclas */
+/* Compensa la cabecera y la isla del índice al saltar con anclas */
 [id^="seccion-"] { scroll-margin-top: calc(var(--header-height) + 96px); }
 
 /* Ayuda de revisión: revela los campos condicionados sin cumplir su condición */
@@ -1400,18 +1838,23 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
-  border-radius: var(--radius-full);
-  border: 1.5px dashed var(--border-color);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  border: none;
+  outline: 1.5px dashed var(--ink-200);
+  outline-offset: -1.5px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-500);
   cursor: pointer;
   white-space: nowrap;
+  margin-left: var(--s-1);
 }
 
-.form-nav__toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.form-nav__toggle input { accent-color: var(--color-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .form-nav__toggle:hover { outline-color: var(--brand-300); color: var(--brand-800); }
+}
+.form-nav__toggle input { accent-color: var(--brand-600); }
 
 .revelar-condicionados [hidden] {
   display: block !important;
@@ -1439,7 +1882,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   border-radius: var(--radius-full);
   letter-spacing: 0.05em;
   z-index: 5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px rgba(11, 18, 32, 0.18);
   pointer-events: none;
 }
 
@@ -1482,55 +1925,63 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 .cardinalidad-aviso strong { display: inline; margin-right: 4px; }
 .cardinalidad-aviso .rule-tag { margin-left: 6px; }
 
+/* ---- Bloques repetibles (familia, integrante, plan) -------------------
+   Carcasa con cabecera-núcleo dentro: la cabecera es una placa con 5 px de
+   margen por dentro de la carcasa y radio menor, de modo que al plegarse se
+   ve como una pieza encajada y no como una franja pegada al borde. */
 .bloque {
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--bg-card);
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-soft);
+  border: none;
+  border-radius: var(--r-shell);
+  background: #fff;
+  margin-bottom: var(--s-4);
+  padding: 5px;
+  box-shadow: var(--sh-hair), var(--sh-1);
 }
 
-.bloque--familia { border-color: var(--color-primary-mid); }
-.bloque--integrante { border-color: var(--border-color); }
+.bloque--familia { box-shadow: inset 0 0 0 1px var(--brand-300), var(--sh-1); }
 
 .bloque__cabecera {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s-3);
   flex-wrap: wrap;
-  padding: 14px 18px;
+  padding: var(--s-3) var(--s-4);
   cursor: pointer;
   list-style: none;
-  background: var(--bg-panel);
-  border-radius: calc(var(--radius-lg) - 1.5px);
-  transition: background var(--transition-fast);
+  /* ink-100 y no ink-50: el lienzo de la página ya es ink-50, así que con ese
+     tono la placa se confundía con el fondo y la carcasa dejaba de leerse
+     como carcasa. */
+  background: var(--ink-100);
+  border-radius: var(--r-core);
+  transition: background var(--dur-hover) var(--ease-out);
   user-select: none;
 }
 
-.bloque[open] > .bloque__cabecera { border-radius: calc(var(--radius-lg) - 1.5px) calc(var(--radius-lg) - 1.5px) 0 0; }
-
 .bloque__cabecera::-webkit-details-marker { display: none; }
-.bloque__cabecera:hover { background: var(--color-primary-light); }
+
+@media (hover: hover) and (pointer: fine) {
+  .bloque__cabecera:hover { background: var(--brand-50); }
+}
 
 /* Triángulo indicador propio, para no depender del marcador nativo */
 .bloque__cabecera::before {
   content: '▸';
-  font-size: 14px;
-  color: var(--text-secondary);
-  transition: transform var(--transition-fast);
+  font-size: 13px;
+  color: var(--ink-400);
+  transition: transform var(--dur-hover) var(--ease-out);
 }
 
 .bloque[open] > .bloque__cabecera::before { transform: rotate(90deg); }
 
 .bloque__chip {
-  padding: 3px 11px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
+  padding: 3px var(--s-2);
+  border-radius: 6px;
+  background: var(--brand-600);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-eyebrow);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
 }
 
 .bloque__chip--persona { background: var(--color-primary-deep); }
@@ -1549,8 +2000,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .bloque__cuerpo {
   padding: 18px;
-  border-top: 1px solid var(--border-color);
-  background: #fbfcfd;
+  background: transparent;
 }
 
 .bloque__acciones {
@@ -1559,34 +2009,62 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   margin-bottom: 12px;
 }
 
-.bloque--integrante .bloque__cuerpo { background: #fdfdfe; }
+.bloque--integrante .bloque__cuerpo { background: transparent; }
 
+/* Una tarjeta dentro de un bloque no vuelve a ser una tarjeta: sería una caja
+   dentro de otra caja dentro de otra. Se convierte en una sección plana
+   separada por una regla. */
 .card--anidada {
   box-shadow: none;
   border: none;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--ink-100);
   border-radius: 0;
   background: transparent;
-  padding: 18px 4px 6px;
-  margin-bottom: 8px;
+  padding: var(--s-5) var(--s-1) var(--s-2);
+  margin-bottom: var(--s-2);
 }
 
 .card--anidada:first-child { border-top: none; padding-top: 4px; }
 
+/* «Añadir otro…»: lo único del sistema que va en trazo discontinuo. El
+   discontinuo dice «aquí todavía no hay nada, y lo habrá si lo pulsas». */
 .btn--bloque {
-  display: block;
+  display: flex;
   width: 100%;
-  margin: 0 0 22px;
-  border-style: dashed;
-  padding: 13px;
+  margin: 0 0 var(--s-5);
+  padding: var(--s-3);
+  background: transparent;
+  color: var(--ink-500);
+  box-shadow: inset 0 0 0 1.5px var(--ink-200);
+  border: none;
+  outline: 1.5px dashed var(--ink-200);
+  outline-offset: -1.5px;
+  border-radius: var(--r-control);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--bloque:hover {
+    background: var(--brand-50);
+    color: var(--brand-800);
+    outline-color: var(--brand-300);
+    box-shadow: none;
+  }
 }
 
 .contenedor-integrantes { margin-bottom: 14px; }
 
+/* La 5 vive dentro del bloque de familia, así que baja un escalón de tamaño
+   y pierde la regla inferior: ya está contenida por la caja que la rodea. */
 .section-banner--anidado {
-  font-size: 13px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, var(--color-accent), #1d4ed8);
+  font-size: var(--fs-h3);
+  margin: var(--s-5) 0 var(--s-4);
+  padding-bottom: var(--s-2);
+  border-bottom-color: var(--ink-100);
+}
+.section-banner--anidado .section-banner__num {
+  width: 24px;
+  height: 24px;
+  font-size: var(--fs-micro);
 }
 
 /* =========================================================
@@ -1637,14 +2115,14 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 .campo-sensible {
   padding: 12px 14px;
   background: var(--color-warning-light);
-  border: 1px solid #f0d9ae;
+  border: 1px solid var(--warn-100);
   border-radius: 10px;
 }
 
 .campo-critico {
   padding: 12px 14px;
   background: var(--color-danger-light);
-  border: 1px solid #f3b8b8;
+  border: 1px solid var(--alert-100);
   border-radius: 10px;
 }
 
@@ -1811,7 +2289,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .combo-cups__nombre:empty { display: none; }
 
-.combo-cups__nombre--error { color: var(--color-danger, #b91c1c); font-weight: 600; }
+.combo-cups__nombre--error { color: var(--alert-700); font-weight: 600; }
 .combo-cups__nombre--pendiente { font-style: italic; }
 
 /* Diseño responsivo tipo tarjeta (grid) para eliminar el scroll horizontal */
@@ -1960,9 +2438,12 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 /* =========================================================
    CIERRE: SEMÁFORO, ALERTAS E IMPEDIMENTOS
    ========================================================= */
-.section-banner--cierre {
-  background: var(--color-primary-deep);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.18);
+/* El cierre es el final del recorrido: su placa se invierte a tinta sólida
+   para marcar que aquí ya no se captura, se revisa y se guarda. */
+.section-banner--cierre .section-banner__num {
+  background: var(--ink-900);
+  color: #fff;
+  box-shadow: none;
 }
 
 .card--cierre { border-color: var(--color-primary-mid); }
@@ -1983,46 +2464,51 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 .semaforo__nivel { display: flex; align-items: center; gap: 14px; }
 
 .semaforo__punto {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 0 0 4px rgba(11, 18, 32, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.semaforo__punto--gris { background: #cbd5e1; }
-.semaforo__punto--verde { background: var(--color-success); }
-.semaforo__punto--amarillo { background: #eab308; }
-.semaforo__punto--naranja { background: #f97316; }
-.semaforo__punto--rojo { background: var(--color-danger); }
+/* Cuatro escalones de riesgo. El verde y el rojo son los del logo; el
+   amarillo y el naranja son los dos peldaños intermedios que el instrumento
+   exige y que el logotipo no tiene. */
+.semaforo__punto--gris { background: var(--ink-300); }
+.semaforo__punto--verde { background: var(--ok-600); }
+.semaforo__punto--amarillo { background: #e0a90b; }
+.semaforo__punto--naranja { background: #e07a15; }
+.semaforo__punto--rojo { background: var(--alert-600); }
 
 .semaforo__etiqueta {
   display: block;
-  font-size: 15px;
+  font-size: var(--fs-h3);
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
 }
 
 .semaforo__detalle {
   display: block;
-  font-size: 12.5px;
-  color: var(--text-secondary);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
 }
 
 .semaforo__conteos { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .conteo {
-  padding: 7px 13px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  font-size: var(--fs-micro);
   font-weight: 600;
 }
 
 .conteo b { font-size: 15px; margin-right: 4px; }
 
 .conteo--inmediata { background: var(--color-danger-light); color: #991b1b; }
-.conteo--prioritaria { background: #ffedd5; color: #9a3412; }
-.conteo--regular { background: var(--color-warning-light); color: #92400e; }
+.conteo--prioritaria { background: var(--warn-50); color: var(--warn-700); }
+.conteo--regular { background: var(--color-warning-light); color: var(--warn-700); }
 
 .lista-alertas,
 .lista-impedimentos { display: flex; flex-direction: column; gap: 10px; }
@@ -2049,11 +2535,11 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   background: var(--border-strong);
 }
 
-.alerta-item--inmediata { border-color: #f3b8b8; background: #fff5f5; }
+.alerta-item--inmediata { border-color: var(--alert-100); background: var(--alert-50); }
 .alerta-item--inmediata::before { background: var(--color-danger); }
-.alerta-item--prioritaria { border-color: #f6c8a0; background: #fff8f1; }
+.alerta-item--prioritaria { border-color: var(--warn-100); background: var(--warn-50); }
 .alerta-item--prioritaria::before { background: #ea7a1c; }
-.alerta-item--regular { border-color: #efd68d; background: #fffcef; }
+.alerta-item--regular { border-color: var(--warn-100); background: var(--warn-50); }
 .alerta-item--regular::before { background: #d5a80a; }
 
 .alerta-item__cuerpo { flex: 1; }
@@ -2108,7 +2594,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   margin-bottom: 18px;
   border-radius: 10px;
   background: var(--color-warning-light);
-  border: 1px solid #f0d9ae;
+  border: 1px solid var(--warn-100);
   font-size: 13px;
   color: var(--color-warning-text);
 }
@@ -2125,7 +2611,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   border: 1px solid var(--border-color);
 }
 
-.estado-plan--pendiente { background: var(--color-warning-light); border-color: #f0d9ae; }
+.estado-plan--pendiente { background: var(--color-warning-light); border-color: var(--warn-100); }
 .estado-plan--registrado { background: var(--color-success-light); border-color: #b5e2c9; }
 
 .estado-plan__icono { font-size: 24px; flex-shrink: 0; }
@@ -2138,7 +2624,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 .lista-pendientes-plan { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .lista-pendientes-plan:empty { display: none; }
 
-.alerta-item--pendiente-plan { border-color: #f0d9ae; background: #fffbef; }
+.alerta-item--pendiente-plan { border-color: var(--warn-100); background: var(--warn-50); }
 .alerta-item--pendiente-plan::before { background: var(--color-warning); }
 
 .badge--plan-pendiente {
@@ -2176,38 +2662,49 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Isla flotante al pie: es lo último que se mira antes de guardar, así que
+   lleva la sombra más alta del sistema para despegarse del formulario y el
+   mismo cristal esmerilado de la cabecera —también es fija—, de modo que se
+   intuye el contenido que pasa por debajo sin que estorbe la lectura. */
 .nav-errores__barra {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px 8px 14px;
-  background: #fff;
-  border: 1px solid #f3b8b8;
-  border-radius: 14px;
-  box-shadow: var(--shadow-medium);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--alert-100), var(--sh-3);
+  border-radius: var(--r-shell);
 }
 
-.nav-errores--listo .nav-errores__barra { border-color: #b5e2c9; }
+.nav-errores--listo .nav-errores__barra {
+  box-shadow: inset 0 0 0 1px var(--ok-100), var(--sh-3);
+}
 
 .nav-errores__resumen {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   min-width: 0;
-  padding: 6px 8px;
+  padding: 6px var(--s-2);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--r-control);
   background: transparent;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-label);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--ink-900);
   cursor: pointer;
   text-align: left;
+  transition: background var(--dur-hover) var(--ease-out);
 }
 
-.nav-errores__resumen:hover { background: var(--bg-page); }
+@media (hover: hover) and (pointer: fine) {
+  .nav-errores__resumen:hover { background: var(--ink-100); }
+}
 
 .nav-errores__icono { font-size: 20px; color: var(--color-danger-text); flex-shrink: 0; }
 .nav-errores--listo .nav-errores__icono { color: var(--color-success); }
@@ -2274,7 +2771,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   color: #fff;
 }
 
-.nav-errores__btn--principal:hover { background: #b91c1c; border-color: #b91c1c; }
+.nav-errores__btn--principal:hover { background: var(--alert-700); border-color: var(--alert-700); }
 
 .nav-errores__btn--guardar {
   background: var(--color-primary);
@@ -2327,7 +2824,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 }
 
 .nav-errores__item:hover { background: var(--color-danger-light); }
-.nav-errores__item.is-activo { background: var(--color-danger-light); outline: 1px solid #f3b8b8; outline-offset: -1px; }
+.nav-errores__item.is-activo { background: var(--color-danger-light); outline: 1px solid var(--alert-100); outline-offset: -1px; }
 
 .nav-errores__item-num {
   flex-shrink: 0;
@@ -2466,7 +2963,7 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
   flex-wrap: wrap;
   margin: 0 0 18px;
   padding: 12px 18px;
-  border: 1px solid #f0d9ae;
+  border: 1px solid var(--warn-100);
   border-radius: 10px;
   background: var(--color-warning-light);
   color: var(--color-warning-text);
@@ -2476,133 +2973,162 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 .aviso-correccion[hidden] { display: none; }
 
-/* ================= HERO WELCOME ================= */
-.hero-welcome {
-  text-align: left;
-  padding: 18px 4px 26px;
-  margin-bottom: 4px;
-  max-width: 62ch;
-}
 
-.hero-welcome__title {
-  font-size: 30px;
-  font-weight: 800;
-  color: var(--color-primary-deep);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin-bottom: 8px;
-}
 
-.hero-welcome__subtitle {
-  font-size: 15.5px;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.6;
-}
-
-/* ================= SECTION TITLE ================= */
-.section-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 28px 0 16px;
-  letter-spacing: -0.2px;
-}
-
-/* ================= QUICK ACTION CARDS ================= */
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px;
-  margin-bottom: 32px;
-}
-
-.quick-action-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 26px 24px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-soft);
-  cursor: pointer;
-  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
-  text-align: left;
+/* ---- Píldora de estado de sincronización -------------------------------
+   Verde cuando no queda nada por subir; ámbar y pulsable cuando sí. El ámbar
+   es un botón de verdad: la acción que resuelve el estado está en el mismo
+   sitio donde se lee el estado. */
+.estado-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
   font-family: inherit;
-  overflow: hidden;
-  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.quick-action-card::before {
+.estado-sync__punto {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+}
+
+.estado-sync--listo {
+  background: var(--color-success-light);
+  border-color: #b6e3cd;
+  color: var(--color-success-text);
+}
+.estado-sync--listo .estado-sync__punto { background: var(--color-success); }
+
+.estado-sync--pendiente {
+  background: var(--color-warning-light);
+  border-color: var(--warn-100);
+  color: var(--color-warning-text);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out),
+              border-color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+.estado-sync--pendiente .estado-sync__punto { background: var(--color-warning); }
+.estado-sync--pendiente:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+  .estado-sync--pendiente:hover {
+    background: var(--warn-100);
+    border-color: var(--color-warning);
+  }
+}
+
+/* El anillo del punto ámbar late una vez cada 2,4 s. Es la única cosa que se
+   mueve sola en la pantalla, y sólo existe mientras haya trabajo sin subir:
+   cuando todo está sincronizado el punto es verde y está quieto. */
+.estado-sync--pendiente .estado-sync__punto::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  z-index: 0;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: latidoPunto 2.4s var(--ease-out) infinite;
 }
 
-.quick-action-card > * {
-  z-index: 1;
-  position: relative;
+@keyframes latidoPunto {
+  0%        { transform: scale(1);   opacity: 0.5; }
+  55%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
-.quick-action-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-medium);
-  border-color: var(--color-primary-mid);
+.estado-sync__contador {
+  font-variant-numeric: tabular-nums;
 }
 
-.quick-action-card:hover::before { opacity: 1; }
 
-.quick-action-card:active { transform: translateY(-1px) scale(0.99); }
-
-/* La acción principal es la única llena de azul: es a lo que se viene */
-.quick-action-card--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16), 0 10px 24px rgba(0, 0, 0, 0.14);
+/* ================= ESTADO VACÍO DE INICIO =================
+   Con cero fichas, la pantalla eran cinco ceros y medio lienzo en blanco.
+   Este panel ocupa ese hueco y dice qué hacer a continuación. Es un panel,
+   no un modal: no exige una decisión, sólo orienta. */
+.inicio-vacio {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-6);
+  border-radius: var(--r-shell);
+  border: 1px dashed var(--ink-200);
+  background: var(--ink-100);
+  margin-bottom: var(--s-8);
 }
-.quick-action-card--primary:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
-.quick-action-card--primary .quick-action-card__icon { color: rgba(255, 255, 255, 0.85); }
-.quick-action-card--primary .quick-action-card__title { color: #fff; }
-.quick-action-card--primary .quick-action-card__desc { color: rgba(255, 255, 255, 0.8); }
 
-.quick-action-card--blue:hover .quick-action-card__icon,
-.quick-action-card--teal:hover .quick-action-card__icon { color: var(--color-primary); }
+.inicio-vacio[hidden] { display: none; }
 
-.quick-action-card__icon {
-  font-size: 34px;
-  line-height: 1;
+.inicio-vacio__icono {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   color: var(--color-primary);
-  transition: color 0.2s var(--ease-out);
 }
 
-.quick-action-card__title {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--color-primary-deep);
-  letter-spacing: -0.01em;
+.inicio-vacio__titulo {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+  margin-bottom: 3px;
 }
 
-.quick-action-card__desc {
-  font-size: 13.5px;
-  color: var(--text-secondary);
+.inicio-vacio__texto {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
   line-height: 1.5;
+  margin: 0;
+}
+
+/* ---- Movimiento reducido para lo añadido en Inicio ---------------------
+   Se conservan los cambios de color y opacidad (comunican estado) y se
+   retira todo lo que se desplaza o escala. */
+@media (prefers-reduced-motion: reduce) {
+  .estado-sync--pendiente .estado-sync__punto::after { animation: none; }
+  .estado-sync--pendiente:active { transform: none; }
+  .accion-ancha:hover,
+  .accion-ancha:active,
+  .btn:active,
+  .btn-cta:active,
+  .radio-pill:active,
+  .modal__close:active,
+  #historialTable tr:hover { transform: none; }
+  .accion-ancha:hover .accion-ancha__flecha,
+  .btn-cta:hover .btn-cta__icono { transform: none; }
+  .app-header { transition: none; }
+  .modal { animation: fadeIn 0.14s var(--ease-out); }
 }
 
 @media (max-width: 720px) {
-  .hero-welcome { padding: 20px 10px 16px; }
-  .hero-welcome__title { font-size: 22px; }
-  .quick-actions { grid-template-columns: 1fr; }
+  .app-main { padding: var(--s-6) var(--s-4) var(--s-12); }
+  .app-header { padding: var(--s-3) var(--s-4); }
+  /* En terreno se toca con el pulgar y a veces con guante: en celular la
+     píldora pasa a ocupar el ancho completo para ser un blanco grande. */
+  .hero-welcome__estado { width: 100%; }
+  .estado-sync { width: 100%; justify-content: center; }
+  .inicio-vacio { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .bento__titulo { font-size: 23px; }
+  .btn-cta { width: 100%; justify-content: space-between; }
+  .section-banner { font-size: var(--fs-h3); margin-top: var(--s-8); }
+  .card { padding: var(--s-5) var(--s-4) var(--s-4); }
   .app-tabs__label { display: none; }
-  .app-tabs__btn { padding: 10px 14px; justify-content: center; }
+  .app-tabs__btn { padding: 10px var(--s-3); justify-content: center; }
   .app-tabs__icon { font-size: 22px; }
 
   .bloque__cuerpo { padding: 12px 10px; }
@@ -2621,4 +3147,349 @@ table, .indicator-card__value, .conteo b { font-variant-numeric: tabular-nums; }
 
 @media (max-width: 480px) {
   .llaves-heredadas { grid-template-columns: 1fr; }
+}
+
+/* ================= BENTO DE INICIO =================
+   Rejilla de 12 columnas con piezas de peso distinto. La alternativa —cinco
+   tejas iguales y tres tarjetas iguales— repartía el mismo énfasis entre el
+   total de la jornada y un contador de territorios, y dejaba la acción
+   principal como una opción más de un menú de tres. */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--s-4);
+  margin-bottom: var(--s-8);
+}
+
+.bento__principal {
+  grid-column: span 8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  padding: var(--s-8) var(--s-8) var(--s-6);
+}
+
+.bento__titulo {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+  color: var(--ink-900);
+  max-width: 20ch;
+}
+
+.bento__subtitulo {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--ink-500);
+  max-width: 54ch;
+}
+
+/* ---- Carcasa + núcleo (radios concéntricos) ---------------------------
+   El marcador no se apoya plano sobre el lienzo: es una placa teñida dentro
+   de una bandeja blanca. El núcleo lleva 6 px menos de radio que la carcasa,
+   exactamente el padding que los separa; con el mismo radio en los dos, la
+   curva interior se ve estrangulada contra la exterior. */
+.bento__total {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  padding: 6px 6px var(--s-4);
+}
+
+.marcador {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--s-5) var(--s-5) var(--s-4);
+  border-radius: var(--r-core);
+  background:
+    radial-gradient(120% 100% at 100% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+    var(--brand-50);
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.09);
+}
+
+.marcador__valor {
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--brand-700);
+  margin-top: var(--s-2);
+}
+
+.marcador__etiqueta {
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--ink-500);
+  margin-top: var(--s-1);
+  max-width: 22ch;
+}
+
+.bento__total .hero-welcome__estado { padding: 0 var(--s-3); }
+.bento__total .estado-sync { width: 100%; justify-content: center; }
+
+/* ---- Acción principal: píldora con el icono en su propia isla ----------
+   La flecha nunca va desnuda al lado del texto: vive en su propio círculo,
+   a ras del padding derecho. Al pulsar, la píldora entera se comprime y el
+   círculo avanza — la tensión interna es lo que hace que se sienta un
+   mecanismo y no un rectángulo que cambia de color. */
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+  padding: 9px 9px 9px var(--s-6);
+  border: none;
+  border-radius: var(--r-chip);
+  background: var(--brand-600);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.3),
+              0 10px 24px -8px rgba(0, 54, 90, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: background var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out);
+}
+
+.btn-cta__icono {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 15px;
+  transition: transform var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-cta:hover {
+    background: var(--brand-700);
+    box-shadow: 0 1px 2px rgba(0, 54, 90, 0.32),
+                0 14px 30px -8px rgba(0, 54, 90, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn-cta:hover .btn-cta__icono {
+    background: rgba(255, 255, 255, 0.26);
+    transform: translateX(2px);
+  }
+}
+
+.btn-cta:active { transform: scale(0.975); }
+
+/* ---- Acciones secundarias: dos tarjetas anchas ------------------------- */
+.bento__acciones {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.accion-ancha {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  width: 100%;
+  padding: var(--s-5);
+  border: none;
+  border-radius: var(--r-card);
+  background: #fff;
+  box-shadow: var(--sh-hair), var(--sh-1);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out);
+}
+
+.accion-ancha__icono {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  color: var(--brand-600);
+  font-size: 21px;
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1);
+  transition: background var(--dur-hover) var(--ease-out);
+}
+
+.accion-ancha__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.accion-ancha__titulo {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+}
+
+.accion-ancha__desc {
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--ink-500);
+}
+
+.accion-ancha__flecha {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-size: 15px;
+  transition: transform var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .accion-ancha:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sh-hair), var(--sh-2);
+  }
+  .accion-ancha:hover .accion-ancha__icono { background: var(--brand-100); }
+  .accion-ancha:hover .accion-ancha__flecha {
+    background: var(--brand-600);
+    color: #fff;
+    transform: translateX(3px);
+  }
+}
+
+.accion-ancha:active { transform: translateY(0) scale(0.99); }
+
+.accion-ancha:focus-visible,
+.btn-cta:focus-visible {
+  outline: none;
+  box-shadow: var(--sh-1), 0 0 0 3px var(--brand-ring);
+}
+
+/* ---- Derrumbe responsivo ----------------------------------------------
+   Toda la asimetría se rinde a una columna: en tablet estrecha y en celular
+   un bento de 12 columnas sólo produce celdas ilegibles. */
+@media (max-width: 1040px) {
+  .bento__principal,
+  .bento__total { grid-column: 1 / -1; }
+  .bento__total { flex-direction: row; align-items: stretch; gap: var(--s-4); }
+
+  /* A lo ancho, el marcador deja de ser una placa vertical y se lee como una
+     línea de estadística: la versalita arriba, y la cifra con su etiqueta al
+     lado. Apilado ocupaba todo el ancho para dejar tres cuartas partes en
+     blanco a la derecha del número. */
+  .marcador {
+    flex: 1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    /* En columna el contenido se centra verticalmente; al girar a fila, ese
+       mismo justify-content pasa a centrar en horizontal y dejaba la cifra
+       flotando en mitad de la placa. */
+    justify-content: flex-start;
+    column-gap: var(--s-4);
+    row-gap: 0;
+  }
+  .marcador .eyebrow { flex-basis: 100%; }
+  .marcador__valor { margin-top: var(--s-1); }
+  .marcador__etiqueta { max-width: none; margin-top: 0; }
+
+  .bento__total .hero-welcome__estado {
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .bento { gap: var(--s-3); }
+  .bento__principal { padding: var(--s-6) var(--s-5); }
+  .bento__total { flex-direction: column; }
+  .bento__acciones { grid-template-columns: 1fr; }
+  .marcador__valor { font-size: 44px; }
+}
+
+/* ================= SWEETALERT2 =================
+   Los avisos los pinta SweetAlert desde su CDN, con su propio aspecto. Sin
+   estas reglas quedaban como una isla ajena en medio de la interfaz: otra
+   tipografía, otro radio, otra sombra y otro azul. Se le imponen los tokens
+   del sistema en lugar de aceptar los suyos. */
+.swal2-popup {
+  border-radius: var(--r-shell) !important;
+  font-family: var(--font-ui) !important;
+  box-shadow: 0 24px 64px -16px rgba(11, 18, 32, 0.45), var(--sh-hair) !important;
+  padding: var(--s-8) var(--s-6) var(--s-6) !important;
+}
+
+.swal2-title {
+  font-size: var(--fs-h2) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--ink-900) !important;
+}
+
+.swal2-html-container {
+  font-size: var(--fs-body) !important;
+  line-height: 1.55 !important;
+  color: var(--ink-500) !important;
+}
+
+.swal2-actions { gap: var(--s-2) !important; }
+
+.swal2-styled.swal2-confirm,
+.swal2-styled.swal2-cancel,
+.swal2-styled.swal2-deny {
+  border-radius: var(--r-chip) !important;
+  padding: 10px var(--s-5) !important;
+  font-size: var(--fs-label) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  box-shadow: none !important;
+  transition: transform var(--dur-press) var(--ease-out),
+              background var(--dur-hover) var(--ease-out) !important;
+}
+
+.swal2-styled.swal2-confirm {
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28),
+              0 8px 20px -8px rgba(0, 54, 90, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+.swal2-styled:active { transform: scale(0.97); }
+
+.swal2-styled.swal2-cancel {
+  background: #fff !important;
+  color: var(--ink-700) !important;
+  box-shadow: inset 0 0 0 1px var(--ink-200) !important;
+}
+
+.swal2-container.swal2-backdrop-show {
+  background: rgba(11, 18, 32, 0.4) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }

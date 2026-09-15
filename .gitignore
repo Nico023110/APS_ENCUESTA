@@ -5,3 +5,14 @@ node_modules/
 # Salidas de las pruebas de navegador (vídeos, trazas, capturas, informe HTML)
 pruebas/e2e/informe/
 pruebas/e2e/resultados/
+
+# Skills de agentes para otros harnesses (Codex, Gemini, etc.)
+.agents/
+
+# Binarios de skills (motor impeccable y similares)
+*.exe
+*.dll
+*.so
+*.dylib
+*.node
+.claude/skills/**/scripts/bin/
