@@ -589,8 +589,14 @@ const REGLAS_BLOQUE_2 = [
     mensaje: 'Obligatorio para entornos comunitario, institucional, educativo o laboral.'
   },
   {
+    /* En entorno Hogar la cabeza de familia es el integrante con rol
+       «Responsable económico» (ítem 72): pedir el nombre otra vez aquí era
+       digitar dos veces lo mismo, y bloqueaba la ficha cuando aún no se había
+       llegado a la sección 5. Ver liderDelEntorno(): si el campo queda vacío se
+       toma de allí. En los demás entornos sigue siendo obligatorio. */
     codigo: 'RN-019',
     campo: 'cabezaFamilia',
+    aplica: function (d) { return d.entornoAbordaje !== ENTORNO_HOGAR; },
     valida: function (d) { return !esVacio(d.cabezaFamilia); },
     mensaje: 'Registre el nombre del líder o representante del entorno.'
   },
@@ -935,9 +941,12 @@ const REGLAS_FAMILIA = [
     mensaje: 'Ingrese el número de personas que conforman la familia (entero mayor a cero).'
   },
   {
-    // El bloque de integrantes se repite tantas veces como declare el ítem 51.
+    /* El bloque de integrantes se repite tantas veces como declare el ítem 51.
+       Advierte, no bloquea: el integrante que no estaba en la visita se
+       caracteriza en una visita posterior (mismo criterio que RN-028). */
     codigo: 'RN-051',
     campo: 'numeroIntegrantes',
+    severidad: SEVERIDAD.ADVERTENCIA,
     aplica: function (f) { return esEnteroPositivo(f.numeroIntegrantes); },
     valida: function (f) {
       return Array.isArray(f.integrantes) && f.integrantes.length === f.numeroIntegrantes;
@@ -945,21 +954,8 @@ const REGLAS_FAMILIA = [
     mensaje: function (f) {
       const capturados = Array.isArray(f.integrantes) ? f.integrantes.length : 0;
       return 'Declaró ' + f.numeroIntegrantes + ' integrantes y hay ' + capturados +
-             ' caracterizados. Complete la sección 5 para cada uno.';
+             ' caracterizado(s). Si alguno no estaba, puede guardar así y completarlo después.';
     }
-  },
-  {
-    // Debe existir exactamente un responsable económico por familia.
-    codigo: 'RN-051',
-    campo: 'rolFamiliar',
-    aplica: function (f) { return !listaVacia(f.integrantes); },
-    valida: function (f) {
-      const responsables = f.integrantes.filter(function (i) {
-        return i.rolFamiliar === ROL_RESPONSABLE_ECONOMICO;
-      });
-      return responsables.length === 1;
-    },
-    mensaje: 'Debe existir exactamente un integrante con rol "Responsable económico de la familia".'
   },
   {
     // RN-070 — El contacto es obligatorio a nivel de familia, no de persona.
@@ -1144,6 +1140,15 @@ const REGLAS_INTEGRANTE = [
     campo: 'nacionalidad',
     valida: function (i) { return perteneceA(CAT_NACIONALIDAD, i.nacionalidad); },
     mensaje: 'Seleccione la nacionalidad del integrante.'
+  },
+  {
+    /* 65.1 — Cuando la nacionalidad es «Otra» se escribe el país: es lo que
+       permite el seguimiento a población extranjera sin cerrar la lista. */
+    codigo: 'RN-065',
+    campo: 'nacionalidadOtra',
+    aplica: function (i) { return i.nacionalidad === NACIONALIDAD_OTRA; },
+    valida: function (i) { return !esVacio(i.nacionalidadOtra) && soloAlfabetico(i.nacionalidadOtra); },
+    mensaje: 'Escriba el país de nacionalidad del integrante (sólo letras).'
   },
   {
     // Los documentos de extranjería exigen nacionalidad distinta de Colombia.
@@ -1872,6 +1877,82 @@ function filaDePlanVacia(fila) {
   });
 }
 
+/* RN-051 — Exactamente un «Responsable económico de la familia» (ítem 72).
+
+   Antes era una regla de familia con un solo mensaje genérico que caía sobre
+   el ítem 72 del primer integrante: quien tenía marcado «Hijo(a)» leía «debe
+   existir exactamente un responsable» sobre su propia respuesta y entendía
+   que su opción era inválida. Ahora el aviso dice qué falta o qué sobra y se
+   pone sobre el integrante que hay que cambiar. */
+function evaluarResponsableEconomico(familia, rutaFamilia, referenciaFamilia, salida) {
+  const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
+  if (integrantes.length === 0) return;
+
+  const indicesResponsables = [];
+  integrantes.forEach(function (integrante, indice) {
+    if (integrante.rolFamiliar === ROL_RESPONSABLE_ECONOMICO) indicesResponsables.push(indice);
+  });
+
+  const rutaRol = function (indice) { return rutaFamilia + '.integrantes[' + indice + '].rolFamiliar'; };
+  const referenciaDe = function (indice) {
+    return referenciaFamilia + ' · ' + nombreIntegrante(integrantes[indice], indice);
+  };
+
+  if (indicesResponsables.length === 0) {
+    salida.push({
+      codigo: 'RN-051',
+      campo: 'rolFamiliar',
+      ruta: rutaRol(0),
+      mensaje: 'Ningún integrante de esta familia tiene el rol «Responsable económico de la familia». ' +
+               'Asígnelo en el ítem 72 de quien corresponda (puede ser este u otro integrante).',
+      severidad: SEVERIDAD.BLOQUEO,
+      ambito: AMBITO.FAMILIA,
+      referencia: referenciaFamilia
+    });
+    return;
+  }
+
+  // Sobran responsables: se señala a partir del segundo, no al primero.
+  indicesResponsables.slice(1).forEach(function (indice) {
+    salida.push({
+      codigo: 'RN-051',
+      campo: 'rolFamiliar',
+      ruta: rutaRol(indice),
+      mensaje: 'La familia ya tiene un «Responsable económico» (' +
+               nombreIntegrante(integrantes[indicesResponsables[0]], indicesResponsables[0]) +
+               '). Sólo puede haber uno: cambie el rol de este integrante.',
+      severidad: SEVERIDAD.BLOQUEO,
+      ambito: AMBITO.INTEGRANTE,
+      referencia: referenciaDe(indice)
+    });
+  });
+}
+
+/**
+ * RN-019 — Nombre del líder del entorno. En entorno Hogar, si el ítem 19 se
+ * dejó vacío, es el integrante con rol «Responsable económico» de la primera
+ * familia (nombres y apellidos). Devuelve null cuando no hay de dónde tomarlo.
+ */
+function liderDelEntorno(datos) {
+  if (!esVacio(datos.cabezaFamilia)) return String(datos.cabezaFamilia).trim();
+  if (datos.entornoAbordaje !== ENTORNO_HOGAR) return null;
+
+  const familias = Array.isArray(datos.familias) ? datos.familias : [];
+  for (let f = 0; f < familias.length; f++) {
+    const integrantes = Array.isArray(familias[f].integrantes) ? familias[f].integrantes : [];
+    for (let i = 0; i < integrantes.length; i++) {
+      const persona = integrantes[i];
+      if (persona.rolFamiliar !== ROL_RESPONSABLE_ECONOMICO) continue;
+      const nombre = [persona.primerNombre, persona.segundoNombre, persona.primerApellido, persona.segundoApellido]
+        .filter(function (parte) { return !esVacio(parte); })
+        .map(function (parte) { return String(parte).trim(); })
+        .join(' ');
+      if (nombre !== '') return nombre;
+    }
+  }
+  return null;
+}
+
 /* Recorre todas las reglas aplicables y devuelve los incumplimientos.
    RN-001: sin consentimiento la captura queda bloqueada, así que no
    tiene sentido evaluar el resto del formulario. */
@@ -1902,15 +1983,19 @@ function evaluarTodo(datos) {
   }
 
   if (secciones.familia) {
-    // RN-028 — Tantas familias caracterizadas como declara el ítem 28.
+    /* RN-028 — Tantas familias caracterizadas como declara el ítem 28.
+       Advierte, no bloquea: la otra familia puede no estar en la visita, y la
+       ficha de la que sí está no debe quedar sin guardar por eso. El ítem 28
+       registra cuántas familias hay; la sección 4, cuántas se caracterizaron. */
     if (esEnteroPositivo(datos.hogaresEnVivienda) && datos.familias.length !== datos.hogaresEnVivienda) {
       salida.push({
         codigo: 'RN-028',
         campo: 'hogaresEnVivienda',
         ruta: 'hogaresEnVivienda',
         mensaje: 'Declaró ' + datos.hogaresEnVivienda + ' hogares y hay ' + datos.familias.length +
-                 ' familias caracterizadas.',
-        severidad: SEVERIDAD.BLOQUEO,
+                 ' familia(s) caracterizada(s). Si la otra familia no estaba, puede guardar así y ' +
+                 'completarla después desde Historial → Corregir.',
+        severidad: SEVERIDAD.ADVERTENCIA,
         ambito: AMBITO.VIVIENDA,
         referencia: null
       });
@@ -1940,6 +2025,7 @@ function evaluarTodo(datos) {
       evaluarConjunto(REGLAS_FAMILIA, [familia, datos], {
         ruta: rutaFamilia, ambito: AMBITO.FAMILIA, referencia: referenciaFamilia
       }, salida);
+      evaluarResponsableEconomico(familia, rutaFamilia, referenciaFamilia, salida);
 
       (familia.integrantes || []).forEach(function (integrante, indiceIntegrante) {
         const contexto = contextoIntegrante(integrante, datos);
@@ -2729,28 +2815,10 @@ function validarCierre(datos) {
     });
   });
 
-  // 3. Familias declaradas sin caracterizar (RN-028)
-  if (esEnteroPositivo(datos.hogaresEnVivienda)) {
-    const familiasCapturadas = Array.isArray(datos.familias) ? datos.familias.length : 0;
-    if (familiasCapturadas < datos.hogaresEnVivienda) {
-      impedimentos.push({
-        codigo: 'RN-028', bloque: 'Vivienda',
-        mensaje: 'Faltan ' + (datos.hogaresEnVivienda - familiasCapturadas) + ' familia(s) por caracterizar.'
-      });
-    }
-  }
-
-  // 4. Integrantes declarados sin caracterizar (RN-051)
-  (datos.familias || []).forEach(function (familia, indice) {
-    const capturados = Array.isArray(familia.integrantes) ? familia.integrantes.length : 0;
-    if (esEnteroPositivo(familia.numeroIntegrantes) && capturados < familia.numeroIntegrantes) {
-      impedimentos.push({
-        codigo: 'RN-051', bloque: 'Familia',
-        referencia: 'Familia ' + (indice + 1),
-        mensaje: 'Faltan ' + (familia.numeroIntegrantes - capturados) + ' integrante(s) por caracterizar.'
-      });
-    }
-  });
+  /* 3 y 4. Familias (RN-028) e integrantes (RN-051) declarados sin
+     caracterizar ya no impiden el cierre: quien no estaba en la visita se
+     caracteriza en la siguiente. Quedan como advertencias de validarReglas
+     sobre los ítems 28 y 51, y la ficha se guarda con lo capturado. */
 
   /* 5. Alertas sin conducta registrada (RN-220).
      Ya no impiden guardar: el plan de cuidado puede diligenciarse después

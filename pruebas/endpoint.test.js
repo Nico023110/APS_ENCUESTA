@@ -311,6 +311,49 @@ async function correrPruebas() {
     verificar('  Sexo conservado', g.sexo === 'mujer', g.sexo);
     verificar('  Estado cerrada', g.estado === 'cerrada', g.estado);
 
+    /* Observaciones del equipo (2026-09): territorios T01–T110, nacionalidad
+       «Otra» con el país escrito (65.1), líder derivado en Hogar (RN-019),
+       familia declarada ausente (RN-028) y ficha que igual se guarda. */
+    const obs = fichaValida(sello + 'o');
+    obs.territorio = 'T01';
+    obs.microterritorio = 'MT02';
+    obs.entornoAbordaje = 'hogar';
+    obs.cabezaFamilia = '';
+    obs.hogaresEnVivienda = 2;                                   // la otra familia no estaba
+    obs.familias[0].integrantes[0].nacionalidad = 'OT';
+    obs.familias[0].integrantes[0].nacionalidadOtra = 'Ecuador';
+    obs.familias[0].integrantes[0].tipoId = 'CE';                 // extranjería: exige nacionalidad ≠ CO
+    obs.familias[0].integrantes[0].numeroId = 'E1234567';
+    const rObs = await enviar(obs);
+    verificar('Territorio T01, líder vacío en Hogar y familia ausente => 200', rObs.estado === 200,
+      'estado ' + rObs.estado + ' ' + JSON.stringify(rObs.cuerpo).slice(0, 300));
+    if (rObs.estado === 200) {
+      const fObs = await cliente.query(`
+        SELECT f.lider_entorno, h.territorio_codigo, h.microterritorio_codigo,
+               p.nacionalidad, p.nacionalidad_otra
+          FROM aps.ficha f
+          JOIN aps.hogar h          ON h.id = f.hogar_id
+          JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
+          JOIN aps.integrante i     ON i.familia_ficha_id = ff.id
+          JOIN aps.persona p        ON p.id = i.persona_id
+         WHERE f.codigo = $1
+      `, [obs.codigoFicha]);
+      const o = fObs.rows[0] || {};
+      verificar('  territorio T01 / MT02 aceptado por la base', o.territorio_codigo === 'T01' && o.microterritorio_codigo === 'MT02',
+        o.territorio_codigo + '/' + o.microterritorio_codigo);
+      verificar('  el líder del entorno se derivó del responsable económico', o.lider_entorno === 'Ana Gomez', o.lider_entorno);
+      verificar('  nacionalidad OT con el país escrito', o.nacionalidad === 'OT' && o.nacionalidad_otra === 'Ecuador',
+        o.nacionalidad + '/' + o.nacionalidad_otra);
+      verificar('  la familia ausente quedó como advertencia',
+        (rObs.cuerpo.advertencias || []).some(function (a) { return a.codigo === 'RN-028'; }),
+        JSON.stringify((rObs.cuerpo.advertencias || []).map(function (a) { return a.codigo; })));
+    }
+    const otraSinPais = fichaValida(sello + 'o');
+    otraSinPais.familias[0].integrantes[0].nacionalidad = 'OT';
+    const rSinPais = await enviar(otraSinPais);
+    verificar('Nacionalidad «Otra» sin país => 400 en 65.1', rSinPais.estado === 400 && bloqueoEn(rSinPais.cuerpo, 'nacionalidadOtra'),
+      'estado ' + rSinPais.estado);
+
     console.log('\n=== 7. Tablas puente de selección múltiple ===');
 
     verificar('  el endpoint informa cuántas filas escribió',
@@ -662,7 +705,7 @@ async function correrPruebas() {
     await cliente.query('DELETE FROM aps.ficha WHERE codigo LIKE $1', ['F-TEST-%']);
     await cliente.query('DELETE FROM aps.familia WHERE codigo LIKE $1', ['FM-TEST-%']);
     await cliente.query('DELETE FROM aps.hogar WHERE codigo LIKE $1', ['HG-TEST-%']);
-    await cliente.query('DELETE FROM aps.persona WHERE numero_id = $1', ['1144099887']);
+    await cliente.query('DELETE FROM aps.persona WHERE numero_id = ANY($1)', [['1144099887', 'E1234567']]);
     await cliente.end();
   }
 

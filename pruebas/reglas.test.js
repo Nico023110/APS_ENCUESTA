@@ -13,7 +13,7 @@ const contexto = vm.createContext({ console: console });
 });
 
 const { validarReglas, evaluarAdvertencias, evaluarAlertas, validarCierre,
-        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles } = contexto;
+        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno } = contexto;
 
 let pasadas = 0, fallidas = 0;
 function verificar(nombre, condicion, detalle) {
@@ -202,10 +202,57 @@ verificar('Marcar próstata en una mujer => bloqueo RN-087',
 console.log('\n=== 6. RN-051 — El bloque 5 se repite por integrante ===');
 const familiaIncompleta = familiaValida([adultaValida()]);
 familiaIncompleta.numeroIntegrantes = 3;
-errores = validarReglas(Object.assign(fichaBase(), { familias: [familiaIncompleta] }));
-verificar('Declara 3 integrantes y captura 1 => bloqueo RN-051',
-  errores.some(e => e.codigo === 'RN-051'),
+const fichaIncompleta = Object.assign(fichaBase(), { familias: [familiaIncompleta] });
+errores = validarReglas(fichaIncompleta);
+/* El integrante que no estaba en la visita no impide guardar: advierte. */
+verificar('Declara 3 integrantes y captura 1 => advertencia RN-051, no bloqueo',
+  errores.filter(e => e.codigo === 'RN-051').length === 0 &&
+  evaluarAdvertencias(fichaIncompleta).some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes'),
   JSON.stringify(errores.filter(e => e.codigo === 'RN-051').map(e => e.mensaje)));
+
+const dosHogaresUnaFamilia = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaValida([adultaValida()])] });
+verificar('Declara 2 hogares y caracteriza 1 familia => advertencia RN-028, no bloqueo',
+  validarReglas(dosHogaresUnaFamilia).filter(e => e.codigo === 'RN-028').length === 0 &&
+  evaluarAdvertencias(dosHogaresUnaFamilia).some(e => e.codigo === 'RN-028') &&
+  validarCierre(dosHogaresUnaFamilia).puedeCerrar === true,
+  JSON.stringify(validarCierre(dosHogaresUnaFamilia).impedimentos.map(i => i.codigo)));
+
+/* RN-051 (rol): el aviso dice qué falta y cae sobre el integrante a cambiar. */
+const sinResponsable = familiaValida([Object.assign(adultaValida(), { rolFamiliar: 'hijo' })]);
+const errSinResp = validarReglas(Object.assign(fichaBase(), { familias: [sinResponsable] }))
+  .filter(e => e.codigo === 'RN-051' && e.campo === 'rolFamiliar');
+verificar('Sin responsable económico => un solo aviso que dice que ninguno tiene el rol',
+  errSinResp.length === 1 && /Ningún integrante/.test(errSinResp[0].mensaje) &&
+  errSinResp[0].ruta === 'familias[0].integrantes[0].rolFamiliar',
+  JSON.stringify(errSinResp));
+
+const dosResponsablesRol = familiaValida([adultaValida(), Object.assign(adultaValida(), { numeroId: '1144099888' })]);
+const errDosResp = validarReglas(Object.assign(fichaBase(), { familias: [dosResponsablesRol] }))
+  .filter(e => e.codigo === 'RN-051' && e.campo === 'rolFamiliar');
+verificar('Dos responsables económicos => el aviso cae sobre el segundo y nombra al primero',
+  errDosResp.length === 1 && errDosResp[0].ruta === 'familias[0].integrantes[1].rolFamiliar' &&
+  /ya tiene un/.test(errDosResp[0].mensaje),
+  JSON.stringify(errDosResp));
+
+/* RN-019: en Hogar el líder se toma del responsable económico. */
+const hogarSinLider = Object.assign(fichaBase(), { entornoAbordaje: 'hogar', cabezaFamilia: '', familias: [familiaValida([adultaValida()])] });
+verificar('Entorno Hogar sin ítem 19 => no bloquea y se deriva «Ana Gomez»',
+  validarReglas(hogarSinLider).filter(e => e.codigo === 'RN-019').length === 0 &&
+  liderDelEntorno(hogarSinLider) === 'Ana Gomez',
+  liderDelEntorno(hogarSinLider));
+const comunitarioSinLider = Object.assign(fichaBase(), { entornoAbordaje: 'comunitario', nombreInstitucion: 'JAC', cabezaFamilia: '' });
+verificar('Entorno comunitario sin ítem 19 => sigue bloqueando RN-019',
+  validarReglas(comunitarioSinLider).some(e => e.codigo === 'RN-019'));
+
+/* RN-065: «Otra» exige el país en 65.1. */
+const otraSinPais = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'OT', nacionalidadOtra: '' })]);
+verificar('Nacionalidad «Otra» sin país => bloqueo RN-065 en 65.1',
+  validarReglas(Object.assign(fichaBase(), { familias: [otraSinPais] }))
+    .some(e => e.codigo === 'RN-065' && e.campo === 'nacionalidadOtra'));
+const otraConPais = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'OT', nacionalidadOtra: 'Ecuador' })]);
+verificar('Nacionalidad «Otra» con país => sin incumplimiento RN-065',
+  validarReglas(Object.assign(fichaBase(), { familias: [otraConPais] }))
+    .filter(e => e.codigo === 'RN-065').length === 0);
 
 const dosResponsables = familiaValida([adultaValida(),
   Object.assign(adultaValida(), { numeroId: '1144099888', primerNombre: 'Luz' })]);

@@ -607,6 +607,10 @@ function actualizarCondicionalesIntegrante(bloque) {
 
   // ---- Por respuesta previa ----
   mostrarCampo(
+    bloque.querySelector('[data-rol="campoNacionalidadOtra"]'),
+    valorSeleccionado(bloque, '.nacionalidad') === NACIONALIDAD_OTRA
+  );
+  mostrarCampo(
     bloque.querySelector('[data-rol="campoGeneroOtro"]'),
     valorSeleccionado(bloque, '.autoidentificacionGenero') === 'otro'
   );

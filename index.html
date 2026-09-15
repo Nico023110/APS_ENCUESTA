@@ -236,11 +236,12 @@
           <div class="form-grid">
             <div class="field" data-campo="equipoSaludId">
               <label for="equipoSaludId"><span class="item-num">10.</span> Número de identificación del Equipo de Salud: *</label>
-              <input type="text" id="equipoSaludId" name="equipoSaludId" placeholder="Ej. EQ0931">
+              <input type="text" id="equipoSaludId" name="equipoSaludId" placeholder="Ej. EBS001">
             </div>
             <div class="field" data-campo="prestadorPrimario">
               <label for="prestadorPrimario"><span class="item-num">11.</span> Prestador primario / Organismo de adscripción del Equipo de Salud: *</label>
-              <select id="prestadorPrimario" name="prestadorPrimario" data-catalogo="CAT_PRESTADOR"></select>
+              <select id="prestadorPrimario" name="prestadorPrimario"></select>
+              <span class="field-hint field-hint--inline">Valor fijo: la ficha la diligencia la E.S.E. Red de Salud de Ladera.</span>
             </div>
           </div>
         </div>
@@ -272,7 +273,7 @@
             </div>
             <div class="field" data-campo="codigoFicha">
               <label for="codigoFicha"><span class="item-num">15.</span> Código de la ficha:</label>
-              <input type="text" id="codigoFicha" name="codigoFicha" placeholder="Ej. F-10293">
+              <input type="text" id="codigoFicha" name="codigoFicha" placeholder="Ej. CF001">
             </div>
             <div class="field" data-campo="fechaDiligenciamiento">
               <label for="fechaDiligenciamiento"><span class="item-num">16.</span> Fecha diligenciamiento de la ficha:</label>
@@ -289,10 +290,12 @@
             <div class="field" data-campo="nombreInstitucion">
               <label for="nombreInstitucion"><span class="item-num">18.</span> Institución / Entidad / Organización: <span class="field-auto" id="marcaInstitucion"></span></label>
               <input type="text" id="nombreInstitucion" name="nombreInstitucion" placeholder="Ej. Fundación Valle del Lili">
+              <span class="field-hint field-hint--inline" id="ayudaInstitucion" hidden>En entorno Hogar no aplica: el campo queda bloqueado.</span>
             </div>
             <div class="field" data-campo="cabezaFamilia">
-              <label for="cabezaFamilia"><span class="item-num">19.</span> Cabeza de familia / Líder / Representante legal: *</label>
+              <label for="cabezaFamilia"><span class="item-num">19.</span> Cabeza de familia / Líder / Representante legal: <span class="field-auto" id="marcaCabezaFamilia"></span></label>
               <input type="text" id="cabezaFamilia" name="cabezaFamilia" placeholder="Ej. María Pérez">
+              <span class="field-hint field-hint--inline" id="ayudaCabezaFamilia" hidden>En entorno Hogar puede dejarse vacío: se toma del integrante con rol «Responsable económico» (ítem 72).</span>
             </div>
             <div class="field" data-campo="jovenesEnPaz">
               <label for="jovenesEnPaz"><span class="item-num">20.</span> ¿Habitantes en Prog. Jóvenes en Paz?: *</label>
@@ -469,11 +472,11 @@
             </div>
             <div class="field" data-campo="idHogar">
               <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar:</label>
-              <input type="text" id="idHogar" name="idHogar" placeholder="Ej. H-102">
+              <input type="text" id="idHogar" name="idHogar" placeholder="Ej. H0001">
             </div>
             <div class="field" data-campo="idFamilia">
               <label for="idFamilia"><span class="item-num">26.</span> N.° de Identificación de la familia:</label>
-              <input type="text" id="idFamilia" name="idFamilia" placeholder="Ej. F-102">
+              <input type="text" id="idFamilia" name="idFamilia" placeholder="Ej. F0001">
             </div>
             <div class="field" data-campo="estrato">
               <label for="estrato"><span class="item-num">27.</span> Estrato socioeconómico de la vivienda: *</label>
@@ -803,6 +806,10 @@
                         <div class="field" data-campo="nacionalidad">
                           <label><span class="item-num">65.</span> Nacionalidad: *</label>
                           <select name="familias[0].integrantes[0].nacionalidad" data-catalogo="CAT_NACIONALIDAD"></select>
+                        </div>
+                        <div class="field" data-campo="nacionalidadOtra" data-rol="campoNacionalidadOtra" hidden>
+                          <label>65.1 ¿Cuál país? *</label>
+                          <input type="text" name="familias[0].integrantes[0].nacionalidadOtra" placeholder="Ej. Ecuador">
                         </div>
                       </div>
 

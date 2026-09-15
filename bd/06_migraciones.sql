@@ -46,4 +46,20 @@ COMMENT ON COLUMN aps.plan_accion.procedimiento_realizado IS
   'efectivamente hizo. Es complemento, no reemplazo: el código sigue siendo obligatorio '
   'porque de él dependen la llave foránea a cat.cups y el cruce alerta ↔ acción de RN-220.';
 
+
+/* -------------------------------------------------------------------------
+   2026-09 — Ítem 65.1: país cuando la nacionalidad es «Otra»
+   -------------------------------------------------------------------------
+   La lista de nacionalidades se redujo a Colombia, Venezuela y Otra; con
+   «Otra» el encuestador escribe el país. cat.pais conserva sus códigos: 'OT'
+   sigue siendo la llave y el nombre va aquí, para el seguimiento a población
+   extranjera sin volver a cerrar la lista.
+   ------------------------------------------------------------------------- */
+
+ALTER TABLE aps.persona
+  ADD COLUMN IF NOT EXISTS nacionalidad_otra text;
+
+COMMENT ON COLUMN aps.persona.nacionalidad_otra IS
+  'Ítem 65.1. País escrito por el encuestador cuando nacionalidad = ''OT'' (Otra).';
+
 COMMIT;

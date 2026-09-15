@@ -356,6 +356,7 @@ CREATE TABLE aps.persona (
   fecha_nacimiento  date NOT NULL,                    -- ítem 64
   sexo              text NOT NULL,                    -- ítem 66, dominio SEXO
   nacionalidad      char(2) NOT NULL DEFAULT 'CO' REFERENCES cat.pais(codigo), -- ítem 65
+  nacionalidad_otra text,                             -- ítem 65.1: país escrito cuando nacionalidad = 'OT'
   identificador_temporal boolean NOT NULL DEFAULT false,  -- RN-063: tipos MS y AS
   creada_en         timestamptz NOT NULL DEFAULT now(),
 

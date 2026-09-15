@@ -554,16 +554,21 @@ async function evaluarAdvertenciasIntegridad(cliente, encuesta) {
    cuerpo de la petición no prueba nada, porque quien envía el POST lo
    escribe. Se recalcula desde los componentes, que son el dato de origen. */
 function prepararFicha(m, encuesta) {
-  if (!encuesta.direccionComponentes || typeof m.normalizarDireccion !== 'function') {
-    return encuesta;
+  const copia = Object.assign({}, encuesta);
+
+  if (encuesta.direccionComponentes && typeof m.normalizarDireccion === 'function') {
+    const normalizada = m.normalizarDireccion(encuesta.direccionComponentes);
+    copia.direccionNormalizada = normalizada;
+    copia.direccion = normalizada.canonica || copia.direccion || null;
+    copia.direccionLegible = normalizada.legible || copia.direccionLegible || null;
   }
 
-  const copia = Object.assign({}, encuesta);
-  const normalizada = m.normalizarDireccion(encuesta.direccionComponentes);
-
-  copia.direccionNormalizada = normalizada;
-  copia.direccion = normalizada.canonica || copia.direccion || null;
-  copia.direccionLegible = normalizada.legible || copia.direccionLegible || null;
+  /* RN-019: mismo derivado que hace el navegador, por si el cuerpo llega de
+     un cliente viejo que no lo calculó. Va fuera del bloque de la dirección:
+     una ficha sin componentes de dirección también lo necesita. */
+  if (typeof m.liderDelEntorno === 'function') {
+    copia.cabezaFamilia = m.liderDelEntorno(copia) || copia.cabezaFamilia || null;
+  }
 
   return copia;
 }
@@ -592,9 +597,15 @@ async function validar(cliente, encuesta) {
 
   m.validarReglas(ficha).forEach(function (incumplimiento) {
     vistos.add(incumplimiento.codigo + '|' + incumplimiento.mensaje);
-    if (incumplimiento.severidad === 'advertencia') advertencias.push(incumplimiento);
-    else bloqueos.push(incumplimiento);
+    bloqueos.push(incumplimiento);
   });
+
+  /* validarReglas sólo devuelve bloqueos; las advertencias (RN-028, RN-051
+     por conteo, RN-064 por trámite pendiente…) salen de evaluarAdvertencias.
+     Antes se esperaban en el mismo recorrido y nunca llegaban a la respuesta. */
+  if (typeof m.evaluarAdvertencias === 'function') {
+    m.evaluarAdvertencias(ficha).forEach(function (advertencia) { advertencias.push(advertencia); });
+  }
 
   /* RN-222: la visita cerrada por causa externa se admite incompleta siempre
      que el motivo quede registrado, así que no se le exige el cierre.

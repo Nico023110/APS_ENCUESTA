@@ -580,7 +580,10 @@ module.exports = async (req, res) => {
       texto(encuesta.fechaDiligenciamiento),
       texto(encuesta.entornoAbordaje),
       texto(encuesta.nombreInstitucion),
-      texto(encuesta.cabezaFamilia),
+      /* RN-019: en Hogar se deriva del responsable económico (ver liderDelEntorno
+         en reglas.js); si la visita no alcanzó a caracterizar a nadie, la
+         columna NOT NULL no puede quedar vacía. */
+      texto(encuesta.cabezaFamilia) || 'Sin registrar',
       booleano(encuesta.jovenesEnPaz),
       /* RN-222: la visita cerrada por causa externa no entra al denominador
          de cobertura, y el enum de la base la distingue explícitamente. */
@@ -735,15 +738,18 @@ module.exports = async (req, res) => {
         const personaRes = await cliente.query(`
           INSERT INTO aps.persona (
             tipo_id, numero_id, primer_nombre, segundo_nombre,
-            primer_apellido, segundo_apellido, fecha_nacimiento, sexo
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            primer_apellido, segundo_apellido, fecha_nacimiento, sexo,
+            nacionalidad, nacionalidad_otra
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           ON CONFLICT (tipo_id, numero_id) DO UPDATE SET
-            primer_nombre    = EXCLUDED.primer_nombre,
-            segundo_nombre   = EXCLUDED.segundo_nombre,
-            primer_apellido  = EXCLUDED.primer_apellido,
-            segundo_apellido = EXCLUDED.segundo_apellido,
-            fecha_nacimiento = EXCLUDED.fecha_nacimiento,
-            sexo             = EXCLUDED.sexo
+            primer_nombre     = EXCLUDED.primer_nombre,
+            segundo_nombre    = EXCLUDED.segundo_nombre,
+            primer_apellido   = EXCLUDED.primer_apellido,
+            segundo_apellido  = EXCLUDED.segundo_apellido,
+            fecha_nacimiento  = EXCLUDED.fecha_nacimiento,
+            sexo              = EXCLUDED.sexo,
+            nacionalidad      = EXCLUDED.nacionalidad,
+            nacionalidad_otra = EXCLUDED.nacionalidad_otra
           RETURNING id
         `, [
           texto(integrante.tipoId),
@@ -753,7 +759,12 @@ module.exports = async (req, res) => {
           texto(integrante.primerApellido),
           texto(integrante.segundoApellido),
           texto(integrante.fechaNacimiento),
-          texto(integrante.sexo)
+          texto(integrante.sexo),
+          /* Ítem 65. Antes no se escribía y toda persona quedaba como 'CO' por
+             defecto, que es justo lo contrario de lo que pide el seguimiento a
+             población extranjera. «Otra» (OT) lleva el país escrito en 65.1. */
+          texto(integrante.nacionalidad) || 'CO',
+          texto(integrante.nacionalidad) === 'OT' ? texto(integrante.nacionalidadOtra) : null
         ]);
         const personaId = personaRes.rows[0].id;
 

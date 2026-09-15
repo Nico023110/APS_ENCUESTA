@@ -98,9 +98,11 @@ verificar('sin errores de carga', errores.length === 0, errores.slice(0, 3).join
 
 const CAMPOS = [
   {
+    /* RN-011: valor fijo (la ficha la diligencia sólo la E.S.E. Ladera), así
+       que el select se llena con ese único código y no con data-catalogo. */
     titulo: 'ítem 11 · prestador primario (RN-011)',
     selector: '[name="prestadorPrimario"]',
-    catalogo: 'CAT_PRESTADOR',
+    catalogo: null,
     codigoEsperado: 'PROV-ESE-LADERA'
   },
   {
@@ -124,15 +126,21 @@ CAMPOS.forEach(function (campo) {
   verificar(campo.titulo + ': es <select>, no texto libre',
     el.tagName === 'SELECT', el.tagName + (el.type ? '/' + el.type : ''));
 
-  verificar(campo.titulo + ': declara su catálogo',
-    el.dataset.catalogo === campo.catalogo, el.dataset.catalogo || '(ninguno)');
-
   const opciones = Array.prototype.map.call(el.options, function (o) { return o.value; });
-  const catalogo = (ventana.__api && ventana.__api[campo.catalogo]) || [];
 
-  verificar(campo.titulo + ': se llenó desde el catálogo',
-    opciones.length >= catalogo.length && catalogo.length > 0,
-    opciones.length + ' opciones para ' + catalogo.length + ' del catálogo');
+  if (campo.catalogo) {
+    verificar(campo.titulo + ': declara su catálogo',
+      el.dataset.catalogo === campo.catalogo, el.dataset.catalogo || '(ninguno)');
+
+    const catalogo = (ventana.__api && ventana.__api[campo.catalogo]) || [];
+    verificar(campo.titulo + ': se llenó desde el catálogo',
+      opciones.length >= catalogo.length && catalogo.length > 0,
+      opciones.length + ' opciones para ' + catalogo.length + ' del catálogo');
+  } else {
+    verificar(campo.titulo + ': es un valor fijo, sin otras opciones',
+      opciones.length === 1 && el.value === campo.codigoEsperado,
+      opciones.join(', ') + ' / seleccionado: ' + el.value);
+  }
 
   verificar(campo.titulo + ': ofrece el código y no el nombre',
     opciones.indexOf(campo.codigoEsperado) !== -1,

@@ -113,7 +113,7 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 ### RN-007 — Territorio
 
-**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud (identificadores `T48` a `T84`, ver **Anexo A**).
+**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud (identificadores `T01` a `T110`). El **Anexo A** detalla los microterritorios de `T48` a `T84`; los demás territorios entran al catálogo con sus cuatro microterritorios (`MT01`–`MT04`) sin nombre ni comuna hasta que se disponga del detalle, y por tanto no se tratan como rurales.
 
 El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado".
 
@@ -135,7 +135,9 @@ Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad;
 
 ### RN-011 — Prestador primario / Organismo de adscripción
 
-**Ítem 11.** Campo de texto o catálogo obligatorio para registrar la Institución Prestadora de Servicios de Salud (IPS) pública o entidad de adscripción legal a la que pertenece el EBS.
+**Ítem 11.** Campo obligatorio para registrar la Institución Prestadora de Servicios de Salud (IPS) pública o entidad de adscripción legal a la que pertenece el EBS.
+
+**Valor fijo.** La ficha la diligencian únicamente los EBS de la **E.S.E. Red de Salud de Ladera**, así que el ítem queda prediligenciado y sin otras opciones (mismo tratamiento que el departamento y el municipio en RN-005). El catálogo de prestadores se conserva en la base por si otra entidad llega a usar la herramienta.
 
 ### RN-012 — Tipo de identificación del responsable
 
@@ -174,11 +176,14 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 ### RN-018 — Nombre de la institución o entidad
 
-**Ítem 18.** Campo de texto alfanumérico **condicionado**, obligatorio únicamente si el entorno del ítem 17 corresponde a Institucional, Educativo, Laboral o Comunitario estructurado.
+**Ítem 18.** Campo de texto alfanumérico **condicionado**, obligatorio únicamente si el entorno del ítem 17 corresponde a Institucional, Educativo, Laboral o Comunitario estructurado. Cuando el entorno es **Hogar** el campo se bloquea y se vacía: no hay institución que nombrar.
 
 ### RN-019 — Líder o representante del entorno
 
-**Ítem 19.** Campo de texto obligatorio para capturar el nombre de la cabeza de familia, líder comunitario, rector o representante legal, según el tipo de entorno seleccionado.
+**Ítem 19.** Campo de texto para capturar el nombre de la cabeza de familia, líder comunitario, rector o representante legal, según el tipo de entorno seleccionado.
+
+- En los entornos **Comunitario, Institucional, Educativo y Laboral** es obligatorio.
+- En entorno **Hogar** es opcional: la cabeza de familia es el integrante con rol «Responsable económico de la familia» (ítem 72), y si el campo se deja vacío el sistema lo toma de allí al guardar (nombres y apellidos). Pedirlo dos veces bloqueaba la ficha antes de llegar a la sección 5.
 
 ### RN-020 — Programa Jóvenes en Paz
 
@@ -234,7 +239,7 @@ Es la llave que se hereda en los ítems 122 y 132. La cantidad de identificadore
 
 **Ítem 28.** Campo numérico entero obligatorio, **mayor o igual a 1**. Determina cuántos núcleos familiares independientes comparten la vivienda y, por tanto, cuántas fichas familiares (ítems 50–57) deben diligenciarse bajo el mismo ID de hogar.
 
-El sistema no permite cerrar la caracterización de la vivienda mientras existan familias declaradas sin caracterizar.
+Cuando el número de familias caracterizadas (sección 4) no coincide con el declarado, el sistema **advierte, no bloquea**: la otra familia puede no encontrarse en la vivienda durante la visita, y la ficha de la familia presente se guarda con lo capturado. La familia faltante se caracteriza en una visita posterior desde *Historial → Corregir*.
 
 ### RN-029 — Número de personas en la vivienda
 
@@ -376,11 +381,11 @@ Las fuentes no tratadas activan alerta de **agua no apta para consumo humano** c
 
 **Condiciones de integridad:**
 
-1. El número de registros individuales creados debe ser **exactamente igual** al valor del ítem 51. Si el encuestador reduce el número, el sistema advierte qué registros se eliminarán; si lo aumenta, genera las instancias faltantes.
-2. **Ningún integrante puede quedar incompleto.** Una instancia se considera completa cuando se han diligenciado todos los campos obligatorios *habilitados para ese individuo* según su edad y sexo. Un menor de 6 meses no responde tensión arterial y eso no lo hace incompleto; un adulto sin peso ni talla, sí.
-3. Debe existir **exactamente un** integrante con rol "Responsable económico de la familia" (ítem 72) por cada familia.
+1. El número de registros individuales creados debe corresponder al valor del ítem 51. Si el encuestador reduce el número, el sistema advierte qué registros se eliminarán; si lo aumenta, genera las instancias faltantes. Si un integrante declarado **no estaba en la visita**, su bloque se elimina y la diferencia con el ítem 51 queda como **advertencia, no bloqueo** (mismo criterio que RN-028): se caracteriza en la siguiente visita.
+2. **Ningún integrante capturado puede quedar incompleto.** Una instancia se considera completa cuando se han diligenciado todos los campos obligatorios *habilitados para ese individuo* según su edad y sexo. Un menor de 6 meses no responde tensión arterial y eso no lo hace incompleto; un adulto sin peso ni talla, sí.
+3. Debe existir **exactamente un** integrante con rol "Responsable económico de la familia" (ítem 72) por cada familia. El aviso nombra lo que falta o lo que sobra y se muestra sobre el integrante que hay que cambiar: si ninguno tiene el rol, sobre el primero («Ningún integrante de esta familia tiene el rol…»); si hay más de uno, sobre cada responsable adicional, citando al que ya lo tiene.
 4. La suma de los integrantes de todas las familias del hogar no puede superar el ítem 29 (RN-029).
-5. La ficha **no puede cerrarse ni sincronizarse** mientras exista al menos un integrante declarado sin caracterizar (RN-222).
+5. ~~La ficha no puede cerrarse ni sincronizarse mientras exista al menos un integrante declarado sin caracterizar.~~ Sustituido por el punto 1: la diferencia advierte y la ficha se guarda.
 
 ### RN-052 — Identificación de cuidador principal
 
@@ -510,7 +515,9 @@ Los tipos **PE y PT** activan automáticamente la alerta de **población migrant
 
 ### RN-065 — Nacionalidad
 
-**Ítem 65.** Selección única obligatoria del catálogo de países, prediligenciado en "Colombia". Cuando la nacionalidad es distinta de Colombia, el sistema debe:
+**Ítem 65.** Selección única obligatoria entre **Colombia**, **Venezuela** y **Otra**. Cuando se elige «Otra» se habilita el ítem **65.1 ¿Cuál país?**, de texto obligatorio (sólo letras), que permite el seguimiento a población extranjera sin cerrar la lista de países. En la base la nacionalidad se guarda como código (`CO`, `VE`, `OT`) y el país escrito en `nacionalidad_otra`.
+
+Cuando la nacionalidad es distinta de Colombia, el sistema debe:
 
 1. Exigir coherencia con el tipo de documento del ítem 62 (se esperan CE, PE, PT o CD; el uso de CC o TI genera advertencia).
 2. Activar la alerta de **población migrante**, que se cruza con el ítem 77 ("Migrantes") y con el régimen de afiliación del ítem 75, dado que la condición migratoria es la principal barrera de acceso efectivo a los servicios de salud.
@@ -1213,8 +1220,8 @@ El sistema **no permite cerrar una ficha** mientras exista alguna de las siguien
 
 1. Consentimiento informado no registrado (RN-001).
 2. Campos obligatorios sin diligenciar en el nivel de vivienda o entorno.
-3. Familias declaradas en el ítem 28 sin caracterizar.
-4. Integrantes declarados en el ítem 51 sin caracterizar, o con instancias incompletas (RN-051).
+3. ~~Familias declaradas en el ítem 28 sin caracterizar.~~ Advierte (RN-028): la familia ausente se caracteriza en otra visita.
+4. Integrantes capturados con instancias incompletas (RN-051). ~~Integrantes declarados sin caracterizar~~ advierte, no bloquea.
 5. ~~Alertas de prioridad INMEDIATA sin conducta registrada (RN-220).~~ Pasa al plan diferido (ver abajo).
 6. Georreferenciación pendiente sin motivo de imposibilidad registrado (RN-022).
 7. Ausencia de medio de contacto en la familia sin la novedad correspondiente (RN-070).

@@ -285,6 +285,10 @@ async function cargarCatalogoDeAcciones() {
       const dataCatalogos = await resCatalogos.json();
       fijarCatalogosDinamicos(dataCatalogos);
       localStorage.setItem('aps_catalogos_dinamicos', JSON.stringify(dataCatalogos));
+      /* El select del ítem 7 se llenó al arrancar con el catálogo que hubiera
+         (el estático o la copia guardada); si la base trae territorios nuevos
+         hay que repintarlo, conservando lo ya elegido. */
+      repintarTerritorios();
       // Re-render components that might have been initialized empty
       if (typeof ventana === 'undefined' && typeof document !== 'undefined') {
         const eapbSelects = document.querySelectorAll('[data-catalogo="CAT_EAPB"]');
@@ -343,6 +347,13 @@ function inicializarCatalogosDelFormulario() {
   llenarSelect('municipio', [{ valor: CAT_MUNICIPIO.codigo, etiqueta: CAT_MUNICIPIO.codigo + ' — ' + CAT_MUNICIPIO.nombre }],
     { placeholder: null, seleccionado: CAT_MUNICIPIO.codigo });
 
+  /* RN-011: la ficha la diligencia únicamente la E.S.E. Ladera, así que el
+     prestador es un valor fijo, igual que la entidad territorial. El resto
+     del catálogo sigue en la base por si otra ESE llega a usar la herramienta. */
+  llenarSelect('prestadorPrimario', [{ valor: PRESTADOR_FIJO.valor, etiqueta: PRESTADOR_FIJO.etiqueta }],
+    { placeholder: null, seleccionado: PRESTADOR_FIJO.valor });
+  document.getElementById('prestadorPrimario').classList.add('is-fijo');
+
   llenarSelect('areaUbicacion', CAT_AREA_UBICACION);                 // RN-006
   llenarSelect('territorio', catalogoTerritorios());                 // RN-009
   llenarSelect('responsableTipoId', CAT_TIPO_ID_RESPONSABLE);        // RN-012
@@ -387,6 +398,21 @@ function catalogoTerritorios() {
   return Object.keys(CAT_TERRITORIOS).map(function (codigo) {
     return { valor: codigo, etiqueta: etiquetaTerritorio(codigo) };
   });
+}
+
+/** Vuelve a llenar el ítem 7 con el catálogo vigente sin perder la selección. */
+function repintarTerritorios() {
+  const select = document.getElementById('territorio');
+  if (!select) return;
+  const elegido = select.value;
+  const micro = document.getElementById('microterritorio');
+  const microElegido = micro ? micro.value : '';
+  llenarSelect('territorio', catalogoTerritorios());
+  if (elegido && CAT_TERRITORIOS[elegido]) {
+    select.value = elegido;
+    actualizarMicroterritorios();
+    if (micro && microElegido) micro.value = microElegido;
+  }
 }
 
 /* ---------------------------------------------------------
@@ -449,12 +475,13 @@ function actualizarMicroterritorios() {
   }
 
   llenarSelect('microterritorio', microterritorios.map(function (mt) {
-    return { valor: mt.codigo, etiqueta: mt.codigo + ' — ' + mt.nombre };
+    return { valor: mt.codigo, etiqueta: etiquetaMicroterritorio(mt) };
   }));
   selectMicro.disabled = false;
 
   const comuna = comunaDeTerritorio(codigoTerritorio);
-  campoComuna.value = comuna === 'Rural' ? 'Zona rural' : 'Comuna ' + comuna;
+  // Sin comuna en el catálogo (territorios fuera del Anexo A) el derivado queda vacío.
+  campoComuna.value = !comuna ? '' : (comuna === 'Rural' ? 'Zona rural' : 'Comuna ' + comuna);
 }
 
 /* ---------------------------------------------------------
@@ -499,10 +526,23 @@ function actualizarCampoPerfilOtro() {
   if (!esOtro) document.getElementById('perfilProfesionalOtro').value = '';
 }
 
+/* RN-018 / RN-019 — Lo que depende del entorno del ítem 17.
+   En Hogar el ítem 18 se bloquea (no hay institución que nombrar) y el 19
+   deja de ser obligatorio: la cabeza de familia es el responsable económico
+   del ítem 72 y se toma de allí al guardar si se deja vacío. */
 function actualizarCampoInstitucion() {
   const entorno = document.getElementById('entornoAbordaje').value;
+  const esHogar = entorno === ENTORNO_HOGAR;
   const esObligatorio = ENTORNOS_CON_INSTITUCION.indexOf(entorno) !== -1;
-  document.getElementById('marcaInstitucion').textContent = esObligatorio ? '(obligatorio)' : '(no aplica en entorno Hogar)';
+
+  const institucion = document.getElementById('nombreInstitucion');
+  institucion.disabled = esHogar;
+  if (esHogar) institucion.value = '';
+  document.getElementById('marcaInstitucion').textContent = esObligatorio ? '(obligatorio)' : (esHogar ? '(no aplica en Hogar)' : '');
+  document.getElementById('ayudaInstitucion').hidden = !esHogar;
+
+  document.getElementById('marcaCabezaFamilia').textContent = esHogar ? '(opcional en Hogar)' : '*';
+  document.getElementById('ayudaCabezaFamilia').hidden = !esHogar;
 }
 
 /* ---------------------------------------------------------
@@ -2095,6 +2135,9 @@ function construirEncuestaDesdeDatos(datos) {
       };
     })
   });
+
+  // RN-019: en Hogar, la cabeza de familia se toma del responsable económico si quedó vacía.
+  encuesta.cabezaFamilia = liderDelEntorno(datos) || encuesta.cabezaFamilia;
 
   // Campos auxiliares de validación que no se persisten.
   delete encuesta.latitudTexto;
