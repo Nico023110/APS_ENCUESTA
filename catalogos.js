@@ -25,295 +25,76 @@ const CAT_AREA_UBICACION = [
 
 /* ---------------------------------------------------------
    RN-007 / RN-008 — Territorios y microterritorios de Santiago de Cali
-   El catálogo va de T01 a T110. Los 37 territorios del Anexo A (T48…T84)
-   traen sus 4 microterritorios con nombre y comuna; el resto entra con
-   MT01…MT04 sin nombre ni comuna, para que puedan seleccionarse mientras
-   llega el detalle del anexo (no se inventan nombres). Sin comuna, un
-   territorio no se considera rural (RN-007 no advierte sobre él).
+   El ítem 7 ofrece los 110 territorios de la ciudad, T01 a T110 (observación
+   del equipo EBS, 2026-09). Sólo 37 —los del Anexo A, T48 a T84— tienen sus
+   4 microterritorios documentados (nombre y comuna); esos son los que
+   entraron al instrumento hasta ahora.
+
+   Los otros 73 quedan con `[]`: existen como territorio seleccionable, pero
+   sin microterritorios inventados. No se rellenan con «MT01…MT04» genéricos
+   porque no hay evidencia de que ese sea su desglose real, y presentar como
+   opciones datos que nadie verificó es peor que dejar el ítem 8 sin exigir
+   en esos casos. Cuando el territorio elegido no tiene microterritorios:
+
+     - El ítem 8 se deshabilita con un aviso, en vez de forzar una opción
+       ficticia (ver actualizarMicroterritorios en app.js).
+     - RN-008 no lo exige (ver su regla en reglas.js): el ítem 9, de texto
+       libre y siempre obligatorio, es quien lleva el detalle de la
+       micro-localización en ese caso.
+     - La comuna derivada queda vacía y el territorio no se trata como rural
+       (RN-007 no tiene con qué advertir).
+
+   Cuando llegue el Anexo A completo, sus 73 entradas se llenan aquí con
+   datos reales y bd/gen_seed.js regenera el seed sin tocar nada más.
    --------------------------------------------------------- */
 const CAT_TERRITORIOS = {
-  T01: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T02: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T03: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T04: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T05: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T06: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T07: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T08: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T09: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T10: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T11: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T12: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T13: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T14: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T15: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T16: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T17: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T18: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T19: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T20: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T21: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T22: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T23: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T24: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T25: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T26: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T27: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T28: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T29: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T30: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T31: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T32: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T33: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T34: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T35: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T36: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T37: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T38: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T39: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T40: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T41: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T42: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T43: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T44: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T45: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T46: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T47: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
+  T01: [],
+  T02: [],
+  T03: [],
+  T04: [],
+  T05: [],
+  T06: [],
+  T07: [],
+  T08: [],
+  T09: [],
+  T10: [],
+  T11: [],
+  T12: [],
+  T13: [],
+  T14: [],
+  T15: [],
+  T16: [],
+  T17: [],
+  T18: [],
+  T19: [],
+  T20: [],
+  T21: [],
+  T22: [],
+  T23: [],
+  T24: [],
+  T25: [],
+  T26: [],
+  T27: [],
+  T28: [],
+  T29: [],
+  T30: [],
+  T31: [],
+  T32: [],
+  T33: [],
+  T34: [],
+  T35: [],
+  T36: [],
+  T37: [],
+  T38: [],
+  T39: [],
+  T40: [],
+  T41: [],
+  T42: [],
+  T43: [],
+  T44: [],
+  T45: [],
+  T46: [],
+  T47: [],
   T48: [
     { codigo: 'MT01', nombre: 'San Cayetano', comuna: '3' },
     { codigo: 'MT02', nombre: 'Libertadores', comuna: '3' },
@@ -536,162 +317,32 @@ const CAT_TERRITORIOS = {
     { codigo: 'MT03', nombre: 'El Porvenir', comuna: 'Rural' },
     { codigo: 'MT04', nombre: 'Peón', comuna: 'Rural' }
   ],
-  T85: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T86: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T87: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T88: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T89: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T90: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T91: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T92: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T93: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T94: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T95: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T96: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T97: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T98: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T99: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T100: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T101: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T102: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T103: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T104: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T105: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T106: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T107: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T108: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T109: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ],
-  T110: [
-    { codigo: 'MT01', nombre: null, comuna: null },
-    { codigo: 'MT02', nombre: null, comuna: null },
-    { codigo: 'MT03', nombre: null, comuna: null },
-    { codigo: 'MT04', nombre: null, comuna: null }
-  ]
+  T85: [],
+  T86: [],
+  T87: [],
+  T88: [],
+  T89: [],
+  T90: [],
+  T91: [],
+  T92: [],
+  T93: [],
+  T94: [],
+  T95: [],
+  T96: [],
+  T97: [],
+  T98: [],
+  T99: [],
+  T100: [],
+  T101: [],
+  T102: [],
+  T103: [],
+  T104: [],
+  T105: [],
+  T106: [],
+  T107: [],
+  T108: [],
+  T109: [],
+  T110: []
 };
 
 // La comuna es homogénea dentro de cada territorio: se toma del primer microterritorio.

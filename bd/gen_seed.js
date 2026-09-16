@@ -192,18 +192,31 @@ ${pv}
 ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;\n`);
 }
 
-/* Territorios y microterritorios — Anexo A de las reglas.
-   RN-007: un territorio es rural cuando sus microterritorios llevan comuna
-   "Rural". La bandera se deriva del propio catálogo, no se digita aparte. */
+/* Territorios y microterritorios (item 7, RN-007/RN-008). El catalogo va de
+   T01 a T110 (observacion del equipo EBS, 2026-09); solo 37 -- el Anexo A,
+   T48-T84 -- tienen microterritorios documentados, y de ahi se deriva si son
+   rurales o urbanos. Un territorio sin microterritorios (arreglo vacio en
+   catalogos.js) no tiene con que derivar es_rural: entra como NULL, "no
+   documentado", no como "urbano" -- un false inventado bloquearia con un 500
+   a cualquier EBS que marque "Area rural" en uno de esos 73 territorios. */
 if (C.CAT_TERRITORIOS) {
   const terrs = Object.keys(C.CAT_TERRITORIOS);
-  const esRural = t => C.CAT_TERRITORIOS[t].every(m => String(m.comuna).toLowerCase() === 'rural');
-  const tv = terrs.map(t =>
-    `  (${q(t)}, ${q(t)}, ${q(UZPE_ACTIVA)}, ${esRural(t)})`).join(',\n');
-  const nRur = terrs.filter(esRural).length;
-  out.push(`/* --- Territorios y microterritorios (RN-007, RN-008, Anexo A) -----------
-   ${terrs.length} territorios: ${nRur} rurales, ${terrs.length - nRur} urbanos.
-   El instrumento no asigna nombre propio al territorio: su código lo identifica. */
+  const esRural = t => {
+    const ms = C.CAT_TERRITORIOS[t];
+    return ms.length ? ms.every(m => String(m.comuna).toLowerCase() === 'rural') : null;
+  };
+  const tv = terrs.map(t => {
+    const rural = esRural(t);
+    return `  (${q(t)}, ${q(t)}, ${q(UZPE_ACTIVA)}, ${rural === null ? 'NULL' : rural})`;
+  }).join(',\n');
+  const documentados = terrs.filter(t => esRural(t) !== null);
+  const nRur = documentados.filter(t => esRural(t) === true).length;
+  out.push(`/* --- Territorios y microterritorios (RN-007, RN-008) ---------------------
+   ${terrs.length} territorios (T01-T110). ${documentados.length} documentados
+   en el Anexo A: ${nRur} rurales, ${documentados.length - nRur} urbanos. Los
+   ${terrs.length - documentados.length} restantes no tienen microterritorio
+   documentado: es_rural queda en NULL y no se les inserta ninguna fila en
+   cat.microterritorio (nada que inventar). */
 INSERT INTO cat.territorio (codigo, nombre, uzpe_codigo, es_rural) VALUES\n${tv}
 ON CONFLICT (codigo) DO UPDATE
   SET es_rural = EXCLUDED.es_rural, uzpe_codigo = EXCLUDED.uzpe_codigo;\n`);

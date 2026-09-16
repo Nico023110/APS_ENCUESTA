@@ -8,7 +8,7 @@
 | Archivo | Contenido |
 |---|---|
 | `01_esquema.sql` | Estructura: 54 tablas, 3 esquemas, restricciones declarativas |
-| `02_catalogos_seed.sql` | 54 dominios, 442 opciones, 37 territorios, 148 microterritorios — **generado** desde `catalogos.js` |
+| `02_catalogos_seed.sql` | 54 dominios, 442 opciones, 110 territorios (37 con microterritorio documentado), 148 microterritorios — **generado** desde `catalogos.js` |
 | `03_reglas.sql` | Cálculos derivados, integridad entre tablas, validación de cierre, inalterabilidad |
 | `04_cups.sql` + `cups.csv` | 10.024 procedimientos CUPS con búsqueda — **generado** desde `TablaReferencia_CUPS.xlsx` |
 | `05_nocups.sql` | 20 códigos NoCUPS y 53 mapeos regla → acción esperada |

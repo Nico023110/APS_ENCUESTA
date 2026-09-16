@@ -477,9 +477,17 @@ const REGLAS_BLOQUE_2 = [
     mensaje: 'El territorio seleccionado es rural pero el área de ubicación es urbana. Verifique.'
   },
   {
+    /* Sólo exige microterritorio cuando el territorio elegido tiene el suyo
+       documentado (Anexo A, T48–T84). Para el resto del catálogo (T01–T110,
+       observación del equipo EBS) no existen microterritorios inventados que
+       validar: el ítem 9, de texto libre y siempre obligatorio (RN-009), es
+       quien lleva el detalle de la micro-localización en esos casos. */
     codigo: 'RN-008',
     campo: 'microterritorio',
-    aplica: function (d) { return !!CAT_TERRITORIOS[d.territorio]; },
+    aplica: function (d) {
+      const microterritorios = CAT_TERRITORIOS[d.territorio];
+      return Array.isArray(microterritorios) && microterritorios.length > 0;
+    },
     valida: function (d) { return !!buscarMicroterritorio(d.territorio, d.microterritorio); },
     mensaje: 'Seleccione un microterritorio válido para el territorio elegido.'
   },

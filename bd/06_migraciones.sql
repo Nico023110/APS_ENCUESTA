@@ -62,4 +62,74 @@ ALTER TABLE aps.persona
 COMMENT ON COLUMN aps.persona.nacionalidad_otra IS
   'Ítem 65.1. País escrito por el encuestador cuando nacionalidad = ''OT'' (Otra).';
 
+
+/* -------------------------------------------------------------------------
+   2026-09 — Ítem 7: territorios T01–T110 sin microterritorios inventados
+   -------------------------------------------------------------------------
+   Una corrección anterior amplió el catálogo de 37 a 110 territorios (la
+   observación del equipo EBS: "va del T01 hasta el T110") pero rellenó los
+   73 territorios nuevos con cuatro microterritorios ficticios (MT01–MT04,
+   sin nombre) y los marcó es_rural = false por defecto. Ningún dato respalda
+   ese relleno, y el false por defecto podía rechazar con un 500 a un EBS que
+   marcara "Área rural" en uno de esos territorios, aunque el motor de reglas
+   del navegador sólo lo hubiera dejado como advertencia.
+
+   Este bloque:
+     1. Permite es_rural = NULL ("no documentado") en vez de un booleano
+        inventado, y lo aplica a los 73 territorios sin microterritorio real.
+     2. Borra los microterritorios ficticios (los que no tienen nombre): el
+        territorio queda en el catálogo, sin microterritorios que elegir
+        hasta que llegue el Anexo A completo. No hay hogares que los usaran.
+     3. Permite que aps.hogar.microterritorio_codigo quede NULL para esos
+        territorios: la clave foránea compuesta no se evalúa cuando alguna
+        de sus columnas es NULL, así que la vivienda igual queda ligada a su
+        territorio, y el ítem 9 (texto libre, siempre obligatorio) lleva el
+        detalle de la micro-localización en ese caso.
+     4. Reemplaza el disparador de RN-007 para que sólo bloquee cuando
+        es_rural está documentado (IS TRUE / IS FALSE), nunca sobre un
+        territorio con es_rural NULL.
+
+   catalogos.js, reglas.js (RN-008) y app.js ya tratan así un territorio sin
+   microterritorios documentados; este bloque pone la base de datos al día.
+   ------------------------------------------------------------------------- */
+
+ALTER TABLE cat.territorio ALTER COLUMN es_rural DROP NOT NULL;
+ALTER TABLE cat.territorio ALTER COLUMN es_rural DROP DEFAULT;
+
+UPDATE cat.territorio t
+   SET es_rural = NULL
+ WHERE NOT EXISTS (
+   SELECT 1 FROM cat.microterritorio m
+    WHERE m.territorio_codigo = t.codigo AND m.nombre IS NOT NULL
+ );
+
+DELETE FROM cat.microterritorio WHERE nombre IS NULL;
+
+ALTER TABLE aps.hogar ALTER COLUMN microterritorio_codigo DROP NOT NULL;
+
+CREATE OR REPLACE FUNCTION aps.trg_hogar_territorio_area() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_es_rural boolean;
+BEGIN
+  SELECT es_rural INTO v_es_rural FROM cat.territorio WHERE codigo = NEW.territorio_codigo;
+
+  IF v_es_rural IS TRUE AND NEW.area_ubicacion NOT IN ('rural', 'centro_poblado') THEN
+    RAISE EXCEPTION 'RN-007: el territorio % es rural y no admite el área de ubicación "%".',
+      NEW.territorio_codigo, NEW.area_ubicacion;
+  END IF;
+
+  IF v_es_rural IS FALSE AND NEW.area_ubicacion = 'rural' THEN
+    RAISE EXCEPTION 'RN-007: el territorio % es urbano y no admite el área "Área rural".',
+      NEW.territorio_codigo;
+  END IF;
+
+  -- RN-008: la comuna es un derivado de sólo lectura del microterritorio.
+  -- Sin microterritorio documentado (NEW.microterritorio_codigo IS NULL) la
+  -- búsqueda no encuentra fila y la comuna queda en NULL, correctamente.
+  SELECT comuna INTO NEW.comuna
+    FROM cat.microterritorio
+   WHERE territorio_codigo = NEW.territorio_codigo AND codigo = NEW.microterritorio_codigo;
+
+  RETURN NEW;
+END $$;
+
 COMMIT;

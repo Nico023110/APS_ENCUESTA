@@ -139,11 +139,14 @@ CREATE TABLE cat.uzpe (                                           -- RN-004
   vigente          boolean NOT NULL DEFAULT true
 );
 
-CREATE TABLE cat.territorio (                                     -- RN-007, Anexo A
-  codigo       text PRIMARY KEY,                                  -- T48 … T84
+CREATE TABLE cat.territorio (                                     -- RN-007, ítem 7
+  codigo       text PRIMARY KEY,                                  -- T01 … T110
   nombre       text NOT NULL,
   uzpe_codigo  text REFERENCES cat.uzpe(codigo),
-  es_rural     boolean NOT NULL DEFAULT false,                    -- restringe RN-007 vs ítem 6
+  -- NULL = territorio sin documentar en el Anexo A (no se sabe si es rural o
+  -- urbano): el trigger trg_hogar_territorio_area no exige coherencia con el
+  -- ítem 6 en ese caso, en vez de asumir "urbano" por defecto.
+  es_rural     boolean,                                           -- restringe RN-007 vs ítem 6
   vigente      boolean NOT NULL DEFAULT true
 );
 
@@ -303,7 +306,11 @@ CREATE TABLE aps.hogar (
   municipio_codigo     char(5) NOT NULL REFERENCES cat.municipio(codigo),
   area_ubicacion       text NOT NULL,                 -- ítem 6, dominio AREA_UBICACION
   territorio_codigo    text NOT NULL,                 -- ítem 7
-  microterritorio_codigo text NOT NULL,               -- ítem 8
+  -- NULL cuando el territorio no tiene microterritorios documentados
+  -- (Anexo A cubre sólo T48–T84): el FK compuesto de abajo no se evalúa con
+  -- NULL, así que la vivienda igual queda ligada a su territorio y el ítem 9
+  -- (texto libre, siempre obligatorio) lleva el detalle de la localización.
+  microterritorio_codigo text,                        -- ítem 8
   comuna               text,                          -- derivado de RN-008, sólo lectura
   division_territorial text NOT NULL,                 -- ítem 9
   direccion_normalizada text NOT NULL,                -- ítem 21

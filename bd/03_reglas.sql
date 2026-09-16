@@ -276,23 +276,32 @@ CREATE TRIGGER trg_ficha_fecha
 /* RN-007 — Coherencia entre el territorio (ítem 7) y el área de ubicación
    (ítem 6). Los territorios rurales del Anexo A —aquellos cuyos
    microterritorios llevan comuna "Rural"— sólo son seleccionables cuando la
-   vivienda se registra en "Área rural" o "Centro poblado". */
+   vivienda se registra en "Área rural" o "Centro poblado".
+
+   El ítem 7 ofrece los 110 territorios de la ciudad (observación del equipo
+   EBS, 2026-09), pero sólo 37 —el Anexo A, T48–T84— tienen es_rural
+   documentado; el resto queda en NULL ("no se sabe"). Con NULL no se exige
+   nada: asumir "urbano" por defecto bloquearía con un 500 a cualquier EBS
+   que visite una zona rural real de uno de esos 73 territorios, cuando el
+   motor de reglas en el navegador sólo lo hubiera dejado como advertencia. */
 CREATE OR REPLACE FUNCTION aps.trg_hogar_territorio_area() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE v_es_rural boolean;
 BEGIN
   SELECT es_rural INTO v_es_rural FROM cat.territorio WHERE codigo = NEW.territorio_codigo;
 
-  IF v_es_rural AND NEW.area_ubicacion NOT IN ('rural', 'centro_poblado') THEN
+  IF v_es_rural IS TRUE AND NEW.area_ubicacion NOT IN ('rural', 'centro_poblado') THEN
     RAISE EXCEPTION 'RN-007: el territorio % es rural y no admite el área de ubicación "%".',
       NEW.territorio_codigo, NEW.area_ubicacion;
   END IF;
 
-  IF NOT v_es_rural AND NEW.area_ubicacion = 'rural' THEN
+  IF v_es_rural IS FALSE AND NEW.area_ubicacion = 'rural' THEN
     RAISE EXCEPTION 'RN-007: el territorio % es urbano y no admite el área "Área rural".',
       NEW.territorio_codigo;
   END IF;
 
   -- RN-008: la comuna es un derivado de sólo lectura del microterritorio.
+  -- Sin microterritorio documentado (NEW.microterritorio_codigo IS NULL) la
+  -- búsqueda no encuentra fila y la comuna queda en NULL, correctamente.
   SELECT comuna INTO NEW.comuna
     FROM cat.microterritorio
    WHERE territorio_codigo = NEW.territorio_codigo AND codigo = NEW.microterritorio_codigo;
