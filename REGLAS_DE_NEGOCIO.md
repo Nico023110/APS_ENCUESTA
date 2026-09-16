@@ -113,17 +113,15 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 ### RN-007 — Territorio
 
-**Ítem 7.** Selección única obligatoria del catálogo de territorios de salud de la ciudad: `T01` a `T110` (observación del equipo EBS, 2026-09; antes el catálogo sólo cubría `T48`–`T84`). De esos 110, el **Anexo A** documenta los microterritorios de 37 —`T48` a `T84`—; los otros 73 son territorios seleccionables sin microterritorio documentado todavía (ver RN-008).
+**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud (identificadores `T01` a `T110`). El **Anexo A** detalla los microterritorios de `T48` a `T84`; los demás territorios entran al catálogo con sus cuatro microterritorios (`MT01`–`MT04`) sin nombre ni comuna hasta que se disponga del detalle, y por tanto no se tratan como rurales.
 
-El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y, cuando su condición rural u urbana está documentada (Anexo A), debe ser coherente con el área de ubicación del ítem 6: un territorio `Rural` sólo es seleccionable cuando el ítem 6 es "Área rural" o "Centro poblado". Un territorio sin esa condición documentada no genera esta advertencia ni la bloquea la base de datos: no hay con qué evaluarla, y no se asume "urbano" por defecto.
+El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado".
 
 ### RN-008 — Microterritorio
 
-**Ítem 8.** Selección única y **dependiente y en cascada** del territorio del ítem 7, **obligatoria únicamente cuando el territorio elegido tiene microterritorios documentados** (los 37 del Anexo A, `T48`–`T84`). El sistema habilita ahí los microterritorios (`MT01`–`MT04`) asociados según el **Anexo A**.
+**Ítem 8.** Selección única obligatoria, **dependiente y en cascada** del territorio del ítem 7. El sistema sólo habilita los microterritorios (`MT01`–`MT04`) asociados al territorio elegido según el **Anexo A**.
 
-Para el resto del catálogo (73 territorios sin Anexo A) el ítem 8 no ofrece opciones —no se inventan microterritorios sin evidencia— y no es exigible: el ítem 9, de texto libre y siempre obligatorio (RN-009), es quien lleva el detalle de la micro-localización en ese caso. La interfaz lo señala con un aviso en vez de forzar una selección ficticia.
-
-Si se modifica el territorio, el microterritorio previamente seleccionado se limpia automáticamente. Cuando hay microterritorio, el registro almacena su código y la **comuna asociada**, que se hereda como campo derivado de sólo lectura; sin microterritorio documentado, ambos quedan vacíos.
+Si se modifica el territorio, el microterritorio previamente seleccionado se limpia automáticamente. El registro almacena el código del microterritorio y la **comuna asociada**, que se hereda como campo derivado de sólo lectura.
 
 ### RN-009 — División territorial menor
 

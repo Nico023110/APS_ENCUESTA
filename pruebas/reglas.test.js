@@ -13,8 +13,7 @@ const contexto = vm.createContext({ console: console });
 });
 
 const { validarReglas, evaluarAdvertencias, evaluarAlertas, validarCierre,
-        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno,
-        buscarMicroterritorio } = contexto;
+        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno } = contexto;
 
 let pasadas = 0, fallidas = 0;
 function verificar(nombre, condicion, detalle) {
@@ -405,23 +404,6 @@ verificar('Coordenadas de Bogotá => advertencia, no bloqueo',
 const territorioRuralEnUrbano = Object.assign(fichaBase(), { territorio: 'T55', microterritorio: 'MT01' });
 verificar('Territorio rural con área urbana => advertencia RN-007',
   evaluarAdvertencias(territorioRuralEnUrbano).some(a => a.codigo === 'RN-007'));
-
-/* Observación del equipo EBS (2026-09): el ítem 7 va de T01 a T110, pero
-   sólo 37 (Anexo A, T48-T84) tienen microterritorio documentado. Los demás
-   no exigen ítem 8: no hay opciones válidas que inventar. */
-verificar('T01 (fuera del Anexo A) no tiene microterritorios documentados',
-  buscarMicroterritorio('T01', 'MT01') === null);
-verificar('T48 (Anexo A) sí tiene su MT01 documentado',
-  !!buscarMicroterritorio('T48', 'MT01'));
-
-const territorioSinDocumentar = Object.assign(fichaBase(), { territorio: 'T01', microterritorio: '' });
-verificar('Territorio sin microterritorio documentado => RN-008 no lo exige',
-  validarReglas(territorioSinDocumentar).filter(e => e.codigo === 'RN-008').length === 0,
-  JSON.stringify(validarReglas(territorioSinDocumentar).map(e => e.codigo)));
-
-const territorioDocumentadoSinMicro = Object.assign(fichaBase(), { territorio: 'T48', microterritorio: '' });
-verificar('Territorio documentado sin elegir microterritorio => sigue bloqueando RN-008',
-  validarReglas(territorioDocumentadoSinMicro).some(e => e.codigo === 'RN-008'));
 
 console.log('\n=== 10. Campos calculados y llaves del plan de cuidado ===');
 const hacinamientoManipulado = Object.assign(fichaBase(), {

@@ -464,8 +464,6 @@ function actualizarMicroterritorios() {
   const codigoTerritorio = document.getElementById('territorio').value;
   const selectMicro = document.getElementById('microterritorio');
   const campoComuna = document.getElementById('comuna');
-  const marca = document.getElementById('marcaMicroterritorio');
-  const ayuda = document.getElementById('ayudaMicroterritorio');
 
   const microterritorios = CAT_TERRITORIOS[codigoTerritorio];
 
@@ -473,21 +471,6 @@ function actualizarMicroterritorios() {
     selectMicro.innerHTML = '<option value="">Seleccione un territorio primero</option>';
     selectMicro.disabled = true;
     campoComuna.value = '';
-    if (marca) marca.textContent = '*';
-    if (ayuda) ayuda.hidden = true;
-    return;
-  }
-
-  /* RN-008: sólo 37 territorios (Anexo A, T48–T84) tienen microterritorios
-     documentados; el resto del catálogo (T01–T110) no los tiene todavía. En
-     ese caso no se inventan opciones: el ítem 8 queda deshabilitado con el
-     aviso, y el ítem 9 (texto libre, siempre obligatorio) lleva el detalle. */
-  if (microterritorios.length === 0) {
-    selectMicro.innerHTML = '<option value="">Sin microterritorios registrados</option>';
-    selectMicro.disabled = true;
-    campoComuna.value = '';
-    if (marca) marca.textContent = '(no aplica)';
-    if (ayuda) ayuda.hidden = false;
     return;
   }
 
@@ -495,10 +478,9 @@ function actualizarMicroterritorios() {
     return { valor: mt.codigo, etiqueta: etiquetaMicroterritorio(mt) };
   }));
   selectMicro.disabled = false;
-  if (marca) marca.textContent = '*';
-  if (ayuda) ayuda.hidden = true;
 
   const comuna = comunaDeTerritorio(codigoTerritorio);
+  // Sin comuna en el catálogo (territorios fuera del Anexo A) el derivado queda vacío.
   campoComuna.value = !comuna ? '' : (comuna === 'Rural' ? 'Zona rural' : 'Comuna ' + comuna);
 }
 
