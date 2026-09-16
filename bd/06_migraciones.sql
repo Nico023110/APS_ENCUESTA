@@ -62,4 +62,61 @@ ALTER TABLE aps.persona
 COMMENT ON COLUMN aps.persona.nacionalidad_otra IS
   'Ítem 65.1. País escrito por el encuestador cuando nacionalidad = ''OT'' (Otra).';
 
+
+/* -------------------------------------------------------------------------
+   2026-09 — Revierte la migración "territorios T01-T110 sin microterritorios
+   inventados fuera del Anexo A" (commit 1e62d0e), pedido explícito para
+   volver al estado anterior en la base ya migrada.
+   -------------------------------------------------------------------------
+   Deja cat.territorio.es_rural y aps.hogar.microterritorio_codigo como en
+   01_esquema.sql (NOT NULL) y repone los 292 microterritorios MT01-MT04 sin
+   nombre en los 73 territorios sin Anexo A (T01-T47, T85-T110).
+   ------------------------------------------------------------------------- */
+
+UPDATE cat.territorio SET es_rural = false WHERE es_rural IS NULL;
+
+ALTER TABLE cat.territorio ALTER COLUMN es_rural SET DEFAULT false;
+ALTER TABLE cat.territorio ALTER COLUMN es_rural SET NOT NULL;
+
+ALTER TABLE aps.hogar ALTER COLUMN microterritorio_codigo SET NOT NULL;
+
+INSERT INTO cat.microterritorio (territorio_codigo, codigo, nombre, comuna)
+SELECT t.codigo, mt.codigo, NULL, NULL
+  FROM cat.territorio t
+ CROSS JOIN (VALUES ('MT01'), ('MT02'), ('MT03'), ('MT04')) AS mt(codigo)
+ WHERE t.codigo IN (
+   'T01','T02','T03','T04','T05','T06','T07','T08','T09','T10',
+   'T11','T12','T13','T14','T15','T16','T17','T18','T19','T20',
+   'T21','T22','T23','T24','T25','T26','T27','T28','T29','T30',
+   'T31','T32','T33','T34','T35','T36','T37','T38','T39','T40',
+   'T41','T42','T43','T44','T45','T46','T47',
+   'T85','T86','T87','T88','T89','T90','T91','T92','T93','T94',
+   'T95','T96','T97','T98','T99','T100','T101','T102','T103','T104',
+   'T105','T106','T107','T108','T109','T110'
+ )
+ON CONFLICT (territorio_codigo, codigo) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION aps.trg_hogar_territorio_area() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_es_rural boolean;
+BEGIN
+  SELECT es_rural INTO v_es_rural FROM cat.territorio WHERE codigo = NEW.territorio_codigo;
+
+  IF v_es_rural AND NEW.area_ubicacion NOT IN ('rural', 'centro_poblado') THEN
+    RAISE EXCEPTION 'RN-007: el territorio % es rural y no admite el área de ubicación "%".',
+      NEW.territorio_codigo, NEW.area_ubicacion;
+  END IF;
+
+  IF NOT v_es_rural AND NEW.area_ubicacion = 'rural' THEN
+    RAISE EXCEPTION 'RN-007: el territorio % es urbano y no admite el área "Área rural".',
+      NEW.territorio_codigo;
+  END IF;
+
+  -- RN-008: la comuna es un derivado de sólo lectura del microterritorio.
+  SELECT comuna INTO NEW.comuna
+    FROM cat.microterritorio
+   WHERE territorio_codigo = NEW.territorio_codigo AND codigo = NEW.microterritorio_codigo;
+
+  RETURN NEW;
+END $$;
+
 COMMIT;
