@@ -28,6 +28,8 @@
 
 const { consultar } = require('./_db');
 const { COLUMNAS_PLAN, resumenPlanDesdeFila } = require('./_plan_cuidado');
+const { requerirSesion } = require('./_auth');
+const roles = require('../roles.js');
 
 /* Techo del listado. La app no pagina el historial —lo pinta entero—, así
    que sin un límite una base con años de fichas tumbaría el navegador antes
@@ -41,6 +43,16 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
+  const usuario = await requerirSesion(req, res);
+  if (!usuario) return;
+
+  /* RN-224.3: el equipo sólo ve sus fichas; el administrador, todas. Un
+     usuario asistencial sin equipo asignado no ve ninguna. */
+  const alcance = roles.alcanceDeLectura(usuario.rol);
+  if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
+  const filtro = alcance === 'todas' ? '' : 'WHERE f.equipo_salud_id = $1';
+  const parametros = alcance === 'todas' ? [] : [usuario.equipoSaludId || -1];
+
   try {
     const resultado = await consultar(`
       SELECT
@@ -48,6 +60,9 @@ module.exports = async (req, res) => {
         f.capturada_en,
         f.fechas_modificacion,
         f.situacion_inminente,
+        eq.codigo                 AS equipo_codigo,
+        f.responsable_id,
+        r.nombre_completo         AS responsable_nombre,
         h.territorio_codigo       AS territorio,
         h.microterritorio_codigo  AS microterritorio,
         h.division_territorial,
@@ -57,10 +72,13 @@ module.exports = async (req, res) => {
         ${COLUMNAS_PLAN}
       FROM aps.ficha f
       JOIN aps.hogar h        ON h.id = f.hogar_id
+      JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
+      JOIN aps.funcionario r   ON r.id = f.responsable_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
+      ${filtro}
       ORDER BY f.capturada_en DESC
       LIMIT ${LIMITE}
-    `);
+    `, parametros);
 
     /* Los nombres de columna llegan en snake_case porque así los devuelve
        PostgreSQL; el resto de la aplicación —recolectarDatosFormulario,
@@ -73,6 +91,9 @@ module.exports = async (req, res) => {
         fechaRegistro: fila.capturada_en,
         fechasModificacion: Array.isArray(fila.fechas_modificacion) ? fila.fechas_modificacion : [],
         situacionInminente: fila.situacion_inminente,
+        equipoSaludId: fila.equipo_codigo,
+        responsableId: Number(fila.responsable_id),
+        responsableNombre: fila.responsable_nombre,
         territorio: fila.territorio,
         microterritorio: fila.microterritorio,
         divisionTerritorial: fila.division_territorial,

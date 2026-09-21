@@ -293,6 +293,62 @@ CREATE TABLE aps.funcionario (                                    -- RN-012/013/
 
 
 /* =========================================================================
+   3b. ACCESO: USUARIOS Y SESIONES (RN-223.6, RN-224.3, RN-225)
+   -------------------------------------------------------------------------
+   Un usuario es un funcionario con clave. El rol es su perfil asistencial
+   (ítem 14) o «administrador»; la matriz de permisos vive en roles.js.
+   La clave nunca se guarda: sólo su derivación scrypt con sal propia.
+   ========================================================================= */
+
+CREATE TABLE aps.usuario (
+  id                  bigserial PRIMARY KEY,
+  funcionario_id      bigint NOT NULL UNIQUE REFERENCES aps.funcionario(id),
+  documento           text NOT NULL UNIQUE,      -- número de identificación con el que ingresa
+  clave_hash          text NOT NULL,             -- scrypt$N$r$p$sal$hash (base64url)
+  rol                 text NOT NULL,
+  activo              boolean NOT NULL DEFAULT true,
+  debe_cambiar_clave  boolean NOT NULL DEFAULT true,   -- clave temporal hasta el primer ingreso
+  intentos_fallidos   int NOT NULL DEFAULT 0,
+  bloqueado_hasta     timestamptz,
+  creado_en           timestamptz NOT NULL DEFAULT now(),
+  creado_por          bigint REFERENCES aps.usuario(id),
+  clave_cambiada_en   timestamptz,
+  ultimo_acceso_en    timestamptz,
+  CONSTRAINT usuario_rol_valido CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol)),
+  CONSTRAINT usuario_documento_formato CHECK (documento ~ '^[A-Za-z0-9]{5,16}$')
+);
+COMMENT ON TABLE aps.usuario IS
+  'Cuenta de acceso de un funcionario. RN-224.3: el alcance sobre las fichas se deriva del '
+  'equipo del funcionario y del rol (roles.js).';
+
+CREATE TABLE aps.sesion (
+  id              text PRIMARY KEY,              -- SHA-256 del token que viaja en la cookie
+  usuario_id      bigint NOT NULL REFERENCES aps.usuario(id) ON DELETE CASCADE,
+  creada_en       timestamptz NOT NULL DEFAULT now(),
+  expira_en       timestamptz NOT NULL,          -- tope absoluto
+  ultimo_uso_en   timestamptz NOT NULL DEFAULT now(),
+  ip              text,
+  agente          text,
+  revocada_en     timestamptz,
+  motivo_revocacion text
+);
+CREATE INDEX ix_sesion_usuario ON aps.sesion (usuario_id, revocada_en);
+
+CREATE TABLE aps.intento_acceso (                                 -- RN-225: eventos de acceso
+  id          bigserial PRIMARY KEY,
+  documento   text,
+  usuario_id  bigint REFERENCES aps.usuario(id) ON DELETE SET NULL,
+  exitoso     boolean NOT NULL,
+  motivo      text,                             -- clave_incorrecta | bloqueado | inactivo | inexistente | ...
+  ip          text,
+  agente      text,
+  ocurrido_en timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_intento_acceso_ip ON aps.intento_acceso (ip, ocurrido_en DESC);
+CREATE INDEX ix_intento_acceso_documento ON aps.intento_acceso (documento, ocurrido_en DESC);
+
+
+/* =========================================================================
    4. IDENTIDADES PERSISTENTES
    ========================================================================= */
 
@@ -1008,7 +1064,9 @@ CREATE TABLE aps.sincronizacion (                     -- RN-223
 
 CREATE TABLE aud.evento (                             -- RN-225
   id             bigserial PRIMARY KEY,
-  ficha_id       bigint REFERENCES aps.ficha(id),
+  -- Sin llave foránea a propósito: el registro es de sólo inserción y debe
+  -- sobrevivir a la ficha que describe. Es referencia, no dependencia.
+  ficha_id       bigint,
   entidad        text NOT NULL,
   entidad_id     bigint,
   tipo           aud.tipo_evento NOT NULL,
@@ -1028,8 +1086,8 @@ COMMENT ON TABLE aud.evento IS
 
 CREATE TABLE aud.acceso_sensible (                    -- RN-224.2
   id            bigserial PRIMARY KEY,
-  ficha_id      bigint REFERENCES aps.ficha(id),
-  integrante_id bigint REFERENCES aps.integrante(id),
+  ficha_id      bigint,                          -- sin FK, como en aud.evento
+  integrante_id bigint,
   funcionario_id bigint NOT NULL REFERENCES aps.funcionario(id),
   grupo_dato    text NOT NULL,   -- salud | orientacion_sexual | identidad_genero | etnia | violencia | salud_mental
   consultado_en timestamptz NOT NULL DEFAULT now()

@@ -22,6 +22,7 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 
 ## Operating Context
 
+- **Inicio de sesión** (`login.html`): acceso por número de documento y contraseña; en el primer ingreso se exige crear una contraseña propia. El rol es el perfil asistencial del ítem 14 o administrador; los ítems 10 y 12‑14 se firman desde la sesión. Tras 15 minutos sin actividad la aplicación se bloquea y pide la contraseña de nuevo (RN‑223.6). Ver `ROLES_Y_PERMISOS.md`.
 - Vista **Inicio**: indicadores del territorio (fichas, hacinamiento, situaciones inminentes, territorios, planes pendientes) y accesos rápidos.
 - Vista **Nueva Encuesta**: el instrumento completo en una sola página larga, en el orden impreso (secciones 1 a 6 y cierre), con bloques repetibles por familia e integrante, índice de secciones, navegador de pendientes al intentar guardar y validación en vivo campo a campo.
 - Vista **Historial**: fichas locales y de la base, con estado de sincronización, estado del plan de cuidado, filtros, detalle y corrección.

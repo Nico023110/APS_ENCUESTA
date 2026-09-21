@@ -119,4 +119,75 @@ BEGIN
   RETURN NEW;
 END $$;
 
+
+/* -------------------------------------------------------------------------
+   2026-09 — Acceso: usuarios, sesiones e intentos (RN-223.6, RN-224.3, RN-225)
+   -------------------------------------------------------------------------
+   Hasta aquí cualquiera con el enlace leía y escribía fichas. Estas tres
+   tablas soportan el inicio de sesión por número de documento: la cuenta
+   cuelga del funcionario (ítems 12-14), el rol es su perfil asistencial o
+   «administrador», y la sesión vive en la base para poder revocarla.
+   Mismo bloque que en 01_esquema.sql, en forma idempotente.
+   ------------------------------------------------------------------------- */
+
+CREATE TABLE IF NOT EXISTS aps.usuario (
+  id                  bigserial PRIMARY KEY,
+  funcionario_id      bigint NOT NULL UNIQUE REFERENCES aps.funcionario(id),
+  documento           text NOT NULL UNIQUE,
+  clave_hash          text NOT NULL,
+  rol                 text NOT NULL,
+  activo              boolean NOT NULL DEFAULT true,
+  debe_cambiar_clave  boolean NOT NULL DEFAULT true,
+  intentos_fallidos   int NOT NULL DEFAULT 0,
+  bloqueado_hasta     timestamptz,
+  creado_en           timestamptz NOT NULL DEFAULT now(),
+  creado_por          bigint REFERENCES aps.usuario(id),
+  clave_cambiada_en   timestamptz,
+  ultimo_acceso_en    timestamptz,
+  CONSTRAINT usuario_rol_valido CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol)),
+  CONSTRAINT usuario_documento_formato CHECK (documento ~ '^[A-Za-z0-9]{5,16}$')
+);
+COMMENT ON TABLE aps.usuario IS
+  'Cuenta de acceso de un funcionario. RN-224.3: el alcance sobre las fichas se deriva del '
+  'equipo del funcionario y del rol (roles.js).';
+
+CREATE TABLE IF NOT EXISTS aps.sesion (
+  id              text PRIMARY KEY,
+  usuario_id      bigint NOT NULL REFERENCES aps.usuario(id) ON DELETE CASCADE,
+  creada_en       timestamptz NOT NULL DEFAULT now(),
+  expira_en       timestamptz NOT NULL,
+  ultimo_uso_en   timestamptz NOT NULL DEFAULT now(),
+  ip              text,
+  agente          text,
+  revocada_en     timestamptz,
+  motivo_revocacion text
+);
+CREATE INDEX IF NOT EXISTS ix_sesion_usuario ON aps.sesion (usuario_id, revocada_en);
+
+CREATE TABLE IF NOT EXISTS aps.intento_acceso (
+  id          bigserial PRIMARY KEY,
+  documento   text,
+  usuario_id  bigint REFERENCES aps.usuario(id) ON DELETE SET NULL,
+  exitoso     boolean NOT NULL,
+  motivo      text,
+  ip          text,
+  agente      text,
+  ocurrido_en timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_intento_acceso_ip ON aps.intento_acceso (ip, ocurrido_en DESC);
+CREATE INDEX IF NOT EXISTS ix_intento_acceso_documento ON aps.intento_acceso (documento, ocurrido_en DESC);
+
+/* La auditoría es de sólo inserción (trg_solo_insercion) y desde ahora se
+   escribe en cada guardado; con llave foránea a la ficha, ninguna ficha con
+   auditoría podría borrarse jamás, ni siquiera una de prueba. El registro
+   debe sobrevivir a la ficha: la columna queda como referencia sin FK. */
+ALTER TABLE aud.evento DROP CONSTRAINT IF EXISTS evento_ficha_id_fkey;
+ALTER TABLE aud.acceso_sensible DROP CONSTRAINT IF EXISTS acceso_sensible_ficha_id_fkey;
+ALTER TABLE aud.acceso_sensible DROP CONSTRAINT IF EXISTS acceso_sensible_integrante_id_fkey;
+
+/* Rol «maestro»: todos los permisos (captura + administración). */
+ALTER TABLE aps.usuario DROP CONSTRAINT IF EXISTS usuario_rol_valido;
+ALTER TABLE aps.usuario ADD CONSTRAINT usuario_rol_valido
+  CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol));
+
 COMMIT;

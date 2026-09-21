@@ -43,7 +43,29 @@ const TIPOS = {
 };
 
 /* Nunca se sirven por HTTP, aunque estén en la carpeta del proyecto. */
-const VETADOS = [/^\.env/, /^\.git/, /^node_modules/];
+const VETADOS = [/^\.env/, /^\.git/, /^node_modules/, /^bd\//, /^pruebas\//, /^\.claude/, /^\.impeccable/];
+
+/* Cabeceras de seguridad. Las mismas que declara vercel.json para producción;
+   aquí se aplican en desarrollo para que lo que rompa la CSP rompa antes de
+   desplegar. Los orígenes permitidos son exactamente los CDN que index.html
+   ya carga: iconos (unpkg), SweetAlert2 (jsdelivr) y Google Fonts. */
+const CABECERAS_SEGURIDAD = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), payment=()',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net",
+    "font-src 'self' https://fonts.gstatic.com https://unpkg.com https://cdn.jsdelivr.net",
+    "img-src 'self' data:",
+    "connect-src 'self' https://nominatim.openstreetmap.org https://unpkg.com https://cdn.jsdelivr.net",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; ')
+};
 
 /* =========================================================
    1. EMULACIÓN DEL CONTRATO DE VERCEL
@@ -131,6 +153,8 @@ async function atenderApi(peticion, respuesta, nombre) {
   }
 
   adaptarRespuesta(respuesta);
+  respuesta.setHeader('X-Content-Type-Options', 'nosniff');
+  respuesta.setHeader('Cache-Control', 'no-store');
 
   try {
     peticion.body = await leerCuerpo(peticion);
@@ -187,10 +211,10 @@ function atenderEstatico(respuesta, relativa) {
       return;
     }
 
-    respuesta.writeHead(200, {
+    respuesta.writeHead(200, Object.assign({
       'Content-Type': TIPOS[path.extname(absoluta).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-cache'
-    });
+    }, CABECERAS_SEGURIDAD));
     respuesta.end(contenido);
   });
 }
@@ -212,6 +236,11 @@ const servidor = http.createServer(function (peticion, respuesta) {
       return;
     }
     atenderApi(peticion, respuesta, nombre);
+    return;
+  }
+
+  if (ruta === '/login' || ruta === '/login/') {
+    atenderEstatico(respuesta, 'login.html');
     return;
   }
 

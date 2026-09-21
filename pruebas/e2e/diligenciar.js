@@ -76,6 +76,7 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await seccion('0. Apertura de la aplicación');
 
+  await ayudas.iniciarSesion(page, diario);
   await page.goto('/');
   await expect(page.locator('#appTabs')).toBeVisible();
 
@@ -88,7 +89,7 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   diario.hito('Catálogos cargados; el formulario está listo');
 
-  await page.getByRole('button', { name: 'Nueva Encuesta' }).click();
+  await page.locator('#appTabs').getByRole('button', { name: 'Nueva Encuesta' }).click();
   await expect(page.locator('#view-nueva')).toHaveClass(/is-active/);
   await expect(page.locator('#encuestaForm')).toBeVisible();
 
@@ -137,11 +138,21 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await seccion('2.3 y 2.4 Equipo de salud y personal responsable');
 
-  await escribir('#equipoSaludId', ficha.ebs, 'Código del EBS');
+  /* Los ítems 10 y 12-14 los firma la sesión (sesion.js) y quedan de sólo
+     lectura: se comprueba que vengan llenos, no se escriben. El EBS de la
+     ficha es el del usuario que inició sesión, no el del guion. */
+  const firma = {
+    ebs: await page.locator('#equipoSaludId').inputValue(),
+    documento: await page.locator('#responsableNumeroId').inputValue(),
+    perfil: await page.locator('#perfilProfesional').inputValue()
+  };
+  if (firma.ebs && firma.documento && firma.perfil) {
+    diario.ok('Ítems 10 y 12-14 firmados por la sesión', firma.ebs + ' · ' + firma.documento + ' · ' + firma.perfil);
+  } else {
+    diario.problema('Ítems 10 y 12-14', 'la sesión no los dejó fijados: ' + JSON.stringify(firma));
+  }
+  ficha.ebs = firma.ebs || ficha.ebs;
   await elegir('#prestadorPrimario', ficha.prestador, 'Prestador primario');
-  await elegir('#responsableTipoId', ficha.responsableTipoId, 'Tipo de documento del responsable');
-  await escribir('#responsableNumeroId', ficha.responsableNumeroId, 'Documento del responsable');
-  await elegir('#perfilProfesional', ficha.perfilProfesional, 'Perfil profesional');
   await escribir('#codigoFicha', ficha.codigo, 'Código de la ficha');
   await escribir('#fechaDiligenciamiento', HOY, 'Fecha de diligenciamiento');
 

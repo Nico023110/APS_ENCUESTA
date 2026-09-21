@@ -13,6 +13,9 @@
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="styles.css">
+<!-- La sesión va antes del cuerpo: sin perfil en caché redirige a /login
+     antes de pintar nada, y envuelve fetch para todo lo que sigue. -->
+<script src="sesion.js"></script>
 </head>
 <body>
 
@@ -42,6 +45,8 @@
       <span class="app-tabs__label">Historial</span>
     </button>
   </nav>
+  <!-- Quién está dentro: lo pinta sesion.js -->
+  <div class="app-header__usuario" id="appUsuario"></div>
 </header>
 
 <main class="app-main">
@@ -241,7 +246,6 @@
             <div class="field" data-campo="prestadorPrimario">
               <label for="prestadorPrimario"><span class="item-num">11.</span> Prestador primario / Organismo de adscripción del Equipo de Salud: *</label>
               <select id="prestadorPrimario" name="prestadorPrimario"></select>
-              <span class="field-hint field-hint--inline">Valor fijo: la ficha la diligencia la E.S.E. Red de Salud de Ladera.</span>
             </div>
           </div>
         </div>
@@ -254,6 +258,7 @@
           <p class="field-hint" style="margin-top:-10px; margin-bottom:16px;">
             *Datos del responsable del proceso inicial de identificación de procesos cuidadores, deteriorantes y condiciones de salud.
           </p>
+          <p class="aviso-sesion" data-sesion="nota" hidden><i class="ph ph-identification-badge" aria-hidden="true"></i><span></span></p>
           <div class="form-grid">
             <div class="field" data-campo="responsableTipoId">
               <label for="responsableTipoId"><span class="item-num">12.</span> Tipo de identificación: *</label>
@@ -1661,7 +1666,71 @@
     </div>
   </section>
 
+  <!-- ===================== VISTA: USUARIOS (usuarios.gestionar) ===================== -->
+  <section class="view" id="view-usuarios">
+    <div class="card">
+      <div class="card__header usuarios__cabecera">
+        <div>
+          <h2>Usuarios</h2>
+          <p class="usuarios__sub">Cuentas de acceso: quién entra, con qué rol y en qué equipo.</p>
+        </div>
+        <button type="button" class="btn-cta usuarios__nuevo" id="btnNuevoUsuario">
+          <span>Nuevo usuario</span>
+          <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-plus"></i></span>
+        </button>
+      </div>
+      <div class="filters-bar">
+        <input type="text" id="usuariosFiltroTexto" placeholder="Buscar por nombre, documento o equipo...">
+        <select id="usuariosFiltroRol">
+          <option value="">Rol: todos</option>
+        </select>
+        <select id="usuariosFiltroEstado">
+          <option value="">Estado: todos</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Desactivados</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" id="usuariosTable">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Documento</th>
+              <th>Rol</th>
+              <th>Equipo</th>
+              <th>Estado</th>
+              <th>Último acceso</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuariosTableBody"></tbody>
+        </table>
+      </div>
+      <p class="empty-state" id="usuariosEmptyState" hidden>No hay usuarios que coincidan con la búsqueda.</p>
+      <p class="empty-state" id="usuariosError" hidden></p>
+    </div>
+  </section>
+
 </main>
+
+<!-- ===================== BLOQUEO POR INACTIVIDAD (RN-223.6) ===================== -->
+<div class="bloqueo" id="bloqueoSesion" hidden role="dialog" aria-modal="true" aria-labelledby="bloqueoTitulo">
+  <form class="bloqueo__tarjeta" novalidate>
+    <span class="bloqueo__icono" aria-hidden="true"><i class="ph ph-lock-key"></i></span>
+    <h2 class="bloqueo__titulo" id="bloqueoTitulo">Sesión bloqueada por inactividad</h2>
+    <p class="bloqueo__texto">La ficha en curso sigue abajo, tal como la dejó. Escriba su contraseña para continuar como <strong data-bloqueo="nombre"></strong>.</p>
+    <label class="bloqueo__campo">
+      <span>Contraseña</span>
+      <input type="password" name="clave" autocomplete="current-password" required>
+    </label>
+    <p class="bloqueo__error" data-bloqueo="error" hidden role="alert"></p>
+    <button type="submit" class="btn-cta bloqueo__cta">
+      <span>Continuar</span>
+      <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+    </button>
+    <button type="button" class="bloqueo__salir" data-bloqueo="salir">Entrar con otro usuario</button>
+  </form>
+</div>
 
 <!-- ===================== MODAL: DETALLE ===================== -->
 <div class="modal-overlay" id="modalDetalle" hidden>
@@ -1691,6 +1760,76 @@
   </div>
 </div>
 
+<!-- ===================== MODAL: USUARIO (crear / modificar) ===================== -->
+<div class="modal-overlay" id="modalUsuario" hidden>
+  <div class="modal modal--usuario">
+    <div class="modal__header">
+      <h2 id="modalUsuarioTitulo">Modificar usuario</h2>
+      <button class="modal__close" id="cerrarModalUsuario" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="formUsuario" novalidate autocomplete="off">
+        <input type="hidden" name="id">
+        <div class="form-grid form-grid--2col">
+          <div class="field" data-campo="tipoId">
+            <label for="usuarioTipoId">Tipo de documento *</label>
+            <select id="usuarioTipoId" name="tipoId"></select>
+          </div>
+          <div class="field" data-campo="documento">
+            <label for="usuarioDocumento">Número de documento *</label>
+            <input type="text" id="usuarioDocumento" name="documento" class="mono" maxlength="16" autocapitalize="off" spellcheck="false" placeholder="Ej. 1144012345">
+            <span class="field-hint field-hint--inline">Es con lo que inicia sesión. No se puede cambiar después.</span>
+          </div>
+          <div class="field field--full" data-campo="nombre">
+            <label for="usuarioNombre">Nombre completo *</label>
+            <input type="text" id="usuarioNombre" name="nombre" maxlength="120" placeholder="Nombres y apellidos">
+          </div>
+          <div class="field" data-campo="rol">
+            <label for="usuarioRol">Rol *</label>
+            <select id="usuarioRol" name="rol"></select>
+          </div>
+          <div class="field" data-campo="equipo">
+            <label for="usuarioEquipo">Equipo Básico de Salud</label>
+            <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
+            <span class="field-hint field-hint--inline">Obligatorio para quien captura fichas; firma el ítem 10.</span>
+          </div>
+          <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
+            <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
+            <select id="usuarioPerfil" name="perfil"></select>
+          </div>
+          <div class="field" data-campo="perfilOtro" id="usuarioCampoPerfilOtro" hidden>
+            <label for="usuarioPerfilOtro">¿Cuál? *</label>
+            <input type="text" id="usuarioPerfilOtro" name="perfilOtro" maxlength="80" placeholder="Ej. Trabajador social">
+          </div>
+          <div class="field field--full" id="usuarioCampoActivo" hidden>
+            <label class="usuarios__activo">
+              <input type="checkbox" name="activo" id="usuarioActivo">
+              <span>Cuenta activa</span>
+              <span class="field-hint field-hint--inline">Al desactivarla se cierran sus sesiones y no puede volver a entrar hasta reactivarla.</span>
+            </label>
+          </div>
+        </div>
+
+        <p class="acceso__error" id="usuarioError" hidden role="alert"></p>
+
+        <div class="usuarios__clave" id="usuarioClaveTemporal" hidden>
+          <span class="usuarios__clave-titulo"><i class="ph ph-key" aria-hidden="true"></i> Contraseña temporal</span>
+          <code class="usuarios__clave-valor" id="usuarioClaveValor"></code>
+          <button type="button" class="btn btn--ghost" id="btnCopiarClave"><i class="ph ph-copy" aria-hidden="true"></i> Copiar</button>
+          <span class="usuarios__clave-nota">Entréguela en persona. No volverá a mostrarse; en el primer ingreso se pedirá reemplazarla.</span>
+        </div>
+
+        <div class="form-actions usuarios__acciones">
+          <button type="button" class="btn btn--ghost" id="btnRestablecerClave" hidden><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Restablecer contraseña</button>
+          <span class="usuarios__acciones-espacio"></span>
+          <button type="button" class="btn btn--ghost" id="btnCancelarUsuario">Cancelar</button>
+          <button type="submit" class="btn btn--primary" id="btnGuardarUsuario">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== CONTENEDOR DE NOTIFICACIONES ===================== -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -1702,5 +1841,7 @@
 <script src="cups.js"></script>
 <script src="correccion.js"></script>
 <script src="app.js"></script>
+<script src="roles.js"></script>
+<script src="usuarios.js"></script>
 </body>
 </html>

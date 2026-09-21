@@ -3145,6 +3145,11 @@ function reiniciarEstadoFormulario() {
   renderizarImpedimentos([]);
   renderizarPlanCuidado(resumirPlanCuidado(vacio, []));
   document.getElementById('campoMotivoIncompleta').hidden = true;
+
+  /* Los ítems 10 y 12-14 los firma la sesión (sesion.js); tras un reset hay
+     que volver a escribirlos. Sin sesión cargada (pruebas jsdom) no hay nada
+     que aplicar. */
+  if (typeof SESION !== 'undefined' && SESION.aplicarEnFormulario) SESION.aplicarEnFormulario(formulario);
 }
 
 /** Devuelve las colecciones repetibles a una sola instancia en blanco. */

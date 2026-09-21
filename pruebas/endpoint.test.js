@@ -18,9 +18,13 @@ require('dotenv').config({ path: ['.env.local', '.env'] });
 const { spawn } = require('child_process');
 const path = require('path');
 const { Client } = require('pg');
+const { asegurarUsuarioDePrueba, iniciarSesionDePrueba, USUARIO_PRUEBA } = require('./_sesion_prueba');
 
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
 const RAIZ = path.join(__dirname, '..');
+
+/* Cabeceras de la sesión de prueba (cookie + anti-CSRF); las llena limpiar(). */
+let sesion = { cabeceras: {} };
 
 let pasadas = 0;
 let fallidas = 0;
@@ -139,10 +143,10 @@ function fichaValida(sufijo) {
   };
 }
 
-async function enviar(ficha) {
+async function enviar(ficha, cabeceras) {
   const respuesta = await fetch(BASE + '/api/guardar_encuesta', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: Object.assign({ 'Content-Type': 'application/json' }, cabeceras || sesion.cabeceras),
     body: JSON.stringify(ficha)
   });
   const cuerpo = await respuesta.json().catch(function () { return {}; });
@@ -172,7 +176,15 @@ async function limpiar() {
   await cliente.query("DELETE FROM aps.familia WHERE codigo LIKE 'FM-TEST-%' OR codigo LIKE 'FM-PRUEBA-%'");
   await cliente.query("DELETE FROM aps.hogar WHERE codigo LIKE 'HG-TEST-%' OR codigo LIKE 'HG-PRUEBA-%'");
   await cliente.query("DELETE FROM aps.persona WHERE numero_id IN ('1144099887','1144055099')");
+  await asegurarUsuarioDePrueba(cliente);
+  await asegurarUsuarioDePrueba(cliente, {
+    documento: '1144099002', nombre: 'Prueba Auxiliar', rol: 'auxiliar_enfermeria', equipo: 'EBS12'
+  });
+  await asegurarUsuarioDePrueba(cliente, {
+    documento: '1144099003', nombre: 'Prueba Otro Equipo', rol: 'enfermeria', equipo: 'EBS99'
+  });
   await cliente.end();
+  sesion = await iniciarSesionDePrueba(BASE);
 }
 
 async function correrPruebas() {
@@ -180,13 +192,62 @@ async function correrPruebas() {
 
   await limpiar();
 
+  console.log('\n=== 0. Acceso: sin sesión no hay API ===');
+
+  let r = await enviar(fichaValida(sello + '0'), {});
+  verificar('POST sin sesión ni cabecera anti-CSRF => 403', r.estado === 403, 'estado ' + r.estado);
+  r = await enviar(fichaValida(sello + '0'), { 'X-Requested-With': 'fetch' });
+  verificar('POST sin sesión => 401', r.estado === 401, 'estado ' + r.estado);
+  r = await enviar(fichaValida(sello + '0'), { Cookie: sesion.cabeceras.Cookie });
+  verificar('POST con cookie pero sin cabecera anti-CSRF => 403', r.estado === 403, 'estado ' + r.estado);
+
+  let listado = await fetch(BASE + '/api/listar_fichas');
+  verificar('GET listar_fichas sin sesión => 401', listado.status === 401, 'estado ' + listado.status);
+  listado = await fetch(BASE + '/api/catalogo_dinamico');
+  verificar('GET catalogo_dinamico sin sesión => 401', listado.status === 401, 'estado ' + listado.status);
+
+  const malaClave = await fetch(BASE + '/api/iniciar_sesion', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify({ documento: USUARIO_PRUEBA.documento, clave: 'incorrecta123' })
+  });
+  const inexistente = await fetch(BASE + '/api/iniciar_sesion', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify({ documento: '9999999999', clave: 'incorrecta123' })
+  });
+  const cuerpoMala = await malaClave.json();
+  const cuerpoInex = await inexistente.json();
+  verificar('Clave incorrecta => 401', malaClave.status === 401, 'estado ' + malaClave.status);
+  verificar('  mismo mensaje para documento inexistente (no revela cuentas)',
+    inexistente.status === 401 && cuerpoMala.error === cuerpoInex.error,
+    cuerpoMala.error + ' | ' + cuerpoInex.error);
+
   console.log('\n=== 1. Rechazo de datos ausentes (antes se rellenaban) ===');
 
-  const sinEquipo = fichaValida(sello + 'a');
-  delete sinEquipo.equipoSaludId;
-  let r = await enviar(sinEquipo);
-  verificar('Sin equipo de salud => 400', r.estado === 400, 'estado ' + r.estado);
-  verificar('  no se inventó EQTEST', JSON.stringify(r.cuerpo).indexOf('EQTEST') === -1);
+  /* El equipo y el responsable ya no vienen del cuerpo: los firma la sesión.
+     Un cuerpo que intente otro equipo u otro responsable se sobrescribe. */
+  const otroEquipo = fichaValida(sello + 'a');
+  otroEquipo.equipoSaludId = 'EQTEST';
+  otroEquipo.responsableNumeroId = '9999999999';
+  otroEquipo.responsableNombre = 'Suplantador';
+  r = await enviar(otroEquipo);
+  verificar('Equipo y responsable ajenos en el cuerpo => 200 con la firma de la sesión',
+    r.estado === 200, 'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
+  if (r.estado === 200) {
+    const firmaDb = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    await firmaDb.connect();
+    const firma = (await firmaDb.query(`
+      SELECT eq.codigo AS equipo, fu.numero_id, fu.nombre_completo
+        FROM aps.ficha f JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
+        JOIN aps.funcionario fu ON fu.id = f.responsable_id
+       WHERE f.codigo = $1`, [otroEquipo.codigoFicha])).rows[0] || {};
+    const evento = (await firmaDb.query(`
+      SELECT count(*)::int AS n FROM aud.evento e JOIN aps.ficha f ON f.id = e.ficha_id
+       WHERE f.codigo = $1 AND e.tipo = 'creacion'`, [otroEquipo.codigoFicha])).rows[0].n;
+    await firmaDb.end();
+    verificar('  la ficha quedó en el equipo de la sesión (EBS12), no en EQTEST', firma.equipo === 'EBS12', String(firma.equipo));
+    verificar('  el responsable es quien inició sesión', firma.numero_id === USUARIO_PRUEBA.documento, String(firma.numero_id));
+    verificar('  RN-225: quedó el evento de creación en auditoría', evento === 1, String(evento));
+  }
 
   const sinTerritorio = fichaValida(sello + 'b');
   delete sinTerritorio.territorio;
@@ -271,6 +332,55 @@ async function correrPruebas() {
   );
   r = await enviar(repetido);
   verificar('Dos integrantes con el mismo documento => 400', r.estado === 400, 'estado ' + r.estado);
+
+  console.log('\n=== 5b. RN-092 / RN-093 — unidades equivocadas (antes: 500 "numeric field overflow") ===');
+
+  const pesoEnGramos = fichaValida(sello + 'l2');
+  pesoEnGramos.familias[0].integrantes[0].peso = 3500;
+  pesoEnGramos.familias[0].integrantes[0].imc = 136.72;
+  r = await enviar(pesoEnGramos);
+  verificar('Peso en gramos => 400, no 500', r.estado === 400, 'estado ' + r.estado);
+  verificar('  señala peso', bloqueoEn(r.cuerpo, 'peso'));
+
+  const tallaEnMetros = fichaValida(sello + 'l3');
+  tallaEnMetros.familias[0].integrantes[0].talla = 1.6;
+  tallaEnMetros.familias[0].integrantes[0].imc = 253906.25;
+  r = await enviar(tallaEnMetros);
+  verificar('Talla en metros => 400, no 500', r.estado === 400, 'estado ' + r.estado);
+  verificar('  señala talla', bloqueoEn(r.cuerpo, 'talla'));
+
+  console.log('\n=== 5c. RN-224.3 — alcance por rol y equipo al corregir ===');
+
+  const auxiliar = await iniciarSesionDePrueba(BASE, { documento: '1144099002', clave: USUARIO_PRUEBA.clave });
+  const otroEquipoSesion = await iniciarSesionDePrueba(BASE, { documento: '1144099003', clave: USUARIO_PRUEBA.clave });
+
+  const fichaDeAuxiliar = fichaValida(sello + 'l4');
+  r = await enviar(fichaDeAuxiliar, auxiliar.cabeceras);
+  verificar('La auxiliar registra una ficha => 200', r.estado === 200, 'estado ' + r.estado);
+
+  r = await enviar(fichaDeAuxiliar, otroEquipoSesion.cabeceras);
+  verificar('Otro equipo intenta corregirla => 403', r.estado === 403, 'estado ' + r.estado);
+
+  r = await enviar(fichaDeAuxiliar, sesion.cabeceras);
+  verificar('La profesional del mismo equipo la corrige => 200', r.estado === 200, 'estado ' + r.estado);
+
+  const fichaDeProfesional = fichaValida(sello + 'l5');
+  r = await enviar(fichaDeProfesional, sesion.cabeceras);
+  verificar('La profesional registra otra ficha => 200', r.estado === 200, 'estado ' + r.estado);
+  r = await enviar(fichaDeProfesional, auxiliar.cabeceras);
+  verificar('La auxiliar intenta corregir la de la profesional => 403 (sólo las propias)',
+    r.estado === 403, 'estado ' + r.estado);
+
+  const listadoOtro = await fetch(BASE + '/api/listar_fichas', { headers: otroEquipoSesion.cabeceras })
+    .then(function (x) { return x.json(); });
+  verificar('El listado del otro equipo no trae las fichas de EBS12',
+    Array.isArray(listadoOtro) && !listadoOtro.some(function (f) { return f.equipoSaludId === 'EBS12'; }),
+    JSON.stringify((listadoOtro || []).map(function (f) { return f.equipoSaludId; })));
+
+  const detalleAjeno = await fetch(BASE + '/api/obtener_ficha?codigo=' + fichaDeAuxiliar.codigoFicha,
+    { headers: otroEquipoSesion.cabeceras });
+  verificar('El detalle de una ficha ajena => 404 (no se confirma que exista)',
+    detalleAjeno.status === 404, 'estado ' + detalleAjeno.status);
 
   console.log('\n=== 6. Ficha válida: se guarda tal como se envió ===');
 
@@ -662,7 +772,7 @@ async function correrPruebas() {
       rp.cuerpo.planCuidado.alertasSinConducta === 1,
       JSON.stringify(rp.cuerpo.planCuidado));
 
-    const listado = await fetch(BASE + '/api/listar_fichas').then(function (r) { return r.json(); });
+    const listado = await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras }).then(function (r) { return r.json(); });
     const filaSinPlan = (Array.isArray(listado) ? listado : []).find(function (f) {
       return f.codigoFicha === 'F-TEST-' + sello + 'p';
     });
@@ -691,7 +801,7 @@ async function correrPruebas() {
     const unaSola = await cliente.query('SELECT count(*)::int AS n FROM aps.ficha WHERE codigo = $1',
       ['F-TEST-' + sello + 'p']);
     verificar('  sin duplicar la ficha', unaSola.rows[0].n === 1, String(unaSola.rows[0].n));
-    const listado2 = await fetch(BASE + '/api/listar_fichas').then(function (r) { return r.json(); });
+    const listado2 = await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras }).then(function (r) { return r.json(); });
     const filaConPlan = (Array.isArray(listado2) ? listado2 : []).find(function (f) {
       return f.codigoFicha === 'F-TEST-' + sello + 'p';
     });

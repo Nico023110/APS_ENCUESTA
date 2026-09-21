@@ -1,11 +1,15 @@
 'use strict';
 
 const { consultar } = require('./_db');
+const { requerirSesion } = require('./_auth');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+
+  const usuario = await requerirSesion(req, res, { permiso: 'catalogos.consultar' });
+  if (!usuario) return;
 
   try {
     const [eapbRes, prestadorRes, uzpeRes, terRes] = await Promise.all([

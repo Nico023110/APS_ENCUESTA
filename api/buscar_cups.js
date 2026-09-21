@@ -31,6 +31,7 @@
 'use strict';
 
 const { consultar } = require('./_db');
+const { requerirSesion } = require('./_auth');
 
 /* Por debajo de dos caracteres cualquier término trae cientos de filas que no
    ayudan a elegir: se prefiere no responder a inundar el desplegable. */
@@ -48,6 +49,9 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+
+  const usuario = await requerirSesion(req, res, { permiso: 'catalogos.consultar' });
+  if (!usuario) return;
 
   const consulta = req.query || {};
   const termino = String(consulta.q === undefined ? '' : consulta.q).trim();

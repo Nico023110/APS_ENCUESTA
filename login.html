@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión · Encuesta APS</title>
+<meta name="description" content="Acceso a Encuesta APS, la ficha de caracterización SI-APS de la Red de Salud de Ladera E.S.E.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f6f7f9">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ccircle cx='16' cy='36' r='8' fill='%23009858'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23e02828'/%3E%3Ccircle cx='48' cy='36' r='8' fill='%230060a0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="cuerpo-acceso">
+
+<main class="puerta">
+
+  <!-- Hoja azul: la institución, detrás -->
+  <section class="puerta__institucion" aria-label="Red de Salud de Ladera E.S.E.">
+    <span class="puerta__masa" aria-hidden="true"></span>
+
+    <div class="puerta__mensaje">
+      <h1 class="puerta__titulo">Encuesta APS</h1>
+      <p class="puerta__texto">Ficha de caracterización SI‑APS de los Equipos Básicos de Salud. Funciona también sin señal.</p>
+    </div>
+
+    <div class="puerta__pie">
+      <span class="puerta__puntos" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="puerta__entidad">Red de Salud de Ladera E.S.E. · Cali</span>
+    </div>
+  </section>
+
+  <!-- Hoja blanca: la persona, delante -->
+  <section class="puerta__acceso">
+
+    <p class="acceso__aviso" id="avisoMotivo" hidden role="status"></p>
+
+    <!-- Paso 1: credenciales -->
+    <form class="acceso" id="formAcceso" novalidate autocomplete="on">
+      <div class="acceso__cabecera">
+        <img class="acceso__logo" src="logo-ladera.png" alt="Red de Salud de Ladera E.S.E." width="400" height="368">
+        <h2 class="acceso__titulo">Inicie sesión</h2>
+      </div>
+
+      <div class="acceso__nucleo">
+        <label class="acceso__campo" for="documento">
+          <span>Número de documento</span>
+          <span class="acceso__control">
+            <i class="ph ph-identification-card" aria-hidden="true"></i>
+            <input type="text" id="documento" name="documento" class="acceso__mono" inputmode="text"
+                   autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="16" required
+                   placeholder="Ej. 1144012345">
+          </span>
+        </label>
+
+        <label class="acceso__campo" for="clave">
+          <span>Contraseña</span>
+          <span class="acceso__control acceso__control--clave">
+            <i class="ph ph-lock-key" aria-hidden="true"></i>
+            <input type="password" id="clave" name="clave" autocomplete="current-password" maxlength="128" required>
+            <button type="button" class="acceso__ojo" data-ojo="clave" aria-label="Mostrar contraseña" aria-pressed="false">
+              <i class="ph ph-eye" aria-hidden="true"></i>
+            </button>
+          </span>
+        </label>
+
+        <div class="acceso__opciones">
+          <label class="acceso__recordar">
+            <input type="checkbox" id="recordarDocumento" name="recordarDocumento">
+            <span>Recordar mi documento</span>
+          </label>
+          <button type="button" class="acceso__enlace" id="btnOlvido">¿Olvidó su contraseña?</button>
+        </div>
+      </div>
+
+      <p class="acceso__error" id="errorAcceso" hidden role="alert"></p>
+
+      <button type="submit" class="btn-cta acceso__cta" id="btnIngresar">
+        <span data-etiqueta>Ingresar</span>
+        <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+      </button>
+
+      <p class="acceso__ayuda" id="ayudaAcceso" hidden>¿Sin acceso o sin contraseña? Solicítela al coordinador de su EBS o al administrador. No se restablece por correo.</p>
+    </form>
+
+    <!-- Paso 2: primer ingreso, crear contraseña propia -->
+    <form class="acceso" id="formClave" novalidate hidden>
+      <div class="acceso__cabecera">
+        <img class="acceso__logo" src="logo-ladera.png" alt="Red de Salud de Ladera E.S.E." width="400" height="368">
+        <h2 class="acceso__titulo">Cree su contraseña</h2>
+        <p class="acceso__subtitulo">Es su primer ingreso, <strong id="nombreUsuario"></strong>. La contraseña temporal que recibió se reemplaza por una suya.</p>
+      </div>
+
+      <div class="acceso__nucleo">
+        <label class="acceso__campo" for="claveActual" id="campoClaveActual" hidden>
+          <span>Contraseña temporal</span>
+          <span class="acceso__control">
+            <i class="ph ph-key" aria-hidden="true"></i>
+            <input type="password" id="claveActual" name="claveActual" autocomplete="current-password" maxlength="128">
+          </span>
+        </label>
+
+        <label class="acceso__campo" for="claveNueva">
+          <span>Nueva contraseña</span>
+          <span class="acceso__control acceso__control--clave">
+            <i class="ph ph-lock-key" aria-hidden="true"></i>
+            <input type="password" id="claveNueva" name="claveNueva" autocomplete="new-password" maxlength="128" required>
+            <button type="button" class="acceso__ojo" data-ojo="claveNueva" aria-label="Mostrar contraseña" aria-pressed="false">
+              <i class="ph ph-eye" aria-hidden="true"></i>
+            </button>
+          </span>
+        </label>
+
+        <label class="acceso__campo" for="claveRepetida">
+          <span>Repita la contraseña</span>
+          <span class="acceso__control">
+            <i class="ph ph-lock-key-open" aria-hidden="true"></i>
+            <input type="password" id="claveRepetida" name="claveRepetida" autocomplete="new-password" maxlength="128" required>
+          </span>
+        </label>
+
+        <ul class="acceso__requisitos" aria-label="Requisitos de la contraseña">
+          <li data-requisito="largo"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Mínimo 10 caracteres</span></li>
+          <li data-requisito="letra"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Al menos una letra</span></li>
+          <li data-requisito="numero"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Al menos un número</span></li>
+          <li data-requisito="documento"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Sin su número de documento</span></li>
+          <li data-requisito="igual"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Las dos coinciden</span></li>
+        </ul>
+      </div>
+
+      <p class="acceso__error" id="errorClave" hidden role="alert"></p>
+
+      <button type="submit" class="btn-cta acceso__cta" id="btnGuardarClave">
+        <span data-etiqueta>Guardar y entrar</span>
+        <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+      </button>
+
+      <button type="button" class="acceso__volver" id="btnCancelarClave">Entrar con otro usuario</button>
+    </form>
+
+  </section>
+</main>
+
+<script src="login.js"></script>
+</body>
+</html>

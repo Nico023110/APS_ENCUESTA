@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "rgb(255, 255, 255)",
+        "createdAt": "2026-09-21T18:44:07.956Z",
+        "reason": "DESIGN.md: card backgroundColor #ffffff; the login card is the incumbent white card"
+      },
+      {
+        "rule": "overused-font",
+        "value": "*",
+        "files": [
+          "login.html"
+        ],
+        "createdAt": "2026-09-21T18:44:08.426Z",
+        "reason": "DESIGN.md pins Plus Jakarta Sans as the single family; login inherits the incumbent system"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "login.html"
+        ],
+        "createdAt": "2026-09-21T18:44:08.892Z",
+        "reason": "DESIGN.md names the carcasa+núcleo pattern (radios concéntricos, marcador): the access card is shell 20 with core 14"
+      }
+    ]
+  }
+}

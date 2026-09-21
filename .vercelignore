@@ -1,0 +1,12 @@
+# Nada de esto debe publicarse como archivo estático: esquemas de la base,
+# pruebas, documentos de trabajo y configuración de agentes.
+bd/
+pruebas/
+.claude/
+.impeccable/
+*.pdf
+*.docx
+*.xlsx
+*.md
+playwright.config*.js
+skills-lock.json

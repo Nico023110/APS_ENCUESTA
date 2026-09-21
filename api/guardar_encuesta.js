@@ -35,6 +35,8 @@ require.resolve('../reglas.js');
 
 const { obtenerPool } = require('./_db');
 const { validar } = require('./_validacion');
+const { requerirSesion } = require('./_auth');
+const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
    no es un conteo de uno. */
@@ -431,15 +433,97 @@ async function guardarAlertas(cliente, fichaId, alertas, indices) {
   return escritas;
 }
 
+/* Quién firma la ficha no lo decide el cuerpo de la petición sino la sesión.
+   Ficha nueva: el equipo y el responsable (ítems 10, 12-14) son los del
+   usuario que la envía. Ficha existente: se conservan los originales —quien
+   corrige no pasa a ser el responsable de la captura— y la corrección queda
+   en auditoría a nombre de quien la hizo. */
+async function fichaExistente(cliente, codigo) {
+  if (!codigo) return null;
+  const r = await cliente.query(`
+    SELECT f.id, f.equipo_salud_id, f.responsable_id, eq.codigo AS equipo_codigo,
+           r.tipo_id, r.numero_id, r.nombre_completo, r.perfil_profesional, r.perfil_otro
+      FROM aps.ficha f
+      JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
+      JOIN aps.funcionario r   ON r.id = f.responsable_id
+     WHERE f.codigo = $1
+  `, [codigo]);
+  return r.rows[0] || null;
+}
+
+function fijarFirma(cuerpo, firma) {
+  cuerpo.equipoSaludId = firma.equipoCodigo;
+  cuerpo.responsableTipoId = firma.tipoId;
+  cuerpo.responsableNumeroId = firma.numeroId;
+  cuerpo.responsableNombre = firma.nombre;
+  cuerpo.perfilProfesional = firma.perfil;
+  cuerpo.perfilProfesionalOtro = firma.perfilOtro || null;
+
+  /* RN-111 / RN-120 / RN-130: las llaves heredadas de los planes copian el
+     ítem 10; si el equipo cambia aquí, cambian con él. */
+  const planes = [cuerpo.planVivienda];
+  (Array.isArray(cuerpo.familias) ? cuerpo.familias : []).forEach(function (familia) {
+    planes.push(familia && familia.planFamilia);
+    (Array.isArray(familia && familia.integrantes) ? familia.integrantes : []).forEach(function (integrante) {
+      planes.push(integrante && integrante.planPersona);
+    });
+  });
+  planes.forEach(function (plan) {
+    if (plan && typeof plan === 'object' && plan.codigoEbs !== undefined) plan.codigoEbs = firma.equipoCodigo;
+  });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  const usuario = await requerirSesion(req, res);
+  if (!usuario) return;
+
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'La petición no trae una ficha' });
   }
 
   let cliente;
 
   try {
     cliente = await obtenerPool().connect();
+
+    /* --- Autorización sobre la ficha concreta ------------------------------ */
+    const existente = await fichaExistente(cliente, texto(req.body.codigoFicha));
+    let tipoEvento;
+
+    if (existente) {
+      const permitido = roles.puedeCorregir(usuario, {
+        equipoSaludId: Number(existente.equipo_salud_id),
+        responsableId: Number(existente.responsable_id)
+      });
+      if (!permitido) {
+        console.error('  Corrección rechazada: ' + texto(req.body.codigoFicha) +
+          ' fuera del alcance de ' + usuario.documento + ' (' + usuario.rol + ')');
+        return res.status(403).json({ error: 'No puede corregir esta ficha: pertenece a otro equipo o a otro responsable.',
+          codigo: 'sin_permiso' });
+      }
+      fijarFirma(req.body, {
+        equipoCodigo: existente.equipo_codigo, tipoId: existente.tipo_id, numeroId: existente.numero_id,
+        nombre: existente.nombre_completo, perfil: existente.perfil_profesional, perfilOtro: existente.perfil_otro
+      });
+      tipoEvento = 'modificacion';
+    } else {
+      if (!roles.puede(usuario.rol, 'ficha.crear')) {
+        return res.status(403).json({ error: 'Su rol no permite registrar fichas nuevas.', codigo: 'sin_permiso' });
+      }
+      if (!usuario.equipoCodigo) {
+        return res.status(403).json({ error: 'Su cuenta no tiene un Equipo Básico de Salud asignado. Solicítelo al administrador.',
+          codigo: 'sin_equipo' });
+      }
+      fijarFirma(req.body, {
+        equipoCodigo: usuario.equipoCodigo, tipoId: usuario.tipoId, numeroId: usuario.documento,
+        nombre: usuario.nombre, perfil: usuario.perfilProfesional || usuario.rol, perfilOtro: usuario.perfilOtro
+      });
+      tipoEvento = 'creacion';
+    }
 
     /* --- Validación previa -------------------------------------------------
        Se hace con una conexión del pool pero fuera de la transacción: si la
@@ -595,6 +679,13 @@ module.exports = async (req, res) => {
     /* `DO UPDATE` siempre devuelve la fila, exista o no: el id sirve tanto
        para la ficha nueva como para la que se acaba de corregir. */
     const fichaId = fichaRes.rows[0].id;
+
+    /* RN-225: quién creó o corrigió, con las coordenadas de la captura. */
+    await cliente.query(`
+      INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, funcionario_id, dispositivo_id, latitud, longitud)
+      VALUES ($1, 'ficha', $1, $2, $3, $4, $5, $6)
+    `, [fichaId, tipoEvento, usuario.funcionarioId, texto(encuesta.dispositivoId),
+      decimal(encuesta.latitud), decimal(encuesta.longitud)]);
 
     /* --- 5. Vivienda --- */
     await cliente.query(`

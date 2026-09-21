@@ -3493,3 +3493,740 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
+
+
+/* =========================================================
+   ACCESO Y SESIÓN
+   ---------------------------------------------------------
+   login.html (la puerta), el chip de usuario en la cabecera, el velo de
+   bloqueo por inactividad (RN-223.6) y los campos que firma la sesión.
+   Todo sale de los tokens de arriba; no hay un color ni un radio nuevo.
+   ========================================================= */
+
+/* Sin perfil en caché, sesion.js redirige antes de pintar: se oculta el
+   cuerpo para que la aplicación no parpadee un instante. */
+html.sin-sesion body { visibility: hidden; }
+
+/* Los bloques del acceso son flex; `hidden` tiene que seguir mandando. */
+.acceso[hidden],
+.acceso__error[hidden],
+.acceso__aviso[hidden],
+.acceso__campo[hidden],
+.aviso-sesion[hidden] { display: none; }
+
+/* El administrador no captura: la pestaña, el botón principal de Inicio y
+   la sincronización desaparecen; el resto del bento se reacomoda solo. */
+html.nivel-administrador .app-tabs__btn[data-view="nueva"],
+html.nivel-administrador .btn-cta[data-goto="nueva"],
+html.nivel-administrador .accion-ancha[onclick*="sincronizar"],
+html.nivel-administrador #estadoSync { display: none; }
+html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
+
+/* ---- Puerta: dos hojas que se solapan ------------------------------------
+   Referencia del cliente: un panel azul profundo con formas orgánicas y,
+   por delante, la tarjeta blanca de acceso flotando sobre un lienzo claro.
+   Aquí la tarjeta va a la derecha. El azul es el de la marca en dos tonos
+   (brand-600 → brand-800); las formas son el mismo azul con luz y sombra,
+   sin colores nuevos. Las dos hojas comparten el eje vertical: la tarjeta,
+   más baja, se centra respecto al panel y lo pisa 48 px. */
+.cuerpo-acceso {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--s-8) var(--s-4);
+}
+
+.puerta {
+  --puerta-solape: 64px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 500px) minmax(0, 440px);
+  align-items: center;
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+/* Hoja azul: detrás y a la izquierda */
+.puerta__institucion {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: var(--s-8);
+  min-height: 640px;
+  padding: var(--s-8) calc(var(--s-8) + var(--puerta-solape)) var(--s-8) var(--s-8);
+  border-radius: var(--r-shell);
+  background: linear-gradient(160deg, var(--brand-600) 0%, var(--brand-700) 55%, var(--brand-800) 100%);
+  color: #fff;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 2px 4px rgba(0, 54, 90, 0.18),
+              0 28px 60px -18px rgba(0, 54, 90, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Formas orgánicas: dos masas del mismo azul, una iluminada y otra en
+   sombra, como en la referencia. Sólo transform y opacity se animan. */
+.puerta__institucion::before,
+.puerta__institucion::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.puerta__institucion::before {
+  width: 520px;
+  height: 420px;
+  right: -180px;
+  top: -140px;
+  border-radius: 58% 42% 55% 45% / 48% 60% 40% 52%;
+  background: linear-gradient(200deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.03) 72%);
+}
+
+.puerta__institucion::after {
+  width: 560px;
+  height: 460px;
+  left: -220px;
+  bottom: -220px;
+  border-radius: 45% 55% 38% 62% / 55% 40% 60% 45%;
+  background: linear-gradient(20deg, var(--brand-800) 20%, rgba(0, 54, 90, 0) 78%);
+}
+
+/* Tercera masa, pequeña y luminosa, en la esquina inferior derecha del
+   panel: es la que la tarjeta blanca pisa. */
+.puerta__masa {
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: 40px;
+  width: 260px;
+  height: 220px;
+  border-radius: 62% 38% 46% 54% / 44% 58% 42% 56%;
+  background: linear-gradient(240deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.puerta__mensaje {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: 30ch;
+}
+
+.puerta__titulo {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: #fff;
+}
+
+.puerta__texto {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--brand-100);
+}
+
+.puerta__pie {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.puerta__puntos { display: inline-flex; gap: 5px; }
+.puerta__puntos i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.puerta__puntos i:nth-child(1) { opacity: 1; }
+.puerta__puntos i:nth-child(2) { opacity: 0.7; }
+.puerta__puntos i:nth-child(3) { opacity: 0.4; }
+
+.puerta__entidad {
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--brand-100);
+}
+
+/* Hoja blanca: delante y a la derecha, pisando el panel */
+.puerta__acceso {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-4);
+  margin-left: calc(-1 * var(--puerta-solape));
+}
+
+/* ---- Tarjeta de acceso: carcasa blanca con núcleo apagado --------------- */
+.acceso {
+  width: 100%;
+  padding: var(--s-8) var(--s-8) var(--s-6);
+  background: var(--bg-card);
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  animation: acceso-entra var(--dur-enter) var(--ease-out) both;
+}
+
+@keyframes acceso-entra {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acceso { animation: none; }
+}
+
+.acceso__cabecera {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  text-align: center;
+}
+
+.acceso__logo {
+  display: block;
+  width: auto;
+  height: 84px;
+  margin-bottom: var(--s-2);
+}
+
+.acceso__titulo {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+  color: var(--ink-900);
+}
+
+.acceso__subtitulo {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-500);
+}
+
+.acceso__subtitulo strong { color: var(--ink-800); font-weight: 600; }
+
+/* El núcleo va 6 px más cerrado que la carcasa (20 - 6 = 14) */
+.acceso__nucleo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+  transition: background var(--dur-hover) var(--ease-out);
+}
+
+/* El campo activo enciende el núcleo entero: la misma regla del instrumento
+   («el campo activo se enciende»), llevada a la carcasa que lo contiene. */
+.acceso__nucleo:focus-within { background: #fff; }
+
+.acceso__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+/* Control con icono a la izquierda y pelo azul vertical, como en la
+   referencia: el icono nombra el dato, la barra dice «aquí se escribe». */
+.acceso__control {
+  position: relative;
+  display: block;
+}
+
+.acceso__control > i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 19px;
+  color: var(--ink-400);
+  pointer-events: none;
+  transition: color var(--dur-hover) var(--ease-out);
+}
+
+.acceso__control::before {
+  content: '';
+  position: absolute;
+  left: 40px;
+  top: 12px;
+  bottom: 12px;
+  width: 1.5px;
+  border-radius: 1px;
+  background: var(--brand-600);
+  opacity: 0.55;
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+.acceso__control:focus-within > i { color: var(--brand-600); }
+.acceso__control:focus-within::before { opacity: 1; }
+
+.acceso__campo input {
+  width: 100%;
+  padding: 12px var(--s-3) 12px 52px;
+  border: none;
+  border-radius: var(--r-control);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--ink-900);
+  transition: box-shadow var(--dur-hover) var(--ease-out);
+}
+
+.acceso__campo input::placeholder { color: var(--ink-500); }
+
+.acceso__campo input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
+}
+
+/* El documento se dicta y se coteja contra el carné: monoespaciada. */
+.acceso__campo .acceso__mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.acceso__control--clave input { padding-right: 46px; }
+
+.acceso__ojo {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--ink-500);
+  font-size: 19px;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out);
+}
+.acceso__ojo[aria-pressed="true"] { color: var(--brand-600); }
+@media (hover: hover) and (pointer: fine) {
+  .acceso__ojo:hover { background: var(--ink-100); color: var(--ink-900); }
+}
+
+/* Fila «Recordar mi documento · ¿Olvidó su contraseña?» */
+.acceso__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  white-space: nowrap;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-600);
+}
+
+.acceso__recordar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  cursor: pointer;
+}
+
+.acceso__recordar input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand-600);
+}
+
+.acceso__enlace {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--brand-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--brand-300);
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .acceso__enlace:hover { text-decoration-color: var(--brand-600); }
+}
+
+.acceso__requisitos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 6px var(--s-3);
+}
+
+.acceso__requisitos li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-500);
+  transition: color var(--dur-hover) var(--ease-out);
+}
+
+.acceso__requisitos li i { font-size: 16px; color: var(--ink-300); transition: color var(--dur-hover) var(--ease-out); }
+.acceso__requisitos li.is-cumplido { color: var(--ok-700); }
+.acceso__requisitos li.is-cumplido i { color: var(--ok-600); }
+
+/* Estado con texto y color: punto + mensaje, sobre tinte. */
+.acceso__error,
+.acceso__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 10px var(--s-3);
+  border-radius: var(--r-control);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.acceso__error::before,
+.acceso__aviso::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+.acceso__error { background: var(--alert-50); color: var(--alert-700); box-shadow: inset 0 0 0 1px var(--alert-100); }
+.acceso__error::before { background: var(--alert-600); }
+
+.acceso__aviso {
+  width: 100%;
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+.acceso__aviso::before { background: var(--warn-600); }
+
+/* Botón centrado, como en la referencia, con la isla del icono */
+.acceso__cta {
+  align-self: center;
+  min-width: 200px;
+  justify-content: space-between;
+  margin-top: 0;
+  padding-block: 10px;
+  font-size: var(--fs-body);
+}
+
+.acceso__cta:disabled {
+  opacity: 0.4;
+  cursor: progress;
+  transform: none;
+  box-shadow: none;
+}
+
+.acceso__ayuda {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-500);
+  text-align: center;
+}
+
+.acceso__volver {
+  align-self: center;
+  border: none;
+  background: transparent;
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-600);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .acceso__volver:hover { background: var(--ink-100); color: var(--ink-900); }
+}
+
+/* ---- Respuesta a la pantalla --------------------------------------------
+   Bajo 900 px las hojas se apilan: el panel azul se vuelve una cabecera
+   corta con sus formas y la tarjeta lo pisa desde abajo. */
+@media (max-width: 900px) {
+  .cuerpo-acceso { padding: var(--s-4) var(--s-4) var(--s-8); align-items: start; }
+
+  .puerta {
+    --puerta-solape: 28px;
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+
+  .puerta__institucion {
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    gap: var(--s-4);
+    padding: var(--s-5) var(--s-5) calc(var(--s-5) + var(--puerta-solape));
+    border-radius: var(--r-shell);
+  }
+  .puerta__mensaje { align-items: flex-start; }
+
+  .puerta__mensaje { gap: 0; }
+  .puerta__titulo { font-size: var(--fs-h2); color: #fff; }
+  .puerta__texto, .puerta__pie { display: none; }
+
+  .puerta__acceso {
+    margin-left: 0;
+    margin-top: calc(-1 * var(--puerta-solape));
+    padding: 0 var(--s-3);
+  }
+
+  .acceso { padding: var(--s-6) var(--s-5) var(--s-5); }
+  .acceso__logo { height: 64px; }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .puerta { grid-template-columns: minmax(0, 460px) minmax(0, 400px); max-width: 860px; }
+  .puerta__institucion { min-height: 600px; }
+}
+
+@media (min-width: 901px) and (max-height: 760px) {
+  .puerta__institucion { min-height: 580px; }
+}
+
+/* ---- Chip de usuario en la cabecera ------------------------------------- */
+.app-header__usuario { display: flex; align-items: center; }
+
+.app-usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 6px 5px 5px;
+  border-radius: var(--r-chip);
+  background: #fff;
+  box-shadow: var(--sh-hair);
+}
+
+.app-usuario__avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.12);
+}
+
+.app-usuario__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.app-usuario__nombre {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.app-usuario__detalle {
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.app-usuario__salir {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--ink-600);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .app-usuario__salir:hover { background: var(--alert-50); color: var(--alert-700); }
+}
+.app-usuario__salir:active { transform: scale(0.94); }
+
+@media (max-width: 720px) {
+  .app-usuario__texto { display: none; }
+  .app-usuario { padding: 4px; gap: 6px; }
+}
+
+/* ---- Firma de la sesión en el formulario (ítems 10 y 12-14) ------------- */
+.field input.is-sesion,
+.field select.is-sesion {
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+  pointer-events: none;
+}
+.field select.is-sesion { appearance: none; -webkit-appearance: none; }
+
+.aviso-sesion {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: -6px 0 var(--s-4);
+  padding: 8px var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+}
+.aviso-sesion i { font-size: 17px; color: var(--brand-600); }
+
+/* ---- Velo de bloqueo por inactividad (RN-223.6) ------------------------- */
+.bloqueo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+  background: rgba(11, 18, 32, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.bloqueo[hidden] { display: none; }
+
+.bloqueo__tarjeta {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--s-8) var(--s-8) var(--s-6);
+  background: var(--bg-card);
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  animation: acceso-entra var(--dur-enter) var(--ease-out) both;
+}
+
+.bloqueo__icono {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-control);
+  background: var(--warn-50);
+  color: var(--warn-700);
+  font-size: 23px;
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+
+.bloqueo__titulo { font-size: var(--fs-h2); font-weight: 700; letter-spacing: -0.02em; color: var(--ink-900); }
+.bloqueo__texto { margin: -6px 0 0; font-size: var(--fs-body); line-height: 1.5; color: var(--ink-500); }
+.bloqueo__texto strong { color: var(--ink-800); font-weight: 600; }
+
+.bloqueo__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+.bloqueo__campo input {
+  width: 100%;
+  padding: 12px var(--s-3);
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--ink-50);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--ink-900);
+}
+.bloqueo__campo input:focus {
+  outline: none;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
+}
+
+.bloqueo__error {
+  display: flex;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 10px var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--alert-50);
+  color: var(--alert-700);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--alert-100);
+}
+.bloqueo__error::before { content: ''; flex: none; width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: var(--alert-600); }
+.bloqueo__error[hidden] { display: none; }
+
+.bloqueo__cta { width: 100%; justify-content: space-between; margin-top: 0; }
+.bloqueo__cta:disabled { opacity: 0.4; cursor: progress; transform: none; box-shadow: none; }
+
+.bloqueo__salir {
+  align-self: center;
+  border: none;
+  background: transparent;
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-600);
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .bloqueo__salir:hover { background: var(--ink-100); color: var(--ink-900); }
+}

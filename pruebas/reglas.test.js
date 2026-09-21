@@ -421,6 +421,27 @@ verificar('IMC editado a mano => bloqueo RN-095',
   validarReglas(Object.assign(fichaBase(), { familias: [imcManipulado] }))
     .some(e => e.codigo === 'RN-095'));
 
+/* Unidades equivocadas: antes pasaban el "mayor a cero" y la base respondía
+   500 "numeric field overflow" al generar el IMC. */
+function bloqueosAntropometricos(peso, talla) {
+  const familia = familiaValida([Object.assign(adultaValida(), {
+    peso: peso, talla: talla, imc: calcularImc(peso, talla)
+  })]);
+  return validarReglas(Object.assign(fichaBase(), { familias: [familia] }));
+}
+verificar('Peso en gramos (3500) => bloqueo RN-092 sobre peso',
+  bloqueosAntropometricos(3500, 160).some(e => e.codigo === 'RN-092' && e.campo === 'peso'));
+verificar('Talla en metros (1.65) => bloqueo RN-093 sobre talla',
+  bloqueosAntropometricos(65, 1.65).some(e => e.codigo === 'RN-093' && e.campo === 'talla'));
+verificar('Talla con dígito de menos (16) => bloqueo RN-093',
+  bloqueosAntropometricos(65, 16).some(e => e.codigo === 'RN-093'));
+verificar('Par incoherente (100 kg / 30 cm, IMC 1111) => bloqueo RN-095',
+  bloqueosAntropometricos(100, 30).some(e => e.codigo === 'RN-095'));
+verificar('Recién nacido (3.2 kg / 49 cm) => sin bloqueo antropométrico',
+  !bloqueosAntropometricos(3.2, 49).some(e => ['RN-092', 'RN-093', 'RN-095'].indexOf(e.codigo) !== -1));
+verificar('Obesidad extrema (250 kg / 170 cm) => sin bloqueo antropométrico',
+  !bloqueosAntropometricos(250, 170).some(e => ['RN-092', 'RN-093', 'RN-095'].indexOf(e.codigo) !== -1));
+
 const tensionManipulada = familiaValida([Object.assign(adultaValida(), {
   tensionSistolica: 190, tensionDiastolica: 125, clasificacionTension: 'normal'
 })]);

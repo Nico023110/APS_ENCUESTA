@@ -710,11 +710,11 @@ La respuesta "No" en un menor de 6 meses activa canalización a apoyo en lactanc
 
 ### RN-092 — Peso
 
-**Ítem 92.** Campo numérico obligatorio con decimales, expresado en **kilogramos (kg)**. Usado para las validaciones de estado nutricional de RN-095 y RN-096.
+**Ítem 92.** Campo numérico obligatorio con decimales, expresado en **kilogramos (kg)**, mayor a cero y **hasta 500 kg**. Un valor mayor se rechaza como unidad equivocada (peso en gramos) antes de guardar. Usado para las validaciones de estado nutricional de RN-095 y RN-096.
 
 ### RN-093 — Talla
 
-**Ítem 93.** Campo numérico obligatorio, expresado en **centímetros (cm)**.
+**Ítem 93.** Campo numérico obligatorio, expresado en **centímetros (cm)**, **entre 20 y 250 cm**. Un valor fuera de ese rango se rechaza como unidad equivocada (talla en metros o con un dígito de menos) antes de guardar.
 
 ### RN-094 — Circunferencia de cintura
 
@@ -729,6 +729,8 @@ IMC = Peso (kg) / (Talla (cm) / 100)²
 ```
 
 Este cálculo se ejecuta obligatoriamente en individuos **mayores de 5 años**. Se recalcula automáticamente ante cualquier cambio en los ítems 92 o 93.
+
+Un par peso/talla que produzca un **IMC de 200 o más** se rechaza antes de guardar: no corresponde a una persona real y delata un error de captura en alguno de los dos ítems.
 
 ### RN-096 — Clasificación antropométrica
 

@@ -562,8 +562,45 @@ function imprimirInforme(diario) {
   console.log('\n' + linea + '\n');
 }
 
+/* =========================================================
+   Inicio de sesión
+   ---------------------------------------------------------
+   La aplicación exige sesión. Se entra por la misma pantalla que usa el
+   encuestador, con el usuario de prueba que crea `npm run test:bd`
+   (documento 1144099001, equipo EBS12) o con el que indiquen las variables
+   APS_E2E_DOCUMENTO / APS_E2E_CLAVE. Si hay DATABASE_URL, el usuario se
+   asegura aquí mismo para que la prueba no dependa de haber corrido antes
+   las de base.
+   ========================================================= */
+
+async function iniciarSesion(page, diario) {
+  const documento = process.env.APS_E2E_DOCUMENTO || '1144099001';
+  const clave = process.env.APS_E2E_CLAVE || 'ClavePrueba2026';
+
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    try {
+      const { Client } = require('pg');
+      const { asegurarUsuarioDePrueba } = require('../_sesion_prueba');
+      const cliente = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+      await cliente.connect();
+      await asegurarUsuarioDePrueba(cliente, { documento: documento, clave: clave });
+      await cliente.end();
+    } catch (error) {
+      if (diario) diario.problema('Sesión', 'no se pudo asegurar el usuario de prueba: ' + error.message);
+    }
+  }
+
+  await page.goto('/login.html');
+  await page.locator('#documento').fill(documento);
+  await page.locator('#clave').fill(clave);
+  await page.locator('#btnIngresar').click();
+  await page.waitForURL(function (url) { return !/login/.test(url.pathname); }, { timeout: 20000 });
+  if (diario) diario.hito('Sesión iniciada como ' + documento);
+}
+
 module.exports = {
   crearDiario: crearDiario,
+  iniciarSesion: iniciarSesion,
   vigilar: vigilar,
   anunciar: anunciar,
   escribir: escribir,

@@ -72,6 +72,15 @@ const UMBRAL_HACINAMIENTO_CRITICO = 3;
 /* RN-016 — Antigüedad máxima admitida de la fecha de diligenciamiento. */
 const DIAS_MAXIMOS_FICHA = 30;
 
+/* RN-092 / RN-093 / RN-095 — Topes de unidad para peso (kg) y talla (cm).
+   Amplios para no rechazar casos reales (prematuros, obesidad extrema), pero
+   suficientes para atrapar un peso en gramos o una talla en metros antes de
+   que el IMC generado en la base (numeric(5,2), máximo 999.99) desborde. */
+const PESO_MAXIMO_KG = 500;
+const TALLA_MINIMA_CM = 20;
+const TALLA_MAXIMA_CM = 250;
+const IMC_MAXIMO = 200;
+
 /* RN-114 / RN-124 / RN-136a — Forma de un código de procedimiento. Los 10.044
    códigos de `cat.cups` miden entre 6 y 9 caracteres alfanuméricos, con guion
    sólo en los NoCUPS. Que EXISTA lo comprueba el servidor contra la tabla:
@@ -1408,10 +1417,50 @@ const REGLAS_INTEGRANTE = [
     mensaje: 'Registre el peso en kilogramos (valor mayor a cero).'
   },
   {
+    /* Topes de unidad: un peso en gramos (3500) o una talla en metros (1.65)
+       pasan el "mayor a cero" y revientan el IMC generado en la base
+       (numeric(5,2)) con un 500 "numeric field overflow" que el encuestador
+       no puede interpretar. Se rechazan aquí, señalando el campo. */
+    codigo: 'RN-092',
+    campo: 'peso',
+    aplica: function (i) { return esNumeroPositivo(i.peso); },
+    valida: function (i) { return i.peso <= PESO_MAXIMO_KG; },
+    mensaje: function (i) {
+      return 'El peso ' + i.peso + ' no es posible en kilogramos (máximo ' + PESO_MAXIMO_KG +
+             '). Si lo tomó en gramos, divídalo entre 1000.';
+    }
+  },
+  {
     codigo: 'RN-093',
     campo: 'talla',
     valida: function (i) { return esNumeroPositivo(i.talla); },
     mensaje: 'Registre la talla en centímetros (valor mayor a cero).'
+  },
+  {
+    codigo: 'RN-093',
+    campo: 'talla',
+    aplica: function (i) { return esNumeroPositivo(i.talla); },
+    valida: function (i) { return i.talla >= TALLA_MINIMA_CM && i.talla <= TALLA_MAXIMA_CM; },
+    mensaje: function (i) {
+      return 'La talla ' + i.talla + ' no es posible en centímetros (entre ' + TALLA_MINIMA_CM +
+             ' y ' + TALLA_MAXIMA_CM + '). Si la tomó en metros, multiplíquela por 100.';
+    }
+  },
+  {
+    /* Con peso y talla dentro de rango el IMC sigue pudiendo desbordar la
+       base (100 kg con 30 cm); el tope cierra ese hueco y a la vez delata
+       un par peso/talla incoherente. */
+    codigo: 'RN-095',
+    campo: 'talla',
+    aplica: function (i) {
+      return esNumeroPositivo(i.peso) && i.peso <= PESO_MAXIMO_KG &&
+             esNumeroPositivo(i.talla) && i.talla >= TALLA_MINIMA_CM && i.talla <= TALLA_MAXIMA_CM;
+    },
+    valida: function (i) { return calcularImc(i.peso, i.talla) < IMC_MAXIMO; },
+    mensaje: function (i) {
+      return 'Peso ' + i.peso + ' kg y talla ' + i.talla + ' cm dan un IMC de ' +
+             calcularImc(i.peso, i.talla) + ', que no es posible. Revise ambos valores.';
+    }
   },
   {
     codigo: 'RN-094',

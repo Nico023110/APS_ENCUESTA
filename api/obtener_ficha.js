@@ -23,6 +23,8 @@
 
 const { consultar } = require('./_db');
 const { COLUMNAS_PLAN, resumenPlanDesdeFila } = require('./_plan_cuidado');
+const { requerirSesion } = require('./_auth');
+const roles = require('../roles.js');
 
 function aSiNo(booleano) {
   if (booleano === null || booleano === undefined) return null;
@@ -34,14 +36,26 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
+  const usuario = await requerirSesion(req, res);
+  if (!usuario) return;
+
+  const alcance = roles.alcanceDeLectura(usuario.rol);
+  if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
+
   const codigo = req.query && req.query.codigo ? String(req.query.codigo).trim() : '';
   if (codigo === '') {
     return res.status(400).json({ error: 'Falta el parámetro «codigo».' });
   }
 
+  /* RN-224.3: fuera del equipo la ficha «no existe». Un 403 confirmaría que
+     el código es real, y el código de ficha es un dato que no se regala. */
+  const filtroAlcance = alcance === 'todas' ? '' : 'AND f.equipo_salud_id = $2';
+  const parametros = alcance === 'todas' ? [codigo] : [codigo, usuario.equipoSaludId || -1];
+
   try {
     const resultado = await consultar(`
       SELECT
+        f.id                        AS ficha_id,
         f.codigo                    AS codigo_ficha,
         f.consentimiento,
         f.situacion_inminente,
@@ -92,13 +106,22 @@ module.exports = async (req, res) => {
       JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
       JOIN aps.funcionario r   ON r.id = f.responsable_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
-      WHERE f.codigo = $1
-    `, [codigo]);
+      WHERE f.codigo = $1 ${filtroAlcance}
+    `, parametros);
 
     const fila = resultado.rows[0];
     if (!fila) {
       return res.status(404).json({ error: 'No existe ninguna ficha con ese código.' });
     }
+
+    /* RN-224.2 / RN-225: la consulta del detalle queda en auditoría con quien
+       la hizo. No bloquea la respuesta si falla: se anota y se sigue. */
+    consultar(`
+      INSERT INTO aud.acceso_sensible (ficha_id, funcionario_id, grupo_dato)
+      VALUES ($1, $2, 'ficha')
+    `, [fila.ficha_id, usuario.funcionarioId]).catch(function (error) {
+      console.warn('No se pudo registrar el acceso en auditoría:', error.message);
+    });
 
     res.status(200).json({
       codigoFicha: fila.codigo_ficha,

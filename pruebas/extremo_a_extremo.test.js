@@ -25,6 +25,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { JSDOM } = require('jsdom');
 const { Client } = require('pg');
+const { asegurarUsuarioDePrueba, iniciarSesionDePrueba } = require('./_sesion_prueba');
 
 const RAIZ = path.join(__dirname, '..');
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
@@ -336,9 +337,15 @@ async function principal() {
   await cliente.connect();
   await limpiar(cliente, sufijo);
 
+  /* La API exige sesión: se entra como el usuario de prueba del equipo EBSE2E,
+     que es el equipo que el formulario dejó en el ítem 10 y en las llaves
+     heredadas del plan. */
+  await asegurarUsuarioDePrueba(cliente, { equipo: 'EBSE2E' });
+  const sesion = await iniciarSesionDePrueba(BASE);
+
   const respuesta = await fetch(BASE + '/api/guardar_encuesta', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: Object.assign({ 'Content-Type': 'application/json' }, sesion.cabeceras),
     body: JSON.stringify(encuesta)
   });
   const cuerpo = await respuesta.json().catch(function () { return {}; });
