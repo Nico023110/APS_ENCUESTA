@@ -3692,7 +3692,7 @@ html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--s-2);
+  gap: var(--s-3);
   text-align: center;
 }
 
@@ -3700,15 +3700,18 @@ html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
   display: block;
   width: auto;
   height: 84px;
-  margin-bottom: var(--s-2);
 }
 
+/* En tinta el título quedaba como una cuña negra justo debajo de un
+   logotipo a color: mismo azul que ya lleva el nombre dentro del
+   logotipo, para que lea como una sola pieza y no como dos elementos
+   sueltos apilados. */
 .acceso__titulo {
   font-size: var(--fs-h1);
-  font-weight: 800;
-  letter-spacing: -0.028em;
-  line-height: 1.15;
-  color: var(--ink-900);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--brand-700);
 }
 
 .acceso__subtitulo {
