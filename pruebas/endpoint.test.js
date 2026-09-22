@@ -382,6 +382,80 @@ async function correrPruebas() {
   verificar('El detalle de una ficha ajena => 404 (no se confirma que exista)',
     detalleAjeno.status === 404, 'estado ' + detalleAjeno.status);
 
+  console.log('\n=== 5d. /api/usuarios — gestión de cuentas por rol ===');
+
+  async function usuariosApi(cabeceras, cuerpo) {
+    const respuesta = await fetch(BASE + '/api/usuarios', cuerpo
+      ? { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, cabeceras), body: JSON.stringify(cuerpo) }
+      : { headers: cabeceras });
+    return { estado: respuesta.status, cuerpo: await respuesta.json().catch(function () { return {}; }) };
+  }
+
+  const listadoAsistencial = await usuariosApi(sesion.cabeceras);
+  verificar('Una profesional no lista usuarios => 403', listadoAsistencial.estado === 403, 'estado ' + listadoAsistencial.estado);
+
+  const limpiarCuentas = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+  await limpiarCuentas.connect();
+  await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099010', nombre: 'Prueba Admin', rol: 'administrador', equipo: null });
+  await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099011', nombre: 'Prueba Maestro Api', rol: 'maestro', equipo: 'EBS12' });
+  await limpiarCuentas.query("DELETE FROM aps.usuario WHERE documento IN ('1144099012','1144099013')");
+  await limpiarCuentas.query("DELETE FROM aps.funcionario WHERE numero_id IN ('1144099012','1144099013')");
+  await limpiarCuentas.end();
+
+  const admin = await iniciarSesionDePrueba(BASE, { documento: '1144099010', clave: USUARIO_PRUEBA.clave });
+  const maestro = await iniciarSesionDePrueba(BASE, { documento: '1144099011', clave: USUARIO_PRUEBA.clave });
+
+  const listadoAdmin = await usuariosApi(admin.cabeceras);
+  verificar('El administrador lista usuarios => 200 con la lista', listadoAdmin.estado === 200 && Array.isArray(listadoAdmin.cuerpo.usuarios),
+    'estado ' + listadoAdmin.estado);
+  verificar('  la lista no expone hashes de clave', JSON.stringify(listadoAdmin.cuerpo).indexOf('scrypt$') === -1);
+
+  const creaMaestro = await usuariosApi(admin.cabeceras, { accion: 'crear', documento: '1144099012', nombre: 'Intento Maestro', rol: 'maestro', equipo: 'EBS12' });
+  verificar('El administrador no puede crear un maestro => 403', creaMaestro.estado === 403, 'estado ' + creaMaestro.estado);
+
+  const creaMal = await usuariosApi(admin.cabeceras, { accion: 'crear', documento: '1144099012', nombre: 'Sin Equipo', rol: 'medicina' });
+  verificar('Rol asistencial sin equipo => 400 señalando equipo', creaMal.estado === 400 && creaMal.cuerpo.campo === 'equipo',
+    'estado ' + creaMal.estado + ' ' + JSON.stringify(creaMal.cuerpo));
+
+  const creaBien = await usuariosApi(admin.cabeceras, { accion: 'crear', documento: '1144099012', nombre: 'Creada Por Api', rol: 'medicina', equipo: 'EBS12' });
+  verificar('El administrador crea una médica => 200 con clave temporal',
+    creaBien.estado === 200 && typeof creaBien.cuerpo.claveTemporal === 'string' && creaBien.cuerpo.claveTemporal.length >= 10,
+    'estado ' + creaBien.estado + ' ' + JSON.stringify(creaBien.cuerpo).slice(0, 120));
+
+  const entraNueva = await fetch(BASE + '/api/iniciar_sesion', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify({ documento: '1144099012', clave: creaBien.cuerpo.claveTemporal })
+  });
+  const cuerpoNueva = await entraNueva.json();
+  verificar('  la cuenta nueva entra con la clave temporal y debe cambiarla',
+    entraNueva.status === 200 && cuerpoNueva.usuario && cuerpoNueva.usuario.debeCambiarClave === true, 'estado ' + entraNueva.status);
+
+  const duplicado = await usuariosApi(admin.cabeceras, { accion: 'crear', documento: '1144099012', nombre: 'Otra', rol: 'medicina', equipo: 'EBS12' });
+  verificar('Documento repetido => 400 señalando documento', duplicado.estado === 400 && duplicado.cuerpo.campo === 'documento', 'estado ' + duplicado.estado);
+
+  const idNueva = creaBien.cuerpo.usuario && creaBien.cuerpo.usuario.id;
+  const modifica = await usuariosApi(admin.cabeceras, { accion: 'modificar', id: idNueva, nombre: 'Creada Por Api Editada', rol: 'auxiliar_enfermeria', equipo: 'EBS12', activo: true });
+  verificar('Modificar nombre y rol => 200', modifica.estado === 200 && modifica.cuerpo.usuario && modifica.cuerpo.usuario.rol === 'auxiliar_enfermeria',
+    'estado ' + modifica.estado + ' ' + JSON.stringify(modifica.cuerpo).slice(0, 120));
+
+  const autoBaja = await usuariosApi(admin.cabeceras, { accion: 'modificar', id: admin.usuario.id, nombre: 'Prueba Admin', rol: 'administrador', activo: false });
+  verificar('Desactivarse a sí mismo => 400', autoBaja.estado === 400, 'estado ' + autoBaja.estado);
+
+  const maestroDesdeAdmin = await usuariosApi(admin.cabeceras, { accion: 'restablecer', id: maestro.usuario.id });
+  verificar('El administrador no restablece la clave de un maestro => 403', maestroDesdeAdmin.estado === 403, 'estado ' + maestroDesdeAdmin.estado);
+
+  const restablece = await usuariosApi(maestro.cabeceras, { accion: 'restablecer', id: idNueva });
+  verificar('El maestro restablece la clave => 200 con clave nueva', restablece.estado === 200 && typeof restablece.cuerpo.claveTemporal === 'string',
+    'estado ' + restablece.estado);
+
+  const desactiva = await usuariosApi(maestro.cabeceras, { accion: 'modificar', id: idNueva, nombre: 'Creada Por Api Editada', rol: 'auxiliar_enfermeria', equipo: 'EBS12', activo: false });
+  const entraDesactivada = await fetch(BASE + '/api/iniciar_sesion', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify({ documento: '1144099012', clave: restablece.cuerpo.claveTemporal })
+  });
+  verificar('Cuenta desactivada => no puede entrar (403)', desactiva.estado === 200 && entraDesactivada.status === 403,
+    'modificar ' + desactiva.estado + ', entrar ' + entraDesactivada.status);
+
   console.log('\n=== 6. Ficha válida: se guarda tal como se envió ===');
 
   const buena = fichaValida(sello + 'z');

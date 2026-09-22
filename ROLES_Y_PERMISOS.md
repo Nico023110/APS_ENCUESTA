@@ -70,9 +70,17 @@ Consecuencias en la interfaz:
 - Cada consulta del detalle de una ficha queda en `aud.acceso_sensible`
   (RN‑224.2).
 
-Hoy la gestión de usuarios y equipos (`usuarios.gestionar`, `equipos.gestionar`)
-se hace por línea de comandos; la pantalla de administración es la siguiente
-entrega.
+La gestión de cuentas (`usuarios.gestionar`) se hace desde la aplicación: el
+chip del usuario en la cabecera despliega un menú con **Modificar usuarios**
+(sólo para administrador y maestro), **Bloquear pantalla** y **Cerrar sesión**.
+La vista de usuarios lista las cuentas con búsqueda y filtros, permite crear
+(muestra la clave temporal una sola vez), modificar nombre, rol, equipo y
+estado, y restablecer la clave. Reglas que aplica `/api/usuarios` además del
+permiso: nadie se desactiva ni se cambia el rol a sí mismo; sólo un maestro
+crea, modifica o restablece cuentas de maestro; cada acción queda en
+`aud.evento` a nombre de quien la hizo. La línea de comandos
+(`npm run usuario:crear`) sigue disponible para el primer administrador o
+maestro y usa el mismo módulo (`api/_usuarios.js`).
 
 ## 3. Cómo se crean los usuarios
 
@@ -127,6 +135,6 @@ máximo 128, y al cambiarla debe ser distinta de la anterior.
 - La asignación de **territorios** a un equipo (RN‑224.3 habla de territorios
   asignados) todavía no se modela; el alcance se aplica por equipo, que es la
   unidad que la ficha registra.
-- El rol «consulta» (lectura anonimizada, RN‑224.4) y la pantalla de
-  administración de usuarios quedan para la siguiente entrega; el modelo ya los
-  admite sin cambios de esquema.
+- El rol «consulta» (lectura anonimizada, RN‑224.4) y la gestión de equipos
+  como entidad propia (`equipos.gestionar`) quedan para una siguiente entrega;
+  el modelo ya los admite sin cambios de esquema.

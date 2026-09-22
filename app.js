@@ -1295,8 +1295,10 @@ function cambiarVista(nombreVista) {
    se ocultan en móvil. */
 function moverIndicadorDeTabs() {
   const tabs = document.getElementById('appTabs');
-  const activa = tabs && tabs.querySelector('.app-tabs__btn.is-active');
-  if (!tabs || !activa) return;
+  if (!tabs) return;
+  const activa = tabs.querySelector('.app-tabs__btn.is-active');
+  /* Una vista sin pestaña (Usuarios, desde el menú) apaga el indicador. */
+  if (!activa) { tabs.style.setProperty('--tab-ready', '0'); return; }
   tabs.style.setProperty('--tab-x', activa.offsetLeft + 'px');
   tabs.style.setProperty('--tab-w', activa.offsetWidth + 'px');
   tabs.style.setProperty('--tab-ready', '1');

@@ -32,16 +32,22 @@ async function asegurarUsuarioDePrueba(cliente, datos) {
     ON CONFLICT (codigo) DO UPDATE SET activo = true RETURNING id
   `, [u.equipo])).rows[0].id : null;
 
+  /* Perfil del ítem 14: el rol asistencial, «otro» para el maestro, nada
+     para el administrador (igual que api/_usuarios.js). */
+  const perfil = u.rol === 'maestro' ? 'otro' : (u.rol === 'administrador' ? null : u.rol);
+  const perfilOtro = u.rol === 'maestro' ? 'Usuario maestro' : null;
+
   const funcionarioId = (await cliente.query(`
-    INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, equipo_salud_id, activo)
-    VALUES ($1, $2, $3, $4, $5, true)
+    INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, perfil_otro, equipo_salud_id, activo)
+    VALUES ($1, $2, $3, $4, $5, $6, true)
     ON CONFLICT (tipo_id, numero_id) DO UPDATE
       SET nombre_completo = EXCLUDED.nombre_completo,
           perfil_profesional = EXCLUDED.perfil_profesional,
+          perfil_otro = EXCLUDED.perfil_otro,
           equipo_salud_id = EXCLUDED.equipo_salud_id,
           activo = true
     RETURNING id
-  `, [u.tipoId, u.documento, u.nombre, u.rol === 'administrador' ? null : u.rol, equipoId])).rows[0].id;
+  `, [u.tipoId, u.documento, u.nombre, perfil, perfilOtro, equipoId])).rows[0].id;
 
   await cliente.query(`
     INSERT INTO aps.usuario (funcionario_id, documento, clave_hash, rol, debe_cambiar_clave, activo)

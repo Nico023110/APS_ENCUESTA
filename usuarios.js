@@ -25,8 +25,18 @@
 
   const $ = function (id) { return document.getElementById(id); };
 
+  /* Avisos breves en esquina, no un diálogo: la confirmación de guardar no
+     exige decisión y el formulario (o la clave temporal) ya está a la vista. */
   function avisar(texto, tipo) {
-    if (typeof mostrarNotificacion === 'function') mostrarNotificacion(texto, tipo || 'info');
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        toast: true, position: 'top-end', icon: tipo || 'info', title: texto,
+        showConfirmButton: false, timer: 2800, timerProgressBar: true,
+        background: '#ffffff', color: '#0b1220'
+      });
+    } else if (typeof mostrarNotificacion === 'function') {
+      mostrarNotificacion(texto, tipo || 'info');
+    }
   }
 
   function textoSeguro(valor) {
@@ -125,11 +135,7 @@
       boton.addEventListener('click', function () { abrirFormulario(buscar(boton.dataset.modificar)); });
     });
     cuerpo.querySelectorAll('[data-restablecer]').forEach(function (boton) {
-      boton.addEventListener('click', function () {
-        const u = buscar(boton.dataset.restablecer);
-        abrirFormulario(u);
-        restablecerClave(u);
-      });
+      boton.addEventListener('click', function () { restablecerClave(buscar(boton.dataset.restablecer)); });
     });
   }
 
@@ -294,8 +300,10 @@
       pintarLista();
 
       if (cuerpo.claveTemporal) {
-        /* La cuenta nueva se queda abierta para poder copiar la clave. */
+        /* La cuenta nueva se queda abierta para poder copiar la clave; desde
+           aquí ya se edita como una existente. */
         editando = guardado;
+        $('formUsuario').id.value = guardado.id;
         $('modalUsuarioTitulo').textContent = 'Usuario creado';
         $('usuarioDocumento').readOnly = true;
         $('usuarioTipoId').disabled = true;
@@ -315,34 +323,67 @@
     }
   }
 
-  async function restablecerClave(u) {
+  /* Pide confirmación con el mismo modal que usa el resto de la app
+     (pedirConfirmacion, en app.js) en vez de window.confirm: uno es un
+     cuadro nativo del navegador, sin la marca ni el fondo esmerilado, y en
+     Safari/iOS puede bloquear el hilo de un modo que confunde al probarlo
+     dentro de otro diálogo ya abierto.
+
+     Dos orígenes, dos formas de mostrar el resultado: pedido desde el botón
+     de una fila de la lista (el formulario de edición ni se abre: `enFormulario`
+     queda en false) muestra la clave en su propia modal; pedido desde dentro
+     de «Modificar usuario» la deja donde ya está el resto del formulario. */
+  function restablecerClave(u, opciones) {
     const objetivo = u || editando;
-    if (!objetivo) return;
-    const confirmado = window.confirm('Se generará una contraseña temporal para ' + objetivo.nombre +
-      ' y se cerrarán todas sus sesiones. ¿Continuar?');
-    if (!confirmado) return;
-    marcarError(null, '');
+    if (!objetivo || typeof pedirConfirmacion !== 'function') return;
+    const enFormulario = !!(opciones && opciones.enFormulario);
+
+    pedirConfirmacion({
+      titulo: 'Restablecer contraseña',
+      mensaje: 'Se generará una contraseña temporal para ' + objetivo.nombre +
+        ' y se cerrarán todas sus sesiones activas. Deberá crear una contraseña nueva en su próximo ingreso.',
+      textoConfirmar: 'Restablecer',
+      alConfirmar: function () { ejecutarRestablecerClave(objetivo, enFormulario); }
+    });
+  }
+
+  async function ejecutarRestablecerClave(objetivo, enFormulario) {
+    if (enFormulario) marcarError(null, '');
     try {
       const cuerpo = await enviar({ accion: 'restablecer', id: objetivo.id });
       const indice = usuarios.findIndex(function (x) { return x.id === cuerpo.usuario.id; });
       if (indice !== -1) usuarios[indice] = cuerpo.usuario;
       pintarLista();
-      mostrarClaveTemporal(cuerpo.claveTemporal);
-      avisar('Contraseña de ' + objetivo.nombre + ' restablecida.', 'success');
+      if (enFormulario) {
+        mostrarClaveTemporal(cuerpo.claveTemporal);
+        avisar('Contraseña de ' + objetivo.nombre + ' restablecida.', 'success');
+      } else {
+        mostrarModalClave(objetivo.nombre, cuerpo.claveTemporal);
+      }
     } catch (error) {
-      marcarError(null, error.message);
+      if (enFormulario) marcarError(null, error.message);
+      else avisar(error.message, 'error');
     }
   }
 
-  function copiarClave() {
-    const clave = $('usuarioClaveValor').textContent;
-    if (!clave) return;
+  function copiarTexto(texto) {
+    if (!texto) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(clave).then(function () { avisar('Contraseña copiada.', 'success'); })
+      navigator.clipboard.writeText(texto).then(function () { avisar('Contraseña copiada.', 'success'); })
         .catch(function () { avisar('No se pudo copiar; anótela manualmente.', 'warning'); });
     } else {
       avisar('Copie la contraseña manualmente.', 'info');
     }
+  }
+
+  function mostrarModalClave(nombre, clave) {
+    $('claveTemporalIntro').textContent = 'Para ' + nombre + '.';
+    $('claveTemporalValor').textContent = clave;
+    $('modalClaveTemporal').hidden = false;
+  }
+
+  function cerrarModalClave() {
+    $('modalClaveTemporal').hidden = true;
   }
 
   /* ---------------------------------------------------------
@@ -365,15 +406,25 @@
     $('formUsuario').addEventListener('submit', guardar);
     $('usuarioRol').addEventListener('change', ajustarCamposSegunRol);
     $('usuarioPerfil').addEventListener('change', ajustarCamposSegunRol);
-    $('btnRestablecerClave').addEventListener('click', function () { restablecerClave(editando); });
-    $('btnCopiarClave').addEventListener('click', copiarClave);
+    $('btnRestablecerClave').addEventListener('click', function () { restablecerClave(editando, { enFormulario: true }); });
+    $('btnCopiarClave').addEventListener('click', function () { copiarTexto($('usuarioClaveValor').textContent); });
     $('btnCancelarUsuario').addEventListener('click', cerrarFormulario);
     $('cerrarModalUsuario').addEventListener('click', cerrarFormulario);
     $('modalUsuario').addEventListener('click', function (evento) {
       if (evento.target === $('modalUsuario')) cerrarFormulario();
     });
+
+    $('btnCopiarClaveModal').addEventListener('click', function () { copiarTexto($('claveTemporalValor').textContent); });
+    $('btnCerrarClaveTemporal').addEventListener('click', cerrarModalClave);
+    $('cerrarModalClaveTemporal').addEventListener('click', cerrarModalClave);
+    $('modalClaveTemporal').addEventListener('click', function (evento) {
+      if (evento.target === $('modalClaveTemporal')) cerrarModalClave();
+    });
+
     document.addEventListener('keydown', function (evento) {
-      if (evento.key === 'Escape' && !$('modalUsuario').hidden) cerrarFormulario();
+      if (evento.key !== 'Escape') return;
+      if (!$('modalClaveTemporal').hidden) cerrarModalClave();
+      else if (!$('modalUsuario').hidden) cerrarFormulario();
     });
   });
 

@@ -208,13 +208,21 @@
       .map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
   }
 
+  /* El chip es un botón que despliega el menú del usuario: las acciones
+     dependen de los permisos (Modificar usuarios sólo con usuarios.gestionar)
+     y Cerrar sesión va siempre al final. */
   function pintarCabecera() {
     const contenedor = document.getElementById('appUsuario');
     if (!contenedor) return;
     contenedor.innerHTML = '';
 
-    const chip = document.createElement('div');
+    const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'app-usuario';
+    chip.setAttribute('aria-haspopup', 'menu');
+    chip.setAttribute('aria-expanded', 'false');
+    chip.setAttribute('aria-controls', 'menuUsuario');
+    chip.title = 'Opciones de ' + usuario.nombre;
 
     const avatar = document.createElement('span');
     avatar.className = 'app-usuario__avatar';
@@ -232,18 +240,70 @@
     texto.appendChild(nombre);
     texto.appendChild(detalle);
 
-    const salir = document.createElement('button');
-    salir.type = 'button';
-    salir.className = 'app-usuario__salir';
-    salir.title = 'Cerrar sesión';
-    salir.setAttribute('aria-label', 'Cerrar sesión');
-    salir.innerHTML = '<i class="ph ph-sign-out" aria-hidden="true"></i>';
-    salir.addEventListener('click', cerrarSesion);
+    const flecha = document.createElement('span');
+    flecha.className = 'app-usuario__flecha';
+    flecha.setAttribute('aria-hidden', 'true');
+    flecha.innerHTML = '<i class="ph ph-caret-down"></i>';
 
     chip.appendChild(avatar);
     chip.appendChild(texto);
-    chip.appendChild(salir);
+    chip.appendChild(flecha);
+
+    const menu = document.createElement('div');
+    menu.className = 'app-menu';
+    menu.id = 'menuUsuario';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+
+    const cabecera = document.createElement('div');
+    cabecera.className = 'app-menu__cabecera';
+    cabecera.innerHTML = '<span class="app-menu__nombre"></span><span class="app-menu__detalle"></span>';
+    cabecera.querySelector('.app-menu__nombre').textContent = usuario.nombre;
+    cabecera.querySelector('.app-menu__detalle').textContent = usuario.rolEtiqueta +
+      (usuario.equipoCodigo ? ' · ' + usuario.equipoCodigo : '') + ' · ' + usuario.tipoId + ' ' + usuario.documento;
+    menu.appendChild(cabecera);
+
+    const opciones = [];
+    if (puede('usuarios.gestionar')) {
+      opciones.push({ icono: 'ph-users-three', texto: 'Modificar usuarios', accion: function () {
+        if (window.USUARIOS) window.USUARIOS.abrir();
+      } });
+    }
+    opciones.push({ icono: 'ph-lock-key', texto: 'Bloquear pantalla', accion: bloquear });
+    opciones.push({ icono: 'ph-sign-out', texto: 'Cerrar sesión', accion: cerrarSesion, peligro: true });
+
+    opciones.forEach(function (op) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'app-menu__item' + (op.peligro ? ' app-menu__item--peligro' : '');
+      item.setAttribute('role', 'menuitem');
+      item.innerHTML = '<i class="ph ' + op.icono + '" aria-hidden="true"></i><span></span>';
+      item.querySelector('span').textContent = op.texto;
+      item.addEventListener('click', function () { cerrarMenu(); op.accion(); });
+      menu.appendChild(item);
+    });
+
+    function abrirMenu() {
+      menu.hidden = false;
+      chip.setAttribute('aria-expanded', 'true');
+      const primero = menu.querySelector('.app-menu__item');
+      if (primero) primero.focus();
+    }
+    function cerrarMenu() {
+      menu.hidden = true;
+      chip.setAttribute('aria-expanded', 'false');
+    }
+
+    chip.addEventListener('click', function () { if (menu.hidden) abrirMenu(); else cerrarMenu(); });
+    document.addEventListener('click', function (evento) {
+      if (!menu.hidden && !contenedor.contains(evento.target)) cerrarMenu();
+    });
+    document.addEventListener('keydown', function (evento) {
+      if (evento.key === 'Escape' && !menu.hidden) { cerrarMenu(); chip.focus(); }
+    });
+
     contenedor.appendChild(chip);
+    contenedor.appendChild(menu);
   }
 
   function cerrarSesion() {

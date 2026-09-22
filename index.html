@@ -1743,23 +1743,6 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: CONFIRMAR ELIMINACIÓN ===================== -->
-<div class="modal-overlay" id="modalConfirmar" hidden>
-  <div class="modal modal--small">
-    <div class="modal__header">
-      <h2 id="modalConfirmarTitulo">Eliminar registro</h2>
-      <button class="modal__close" id="cerrarModalConfirmar" aria-label="Cerrar">&times;</button>
-    </div>
-    <div class="modal__body">
-      <p id="modalConfirmarMensaje">¿Está seguro de que desea eliminar esta encuesta? Esta acción no se puede deshacer.</p>
-      <div class="form-actions">
-        <button class="btn btn--ghost" id="btnCancelarEliminar">Cancelar</button>
-        <button class="btn btn--danger" id="btnConfirmarEliminar">Eliminar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ===================== MODAL: USUARIO (crear / modificar) ===================== -->
 <div class="modal-overlay" id="modalUsuario" hidden>
   <div class="modal modal--usuario">
@@ -1778,8 +1761,8 @@
           <div class="field" data-campo="documento">
             <label for="usuarioDocumento">Número de documento *</label>
             <input type="text" id="usuarioDocumento" name="documento" class="mono" maxlength="16" autocapitalize="off" spellcheck="false" placeholder="Ej. 1144012345">
-            <span class="field-hint field-hint--inline">Es con lo que inicia sesión. No se puede cambiar después.</span>
           </div>
+          <p class="field-hint field--full usuarios__ayuda">Con el documento inicia sesión; no se puede cambiar después.</p>
           <div class="field field--full" data-campo="nombre">
             <label for="usuarioNombre">Nombre completo *</label>
             <input type="text" id="usuarioNombre" name="nombre" maxlength="120" placeholder="Nombres y apellidos">
@@ -1791,8 +1774,8 @@
           <div class="field" data-campo="equipo">
             <label for="usuarioEquipo">Equipo Básico de Salud</label>
             <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
-            <span class="field-hint field-hint--inline">Obligatorio para quien captura fichas; firma el ítem 10.</span>
           </div>
+          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para quien captura fichas: firma el ítem 10 de cada ficha.</p>
           <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
             <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
             <select id="usuarioPerfil" name="perfil"></select>
@@ -1826,6 +1809,53 @@
           <button type="submit" class="btn btn--primary" id="btnGuardarUsuario">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONTRASEÑA RESTABLECIDA =====================
+     Sólo para el restablecimiento pedido desde la fila de la lista, sin
+     pasar por «Modificar usuario». El restablecimiento pedido dentro de ese
+     formulario (botón «Restablecer contraseña») sigue mostrando la clave
+     ahí mismo, en .usuarios__clave. -->
+<div class="modal-overlay" id="modalClaveTemporal" hidden>
+  <div class="modal modal--small">
+    <div class="modal__header">
+      <h2>Contraseña restablecida</h2>
+      <button class="modal__close" id="cerrarModalClaveTemporal" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal__body">
+      <p id="claveTemporalIntro"></p>
+      <div class="usuarios__clave">
+        <span class="usuarios__clave-titulo"><i class="ph ph-key" aria-hidden="true"></i> Contraseña temporal</span>
+        <code class="usuarios__clave-valor" id="claveTemporalValor"></code>
+        <button type="button" class="btn btn--ghost" id="btnCopiarClaveModal"><i class="ph ph-copy" aria-hidden="true"></i> Copiar</button>
+        <span class="usuarios__clave-nota">Entréguela en persona. No volverá a mostrarse; en el primer ingreso se pedirá reemplazarla.</span>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn--primary" id="btnCerrarClaveTemporal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIRMACIÓN (reutilizable) =====================
+     Eliminar una ficha, reducir integrantes (ítem 51) y restablecer una
+     contraseña usan este mismo diálogo (pedirConfirmacion en app.js). Va
+     después de los demás modal-overlay para apilarse por encima cuando se
+     abre desde uno de ellos (mismo z-index; el orden del DOM decide). -->
+<div class="modal-overlay" id="modalConfirmar" hidden>
+  <div class="modal modal--small">
+    <div class="modal__header">
+      <h2 id="modalConfirmarTitulo">Eliminar registro</h2>
+      <button class="modal__close" id="cerrarModalConfirmar" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal__body">
+      <p id="modalConfirmarMensaje">¿Está seguro de que desea eliminar esta encuesta? Esta acción no se puede deshacer.</p>
+      <div class="form-actions">
+        <button class="btn btn--ghost" id="btnCancelarEliminar">Cancelar</button>
+        <button class="btn btn--danger" id="btnConfirmarEliminar">Eliminar</button>
+      </div>
     </div>
   </div>
 </div>
