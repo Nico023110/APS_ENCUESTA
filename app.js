@@ -69,9 +69,17 @@ function textoSeguro(valor) {
    3. CONSTRUCCIÓN DE CONTROLES A PARTIR DE CATÁLOGOS
    --------------------------------------------------------- */
 
-function llenarSelect(idSelect, catalogo, opciones) {
+function llenarSelect(idSelectOElemento, catalogo, opciones) {
   const config = opciones || {};
-  const select = document.getElementById(idSelect);
+  /* Los `<select data-catalogo>` de los bloques repetibles (ítem 76 entre
+     ellos) no llevan `id` propio: clonarlos con un id fijo duplicaría el
+     id en cada familia. Aceptar el elemento directamente evita el
+     document.getElementById('') que antes fallaba en silencio y dejaba
+     ese select sin repintar cuando llegaba el catálogo del servidor. */
+  const select = typeof idSelectOElemento === 'string'
+    ? document.getElementById(idSelectOElemento)
+    : idSelectOElemento;
+  if (!select) return;
   const placeholder = config.placeholder === undefined ? 'Seleccione...' : config.placeholder;
 
   const partes = [];
@@ -291,10 +299,16 @@ async function cargarCatalogoDeAcciones() {
       repintarTerritorios();
       // Re-render components that might have been initialized empty
       if (typeof ventana === 'undefined' && typeof document !== 'undefined') {
+        /* Conserva lo ya elegido: sin esto, repintar a mitad de captura
+           borraría la EAPB o el prestador que el encuestador ya seleccionó. */
         const eapbSelects = document.querySelectorAll('[data-catalogo="CAT_EAPB"]');
-        eapbSelects.forEach(select => llenarSelect(select.id, CAT_EAPB));
+        eapbSelects.forEach(function (select) {
+          llenarSelect(select, CAT_EAPB, { seleccionado: select.value });
+        });
         const prestadorSelects = document.querySelectorAll('[data-catalogo="CAT_PRESTADOR"]');
-        prestadorSelects.forEach(select => llenarSelect(select.id, CAT_PRESTADOR));
+        prestadorSelects.forEach(function (select) {
+          llenarSelect(select, CAT_PRESTADOR, { seleccionado: select.value });
+        });
       }
     }
   } catch (error) {
