@@ -190,4 +190,12 @@ ALTER TABLE aps.usuario DROP CONSTRAINT IF EXISTS usuario_rol_valido;
 ALTER TABLE aps.usuario ADD CONSTRAINT usuario_rol_valido
   CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol));
 
+/* -------------------------------------------------------------------------
+   2026-09 — EAPB: Coosalud y Mallamas (ítem 76, RN-076)
+   ------------------------------------------------------------------------- */
+INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
+  ('EPS026', 'Coosalud EPS-S', 'ambos', true),
+  ('EPSI01', 'Mallamas EPSI', 'subsidiado', true)
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;
+
 COMMIT;

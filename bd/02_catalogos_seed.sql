@@ -51,7 +51,9 @@ INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
   ('EPS005', 'EPS Sanitas', 'ambos', true),
   ('EPS010', 'EPS Sura', 'contributivo', true),
   ('EPS017', 'Famisanar EPS', 'ambos', true),
-  ('EPSI03', 'Asociación Indígena del Cauca — AIC', 'subsidiado', true)
+  ('EPSI03', 'Asociación Indígena del Cauca — AIC', 'subsidiado', true),
+  ('EPS026', 'Coosalud EPS-S', 'ambos', true),
+  ('EPSI01', 'Mallamas EPSI', 'subsidiado', true)
 ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;
 
 /* --- Ocupaciones CIUO (ítem 73, RN-073) ---------------------------------
