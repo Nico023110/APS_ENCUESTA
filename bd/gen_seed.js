@@ -13,12 +13,20 @@ const RAIZ = nodePath.join(__dirname, '..');
 const ORIGEN = nodePath.join(RAIZ, 'catalogos.js');
 const DESTINO = nodePath.join(__dirname, '02_catalogos_seed.sql');
 
-let src = fs.readFileSync(ORIGEN, 'utf8');
+/* Los catálogos oficiales de SISPRO (país, ocupación, EAPB) van antes que
+   catalogos.js, y la declaración del anexo técnico después: el seed siembra
+   también los dominios de las preguntas nuevas. */
+let src = [
+  fs.readFileSync(nodePath.join(RAIZ, 'catalogos_sispro.js'), 'utf8'),
+  fs.readFileSync(ORIGEN, 'utf8'),
+  fs.readFileSync(nodePath.join(RAIZ, 'anexo.js'), 'utf8')
+].join('\n;\n').replace(/'use strict';/g, '');
 
-/* catalogos.js se carga al navegador con <script>, no exporta nada. Se le
-   añade un module.exports al vuelo para poder leerlo desde node. */
-const nombres = [...src.matchAll(/^const (CAT_[A-Z0-9_]+)\s*=/gm)].map(m => m[1]);
-const wrapped = src + '\nmodule.exports = {' + nombres.map(n => n + ':' + n).join(',') + '};\n';
+/* Los archivos se cargan al navegador con <script>, no exportan nada. Se les
+   añade un module.exports al vuelo para poder leerlos desde node. */
+const nombres = [...new Set([...src.matchAll(/^const (CAT_[A-Z0-9_]+)\s*=/gm)].map(m => m[1]))];
+const wrapped = src + '\nmodule.exports = {' + nombres.map(n => n + ':' + n).join(',') +
+  ', PREGUNTAS_ANEXO: PREGUNTAS_ANEXO, UZPE_PREDETERMINADA: UZPE_PREDETERMINADA, codigoDePregunta: codigoDePregunta};\n';
 const tmp = nodePath.join(fs.mkdtempSync(nodePath.join(os.tmpdir(), 'aps-seed-')), '_cat.js');
 fs.writeFileSync(tmp, wrapped);
 const C = require(tmp);
@@ -32,17 +40,17 @@ const DOM = {
   CAT_ENTORNO:                   ['ENTORNO', 17, 'RN-017', false],
   CAT_SI_NO:                     ['SI_NO', null, 'RN-001', false],
   CAT_SI_NO_NA:                  ['SI_NO_NA', null, 'RN-037', false],
-  CAT_SITUACION_INMINENTE:       ['SITUACION_INMINENTE', 2, 'RN-002', false],
+  CAT_SITUACION_INMINENTE:       ['SITUACION_INMINENTE', 2, 'RN-002', true],
   CAT_ESTRATO:                   ['ESTRATO', 27, 'RN-027', false],
   CAT_TIPO_VIVIENDA:             ['TIPO_VIVIENDA', 34, 'RN-034', false],
   CAT_MATERIAL_TECHO:            ['MATERIAL_TECHO', 35, 'RN-035', false],
   CAT_RIESGOS_ACCIDENTE:         ['RIESGOS_ACCIDENTE', 36, 'RN-036', true],
   CAT_FACTORES_CONTAMINACION:    ['FACTORES_CONTAMINACION', 38, 'RN-038', true],
   CAT_ANIMALES:                  ['ANIMALES', 40, 'RN-040', true],
-  CAT_FUENTE_AGUA:               ['FUENTE_AGUA', 46, 'RN-046', false],
-  CAT_DISPOSICION_EXCRETAS:      ['DISPOSICION_EXCRETAS', 47, 'RN-047', false],
-  CAT_AGUAS_RESIDUALES:          ['AGUAS_RESIDUALES', 48, 'RN-048', false],
-  CAT_RESIDUOS_SOLIDOS:          ['RESIDUOS_SOLIDOS', 49, 'RN-049', false],
+  CAT_FUENTE_AGUA:               ['FUENTE_AGUA', 46, 'RN-046', true],
+  CAT_DISPOSICION_EXCRETAS:      ['DISPOSICION_EXCRETAS', 47, 'RN-047', true],
+  CAT_AGUAS_RESIDUALES:          ['AGUAS_RESIDUALES', 48, 'RN-048', true],
+  CAT_RESIDUOS_SOLIDOS:          ['RESIDUOS_SOLIDOS', 49, 'RN-049', true],
   CAT_TIPO_FAMILIA:              ['TIPO_FAMILIA', 50, 'RN-050', false],
   CAT_ZARIT:                     ['ZARIT', 53, 'RN-053', false],
   CAT_SITUACIONES_RIESGO_FAMILIAR:['SITUACIONES_RIESGO_FAMILIAR', 54, 'RN-054', true],
@@ -72,7 +80,7 @@ const DOM = {
   CAT_CLASIFICACION_TENSION:     ['CLASIFICACION_TENSION', 99, 'RN-099', false],
   CAT_ENFERMEDADES_NO_TRANSMISIBLES:['ENFERMEDADES_NO_TRANSMISIBLES', 100, 'RN-100', true],
   CAT_CONDICIONES_TRANSMISIBLES: ['CONDICIONES_TRANSMISIBLES', 101, 'RN-101', true],
-  CAT_ZONA_ENDEMICA:             ['ZONA_ENDEMICA', 102, 'RN-102', true],
+  CAT_ZONA_ENDEMICA:             ['ZONA_ENDEMICA', 102, 'RN-102', false],
   CAT_MOTIVO_NO_TRATAMIENTO:     ['MOTIVO_NO_TRATAMIENTO', 104, 'RN-104', true],
   CAT_RIESGOS_SALUD_MENTAL_JOVEN:['RIESGOS_SALUD_MENTAL_JOVEN', 105, 'RN-105', true],
   CAT_SINTOMATOLOGIA_DEPRESIVA:  ['SINTOMATOLOGIA_DEPRESIVA', 106, 'RN-106', true],
@@ -81,6 +89,14 @@ const DOM = {
   CAT_ESTADO_SEGUIMIENTO:        ['ESTADO_SEGUIMIENTO', 118, 'RN-226', false],
   CAT_TIPO_ID_EJECUTOR:          ['TIPO_ID_EJECUTOR', 113, 'RN-113', false]
 };
+
+/* Dominios de las preguntas del anexo técnico: salen de su declaración. El
+   ítem es null (no están en el instrumento impreso) y la «regla» es el código
+   de la variable, A2.34 o A3.47. */
+C.PREGUNTAS_ANEXO.forEach(function (p) {
+  if (!p.catalogo || DOM[p.catalogo]) return;
+  DOM[p.catalogo] = [p.catalogo.replace(/^CAT_/, ''), null, C.codigoDePregunta(p), p.tipo === 'multiple'];
+});
 
 const q = s => s === null || s === undefined ? 'NULL' : "'" + String(s).replace(/'/g, "''") + "'";
 
@@ -97,6 +113,14 @@ out.push(`/* ===================================================================
    ========================================================================= */
 
 BEGIN;
+
+/* Columnas que este archivo llena y que las bases creadas antes del anexo
+   técnico no tienen. Van aquí y no en una migración porque el seed corre
+   primero: sin ellas sus propios INSERT fallarían. */
+ALTER TABLE cat.opcion ADD COLUMN IF NOT EXISTS codigo_sispro text;
+COMMENT ON COLUMN cat.opcion.codigo_sispro IS 'Código con que la opción se reporta en el archivo plano APS124CCFP (anexo técnico SI-APS). NULL: sin equivalente.';
+ALTER TABLE cat.pais ADD COLUMN IF NOT EXISTS codigo_numerico char(3);
+ALTER TABLE cat.eapb ADD COLUMN IF NOT EXISTS nit text;
 
 /* --- Parámetros de configuración (RN-003, RN-016, RN-022/023, RN-200) --- */
 INSERT INTO cat.parametro (clave, valor, descripcion) VALUES
@@ -117,10 +141,13 @@ INSERT INTO cat.municipio (codigo, departamento_codigo, nombre)
 
 /* --- País (RN-065) ------------------------------------------------------ */`);
 
-// Países
-if (Array.isArray(C.CAT_NACIONALIDAD)) {
-  const vals = C.CAT_NACIONALIDAD.map(o => `  (${q(o.valor || o.codigo)}, ${q(o.etiqueta || o.nombre)})`).join(',\n');
-  out.push(`INSERT INTO cat.pais (codigo, nombre) VALUES\n${vals}\nON CONFLICT (codigo) DO NOTHING;\n`);
+// Países — tabla Pais de SISPRO (catalogos_sispro.js). La llave sigue siendo
+// el código ISO de dos letras; el numérico es el que se reporta (variable 9).
+// 'OT' («Otra») se conserva para las fichas anteriores al anexo.
+if (Array.isArray(C.CAT_PAIS)) {
+  const vals = C.CAT_PAIS.map(o => `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.sispro)})`)
+    .concat(["  ('OT', 'Otra (anterior al anexo SI-APS)', NULL)"]).join(',\n');
+  out.push(`INSERT INTO cat.pais (codigo, nombre, codigo_numerico) VALUES\n${vals}\nON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, codigo_numerico = EXCLUDED.codigo_numerico;\n`);
 }
 
 /* UZPE — se siembran exactamente las marcadas `vigente` en catalogos.js, que son
@@ -156,27 +183,31 @@ ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;\n`)
    llave foránea de la base ofrezcan exactamente lo mismo. */
 if (Array.isArray(C.CAT_EAPB)) {
   const ev = C.CAT_EAPB.map(o =>
-    `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.regimen || null)}, true)`
+    `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.regimen || null)}, ${q(o.nit || null)}, true)`
   ).join(',\n');
-  out.push(`/* --- EAPB (ítem 76, RN-076) ---------------------------------------------
-   ${C.CAT_EAPB.length} entidades. CONTENIDO PROVISIONAL: verificar contra el
-   Registro Especial de EAPB del MSPS antes de cualquier despliegue.        */
-INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
+  out.push(`/* --- EAPB (ítem 76, RN-076, variable 21) -------------------------------
+   ${C.CAT_EAPB.length} entidades de la tabla SGDCodigoEAPB de SISPRO. Las que
+   no estén en ella quedan no vigentes: la base conserva las fichas que las
+   usaron, pero el formulario ya no las ofrece.                             */
+INSERT INTO cat.eapb (codigo, nombre, regimen, nit, vigente) VALUES
 ${ev}
-ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;\n`);
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, nit = EXCLUDED.nit, vigente = true;
+UPDATE cat.eapb SET vigente = false WHERE codigo NOT IN (${C.CAT_EAPB.map(o => q(o.valor)).join(', ')});\n`);
 }
 
 if (Array.isArray(C.CAT_OCUPACION_CIUO)) {
   const ov = C.CAT_OCUPACION_CIUO.map(o =>
     `  (${q(o.valor)}, ${q(o.etiqueta)}, ${q(o.riesgo || null)})`
   ).join(',\n');
-  out.push(`/* --- Ocupaciones CIUO (ítem 73, RN-073) ---------------------------------
-   ${C.CAT_OCUPACION_CIUO.length} ocupaciones. CONTENIDO PROVISIONAL: es una
-   muestra de CIUO-08 A.C., no el catálogo del DANE. Cuando llegue completo
-   conviene cargarlo como los CUPS (\\copy) y no desde este archivo.          */
+  out.push(`/* --- Ocupaciones CIUO (ítem 73, RN-073, variable 18) --------------------
+   ${C.CAT_OCUPACION_CIUO.length} ocupaciones de la tabla SGDCIUO de SISPRO. Las de la
+   muestra provisional que no están en ella se retiran si ninguna ficha las usa. */
 INSERT INTO cat.ocupacion_ciuo (codigo, nombre, riesgo_ocupacional) VALUES
 ${ov}
-ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, riesgo_ocupacional = EXCLUDED.riesgo_ocupacional;\n`);
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre;
+DELETE FROM cat.ocupacion_ciuo o
+ WHERE o.codigo NOT IN (${C.CAT_OCUPACION_CIUO.map(x => q(x.valor)).join(', ')})
+   AND NOT EXISTS (SELECT 1 FROM aps.integrante i WHERE i.ocupacion_codigo = o.codigo);\n`);
 }
 
 if (Array.isArray(C.CAT_PRESTADOR)) {
@@ -216,6 +247,7 @@ ON CONFLICT (codigo) DO UPDATE
 
 // Dominios y opciones
 const domRows = [], opRows = [];
+const vigentesPorDominio = {};
 for (const [k, meta] of Object.entries(DOM)) {
   const lista = C[k];
   if (!Array.isArray(lista)) { console.error('AUSENTE: ' + k); continue; }
@@ -227,17 +259,25 @@ for (const [k, meta] of Object.entries(DOM)) {
     const excl = EXCL.has(val) && val !== 'no';
     const otro = val === 'otro' || val === 'otra' || val === 'otros';
     const extra = {};
-    for (const [kk, vv] of Object.entries(o)) if (!['valor','etiqueta','codigo','nombre'].includes(kk)) extra[kk] = vv;
+    for (const [kk, vv] of Object.entries(o)) if (!['valor','etiqueta','codigo','nombre','sispro','vigente'].includes(kk)) extra[kk] = vv;
     const md = Object.keys(extra).length ? q(JSON.stringify(extra)) + '::jsonb' : 'NULL';
-    opRows.push(`  (${q(dom)}, ${q(val)}, ${q(et)}, ${i + 1}, ${excl}, ${otro}, ${md})`);
+    const sispro = o.sispro === undefined ? 'NULL' : q(o.sispro);
+    opRows.push(`  (${q(dom)}, ${q(val)}, ${q(et)}, ${i + 1}, ${excl || o.excluyente === true}, ${otro}, ${md}, ${sispro}, ${o.vigente !== false})`);
+    (vigentesPorDominio[dom] = vigentesPorDominio[dom] || []).push(val);
   });
 }
 out.push(`/* --- Dominios de listas cerradas ---------------------------------------- */
-INSERT INTO cat.dominio (codigo, nombre, item, regla, multiple) VALUES\n${domRows.join(',\n')}\nON CONFLICT (codigo) DO NOTHING;\n`);
+INSERT INTO cat.dominio (codigo, nombre, item, regla, multiple) VALUES\n${domRows.join(',\n')}\nON CONFLICT (codigo) DO UPDATE SET multiple = EXCLUDED.multiple, regla = EXCLUDED.regla;\n`);
 out.push(`/* --- Opciones ----------------------------------------------------------- */
-INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, exige_texto, metadata) VALUES\n${opRows.join(',\n')}\nON CONFLICT (dominio_codigo, codigo) DO UPDATE
+INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, exige_texto, metadata, codigo_sispro, vigente) VALUES\n${opRows.join(',\n')}\nON CONFLICT (dominio_codigo, codigo) DO UPDATE
   SET etiqueta = EXCLUDED.etiqueta, orden = EXCLUDED.orden,
-      es_excluyente = EXCLUDED.es_excluyente, exige_texto = EXCLUDED.exige_texto;\n`);
+      es_excluyente = EXCLUDED.es_excluyente, exige_texto = EXCLUDED.exige_texto,
+      metadata = EXCLUDED.metadata, codigo_sispro = EXCLUDED.codigo_sispro, vigente = EXCLUDED.vigente;\n`);
+/* Una opción que salió del catálogo queda no vigente: las fichas que la usaron
+   la siguen leyendo, pero ya no es una respuesta válida. */
+out.push(Object.keys(vigentesPorDominio).map(dom =>
+  `UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = ${q(dom)} AND codigo NOT IN (${vigentesPorDominio[dom].map(q).join(', ')});`
+).join('\n') + '\n');
 
 // Dominio TIPO_BARRERA (RN-210), no existe en catalogos.js
 out.push(`/* --- Tipificación de barreras de acceso (RN-210) ------------------------- */

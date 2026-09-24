@@ -1,0 +1,730 @@
+[
+ {
+  "codigo": "CCF002",
+  "nombre": "COMFAMA CAJA DE COMPENSACIÓN FAMILIAR DE ANTIOQUIA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "8909008419"
+ },
+ {
+  "codigo": "CCF007",
+  "nombre": "COMFAMILIAR - CAJA DE COMPENSACION FAMILIAR DE CARTAGENA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890480110"
+ },
+ {
+  "codigo": "CCF009",
+  "nombre": "COMFABOY - CAJA DE COMPENSACION FAMILIAR DE BOYACA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891800213"
+ },
+ {
+  "codigo": "CCF015",
+  "nombre": "CAJA DE COMPENSACION FAMILIAR DE CORDOBA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891080005"
+ },
+ {
+  "codigo": "CCF018",
+  "nombre": "CAFAM",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "860013570"
+ },
+ {
+  "codigo": "CCF023",
+  "nombre": "CAJA DE COMPENSACION FAMILIAR DE LA GUAJIRA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "892115006"
+ },
+ {
+  "codigo": "CCF024",
+  "nombre": "COMFAMILIAR HUILA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891180008"
+ },
+ {
+  "codigo": "CCF027",
+  "nombre": "EPS CAJA DE COMPENSACION FAMILIAR DE NARIÑO",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891280008"
+ },
+ {
+  "codigo": "CCF033",
+  "nombre": "COMFASUCRE EPS-S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900048962"
+ },
+ {
+  "codigo": "CCF045",
+  "nombre": "CAJA DE COMPENSACION FAMILIAR DEL NORTE DE SANTANDER- COMFANORTE A.R.S.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890500516"
+ },
+ {
+  "codigo": "CCF049",
+  "nombre": "COMFAORIENTE - CAJA DE COMPENSACION FAMILIAR DEL ORIENTE COLOMBIANO",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890500675"
+ },
+ {
+  "codigo": "CCF050",
+  "nombre": "CAJA DE COMPENSACIÓN FAMILIAR DEL ORIENTE COLOMBIANO “COMFAORIENTE”",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "890500675"
+ },
+ {
+  "codigo": "CCF053",
+  "nombre": "COMFACUNDI - CAJA DE COMPENSACION FAMILIAR DE CUNDINAMAR",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "860045904"
+ },
+ {
+  "codigo": "CCF055",
+  "nombre": "CAJACOPI - CAJA DE COMPESACION FAMILIAR CAJACOPI ATLANTICO",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890102044"
+ },
+ {
+  "codigo": "CCF101",
+  "nombre": "CAJA COLOMBIANA DE SUBSIDIO FAMILIAR",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "860007336"
+ },
+ {
+  "codigo": "CCF102",
+  "nombre": "COMFACHOCO - CAJA DE COMPENSACION FAMILIAR DEL CHOCO",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891600091"
+ },
+ {
+  "codigo": "CCFC20",
+  "nombre": "CAJA DE COMPENSACIÓN FAMILIAR DEL CHOCÓ",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891600091"
+ },
+ {
+  "codigo": "CCFC33",
+  "nombre": "EPS FAMILIAR DE COLOMBIA",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "901543761"
+ },
+ {
+  "codigo": "CCFS33",
+  "nombre": "EPS FAMILIAR DE COLOMBIA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "901543761"
+ },
+ {
+  "codigo": "CCFS50",
+  "nombre": "CAJA DE COMPENSACIÓN FAMILIAR DEL ORIENTE COLOMBIANO “COMFAORIENTE”",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890500675"
+ },
+ {
+  "codigo": "CCFS55",
+  "nombre": "CAJACOPI EPS SAS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890102044"
+ },
+ {
+  "codigo": "EAS016",
+  "nombre": "UNIDAD SERVICIO MEDICO Y ODONTOLOGICO DE EMPRESAS PUBLICAS DE MEDELLIN EAS016",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "890904996"
+ },
+ {
+  "codigo": "EAS027",
+  "nombre": "FONDO PASIVO SOCIAL FERROCARRILES NACIONALES DE COLOMBIA",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800112806"
+ },
+ {
+  "codigo": "EPS001",
+  "nombre": "ALIANSALUD EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "830113831"
+ },
+ {
+  "codigo": "EPS002",
+  "nombre": "SALUD TOTAL - ENTIDAD PROMOTORA DE SALUD DEL REGIMEN CONTRIBUTIVO",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800130907"
+ },
+ {
+  "codigo": "EPS003",
+  "nombre": "CAFESALUD EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800140949"
+ },
+ {
+  "codigo": "EPS005",
+  "nombre": "EPS SANITAS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800251440"
+ },
+ {
+  "codigo": "EPS008",
+  "nombre": "COMPENSAR",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "860066942"
+ },
+ {
+  "codigo": "EPS010",
+  "nombre": "SURA - COMPANIA SURAMERICANA DE SERVICIOS DE SALUD SA",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800088702"
+ },
+ {
+  "codigo": "EPS012",
+  "nombre": "COMFENALCO VALLE EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "890303093"
+ },
+ {
+  "codigo": "EPS013",
+  "nombre": "SALUDCOOP EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "800250119"
+ },
+ {
+  "codigo": "EPS016",
+  "nombre": "COOMEVA EPS S A",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "805000427"
+ },
+ {
+  "codigo": "EPS017",
+  "nombre": "EPS FAMISANAR LTDA",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "830003564"
+ },
+ {
+  "codigo": "EPS018",
+  "nombre": "SERVICIO OCCIDENTAL DE SALUD SA SOS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "805001157"
+ },
+ {
+  "codigo": "EPS020",
+  "nombre": "CAPRECOM - CAJA DE PREVISION SOCIAL DE COMUNICACION CAPRECOM EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "899999026"
+ },
+ {
+  "codigo": "EPS022",
+  "nombre": "CONVIDA - ENTIDAD PROMOTORA DE SALUD DEL REGIMEN SUBSIDIADO EPSS CONVIDA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "899999107"
+ },
+ {
+  "codigo": "EPS023",
+  "nombre": "CRUZ BLANCA EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "830009783"
+ },
+ {
+  "codigo": "EPS025",
+  "nombre": "CAPRESOCA EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891856000"
+ },
+ {
+  "codigo": "EPS033",
+  "nombre": "SALUD VIDA EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "830074184"
+ },
+ {
+  "codigo": "EPS037",
+  "nombre": "NUEVA EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900156264"
+ },
+ {
+  "codigo": "EPS039",
+  "nombre": "GOLDEN GROUP S.A. EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900074992"
+ },
+ {
+  "codigo": "EPS040",
+  "nombre": "ALIANZA MEDELLIN ANTIOQUIA EPS S.A.S. \"SAVIA SALUD EPS\"",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900604350"
+ },
+ {
+  "codigo": "EPS041",
+  "nombre": "NUEVA EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900156264"
+ },
+ {
+  "codigo": "EPS046",
+  "nombre": "FUNDACION SALUD MIA EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900914254"
+ },
+ {
+  "codigo": "EPSC34",
+  "nombre": "CAPITAL SALUD ENTIDAD PROMOTORA DE SALUD DEL REGIMEN SUBSIDIADO S.A.S.",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900298372"
+ },
+ {
+  "codigo": "EPSI01",
+  "nombre": "DUSAKAWI EPSI",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "824001398"
+ },
+ {
+  "codigo": "EPSI02",
+  "nombre": "MANEXKA EPSI",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "812002376"
+ },
+ {
+  "codigo": "EPSI03",
+  "nombre": "AIC EPSI -ASOCIACION INDIGENA DEL CAUCA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "817001773"
+ },
+ {
+  "codigo": "EPSI04",
+  "nombre": "ANAS WAYUU EPSI",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "839000495"
+ },
+ {
+  "codigo": "EPSI05",
+  "nombre": "MALLAMAS - EMPRESA PROMOTORA DE SALUD MALLAMAS EPS INDIGENA",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "837000084"
+ },
+ {
+  "codigo": "EPSI06",
+  "nombre": "PIJAOS SALUD EPS -I",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "809008362"
+ },
+ {
+  "codigo": "EPSS02",
+  "nombre": "SALUD TOTAL EPS-S S.A.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "800130907"
+ },
+ {
+  "codigo": "EPSS03",
+  "nombre": "CAFESALUD EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "800140949"
+ },
+ {
+  "codigo": "EPSS08",
+  "nombre": "CAJA COMPENSACIÓN FAMILIAR COMPENSAR",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "860066942"
+ },
+ {
+  "codigo": "EPSS10",
+  "nombre": "EPS SURAMERICANA S.A.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "800088702"
+ },
+ {
+  "codigo": "EPSS12",
+  "nombre": "COMFENALCO VALLE EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "890303093"
+ },
+ {
+  "codigo": "EPSS17",
+  "nombre": "EPS FAMISANAR S.A.S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "830003564"
+ },
+ {
+  "codigo": "EPSS18",
+  "nombre": "ENTIDAD PROMOTORA DE SALUD SERVICIO OCCIDENTAL DE SALUD S.A. S.O.S.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "805001157"
+ },
+ {
+  "codigo": "EPSS25",
+  "nombre": "CAPRESOCA E.P.S.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "891856000"
+ },
+ {
+  "codigo": "EPSS33",
+  "nombre": "SALUD VIDA EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "830074185"
+ },
+ {
+  "codigo": "EPSS34",
+  "nombre": "CAPITAL SALUD EPS-S S.A.S.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900298372"
+ },
+ {
+  "codigo": "EPSS37",
+  "nombre": "NUEVA EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900156264"
+ },
+ {
+  "codigo": "EPSS40",
+  "nombre": "ALIANZA MEDELLIN ANTIOQUIA EPS S.A.S. \"SAVIA SALUD EPS\"",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900604350"
+ },
+ {
+  "codigo": "EPSS46",
+  "nombre": "FUNDACION SALUD MIA EPS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900914254"
+ },
+ {
+  "codigo": "EPST01",
+  "nombre": "SAVIA SALUD -ALIANZA MEDELLIN ANTIOQUIA EPS SAS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900604350"
+ },
+ {
+  "codigo": "ESC207",
+  "nombre": "ASOCIACIÓN MUTUAL SER EMPRESA SOLIDARIA DE SALUD ENTIDAD PROMOTORA DE SALUD - MUTUAL SER EPS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "806008394"
+ },
+ {
+  "codigo": "ESS002",
+  "nombre": "EMDISALUD - EMPRESA MUTUAL PARA EL DESARROLLO INTEGRAL DE LA SALUD EMDISALUD ESS-EPS-S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "811004055"
+ },
+ {
+  "codigo": "ESS024",
+  "nombre": "COOSALUD ESS EPS-S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "800249241"
+ },
+ {
+  "codigo": "ESS062",
+  "nombre": "ASMET - ASOCIACIÓN MUTUAL LA ESPERANZA DE EL TAMBO ASMET ESS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "817000248"
+ },
+ {
+  "codigo": "ESS076",
+  "nombre": "ASOCIACION MUTUAL BARRIOS UNIDOS DE QUIBDO",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "818000140"
+ },
+ {
+  "codigo": "ESS091",
+  "nombre": "ECOOPSOS - ENTIDAD COOPERATIVA SOLIDADARIA DE SALUD ECOOPSOS ESS EPS-S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "832000760"
+ },
+ {
+  "codigo": "ESS118",
+  "nombre": "EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "814000337"
+ },
+ {
+  "codigo": "ESS133",
+  "nombre": "COMPARTA - COOPERATIVA DE SALUD COMUNITARIA COMPARTA EPS S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "804002105"
+ },
+ {
+  "codigo": "ESS207",
+  "nombre": "ASOCIACION MUTUAL SER EPS-S",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "806008394"
+ },
+ {
+  "codigo": "ESSC24",
+  "nombre": "COOSALUD EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900226715"
+ },
+ {
+  "codigo": "ESSS24",
+  "nombre": "COOSALUD EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900226715"
+ },
+ {
+  "codigo": "RES001",
+  "nombre": "DIRECCION DE SANIDAD POLICIA NACIONAL",
+  "habilitado": "SI",
+  "extra1": "P",
+  "extra2": "NI",
+  "extra3": "830041314"
+ },
+ {
+  "codigo": "RES002",
+  "nombre": "ECOPETROL S.A.",
+  "habilitado": "SI",
+  "extra1": "P",
+  "extra2": "NI",
+  "extra3": "899999068"
+ },
+ {
+  "codigo": "RES003",
+  "nombre": "DIRECCION GENERAL DE SANIDAD MILITAR",
+  "habilitado": "SI",
+  "extra1": "P",
+  "extra2": "NI",
+  "extra3": "830039670"
+ },
+ {
+  "codigo": "RES004",
+  "nombre": "FIDUPREVISORA S.A",
+  "habilitado": "SI",
+  "extra1": "P",
+  "extra2": "NI",
+  "extra3": "860525148"
+ },
+ {
+  "codigo": "RES007",
+  "nombre": "UNIVERSIDAD DEL VALLE SERVICIO DE SALUD",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "890399010"
+ },
+ {
+  "codigo": "RES008",
+  "nombre": "UNIDAD DE SERVICIOS DE SALUD UNISALUD DE LA UNIVERSIDAD NACIONAL DE COLOMBIA",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "899999063"
+ },
+ {
+  "codigo": "RES011",
+  "nombre": "UNIVERSIDAD DE ANTIOQUIA",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "890980040"
+ },
+ {
+  "codigo": "RES014",
+  "nombre": "UNIDAD DE SERVICIOS DE SALUD UNISALUD - UPTC",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "891800330"
+ },
+ {
+  "codigo": "REUE02",
+  "nombre": "CAJA DE PREVISIÓN SOCIAL DE LA UNIVERSIDAD INDUSTRIAL DE SANTANDER. CAPRUIS",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "890203183"
+ },
+ {
+  "codigo": "REUE03",
+  "nombre": "UNIDAD ADMINISTRATIVA ESPECIAL DE SALUD UNIVERSIDAD DE CORDOBA",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "891080031"
+ },
+ {
+  "codigo": "REUE04",
+  "nombre": "CAJA DE PREVISION SOCIAL DE LA UNIVERSIDAD DE CARTAGENA",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "806000509"
+ },
+ {
+  "codigo": "REUE05",
+  "nombre": "FONDO DE SEGURIDAD SOCIAL EN SALUD UNIVERSIDAD DE NARIÑO",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "800118954"
+ },
+ {
+  "codigo": "REUE06",
+  "nombre": "UNIVERSIDAD DEL CAUCA UNIDAD DE SALUD",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "891500319"
+ },
+ {
+  "codigo": "REUE09",
+  "nombre": "UNIDAD DE SALUD DE LA UNIVERSIDAD DEL ATLANTICO",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "802012036"
+ },
+ {
+  "codigo": "REUE99",
+  "nombre": "UISALUD UNIDAD ESPECIALIZADA DE SALUD DE LA UNIVERSIDAD INDUSTRIAL DE SANTANDER",
+  "habilitado": "SI",
+  "extra1": "E",
+  "extra2": "NI",
+  "extra3": "890201213"
+ }
+]

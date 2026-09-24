@@ -85,7 +85,7 @@ function llenarSelect(idSelectOElemento, catalogo, opciones) {
   const partes = [];
   if (placeholder !== null) partes.push('<option value="">' + placeholder + '</option>');
 
-  catalogo.forEach(function (opcion) {
+  opcionesVigentes(catalogo).forEach(function (opcion) {
     partes.push(
       '<option value="' + escaparHtml(opcion.valor) + '"' + (opcion.valor === config.seleccionado ? ' selected' : '') + '>' +
         escaparHtml(opcion.etiqueta) +
@@ -98,7 +98,7 @@ function llenarSelect(idSelectOElemento, catalogo, opciones) {
 
 function llenarGrupoRadio(idContenedor, nombreCampo, catalogo) {
   const contenedor = document.getElementById(idContenedor);
-  contenedor.innerHTML = catalogo.map(function (opcion) {
+  contenedor.innerHTML = opcionesVigentes(catalogo).map(function (opcion) {
     return (
       '<label class="radio-pill">' +
         '<input type="radio" name="' + nombreCampo + '" value="' + escaparHtml(opcion.valor) + '"> ' +
@@ -110,7 +110,7 @@ function llenarGrupoRadio(idContenedor, nombreCampo, catalogo) {
 
 function llenarGrupoCasillas(idContenedor, nombreCampo, catalogo) {
   const contenedor = document.getElementById(idContenedor);
-  contenedor.innerHTML = catalogo.map(function (opcion) {
+  contenedor.innerHTML = opcionesVigentes(catalogo).map(function (opcion) {
     return (
       '<label class="check-pill' + (opcion.excluyente ? ' check-pill--excluyente' : '') + '">' +
         '<input type="checkbox" name="' + nombreCampo + '" value="' + escaparHtml(opcion.valor) + '"' +
@@ -129,7 +129,7 @@ function llenarGrupoCasillas(idContenedor, nombreCampo, catalogo) {
    Sólo presentación: la validación vive en reglas.js.
    --------------------------------------------------------- */
 
-const CATALOGOS_DECLARATIVOS = {
+const CATALOGOS_DECLARATIVOS = Object.assign({
   /* Se llena en marcha desde /api/catalogo_acciones; el arreglo se comparte
      por referencia, así que basta con repintar los selects al cargarlo. */
   CAT_ACCION_PLAN: CAT_ACCION_PLAN,
@@ -138,6 +138,7 @@ const CATALOGOS_DECLARATIVOS = {
   CAT_UZPE: CAT_UZPE_VIGENTES,
   CAT_EAPB: CAT_EAPB,
   CAT_PRESTADOR: CAT_PRESTADOR,
+  CAT_SITUACION_INMINENTE: CAT_SITUACION_INMINENTE,
   CAT_ANIMALES: CAT_ANIMALES,
   CAT_FUENTE_AGUA: CAT_FUENTE_AGUA,
   CAT_DISPOSICION_EXCRETAS: CAT_DISPOSICION_EXCRETAS,
@@ -150,7 +151,7 @@ const CATALOGOS_DECLARATIVOS = {
   CAT_REDES_APOYO: CAT_REDES_APOYO,
   CAT_PRACTICAS_CUIDADO_HOGAR: CAT_PRACTICAS_CUIDADO_HOGAR,
   CAT_TIPO_ID_INTEGRANTE: CAT_TIPO_ID_INTEGRANTE,
-  CAT_NACIONALIDAD: CAT_NACIONALIDAD,
+  CAT_PAIS: CAT_PAIS,
   CAT_SEXO: CAT_SEXO,
   CAT_GENERO: CAT_GENERO,
   CAT_AUTOIDENTIFICACION_GENERO: CAT_AUTOIDENTIFICACION_GENERO,
@@ -180,12 +181,12 @@ const CATALOGOS_DECLARATIVOS = {
   CAT_TIPO_ID_EJECUTOR: CAT_TIPO_ID_EJECUTOR,
   CAT_TIPO_RESPUESTA: CAT_TIPO_RESPUESTA,
   CAT_ESTADO_SEGUIMIENTO: CAT_ESTADO_SEGUIMIENTO
-};
+}, CATALOGOS_ANEXO);
 
 function opcionesSelectHtml(catalogo, placeholder) {
   const partes = [];
   if (placeholder !== null) partes.push('<option value="">' + (placeholder || 'Seleccione...') + '</option>');
-  catalogo.forEach(function (opcion) {
+  opcionesVigentes(catalogo).forEach(function (opcion) {
     partes.push('<option value="' + escaparHtml(opcion.valor) + '">' + escaparHtml(opcion.etiqueta) + '</option>');
   });
   return partes.join('');
@@ -193,7 +194,7 @@ function opcionesSelectHtml(catalogo, placeholder) {
 
 function pastillasHtml(catalogo, nombreCampo, tipo) {
   const esRadio = tipo === 'radio';
-  return catalogo.map(function (opcion) {
+  return opcionesVigentes(catalogo).map(function (opcion) {
     const clase = esRadio
       ? 'radio-pill'
       : 'check-pill' + (opcion.excluyente ? ' check-pill--excluyente' : '');
@@ -348,8 +349,25 @@ function inicializarModoRevision() {
 }
 
 function inicializarCatalogosDelFormulario() {
+  /* Las preguntas del anexo técnico SI-APS se pintan primero: son parte de
+     las plantillas de familia e integrante, que se guardan como prototipo
+     justo después (inicializarFormularioDinamico) y de ellas se clonan los
+     bloques que se agreguen. */
+  renderizarPreguntasAnexo(document);
+
   // Bloques 4 a 12: se resuelven por data-catalogo, sin ids fijos.
   renderizarCatalogosDeclarativos(document);
+
+  /* Ítem 73 — ocupaciones CIUO de SISPRO (catalogos_sispro.js). Una sola
+     lista para todos los integrantes: el navegador la ofrece al escribir,
+     por código o por nombre, y deja en el campo el código. */
+  const listaCiuo = document.getElementById('listaOcupacionesCiuo');
+  if (listaCiuo) {
+    listaCiuo.innerHTML = CAT_OCUPACION_CIUO.map(function (ocupacion) {
+      return '<option value="' + escaparHtml(ocupacion.valor) + '" label="' +
+        escaparHtml(ocupacion.valor + ' — ' + ocupacion.etiqueta) + '"></option>';
+    }).join('');
+  }
 
   /* El catálogo de acciones vive en la base, no en `catalogos.js`. Se pide sin
      bloquear el arranque: los selects se repintan cuando llegue. */
@@ -378,7 +396,6 @@ function inicializarCatalogosDelFormulario() {
   llenarSelect('tipoVivienda', CAT_TIPO_VIVIENDA);                   // RN-034
   llenarSelect('materialTecho', CAT_MATERIAL_TECHO);                 // RN-035
 
-  llenarGrupoRadio('grupoSituacionInminente', 'situacionInminente', CAT_SITUACION_INMINENTE); // RN-002
   llenarGrupoRadio('grupoVectores', 'vectores', CAT_SI_NO_NA);                                // RN-037
 
   llenarGrupoCasillas('grupoRiesgosAccidente', 'riesgosAccidente', CAT_RIESGOS_ACCIDENTE);             // RN-036
@@ -387,10 +404,6 @@ function inicializarCatalogosDelFormulario() {
   // RN-004: sólo se ofrecen las UZPE vigentes en el catálogo. Ofrecer las diez
   // hacía que el encuestador escogiera una que la base no acepta.
   llenarSelect('uzpe', CAT_UZPE_VIGENTES, { placeholder: null, seleccionado: UZPE_PREDETERMINADA });
-  llenarSelect('fuenteAgua', CAT_FUENTE_AGUA);                       // RN-046
-  llenarSelect('disposicionExcretas', CAT_DISPOSICION_EXCRETAS);     // RN-047
-  llenarSelect('aguasResiduales', CAT_AGUAS_RESIDUALES);             // RN-048
-  llenarSelect('residuosSolidos', CAT_RESIDUOS_SOLIDOS);             // RN-049
 
   llenarGrupoRadio('grupoActividadEconomica', 'actividadEconomica', CAT_SI_NO);       // RN-039
   llenarGrupoRadio('grupoCarnetAntirrabico', 'carnetAntirrabico', CAT_SI_NO_NA);      // RN-045
@@ -455,18 +468,21 @@ function aplicarBloqueoPorConsentimiento() {
    5. RN-002 — ALERTA DE ATENCIÓN PRIORITARIA
    --------------------------------------------------------- */
 
+/* El anexo reporta la variable 23 como selección múltiple: la alerta nombra
+   todas las situaciones marcadas, no sólo la primera. */
 function actualizarAlertaSituacionInminente() {
-  const seleccionado = document.querySelector('input[name="situacionInminente"]:checked');
-  const valor = seleccionado ? seleccionado.value : null;
+  const valores = Array.prototype.map.call(
+    document.querySelectorAll('input[name="situacionInminente"]:checked'),
+    function (casilla) { return casilla.value; });
   const alerta = document.getElementById('alertaSituacion');
 
-  if (!requiereAtencionPrioritaria(valor)) {
+  if (!requiereAtencionPrioritaria(valores)) {
     alerta.hidden = true;
     return;
   }
 
   document.getElementById('alertaSituacionTexto').textContent =
-    'Se registró: ' + etiquetaDeCatalogo(CAT_SITUACION_INMINENTE, valor) + '.';
+    'Se registró: ' + etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, situacionesPrioritarias(valores)) + '.';
   alerta.hidden = false;
 }
 
@@ -1553,7 +1569,8 @@ function badgePlanCuidado(encuesta) {
 
 function badgeSituacion(valor) {
   if (!requiereAtencionPrioritaria(valor)) return '<span class="badge badge--neutral">No aplica</span>';
-  return '<span class="badge badge--warning">' + escaparHtml(etiquetaDeCatalogo(CAT_SITUACION_INMINENTE, valor)) + '</span>';
+  return '<span class="badge badge--warning">' +
+    escaparHtml(etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, situacionesPrioritarias(valor))) + '</span>';
 }
 
 function textoTerritorio(encuesta) {
@@ -1608,6 +1625,20 @@ function obtenerEncuestasFiltradas() {
   });
 }
 
+/* La misma regla que aplica el servidor (roles.puedeCorregir), con los
+   códigos que trae el listado: el equipo viene como código y la sesión lo
+   tiene igual. Sólo decide si el botón se ofrece; el servidor vuelve a
+   comprobarlo al traer la ficha y al guardarla. */
+function puedeCorregirFichaRemota(fila) {
+  if (typeof SESION === 'undefined' || typeof puedeCorregir !== 'function') return false;
+  const usuario = SESION.usuario();
+  if (!usuario) return false;
+  return puedeCorregir(
+    { rol: usuario.rol, equipoSaludId: usuario.equipoCodigo, funcionarioId: usuario.funcionarioId },
+    { equipoSaludId: fila.equipoSaludId, responsableId: fila.responsableId }
+  );
+}
+
 function renderizarHistorial() {
   const encuestas = obtenerEncuestasFiltradas();
   const cuerpoTabla = document.getElementById('historialTableBody');
@@ -1632,13 +1663,15 @@ function renderizarHistorial() {
       ? '—' : encuesta.personasPorHabitacion;
 
     /* Una fila que sólo existe en la base —diligenciada en otro dispositivo—
-       no trae familias, integrantes ni planes: no hay de dónde repoblar el
-       formulario. Corregir queda deshabilitado con el motivo en el título en
-       vez de abrir un formulario a medio llenar. Eliminar también: borraría
-       sólo de este navegador y la fila volvería a aparecer en el siguiente
-       refresco, dando a entender que se eliminó cuando no fue así. */
+       se corrige trayéndola entera de /api/ficha_completa, si el rol lo
+       permite (roles.js: el maestro y el administrador, cualquiera; la
+       profesional, las de su equipo; la auxiliar, las suyas). Eliminar sigue
+       deshabilitado: borraría sólo de este navegador, y RN-225 no permite
+       borrar de la base una ficha registrada. */
     const remota = encuesta.soloEnServidor === true;
-    const deshabilitado = remota ? ' disabled title="Diligenciada desde otro dispositivo: sólo se puede ver desde aquí."' : '';
+    const sinCorregir = remota && !puedeCorregirFichaRemota(encuesta)
+      ? ' disabled title="Diligenciada por otra persona: su rol no permite corregirla."' : '';
+    const sinEliminar = remota ? ' disabled title="Ya está en la base: una ficha registrada no se elimina (RN-225)."' : '';
 
     return (
       '<tr>' +
@@ -1657,9 +1690,9 @@ function renderizarHistorial() {
         '<td data-label="Hacinamiento">' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
         '<td data-label="Situación inminente">' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
-          '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + encuesta.id + '">Ver</button>' +
-          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + encuesta.id + '"' + deshabilitado + '>Corregir</button>' +
-          '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + encuesta.id + '"' + deshabilitado + '>Eliminar</button>' +
+          '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + escaparHtml(encuesta.id) + '">Ver</button>' +
+          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + escaparHtml(encuesta.id) + '"' + sinCorregir + '>Corregir</button>' +
+          '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + escaparHtml(encuesta.id) + '"' + sinEliminar + '>Eliminar</button>' +
         '</td>' +
       '</tr>'
     );
@@ -1773,7 +1806,8 @@ async function abrirModalDetalle(id) {
   cuerpo.innerHTML =
     construirSeccionDetalle('Consentimiento y situación inminente', [
       { etiqueta: 'Consentimiento informado (RN-001)', valor: textoSiNo(encuesta.consentimiento) },
-      { etiqueta: 'Situación inminente (RN-002)', valor: etiquetaDeCatalogo(CAT_SITUACION_INMINENTE, encuesta.situacionInminente) }
+      { etiqueta: 'Situación inminente (RN-002)', valor: etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, comoLista(encuesta.situacionInminente)) },
+      { etiqueta: 'Observaciones de la situación', valor: encuesta.observacionesSituacion }
     ]) +
     construirSeccionDetalle('Identificación geográfica', [
       { etiqueta: 'Departamento', valor: encuesta.departamentoCodigo + ' — ' + encuesta.departamento },
@@ -1929,7 +1963,7 @@ function recolectarDatosFormulario(formulario) {
 
   const base = {
     consentimiento: obtenerConsentimiento(),
-    situacionInminente: valorOrNull(fd.get('situacionInminente')),
+    situacionInminente: fd.getAll('situacionInminente'),
 
     departamentoCodigo: valorOrNull(fd.get('departamento')),
     departamento: CAT_DEPARTAMENTO.nombre,
@@ -1996,6 +2030,9 @@ function recolectarDatosFormulario(formulario) {
   const saneamiento = recolectarSaneamiento(fd);
   if (saneamiento) Object.assign(base, saneamiento);
 
+  // Variables del anexo técnico SI-APS de la ficha y la vivienda (anexo.js).
+  Object.assign(base, recolectarAnexoVivienda(fd));
+
   // Bloques repetibles y plan de cuidado (ítems 50-140).
   Object.assign(base, recolectarBloquesRepetibles(formulario));
 
@@ -2007,19 +2044,28 @@ function recolectarDatosFormulario(formulario) {
   base.visitaIncompleta = formulario.querySelector('#visitaIncompleta').checked;
   base.motivoVisitaIncompleta = valorOrNull(fd.get('motivoVisitaIncompleta'));
 
+  /* RN-016 no limita la antigüedad al corregir una ficha que ya está en la
+     base (ver reglas.js). El servidor ignora este valor y lo decide él. */
+  if (typeof fichaEnCorreccionYaRegistrada === 'function' && fichaEnCorreccionYaRegistrada()) {
+    base.yaRegistradaEnLaBase = true;
+  }
+
   return base;
 }
 
-/* Ítems 39 a 49. Devuelve null mientras la sección esté intacta. */
+/* Ítems 39 a 49. Devuelve null mientras la sección esté intacta.
+   Los ítems 46 a 49 son selección múltiple desde el anexo técnico
+   (variables 53, 58, 59 y 62). */
 function recolectarSaneamiento(fd) {
   const actividad = valorOrNull(fd.get('actividadEconomica'));
   const animales = fd.getAll('animales');
-  const fuenteAgua = valorOrNull(fd.get('fuenteAgua'));
+  const fuenteAgua = fd.getAll('fuenteAgua');
+  const disposicionExcretas = fd.getAll('disposicionExcretas');
+  const aguasResiduales = fd.getAll('aguasResiduales');
+  const residuosSolidos = fd.getAll('residuosSolidos');
 
-  const seDiligencio = actividad !== null || animales.length > 0 || fuenteAgua !== null ||
-    valorOrNull(fd.get('disposicionExcretas')) !== null ||
-    valorOrNull(fd.get('aguasResiduales')) !== null ||
-    valorOrNull(fd.get('residuosSolidos')) !== null;
+  const seDiligencio = actividad !== null || animales.length > 0 || fuenteAgua.length > 0 ||
+    disposicionExcretas.length > 0 || aguasResiduales.length > 0 || residuosSolidos.length > 0;
 
   if (!seDiligencio) return null;
 
@@ -2033,10 +2079,26 @@ function recolectarSaneamiento(fd) {
     gatosVacunados: aIntOrNull(fd.get('gatosVacunados')),
     carnetAntirrabico: valorOrNull(fd.get('carnetAntirrabico')),
     fuenteAgua: fuenteAgua,
-    disposicionExcretas: valorOrNull(fd.get('disposicionExcretas')),
-    aguasResiduales: valorOrNull(fd.get('aguasResiduales')),
-    residuosSolidos: valorOrNull(fd.get('residuosSolidos'))
+    disposicionExcretas: disposicionExcretas,
+    aguasResiduales: aguasResiduales,
+    residuosSolidos: residuosSolidos
   };
+}
+
+/* Preguntas del anexo de la ficha y la vivienda: nombres planos, así que
+   vienen por FormData. Las de familia e integrante van anidadas y las recoge
+   recolectarBloquesRepetibles. Un campo oculto por su condición queda en
+   blanco (mostrarCampo lo limpia) y así se recoge: null o lista vacía. */
+function recolectarAnexoVivienda(fd) {
+  const salida = {};
+  PREGUNTAS_ANEXO.forEach(function (pregunta) {
+    if (pregunta.nivel !== 'ficha' && pregunta.nivel !== 'vivienda') return;
+    const clave = pregunta.clave;
+    if (pregunta.tipo === 'multiple') salida[clave] = fd.getAll(clave);
+    else if (pregunta.tipo === 'entero') salida[clave] = aIntOrNull(fd.get(clave));
+    else salida[clave] = valorOrNull(fd.get(clave));
+  });
+  return salida;
 }
 
 function limpiarErroresFormulario(formulario) {
@@ -2964,6 +3026,10 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
   const encuesta = construirEncuestaDesdeDatos(datos);
   const boton = document.getElementById('btnGuardar');
 
+  /* Al corregir se envía el historial de modificaciones más la de ahora: la
+     base lo reemplaza con lo que llegue, y antes llegaba vacío. */
+  if (encuestaEnCorreccion) encuesta.fechasModificacion = fechasDeModificacionDeLaCorreccion();
+
   const resultado = await enviarFichaAlServidor(encuesta, boton);
 
   /* Rechazo por reglas de negocio: la ficha NO se guarda ni se limpia el
@@ -2984,9 +3050,17 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
 
   /* Corrigiendo se reemplaza la ficha existente; capturando se agrega una
      nueva. Sin esta distinción, arreglar un dato dejaría dos copias de la
-     misma visita en el historial. */
+     misma visita en el historial.
+
+     Una ficha traída de la base que se guardó bien no se copia a este
+     dispositivo: ya está en la base y el historial la muestra desde ahí, y
+     no hay por qué dejar en el navegador los datos de una visita ajena. Si
+     no se pudo guardar, sí se conserva aquí, pendiente de sincronizar, para
+     no perder la corrección. */
   if (encuestaEnCorreccion) {
-    reemplazarEncuesta(encuestaEnCorreccion, encuesta);
+    if (!(correccionDesdeServidor && encuesta.sincronizada)) {
+      reemplazarEncuesta(encuestaEnCorreccion, encuesta);
+    }
     salirDeCorreccion();
   } else {
     agregarEncuesta(encuesta);

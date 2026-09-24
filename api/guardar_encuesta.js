@@ -29,12 +29,15 @@
    fs.readFileSync dentro de _validacion.js. El tracer no siempre sigue
    require.resolve en módulos auxiliares (prefijo _), así que se repiten aquí
    en el entry point para garantizar que se incluyan en el bundle. */
+require.resolve('../catalogos_sispro.js');
 require.resolve('../catalogos.js');
+require.resolve('../anexo.js');
 require.resolve('../direccion.js');
 require.resolve('../reglas.js');
 
 const { obtenerPool } = require('./_db');
-const { validar } = require('./_validacion');
+const { validar, obtenerMotor } = require('./_validacion');
+const anexoBd = require('./_anexo_bd');
 const { requerirSesion } = require('./_auth');
 const roles = require('../roles.js');
 
@@ -64,6 +67,29 @@ function booleano(valor) {
   if (valor === 'si') return true;
   if (valor === 'no') return false;
   return null;
+}
+
+/* Ítem 21 por partes. Sin ellas, una ficha traída de la base para corregirla
+   no pasa RN-021 al volver a guardarse: el servidor recompone la dirección
+   desde sus componentes y no cree la que llega armada. Se guarda sólo lo que
+   direccion.js conoce, con tope de largo: es un jsonb que viene del cliente. */
+const CLAVES_DIRECCION = ['modo', 'viaTipo', 'viaNumero', 'viaLetra', 'viaLetraBis', 'viaCuadrante',
+  'genNumero', 'genLetra', 'genCuadrante', 'placa', 'ruralViaTipo', 'ruralViaNombre', 'ruralKm',
+  'ruralPredioTipo', 'ruralPredioNombre', 'ruralSector'];
+
+function componentesDeDireccion(componentes) {
+  if (!componentes || typeof componentes !== 'object' || Array.isArray(componentes)) return null;
+  const salida = { viaBis: componentes.viaBis === true };
+  CLAVES_DIRECCION.forEach(function (clave) {
+    const valor = componentes[clave];
+    if (valor !== undefined && valor !== null) salida[clave] = String(valor).slice(0, 80);
+  });
+  salida.complementos = (Array.isArray(componentes.complementos) ? componentes.complementos : [])
+    .slice(0, 10)
+    .map(function (c) {
+      return { tipo: String((c && c.tipo) || '').slice(0, 40), valor: String((c && c.valor) || '').slice(0, 80) };
+    });
+  return JSON.stringify(salida);
 }
 
 /* =========================================================================
@@ -105,7 +131,7 @@ const PUENTES_INTEGRANTE = [
   { campo: 'signosDesnutricion', tabla: 'aps.integrante_signo_desnutricion' },               // ítem 97
   { campo: 'enfermedadesNoTransmisibles', tabla: 'aps.integrante_enfermedad_no_transmisible' }, // ítem 100
   { campo: 'condicionesTransmisibles', tabla: 'aps.integrante_condicion_transmisible' },     // ítem 101
-  { campo: 'zonaEndemica', tabla: 'aps.integrante_zona_endemica' },                          // ítem 102
+  { campo: 'zonaEndemica', tabla: 'aps.integrante_zona_endemica', unica: true },             // ítem 102
   { campo: 'motivoNoTratamiento', tabla: 'aps.integrante_motivo_no_tratamiento' },           // ítem 104
   { campo: 'riesgosSaludMentalJoven', tabla: 'aps.integrante_riesgo_salud_mental' },         // ítem 105
   { campo: 'sintomatologiaDepresiva', tabla: 'aps.integrante_sintoma_depresivo' }            // ítem 106
@@ -124,7 +150,12 @@ const PUENTES_INTEGRANTE = [
    Los nombres de tabla salen de las constantes de arriba, nunca del cuerpo
    de la petición: no hay concatenación de datos del usuario en el SQL. */
 async function sincronizarPuente(cliente, definicion, columnaPadre, padreId, contenedor) {
-  const valores = contenedor[definicion.campo];
+  /* Ítem 102: el anexo lo volvió respuesta única, pero sigue en su puente;
+     llega como texto y se escribe como lista de uno. */
+  const valores = definicion.unica
+    ? anexoBd.comoLista(contenedor[definicion.campo])
+    : contenedor[definicion.campo];
+  if (definicion.unica && contenedor[definicion.campo] === undefined) return 0;
   if (!Array.isArray(valores)) return 0;
 
   await cliente.query(
@@ -525,6 +556,11 @@ module.exports = async (req, res) => {
       tipoEvento = 'creacion';
     }
 
+    /* RN-016 limita a 30 días la antigüedad de una ficha que se registra; no
+       impide corregir una que ya quedó registrada a tiempo. Lo decide la base
+       —si el código ya existe—, nunca el cuerpo de la petición. */
+    req.body.yaRegistradaEnLaBase = Boolean(existente);
+
     /* --- Validación previa -------------------------------------------------
        Se hace con una conexión del pool pero fuera de la transacción: si la
        ficha no pasa, no se abre transacción alguna. */
@@ -587,19 +623,29 @@ module.exports = async (req, res) => {
       INSERT INTO aps.hogar (
         codigo, municipio_codigo, area_ubicacion, territorio_codigo,
         microterritorio_codigo, division_territorial, direccion_normalizada,
-        latitud, longitud, punto_referencia, geo_pendiente
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        latitud, longitud, punto_referencia, geo_pendiente,
+        direccion_componentes, geo_motivo_imposibilidad
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13)
       ON CONFLICT (codigo) DO UPDATE SET
-        area_ubicacion         = EXCLUDED.area_ubicacion,
-        territorio_codigo      = EXCLUDED.territorio_codigo,
-        microterritorio_codigo = EXCLUDED.microterritorio_codigo,
-        division_territorial   = EXCLUDED.division_territorial,
-        direccion_normalizada  = EXCLUDED.direccion_normalizada,
-        latitud                = EXCLUDED.latitud,
-        longitud               = EXCLUDED.longitud,
-        punto_referencia       = EXCLUDED.punto_referencia,
-        geo_pendiente          = EXCLUDED.geo_pendiente,
-        actualizado_en         = now()
+        /* El consecutivo del reporte (variable 123) reinicia por
+           microterritorio: si la vivienda cambia de microterritorio pierde el
+           suyo y recibe uno nuevo abajo. */
+        consecutivo_sispro       = CASE
+          WHEN aps.hogar.territorio_codigo = EXCLUDED.territorio_codigo
+           AND aps.hogar.microterritorio_codigo = EXCLUDED.microterritorio_codigo
+          THEN aps.hogar.consecutivo_sispro END,
+        area_ubicacion           = EXCLUDED.area_ubicacion,
+        territorio_codigo        = EXCLUDED.territorio_codigo,
+        microterritorio_codigo   = EXCLUDED.microterritorio_codigo,
+        division_territorial     = EXCLUDED.division_territorial,
+        direccion_normalizada    = EXCLUDED.direccion_normalizada,
+        latitud                  = EXCLUDED.latitud,
+        longitud                 = EXCLUDED.longitud,
+        punto_referencia         = EXCLUDED.punto_referencia,
+        geo_pendiente            = EXCLUDED.geo_pendiente,
+        direccion_componentes    = EXCLUDED.direccion_componentes,
+        geo_motivo_imposibilidad = EXCLUDED.geo_motivo_imposibilidad,
+        actualizado_en           = now()
       RETURNING id
     `, [
       texto(encuesta.idHogar),
@@ -612,9 +658,34 @@ module.exports = async (req, res) => {
       decimal(encuesta.latitud),
       decimal(encuesta.longitud),
       texto(encuesta.ubicacionReferencia),
-      decimal(encuesta.latitud) === null || decimal(encuesta.longitud) === null
+      decimal(encuesta.latitud) === null || decimal(encuesta.longitud) === null,
+      componentesDeDireccion(encuesta.direccionComponentes),
+      /* RN-022: sin coordenadas, el motivo es obligatorio en el formulario;
+         antes se validaba y se descartaba. */
+      texto(encuesta.motivoSinGeorreferenciacion)
     ]);
     const hogarId = hogarRes.rows[0].id;
+
+    /* Variable 123 del anexo: la vivienda recibe una vez su consecutivo dentro
+       del microterritorio y lo conserva en todos los reportes. El bloqueo por
+       microterritorio evita que dos fichas guardadas a la vez tomen el mismo. */
+    await cliente.query(
+      "SELECT pg_advisory_xact_lock(hashtext('hogar/' || $1 || '/' || $2))",
+      [texto(encuesta.territorio), texto(encuesta.microterritorio)]);
+    await cliente.query(`
+      UPDATE aps.hogar h
+         SET consecutivo_sispro = (
+               SELECT coalesce(max(o.consecutivo_sispro), 0) + 1 FROM aps.hogar o
+                WHERE o.territorio_codigo = h.territorio_codigo
+                  AND o.microterritorio_codigo = h.microterritorio_codigo)
+       WHERE h.id = $1 AND h.consecutivo_sispro IS NULL
+    `, [hogarId]);
+
+    /* El motor trae anexo.js cargado: con él se escriben las variables nuevas
+       del anexo técnico y se decide cuáles aplican. */
+    const motor = obtenerMotor();
+    const lectorFicha = motor.lectorDeRespuestas([encuesta], { fechaFicha: texto(encuesta.fechaDiligenciamiento) });
+    await anexoBd.escribirAnexo(cliente, motor, 'hogar', hogarId, encuesta, lectorFicha);
 
     /* --- 4. Ficha ---
        La fecha va tal como se capturó. Si incumple RN-016 el trigger la
@@ -624,8 +695,9 @@ module.exports = async (req, res) => {
         codigo, consentimiento, situacion_inminente, departamento_codigo, municipio_codigo,
         uzpe_codigo, prestador_codigo, hogar_id, equipo_salud_id, responsable_id,
         fecha_diligenciamiento, entorno_abordaje, nombre_institucion, lider_entorno,
-        jovenes_en_paz, estado, cerrada_en, fechas_modificacion
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        jovenes_en_paz, estado, cerrada_en, fechas_modificacion,
+        motivo_cierre_incompleto, referencia_familia
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       /* Reenviar la ficha tiene que actualizarla, no sólo sellarle la fecha.
          Antes aquí se actualizaba únicamente fechas_modificacion: corregir
          el entorno de abordaje, el responsable o la fecha de la visita
@@ -648,12 +720,16 @@ module.exports = async (req, res) => {
         jovenes_en_paz         = EXCLUDED.jovenes_en_paz,
         estado                 = EXCLUDED.estado,
         cerrada_en             = EXCLUDED.cerrada_en,
-        fechas_modificacion    = EXCLUDED.fechas_modificacion
+        fechas_modificacion    = EXCLUDED.fechas_modificacion,
+        motivo_cierre_incompleto = EXCLUDED.motivo_cierre_incompleto,
+        referencia_familia     = EXCLUDED.referencia_familia
       RETURNING id
     `, [
       texto(encuesta.codigoFicha),
       booleano(encuesta.consentimiento),
-      texto(encuesta.situacionInminente),
+      /* Ítem 2: selección múltiple desde el anexo. La columna guarda la
+         principal y la lista completa va a aps.ficha_situacion_inminente. */
+      anexoBd.opcionPrincipal(motor, 'situacionInminente', encuesta.situacionInminente),
       texto(encuesta.departamentoCodigo) || '76',
       texto(encuesta.municipioCodigo) || '76001',
       texto(encuesta.uzpe),
@@ -673,7 +749,12 @@ module.exports = async (req, res) => {
          de cobertura, y el enum de la base la distingue explícitamente. */
       encuesta.visitaIncompleta ? 'incompleta_causa_externa' : 'cerrada',
       new Date(),
-      JSON.stringify(encuesta.fechasModificacion || [])
+      JSON.stringify(encuesta.fechasModificacion || []),
+      /* RN-222: la restricción ficha_motivo_incompleta exige el motivo cuando
+         la visita se cierra incompleta. No se escribía, y ese cierre fallaba
+         con un 500 en la base aunque el formulario lo hubiera pedido. */
+      encuesta.visitaIncompleta ? texto(encuesta.motivoVisitaIncompleta) : null,
+      texto(encuesta.idFamilia)
     ]);
 
     /* `DO UPDATE` siempre devuelve la fila, exista o no: el id sirve tanto
@@ -686,6 +767,9 @@ module.exports = async (req, res) => {
       VALUES ($1, 'ficha', $1, $2, $3, $4, $5, $6)
     `, [fichaId, tipoEvento, usuario.funcionarioId, texto(encuesta.dispositivoId),
       decimal(encuesta.latitud), decimal(encuesta.longitud)]);
+
+    await anexoBd.escribirListasConvertidas(cliente, 'ficha', fichaId, encuesta);
+    await anexoBd.escribirAnexo(cliente, motor, 'ficha', fichaId, encuesta, lectorFicha);
 
     /* --- 5. Vivienda --- */
     await cliente.query(`
@@ -741,16 +825,20 @@ module.exports = async (req, res) => {
       entero(encuesta.gatos) || 0,
       entero(encuesta.gatosVacunados) || 0,
       texto(encuesta.carnetAntirrabico),
-      texto(encuesta.fuenteAgua),
-      texto(encuesta.disposicionExcretas),
-      texto(encuesta.aguasResiduales),
-      texto(encuesta.residuosSolidos)
+      /* Ítems 46 a 49: selección múltiple desde el anexo técnico. Las
+         columnas NOT NULL guardan la primera opción; la lista, sus puentes. */
+      anexoBd.opcionPrincipal(motor, 'fuenteAgua', encuesta.fuenteAgua),
+      anexoBd.opcionPrincipal(motor, 'disposicionExcretas', encuesta.disposicionExcretas),
+      anexoBd.opcionPrincipal(motor, 'aguasResiduales', encuesta.aguasResiduales),
+      anexoBd.opcionPrincipal(motor, 'residuosSolidos', encuesta.residuosSolidos)
     ]);
 
     /* Ítems 36, 38 y 40. Las tablas puente cuelgan de vivienda(ficha_id). */
     let filasPuente = await sincronizarPuentes(
       cliente, PUENTES_VIVIENDA, 'ficha_id', fichaId, encuesta
     );
+    filasPuente += await anexoBd.escribirListasConvertidas(cliente, 'vivienda', fichaId, encuesta);
+    filasPuente += await anexoBd.escribirAnexo(cliente, motor, 'vivienda', fichaId, encuesta, lectorFicha);
 
     /* --- 6. Familias, personas e integrantes --- */
     const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
@@ -818,6 +906,8 @@ module.exports = async (req, res) => {
       filasPuente += await sincronizarPuentes(
         cliente, PUENTES_FAMILIA, 'familia_ficha_id', familiaFichaId, familia
       );
+      filasPuente += await anexoBd.escribirAnexo(cliente, motor, 'familia_ficha', familiaFichaId, familia,
+        motor.lectorDeRespuestas([familia, encuesta], { fechaFicha: texto(encuesta.fechaDiligenciamiento) }));
 
       /* 6c. Integrantes. */
       const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
@@ -868,7 +958,7 @@ module.exports = async (req, res) => {
             genero, autoidentificacion_genero, autoidentificacion_genero_otro,
             orientacion_sexual, orientacion_sexual_otro,
             telefono1, telefono2, rol_familiar,
-            ocupacion_texto, nivel_educativo,
+            ocupacion_codigo, ocupacion_texto, nivel_educativo,
             regimen_afiliacion, eapb_codigo,
             pertenencia_etnica, pueblo_etnico, certificacion_rlcpd,
             intencion_reproductiva, gestacion_actual, lactancia_exclusiva,
@@ -878,7 +968,7 @@ module.exports = async (req, res) => {
             puntaje_crafft, puntaje_audit, puntaje_assist,
             ideacion_suicida, limitacion_cotidiana
           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-                    $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35)
+                    $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36)
           /* La caracterización clínica es justo lo que más se corrige —un peso
              mal tecleado, una tensión, el régimen de afiliación—. Con DO
              NOTHING la corrección se aceptaba con un 200 y la base seguía
@@ -893,6 +983,7 @@ module.exports = async (req, res) => {
             telefono1                      = EXCLUDED.telefono1,
             telefono2                      = EXCLUDED.telefono2,
             rol_familiar                   = EXCLUDED.rol_familiar,
+            ocupacion_codigo               = EXCLUDED.ocupacion_codigo,
             ocupacion_texto               = EXCLUDED.ocupacion_texto,
             nivel_educativo                = EXCLUDED.nivel_educativo,
             regimen_afiliacion             = EXCLUDED.regimen_afiliacion,
@@ -930,7 +1021,13 @@ module.exports = async (req, res) => {
           texto(integrante.telefono1),
           texto(integrante.telefono2),
           texto(integrante.rolFamiliar),
-          texto(integrante.ocupacion),
+          /* Ítem 73: código CIUO de la tabla de SISPRO (llave foránea a
+             cat.ocupacion_ciuo). Lo que no sea un código —las fichas de
+             cuando la ocupación era texto libre— va a ocupacion_texto. */
+          motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
+            ? texto(integrante.ocupacion) : null,
+          motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
+            ? null : texto(integrante.ocupacion),
           texto(integrante.nivelEducativo),
           texto(integrante.regimenAfiliacion),
           texto(integrante.eapb),
@@ -971,6 +1068,15 @@ module.exports = async (req, res) => {
         filasPuente += await sincronizarPuentes(
           cliente, PUENTES_INTEGRANTE, 'integrante_id', integranteId, integrante
         );
+
+        /* Variables del anexo del integrante: su visibilidad depende de la
+           edad, el sexo y la gestación, igual que en el formulario. */
+        const contextoIntegrante = motor.contextoIntegrante(integrante, encuesta);
+        filasPuente += await anexoBd.escribirAnexo(cliente, motor, 'integrante', integranteId, integrante,
+          motor.lectorDeRespuestas([integrante, familia, encuesta], {
+            edadMeses: contextoIntegrante.edadMeses, sexo: contextoIntegrante.sexo,
+            gestante: contextoIntegrante.gestante, fechaFicha: texto(encuesta.fechaDiligenciamiento)
+          }));
 
         /* Plan de cuidado de la persona (ítems 130 a 140). */
         filasPlan += await guardarPlan(cliente, fichaId, 'persona', integrante.planPersona, {

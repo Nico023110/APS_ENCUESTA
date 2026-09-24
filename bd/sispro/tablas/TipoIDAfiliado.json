@@ -1,0 +1,52 @@
+[
+ {
+  "codigo": "AS",
+  "nombre": "Adulto sin identificación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "CC",
+  "nombre": "Cédula de ciudadanía",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "CD",
+  "nombre": "Carnet Diplomático",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "CE",
+  "nombre": "Cédula de Extranjería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "MS",
+  "nombre": "Menor sin identificación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "PA",
+  "nombre": "Pasaporte",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "PE",
+  "nombre": "PE Permiso Especial de Permanencia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "PT",
+  "nombre": "Permiso por protección temporal",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "RC",
+  "nombre": "Registro Cívil",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "TI",
+  "nombre": "Tarjeta de Identidad",
+  "habilitado": "SI"
+ }
+]

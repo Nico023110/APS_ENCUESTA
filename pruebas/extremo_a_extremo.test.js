@@ -26,6 +26,7 @@ const { spawn } = require('child_process');
 const { JSDOM } = require('jsdom');
 const { Client } = require('pg');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba } = require('./_sesion_prueba');
+const { viviendaAnexo, familiaAnexo, integranteAnexo } = require('./_anexo_datos');
 
 const RAIZ = path.join(__dirname, '..');
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
@@ -69,7 +70,7 @@ function montar() {
   w.fetch = function () { return Promise.reject(new Error('sin red')); };
   w.HTMLElement.prototype.scrollIntoView = function () {};
 
-  const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js',
+  const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js',
     'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'app.js']
     .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
     .join('\n;\n');
@@ -172,10 +173,6 @@ function diligenciar(w, sufijo) {
     ['[name="perrosVacunados"]', '0'],
     ['[name="gatos"]', '0'],
     ['[name="gatosVacunados"]', '0'],
-    ['[name="fuenteAgua"]', 'acueducto_esp'],
-    ['[name="disposicionExcretas"]', 'alcantarillado'],
-    ['[name="aguasResiduales"]', 'alcantarillado'],
-    ['[name="residuosSolidos"]', 'servicio_aseo'],
     /* Integrante */
     ['[name="familias[0].integrantes[0].primerNombre"]', 'Ana'],
     ['[name="familias[0].integrantes[0].primerApellido"]', 'Gomez'],
@@ -227,6 +224,12 @@ function diligenciar(w, sufijo) {
   const grupos = [
     ['consentimiento', 'si'],
     ['situacionInminente', 'no_aplica'],
+    /* Ítems 46 a 49: selección múltiple desde el anexo técnico. */
+    ['fuenteAgua', 'acueducto_esp'],
+    ['disposicionExcretas', 'alcantarillado'],
+    ['aguasResiduales', 'alcantarillado'],
+    ['residuosSolidos', 'servicio_aseo'],
+    ['familias[0].integrantes[0].riesgosSaludMentalJoven', 'ninguna'],
     ['vectores', 'no'],
     ['actividadEconomica', 'no'],
     ['animales', 'ninguno'],
@@ -268,6 +271,22 @@ function diligenciar(w, sufijo) {
   grupos.forEach(function (par) {
     if (!marcar(doc, w, par[0], par[1])) noEncontrados.push('grupo ' + par[0]);
   });
+
+  /* Variables del anexo técnico SI-APS: las pinta renderizarPreguntasAnexo
+     desde anexo.js, con el nombre del nivel como prefijo. Se responden con
+     el mismo control que usaría el encuestador (select, radio o casillas). */
+  [['', viviendaAnexo()], ['familias[0].', familiaAnexo()], ['familias[0].integrantes[0].', integranteAnexo()]]
+    .forEach(function (par) {
+      Object.keys(par[1]).forEach(function (clave) {
+        const nombre = par[0] + clave;
+        const control = doc.querySelector('[name="' + nombre + '"]');
+        if (!control) { noEncontrados.push('anexo ' + nombre); return; }
+        const ok = control.type === 'radio' || control.type === 'checkbox'
+          ? marcar(doc, w, nombre, par[1][clave])
+          : ponerValor(doc, w, '[name="' + nombre + '"]', par[1][clave]);
+        if (!ok) noEncontrados.push('anexo ' + nombre);
+      });
+    });
 
   /* RN-111 a RN-134: los códigos del plan se heredan de la ficha en vez de
      digitarse. La app lo hace al recalcular; aquí se invoca igual. */
@@ -375,9 +394,9 @@ async function principal() {
     verificar('  el prestador resuelve contra el catálogo',
       g.prestador === 'E.S.E. Ladera', String(g.prestador));
     verificar('  la ocupación resuelve contra CIUO',
-      g.ocupacion === 'Vendedor de tienda o almacén', String(g.ocupacion));
+      g.ocupacion === 'Vendedores y auxiliares de venta en tiendas, almacenes y afines', String(g.ocupacion));
     verificar('  la EAPB resuelve contra el catálogo',
-      g.aseguradora === 'Emssanar ESS', String(g.aseguradora));
+      g.aseguradora === 'COOSALUD ESS EPS-S', String(g.aseguradora));
 
     console.log('\n=== 3. Los datos clínicos del integrante ya no se pierden ===');
 

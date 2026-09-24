@@ -59,6 +59,8 @@ module.exports = async (req, res) => {
         f.codigo                    AS codigo_ficha,
         f.consentimiento,
         f.situacion_inminente,
+        (SELECT array_agg(s.codigo ORDER BY s.codigo) FROM aps.ficha_situacion_inminente s
+          WHERE s.ficha_id = f.id) AS situaciones_inminentes,
         f.departamento_codigo,
         f.municipio_codigo,
         f.uzpe_codigo,
@@ -126,7 +128,9 @@ module.exports = async (req, res) => {
     res.status(200).json({
       codigoFicha: fila.codigo_ficha,
       consentimiento: aSiNo(fila.consentimiento),
-      situacionInminente: fila.situacion_inminente,
+      situacionInminente: Array.isArray(fila.situaciones_inminentes)
+        ? fila.situaciones_inminentes
+        : (fila.situacion_inminente ? [fila.situacion_inminente] : []),
 
       departamentoCodigo: fila.departamento_codigo,
       municipioCodigo: fila.municipio_codigo,

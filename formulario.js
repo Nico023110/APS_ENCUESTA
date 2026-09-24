@@ -513,6 +513,191 @@ function valorSeleccionado(ambito, sufijoNombre) {
   return select ? select.value : '';
 }
 
+/* =========================================================
+   5b. PREGUNTAS DEL ANEXO TÉCNICO SI-APS (anexo.js)
+   ---------------------------------------------------------
+   Las preguntas que añade el anexo no se escriben a mano en
+   index.html: cada tarjeta deja un contenedor con
+   `data-anexo-grupo` y aquí se pinta lo que declara anexo.js.
+   Los nombres siguen la convención del resto del formulario,
+   así que recolección, validación en vivo y corrección de
+   fichas funcionan sin saber que estas preguntas son nuevas.
+   ========================================================= */
+
+const PREFIJO_NOMBRE_ANEXO = {
+  ficha: '',
+  vivienda: '',
+  familia: 'familias[0].',
+  integrante: 'familias[0].integrantes[0].'
+};
+
+/** Pinta las preguntas de cada grupo. Se llama antes de guardar los prototipos. */
+function renderizarPreguntasAnexo(raiz) {
+  const ambito = raiz || document;
+  Array.prototype.forEach.call(ambito.querySelectorAll('[data-anexo-grupo]'), function (contenedor) {
+    if (contenedor.dataset.anexoPintado === 'si') return;
+    contenedor.innerHTML = preguntasDelGrupo(contenedor.dataset.anexoGrupo).map(htmlDePreguntaAnexo).join('');
+    contenedor.dataset.anexoPintado = 'si';
+  });
+}
+
+function htmlDePreguntaAnexo(pregunta) {
+  const nombre = escaparHtml(PREFIJO_NOMBRE_ANEXO[pregunta.nivel] + pregunta.clave);
+  const catalogo = pregunta.catalogo ? escaparHtml(pregunta.catalogo) : '';
+  const opciones = catalogoDePregunta(pregunta) || [];
+  const largas = opciones.some(function (o) { return String(o.etiqueta).length > 34; });
+
+  let control;
+  let ancha = true;
+
+  if (pregunta.tipo === 'multiple') {
+    control = '<div class="check-group" data-catalogo="' + catalogo + '" data-name="' + nombre + '"></div>';
+  } else if (pregunta.tipo === 'unica' && pregunta.control === 'select') {
+    control = '<select name="' + nombre + '" data-catalogo="' + catalogo + '"></select>';
+    ancha = false;
+  } else if (pregunta.tipo === 'unica') {
+    control = '<div class="radio-group' + (largas || opciones.length > 4 ? ' radio-group--columna' : '') +
+      '" data-catalogo="' + catalogo + '" data-name="' + nombre + '"></div>';
+  } else if (pregunta.tipo === 'entero') {
+    control = '<input type="number" name="' + nombre + '" step="1"' +
+      (pregunta.min !== undefined ? ' min="' + pregunta.min + '"' : '') +
+      (pregunta.max !== undefined ? ' max="' + pregunta.max + '"' : '') + '>';
+    ancha = false;
+  } else if (pregunta.tipo === 'fecha') {
+    control = '<input type="date" name="' + nombre + '">';
+    ancha = false;
+  } else {
+    const telefono = pregunta.formato === 'telefono';
+    control = '<input type="text" name="' + nombre + '" maxlength="' + (pregunta.max || 200) + '"' +
+      (telefono ? ' inputmode="numeric" placeholder="Ej. 3001234567"' : '') + '>';
+    ancha = (pregunta.max || 200) > 60;
+  }
+
+  const obligatoria = pregunta.requerido === 'bloqueo' ? ' *' : '';
+  const condicionada = typeof pregunta.visible === 'function';
+
+  return '<div class="field' + (ancha ? ' field--full field--block' : '') + '"' +
+      ' data-campo="' + escaparHtml(pregunta.clave) + '"' +
+      ' data-anexo="' + escaparHtml(pregunta.clave) + '"' +
+      ' data-anexo-nivel="' + pregunta.nivel + '"' +
+      (condicionada ? ' data-anexo-condicionada hidden' : '') + '>' +
+    '<label><span class="item-num item-num--anexo" title="Anexo técnico SI-APS: registro tipo ' +
+      pregunta.registro + ', variable ' + pregunta.variable + '">' + codigoDePregunta(pregunta) + '</span> ' +
+      escaparHtml(pregunta.etiqueta) + obligatoria + '</label>' +
+    (pregunta.ayuda ? '<span class="field-hint field-hint--inline">' + escaparHtml(pregunta.ayuda) + '</span>' : '') +
+    control +
+  '</div>';
+}
+
+/**
+ * Lector de respuestas sobre el formulario, con la misma interfaz que
+ * `lectorDeRespuestas` de anexo.js: así la condición de cada pregunta se
+ * escribe una sola vez y vale igual en pantalla, en las reglas y en el
+ * servidor. Busca primero en el bloque (familia o integrante) y, si la clave
+ * no está ahí, en la ficha: las de la vivienda tienen nombre plano.
+ */
+function lectorDeFormulario(ambito, contexto) {
+  const raiz = ambito || document;
+  const extra = contexto || {};
+  /* Una pasada de condiciones lee las mismas respuestas varias veces (la
+     madre de varios «¿cuál?»): se leen una vez. El lector vive lo que dura
+     la pasada, así que no puede quedar desactualizado. */
+  const leidas = new Map();
+  let indicePropio = null;
+  let indiceFicha = null;
+
+  /* Índice nombre → controles, armado con un solo recorrido. Buscar clave por
+     clave con selectores recorría el documento entero una vez por pregunta, y
+     la vivienda tiene decenas de preguntas condicionadas: cada cambio costaba
+     cientos de milisegundos en una tablet. En el bloque (familia o integrante)
+     la clave es la hoja del nombre: «familias[0].integrantes[2].sexo» → sexo. */
+  function indexar(contenedor, porHoja) {
+    const mapa = new Map();
+    Array.prototype.forEach.call(contenedor.querySelectorAll('[name]'), function (control) {
+      const nombre = control.getAttribute('name');
+      const clave = porHoja ? nombre.slice(nombre.lastIndexOf('.') + 1) : nombre;
+      if (!mapa.has(clave)) mapa.set(clave, []);
+      mapa.get(clave).push(control);
+    });
+    return mapa;
+  }
+
+  function controles(clave) {
+    if (!indiceFicha) {
+      const formulario = document.getElementById('encuestaForm') || document;
+      indiceFicha = indexar(formulario, false);
+    }
+    if (raiz === document) return indiceFicha.get(clave) || [];
+    if (!indicePropio) indicePropio = indexar(raiz, true);
+    return indicePropio.get(clave) || indiceFicha.get(clave) || [];
+  }
+
+  function lista(clave) {
+    if (leidas.has(clave)) return leidas.get(clave);
+    const salida = [];
+    Array.prototype.forEach.call(controles(clave), function (control) {
+      if (control.disabled) return;
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        if (control.checked) salida.push(control.value);
+        return;
+      }
+      if (String(control.value).trim() !== '') salida.push(String(control.value).trim());
+    });
+    leidas.set(clave, salida);
+    return salida;
+  }
+
+  return {
+    v: function (clave) { const valores = lista(clave); return valores.length ? valores[0] : null; },
+    lista: lista,
+    tiene: function (clave, valor) { return lista(clave).indexOf(valor) !== -1; },
+    algunoSalvo: function (clave, excluyente) {
+      return lista(clave).some(function (valor) { return valor !== excluyente; });
+    },
+    edadMeses: extra.edadMeses === undefined ? null : extra.edadMeses,
+    sexo: extra.sexo || null,
+    gestante: extra.gestante === true,
+    fechaFicha: extra.fechaFicha || null,
+    olvidar: function () { leidas.clear(); }
+  };
+}
+
+/**
+ * Muestra u oculta las preguntas del anexo de los niveles indicados dentro de
+ * un ámbito. Se recorren en orden del documento, que es el de la declaración:
+ * la pregunta madre se resuelve antes que su «¿cuál?», así que ocultar una
+ * cadena entera (y limpiarla) cabe en una sola pasada.
+ */
+/* Mientras se carga una ficha para corregirla (correccion.js) cada valor
+   que se pone dispara un cambio. Las condiciones del anexo no gobiernan si
+   un valor entra —un campo oculto lo admite igual—, así que se evalúan una
+   sola vez al terminar la carga en lugar de con cada valor. */
+let condicionesAnexoEnPausa = false;
+
+function pausarCondicionesAnexo(enPausa) {
+  condicionesAnexoEnPausa = enPausa === true;
+}
+
+function actualizarCondicionalesAnexo(ambito, niveles, contexto) {
+  if (condicionesAnexoEnPausa) return;
+  const lector = lectorDeFormulario(ambito, contexto);
+  Array.prototype.forEach.call(ambito.querySelectorAll('[data-anexo-condicionada]'), function (campo) {
+    if (niveles.indexOf(campo.dataset.anexoNivel) === -1) return;
+    const pregunta = preguntaAnexo(campo.dataset.anexo);
+    if (!pregunta) return;
+    const visible = esVisibleAnexo(pregunta, lector);
+    if (campo.hidden === !visible) return;
+    mostrarCampo(campo, visible);
+    /* Ocultar limpia la respuesta, y una pregunta hija puede depender de ella:
+       lo leído antes deja de valer. */
+    if (!visible) leerDeNuevo(lector);
+  });
+}
+
+function leerDeNuevo(lector) {
+  if (lector && typeof lector.olvidar === 'function') lector.olvidar();
+}
+
 /** Condicionales de la vivienda: ítems 40 a 45. */
 function actualizarCondicionalesVivienda() {
   const animales = Array.prototype.map.call(
@@ -546,12 +731,27 @@ function actualizarCondicionalesVivienda() {
   }
 
   actualizarCoberturaAntirrabica();
+  actualizarCondicionalesAnexo(document, ['ficha', 'vivienda'], {});
 }
 
-/** Condicionales de la familia: ítem 53 según el 52. */
+/** Condicionales de la familia. El ítem 53 (puntaje ZARIT) se abre con el 52
+    y, como las demás preguntas del anexo, lo gobierna su declaración. */
 function actualizarCondicionalesFamilia(familia) {
-  const tieneCuidador = valorSeleccionado(familia, '.cuidadorPrincipal') === 'si';
-  mostrarCampo(familia.querySelector('[data-rol="campoZarit"]'), tieneCuidador);
+  actualizarCondicionalesAnexo(familia, ['familia'], {});
+  actualizarClasificacionZarit(familia);
+}
+
+/** RN-053 — La clasificación de sobrecarga se deriva del puntaje ZARIT. */
+function actualizarClasificacionZarit(familia) {
+  const badge = familia.querySelector('[data-rol="badgeZarit"]');
+  if (!badge) return;
+  const campo = familia.querySelector('input[name$=".zaritPuntaje"]');
+  const puntaje = campo && campo.value !== '' ? Number(campo.value) : null;
+  const nivel = clasificarZarit(puntaje === null || puntaje > ZARIT_PUNTAJE_MAXIMO ? null : puntaje);
+  badge.hidden = !nivel;
+  if (!nivel) return;
+  badge.textContent = etiquetaDeCatalogo(CAT_ZARIT, nivel);
+  badge.className = 'badge ' + (nivel === 'intensa' ? 'badge--danger' : nivel === 'ligera' ? 'badge--warning' : 'badge--success');
 }
 
 /**
@@ -579,7 +779,6 @@ function actualizarCondicionalesIntegrante(bloque) {
   const mayorOIgualA14 = entre(14 * 12, null);
   const menorA14 = tieneEdad && meses < 14 * 12;
 
-  mostrarCampo(bloque.querySelector('[data-rol="campoRiesgoJoven"]'), entre(14 * 12, 28 * 12 + 11));
   
   ['campoDepresiva', 'campoIdeacion', 'campoConsumo'].forEach(function(rol) {
     const contenedor = bloque.querySelector('[data-rol="' + rol + '"]');
@@ -607,10 +806,6 @@ function actualizarCondicionalesIntegrante(bloque) {
 
   // ---- Por respuesta previa ----
   mostrarCampo(
-    bloque.querySelector('[data-rol="campoNacionalidadOtra"]'),
-    valorSeleccionado(bloque, '.nacionalidad') === NACIONALIDAD_OTRA
-  );
-  mostrarCampo(
     bloque.querySelector('[data-rol="campoGeneroOtro"]'),
     valorSeleccionado(bloque, '.autoidentificacionGenero') === 'otro'
   );
@@ -624,7 +819,9 @@ function actualizarCondicionalesIntegrante(bloque) {
   );
   mostrarCampo(
     bloque.querySelector('[data-rol="campoViolencia"]'),
-    seleccionados(bloque, '.sujetoEspecialProteccion').indexOf(SUJETO_VIOLENCIA_GENERO) !== -1
+    seleccionados(bloque, '.sujetoEspecialProteccion').some(function (valor) {
+      return SUJETOS_CON_MODALIDAD_VIOLENCIA.indexOf(valor) !== -1;
+    })
   );
   mostrarCampo(
     bloque.querySelector('[data-rol="campoPuebloEtnico"]'),
@@ -674,9 +871,25 @@ function actualizarCondicionalesIntegrante(bloque) {
   const campoBarreras = bloque.querySelector('[data-rol="campoBarreras"]');
   if (campoBarreras) campoBarreras.classList.toggle('campo-requerido', pendientes);
 
+  actualizarCondicionalesAnexo(bloque, ['integrante'], {
+    edadMeses: meses, sexo: sexo, gestante: gestante, fechaFicha: fechaDeReferencia()
+  });
+  actualizarNombreOcupacion(bloque);
+
   actualizarAtencionesRpms(bloque, meses, sexo, gestante);
   actualizarImc(bloque, edad);
   actualizarTension(bloque);
+}
+
+/** Ítem 73 — Nombre de la ocupación CIUO bajo el código escrito. */
+function actualizarNombreOcupacion(bloque) {
+  const campo = bloque.querySelector('[data-rol="ocupacion"]');
+  const nombre = bloque.querySelector('[data-rol="nombreOcupacion"]');
+  if (!campo || !nombre) return;
+  const codigo = campo.value.trim();
+  const ocupacion = CAT_OCUPACION_CIUO.find(function (o) { return o.valor === codigo; });
+  nombre.textContent = codigo === '' ? '' : ocupacion ? ocupacion.etiqueta : 'Código no encontrado en la tabla CIUO.';
+  nombre.classList.toggle('field-hint--error', codigo !== '' && !ocupacion);
 }
 
 /**
@@ -1024,7 +1237,9 @@ const CAMPOS_ENTEROS = [
   'hogaresEnVivienda', 'personasEnVivienda', 'habitacionesVivienda', 'elementosParaDormir',
   'perros', 'perrosVacunados', 'gatos', 'gatosVacunados', 'numeroIntegrantes',
   'tensionSistolica', 'tensionDiastolica', 'puntajeAssist', 'puntajeAudit', 'puntajeCrafft'
-];
+].concat(PREGUNTAS_ANEXO
+  .filter(function (pregunta) { return pregunta.tipo === 'entero'; })
+  .map(function (pregunta) { return pregunta.clave; }));
 
 const CAMPOS_DECIMALES = ['peso', 'talla', 'circunferenciaCintura', 'imc'];
 
@@ -1077,8 +1292,19 @@ function recolectarBloquesRepetibles(formulario) {
   normalizarListasVacias(formulario, datos);
   descartarFilasVaciasDelPlan(datos);
   enrutarPlanes(datos);
+  derivarClasificacionZarit(datos);
 
   return datos;
+}
+
+/* RN-053 — El anexo reporta el puntaje ZARIT (variable 115); la clasificación
+   que usan las alertas (RN-212) y la base (familia_ficha.zarit) se deriva de
+   él y no se digita. */
+function derivarClasificacionZarit(datos) {
+  (datos.familias || []).forEach(function (familia) {
+    if (!familia) return;
+    familia.zarit = typeof familia.zaritPuntaje === 'number' ? clasificarZarit(familia.zaritPuntaje) : null;
+  });
 }
 
 /**
@@ -1257,29 +1483,30 @@ function manejarClicEnFormulario(evento) {
       agregarBloque('#contenedorPlanPersona', 'planPersona');
       break;
 
+    /* Las cinco eliminan con confirmación cuando hay algo que perder (ver
+       quitarBloque / quitarFila) y, al confirmarse, la propia función deja
+       el formulario renumerado y recalculado: como la eliminación puede
+       quedar pendiente de esa confirmación, no siguen hasta el pie de esta
+       función, que repetiría el recálculo o lo adelantaría antes de tiempo. */
     case 'quitarFamilia':
       quitarBloque(boton, '[data-bloque="familia"]', '#contenedorFamilias', 'familia');
-      break;
+      return;
 
     case 'quitarIntegrante':
       quitarBloque(boton, '[data-bloque="integrante"]', '[data-rol="contenedorIntegrantes"]', 'integrante');
-      break;
+      return;
 
     case 'quitarPlanFamilia':
       quitarBloque(boton, '[data-bloque="planFamilia"]', '#contenedorPlanFamilia', 'planFamilia');
-      break;
+      return;
 
     case 'quitarPlanPersona':
       quitarBloque(boton, '[data-bloque="planPersona"]', '#contenedorPlanPersona', 'planPersona');
-      break;
+      return;
 
-    case 'quitarFila': {
-      const fila = boton.closest('tr[data-fila]');
-      const cuerpo = fila && fila.parentElement;
-      if (cuerpo && cuerpo.querySelectorAll('tr[data-fila]').length > 1) fila.remove();
-      else mostrarNotificacion('Debe conservar al menos una fila.', 'warning');
-      break;
-    }
+    case 'quitarFila':
+      quitarFila(boton);
+      return;
 
     case 'agregarAccionVivienda':
     case 'btnAgregarAccionVivienda':
@@ -1317,6 +1544,45 @@ function agregarBloque(selectorContenedor, clavePrototipo) {
   if (contenedor && clon) contenedor.appendChild(clon);
 }
 
+/* Qué se pierde al eliminar cada tipo de bloque. Los tres primeros datos
+   sirven para nombrar el bloque en el modal (data-rol de su título, con qué
+   se le llama si aún no tiene título propio, y qué palabra lo antecede);
+   `detalle` describe lo que se va con él, más allá de sus propios campos —
+   los integrantes de una familia, las acciones y seguimientos de un plan—.
+   Los planes de familia y de persona viven fuera del bloque al que se
+   refieren (son listas aparte, enlazadas por un selector), así que
+   eliminarlos no se lleva nada más que sus propias filas. */
+const CONFIG_BLOQUE_ELIMINAR = {
+  familia: {
+    tituloRol: 'tituloFamilia', generico: 'esta familia', nombreModal: 'familia',
+    detalle: function (bloque) {
+      const n = bloque.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]').length;
+      return n > 0 ? ' con ' + n + (n === 1 ? ' integrante' : ' integrantes') : '';
+    }
+  },
+  integrante: {
+    tituloRol: 'tituloIntegrante', generico: 'este integrante', nombreModal: 'integrante',
+    detalle: function () { return ''; }
+  },
+  planFamilia: {
+    tituloRol: 'tituloPlanFamilia', generico: 'este plan de cuidado', nombreModal: 'plan de cuidado',
+    detalle: function (bloque) { return bloque.querySelectorAll('tr[data-fila]').length > 0 ? ' con sus acciones y seguimientos' : ''; }
+  },
+  planPersona: {
+    tituloRol: 'tituloPlanPersona', generico: 'este plan de cuidado', nombreModal: 'plan de cuidado',
+    detalle: function (bloque) { return bloque.querySelectorAll('tr[data-fila]').length > 0 ? ' con sus acciones y seguimientos' : ''; }
+  }
+};
+
+/** Nombre del bloque tal como lo ve el encuestador: el título ya pintado
+    (nombre del integrante, «Familia 2», «Cuidado de la familia 1»…) o el
+    genérico de respaldo si aún no hay ninguno. */
+function nombreDeBloque(bloque, config) {
+  const titulo = bloque.querySelector('[data-rol="' + config.tituloRol + '"]');
+  const texto = titulo && titulo.textContent.trim();
+  return texto || config.generico;
+}
+
 function quitarBloque(boton, selectorBloque, selectorContenedor, etiqueta) {
   const bloque = boton.closest(selectorBloque);
   if (!bloque) return;
@@ -1328,13 +1594,57 @@ function quitarBloque(boton, selectorBloque, selectorContenedor, etiqueta) {
     mostrarNotificacion('Debe conservar al menos un bloque de ' + etiqueta + '.', 'warning');
     return;
   }
-  bloque.remove();
+
+  const config = CONFIG_BLOQUE_ELIMINAR[etiqueta];
+  const nombre = nombreDeBloque(bloque, config);
+  pedirConfirmacion({
+    titulo: 'Eliminar ' + config.nombreModal,
+    mensaje: 'Se eliminará «' + nombre + '»' + config.detalle(bloque) +
+      '. Esta acción no se puede deshacer. ¿Desea continuar?',
+    textoConfirmar: 'Eliminar',
+    alConfirmar: function () {
+      bloque.remove();
+      renumerarFormulario();
+      recalcularFormularioCompleto();
+      mostrarNotificacion('«' + nombre + '» fue eliminado.', 'success');
+    }
+  });
 }
 
 function agregarFila(cuerpoTabla, clavePrototipo) {
   if (!cuerpoTabla) return;
   const clon = crearDesdePrototipo(clavePrototipo);
   if (clon) cuerpoTabla.appendChild(clon);
+}
+
+const NOMBRE_TIPO_FILA = { accion: 'de acción', seguimiento: 'de seguimiento' };
+
+/** Quita una fila de acción o seguimiento del plan de cuidado. Siempre
+    confirma antes: ver quitarBloque. */
+function quitarFila(boton) {
+  const fila = boton.closest('tr[data-fila]');
+  const cuerpo = fila && fila.parentElement;
+  if (!cuerpo) return;
+
+  if (cuerpo.querySelectorAll('tr[data-fila]').length <= 1) {
+    mostrarNotificacion('Debe conservar al menos una fila.', 'warning');
+    return;
+  }
+
+  const tipo = NOMBRE_TIPO_FILA[fila.dataset.fila] || '';
+
+  pedirConfirmacion({
+    titulo: 'Eliminar fila',
+    mensaje: 'Se eliminará esta fila ' + tipo + ' del plan de cuidado. ' +
+      'Esta acción no se puede deshacer. ¿Desea continuar?',
+    textoConfirmar: 'Eliminar',
+    alConfirmar: function () {
+      fila.remove();
+      renumerarFormulario();
+      recalcularFormularioCompleto();
+      mostrarNotificacion('La fila ' + tipo + ' fue eliminada.', 'success');
+    }
+  });
 }
 
 /* =========================================================
@@ -1355,6 +1665,10 @@ function inicializarFormularioDinamico() {
       'primerNombre', 'primerApellido', 'numeroIntegrantes'];
     if (rolesRelevantes.indexOf(objetivo.dataset.rol) !== -1) {
       manejarCambioEnFormulario(evento);
+    } else if (objetivo.dataset.rol === 'ocupacion') {
+      actualizarNombreOcupacion(objetivo.closest('[data-bloque="integrante"]'));
+    } else if (objetivo.name && /.zaritPuntaje$/.test(objetivo.name)) {
+      actualizarClasificacionZarit(objetivo.closest('[data-bloque="familia"]'));
     } else if (['equipoSaludId', 'idHogar', 'idFamilia'].indexOf(objetivo.id) !== -1) {
       propagarLlavesHeredadas();
     } else if (['perros', 'perrosVacunados', 'gatos', 'gatosVacunados'].indexOf(objetivo.id) !== -1) {

@@ -358,6 +358,17 @@ La validación se hace con `cat.es_opcion(dominio, codigo)` en un `CHECK` por co
 
 Ese mismo campo es donde debe cargarse la matriz edad/sexo de RN-087, que hoy queda pendiente (ver sección 7).
 
+### 4.3 El anexo técnico SI-APS: códigos, opciones retiradas y variables nuevas
+
+El anexo de reporte APS124CCFP (v7, junio de 2026) fija cómo se reporta cada dato. En la base se refleja así (`07_anexo_sispro.sql`, generado por `bd/gen_anexo.js` desde `anexo.js`):
+
+- **Código de reporte.** `cat.opcion.codigo_sispro` guarda el código del anexo junto al valor interno, que no cambia. `cat.pais.codigo_numerico`, `cat.eapb.nit` y las tablas de país, CIUO y EAPB salen de las tablas oficiales de SISPRO (`bd/sispro/tablas/`).
+- **Opciones retiradas.** `cat.opcion.vigente = false`: el `CHECK` de la columna las sigue aceptando (las fichas anteriores valen por el catálogo del día de su captura, 4.1), pero la aplicación ya no las ofrece ni las acepta en fichas nuevas.
+- **Ítems que pasaron a selección múltiple (2 y 46 a 49).** Cada uno tiene su tabla puente (`aps.ficha_situacion_inminente`, `aps.vivienda_fuente_agua`, `aps.vivienda_disposicion_excretas`, `aps.vivienda_aguas_residuales`, `aps.vivienda_residuos_solidos`); la columna original conserva la opción principal para no romper vistas ni consultas. `aps.v_riesgo_vivienda` cuenta los hallazgos desde los puentes con `aps.alguna_marca`.
+- **Variables nuevas.** Las 129 preguntas del anexo agregan 102 columnas —en `aps.hogar`, `aps.ficha`, `aps.vivienda`, `aps.familia_ficha` y `aps.integrante`, cada una con su `CHECK` `ax_*` contra su dominio— y 27 tablas puente para las de selección múltiple (`aps.{nivel}_{variable}`). La misma declaración de `anexo.js` que genera esta estructura es la que usan el guardado y la lectura (`api/_anexo_bd.js`), así que el nombre de una tabla o columna nunca sale de la petición.
+- **Consecutivo del hogar.** `aps.hogar.consecutivo_sispro` es el consecutivo de 4 dígitos del identificador de vivienda (variable 123): único por territorio y microterritorio (`ux_hogar_consecutivo_sispro`), asignado al primer guardado bajo un `pg_advisory_xact_lock` del microterritorio.
+- **Parámetros.** `cat.parametro` guarda la entidad que reporta (`entidad_reportante`: NI 805027289), el NIT del prestador primario y el código de subregión (`subregion_sispro`), que queda pendiente de la gestión técnica del SI-APS.
+
 ---
 
 ## 5. Diagrama — Auditoría y sincronización
@@ -492,6 +503,8 @@ psql -d aps_encuesta -f 03_reglas.sql
 psql -d aps_encuesta -f 04_cups.sql     # desde bd/: usa \copy con ruta relativa
 ```
 
+(`npm run bd:crear` corre además `06_migraciones.sql` y `07_anexo_sispro.sql`; sobre una base existente, `npm run bd:migrar` aplica el seed, las migraciones y el anexo sin borrar datos.)
+
 El orden es obligatorio: `03_reglas.sql` define disparadores sobre tablas de `01`, y el trigger `trg_ficha_fecha` lee el parámetro `dias_maximos_ficha` que siembra `02`. El paso 4 debe ejecutarse desde el directorio `bd/` porque `\copy` resuelve `cups.csv` en el directorio de trabajo del cliente.
 
 Para regenerar los datos desde sus fuentes:
@@ -499,6 +512,10 @@ Para regenerar los datos desde sus fuentes:
 ```bash
 node bd/gen_seed.js    # tras editar catalogos.js
 node bd/gen_cups.js    # tras una nueva publicación de CUPS del MSPS
+node bd/gen_anexo.js   # tras editar anexo.js (07_anexo_sispro.sql)
+NODE_USE_ENV_PROXY=1 node bd/sispro/descargar_tablas.js   # tablas de referencia de SISPRO
+node bd/sispro/gen_catalogos_sispro.js   # catalogos_sispro.js desde esas tablas
+node bd/sispro/gen_diccionario.js        # api/_diccionario_sispro.js desde el anexo
 ```
 
 ### Consultas de verificación

@@ -54,6 +54,7 @@ Usuario maestro»).
 | `usuarios.gestionar` — crear, desactivar, restablecer claves | — | — | Sí | Sí |
 | `equipos.gestionar` — equipos y su composición | — | — | Sí | Sí |
 | `auditoria.ver` — `aud.evento`, `aud.acceso_sensible`, `aps.intento_acceso` | — | — | Sí | Sí |
+| `reporte.generar` — archivo plano APS124CCFP para PISIS (RN‑227) | — | — | Sí | Sí |
 
 Consecuencias en la interfaz:
 
@@ -69,6 +70,16 @@ Consecuencias en la interfaz:
   confirma a quien no le corresponde.
 - Cada consulta del detalle de una ficha queda en `aud.acceso_sensible`
   (RN‑224.2).
+- **Corregir** funciona desde cualquier dispositivo. Si la ficha no está en el
+  equipo, se trae completa de la base (`/api/ficha_completa`) con la misma
+  matriz: el maestro y el administrador corrigen cualquiera, el profesional las
+  de su equipo y el técnico sólo las propias. Fuera de su alcance responde 404;
+  visible pero sin permiso de corrección, 403. Cada lectura queda en
+  `aud.acceso_sensible` (grupo `ficha_completa`). Al guardar no queda copia en
+  el dispositivo, y una ficha que ya está en la base se corrige aunque la visita
+  tenga más de 30 días (RN‑016).
+- **Eliminar** sólo aplica a fichas que siguen en el dispositivo: una ficha de
+  la base no se borra, se corrige (RN‑225).
 
 La gestión de cuentas (`usuarios.gestionar`) se hace desde la aplicación: el
 chip del usuario en la cabecera despliega un menú con **Modificar usuarios**
@@ -81,6 +92,16 @@ crea, modifica o restablece cuentas de maestro; cada acción queda en
 `aud.evento` a nombre de quien la hizo. La línea de comandos
 (`npm run usuario:crear`) sigue disponible para el primer administrador o
 maestro y usa el mismo módulo (`api/_usuarios.js`).
+
+El **Reporte SI-APS** (`reporte.generar`) se abre desde el mismo menú, también
+sólo para administrador y maestro. Genera el archivo plano del anexo técnico
+con los datos de todas las personas del período —violencias y salud mental
+incluidas—, por eso no lo tiene ningún rol asistencial aunque lidere un EBS.
+`/api/reporte_sispro` sólo acepta `POST` con sesión y cabecera anti‑CSRF (un
+enlace o una imagen de otro sitio no pueden dispararlo), valida el período (un
+año como máximo) y deja cada generación en `aud.evento` con el período, el
+formato y el número de registros. El resumen previo a la descarga sólo trae
+códigos de ficha, no datos personales.
 
 ## 3. Cómo se crean los usuarios
 

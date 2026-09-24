@@ -209,8 +209,9 @@
   }
 
   /* El chip es un botón que despliega el menú del usuario: las acciones
-     dependen de los permisos (Modificar usuarios sólo con usuarios.gestionar)
-     y Cerrar sesión va siempre al final. */
+     dependen de los permisos (Modificar usuarios sólo con usuarios.gestionar,
+     Reporte SI-APS sólo con reporte.generar) y Cerrar sesión va siempre al
+     final. */
   function pintarCabecera() {
     const contenedor = document.getElementById('appUsuario');
     if (!contenedor) return;
@@ -267,6 +268,11 @@
     if (puede('usuarios.gestionar')) {
       opciones.push({ icono: 'ph-users-three', texto: 'Modificar usuarios', accion: function () {
         if (window.USUARIOS) window.USUARIOS.abrir();
+      } });
+    }
+    if (puede('reporte.generar')) {
+      opciones.push({ icono: 'ph-file-arrow-down', texto: 'Reporte SI-APS', accion: function () {
+        if (window.REPORTE_SISPRO) window.REPORTE_SISPRO.abrir();
       } });
     }
     opciones.push({ icono: 'ph-lock-key', texto: 'Bloquear pantalla', accion: bloquear });

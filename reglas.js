@@ -120,8 +120,31 @@ function listaVacia(valor) {
   return !Array.isArray(valor) || valor.length === 0;
 }
 
+/* Una opción retirada (`vigente: false`, ver catalogos.js) no vale para
+   capturar: se conserva sólo para leer fichas anteriores al anexo técnico,
+   que al corregirse deben pasar a una opción que sí se pueda reportar. */
 function perteneceA(catalogo, valor) {
-  return catalogo.some(function (opcion) { return opcion.valor === valor; });
+  return catalogo.some(function (opcion) { return opcion.valor === valor && opcion.vigente !== false; });
+}
+
+/* Varios ítems pasaron de respuesta única a múltiple (y uno al revés) con el
+   anexo técnico. Las fichas guardadas antes traen un texto donde ahora va una
+   lista: se leen igual. */
+function comoLista(valor) {
+  if (Array.isArray(valor)) return valor;
+  return valor === null || valor === undefined || valor === '' ? [] : [valor];
+}
+
+/* Selección múltiple contra su catálogo: al menos una opción, todas vigentes,
+   y una opción excluyente («Ninguna», «No aplica») sólo puede ir sola. */
+function seleccionValidaDeCatalogo(catalogo, valores) {
+  const lista = comoLista(valores);
+  if (lista.length === 0 || !todosPertenecenA(catalogo, lista)) return false;
+  const excluyentes = lista.filter(function (valor) {
+    const opcion = opcionDe(catalogo, valor);
+    return !!(opcion && opcion.excluyente);
+  });
+  return excluyentes.length === 0 || lista.length === 1;
 }
 
 function todosPertenecenA(catalogo, valores) {
@@ -186,11 +209,13 @@ function documentoValidoParaTipo(tipo, numero) {
   return documentoValidoParaFormato(tipo === 'CC' ? 'numerico_6_10' : 'alfanumerico_5_16', numero);
 }
 
-/* RN-070 / RN-071 — Teléfono fijo (7) o móvil (10), sin secuencias falsas. */
+/* RN-070 / RN-071 — Teléfono de 10 a 20 dígitos, sin secuencias falsas. El
+   anexo técnico (variables 15 y 16 del registro 3) no admite menos de 10:
+   desde 2021 los fijos de Colombia también marcan 10 (60 + indicativo). */
 function telefonoValido(valor) {
   if (esVacio(valor)) return false;
   const limpio = String(valor).replace(/\D/g, '');
-  if (limpio.length !== 7 && limpio.length !== 10) return false;
+  if (limpio.length < 10 || limpio.length > 20) return false;
   if (/^(\d)\1+$/.test(limpio)) return false;               // 3333333333
   if ('01234567890123456789'.indexOf(limpio) !== -1) return false; // consecutivos
   return true;
@@ -381,7 +406,7 @@ function nombreIntegrante(integrante, indice) {
 function tieneCondicionActiva(integrante) {
   return tieneHallazgo(integrante.enfermedadesNoTransmisibles, VALOR_NINGUNA) ||
          tieneHallazgo(integrante.condicionesTransmisibles, VALOR_NINGUNA) ||
-         tieneHallazgo(integrante.zonaEndemica, VALOR_NINGUNA);
+         tieneHallazgo(comoLista(integrante.zonaEndemica), VALOR_NINGUNA);
 }
 
 /* RN-089 — ¿Quedaron atenciones pendientes en los ítems 87 u 88? */
@@ -424,8 +449,8 @@ const REGLAS_BLOQUE_1 = [
   {
     codigo: 'RN-002',
     campo: 'situacionInminente',
-    valida: function (d) { return perteneceA(CAT_SITUACION_INMINENTE, d.situacionInminente); },
-    mensaje: 'Clasifique el estado de riesgo inmediato del entorno o de los individuos.'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_SITUACION_INMINENTE, d.situacionInminente); },
+    mensaje: 'Clasifique el estado de riesgo inmediato: marque las situaciones encontradas o "No aplica", que va sola.'
   }
 ];
 
@@ -561,8 +586,14 @@ const REGLAS_BLOQUE_2 = [
        en vez de al cerrar la ficha. */
     codigo: 'RN-016',
     campo: 'fechaDiligenciamiento',
+    /* El límite es para registrar a tiempo, no para corregir: una ficha que ya
+       quedó en la base se puede corregir aunque la visita tenga más de 30 días
+       (el disparador de la base lo evalúa igual, sólo al sincronizar). En el
+       servidor `yaRegistradaEnLaBase` lo fija guardar_encuesta.js según exista
+       o no el código; el valor que traiga el cuerpo se descarta. */
     aplica: function (d) {
-      return d.fechaDiligenciamiento !== undefined && fechaNoFutura(d.fechaDiligenciamiento);
+      return d.fechaDiligenciamiento !== undefined && fechaNoFutura(d.fechaDiligenciamiento) &&
+        d.yaRegistradaEnLaBase !== true;
     },
     valida: function (d) {
       const fecha = parsearFecha(d.fechaDiligenciamiento);
@@ -577,7 +608,7 @@ const REGLAS_BLOQUE_2 = [
     codigo: 'RN-016',
     campo: 'fechaDiligenciamiento',
     severidad: SEVERIDAD.ADVERTENCIA,
-    aplica: function (d) { return esFechaValida(d.fechaDiligenciamiento); },
+    aplica: function (d) { return esFechaValida(d.fechaDiligenciamiento) && d.yaRegistradaEnLaBase !== true; },
     valida: function (d) {
       const dias = diferenciaEnDias(d.fechaDiligenciamiento, formatearFechaIso(hoySinHora()));
       return dias === null || dias <= DIAS_MAXIMOS_FICHA;
@@ -783,7 +814,7 @@ const REGLAS_BLOQUE_3 = [
   {
     codigo: 'RN-036',
     campo: 'riesgosAccidente',
-    valida: function (d) { return seleccionMultipleValida(d.riesgosAccidente, VALOR_NINGUNO); },
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_RIESGOS_ACCIDENTE, d.riesgosAccidente); },
     mensaje: 'Marque los escenarios de riesgo o seleccione "Ninguno" (que excluye las demás opciones).'
   },
   {
@@ -795,8 +826,8 @@ const REGLAS_BLOQUE_3 = [
   {
     codigo: 'RN-038',
     campo: 'factoresContaminacion',
-    valida: function (d) { return seleccionMultipleValida(d.factoresContaminacion, VALOR_NINGUNO); },
-    mensaje: 'Marque los factores de contaminación o seleccione "Ninguno" (que excluye las demás opciones).'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_FACTORES_CONTAMINACION, d.factoresContaminacion); },
+    mensaje: 'Marque lo que hay cerca de la vivienda o seleccione "Ninguno" (que excluye las demás opciones).'
   }
 ];
 
@@ -814,7 +845,7 @@ const REGLAS_BLOQUE_4 = [
   {
     codigo: 'RN-040',
     campo: 'animales',
-    valida: function (d) { return seleccionMultipleValida(d.animales, VALOR_NINGUNO); },
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_ANIMALES, d.animales); },
     mensaje: 'Señale los animales que conviven con la familia o seleccione "Ninguno".'
   },
   {
@@ -908,26 +939,26 @@ const REGLAS_BLOQUE_4 = [
   {
     codigo: 'RN-046',
     campo: 'fuenteAgua',
-    valida: function (d) { return perteneceA(CAT_FUENTE_AGUA, d.fuenteAgua); },
-    mensaje: 'Seleccione la principal fuente de abastecimiento de agua para consumo humano.'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_FUENTE_AGUA, d.fuenteAgua); },
+    mensaje: 'Marque las fuentes de agua para consumo humano de la vivienda.'
   },
   {
     codigo: 'RN-047',
     campo: 'disposicionExcretas',
-    valida: function (d) { return perteneceA(CAT_DISPOSICION_EXCRETAS, d.disposicionExcretas); },
-    mensaje: 'Seleccione el sistema de disposición de excretas de la vivienda.'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_DISPOSICION_EXCRETAS, d.disposicionExcretas); },
+    mensaje: 'Marque los sistemas de disposición de excretas de la vivienda.'
   },
   {
     codigo: 'RN-048',
     campo: 'aguasResiduales',
-    valida: function (d) { return perteneceA(CAT_AGUAS_RESIDUALES, d.aguasResiduales); },
-    mensaje: 'Seleccione el sistema de disposición de aguas residuales domésticas.'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_AGUAS_RESIDUALES, d.aguasResiduales); },
+    mensaje: 'Marque los sistemas de disposición de aguas residuales domésticas.'
   },
   {
     codigo: 'RN-049',
     campo: 'residuosSolidos',
-    valida: function (d) { return perteneceA(CAT_RESIDUOS_SOLIDOS, d.residuosSolidos); },
-    mensaje: 'Seleccione la disposición final de los residuos sólidos ordinarios.'
+    valida: function (d) { return seleccionValidaDeCatalogo(CAT_RESIDUOS_SOLIDOS, d.residuosSolidos); },
+    mensaje: 'Marque la disposición final de los residuos sólidos ordinarios.'
   }
 ];
 
@@ -984,16 +1015,19 @@ const REGLAS_FAMILIA = [
     mensaje: 'Indique si se identifica un cuidador principal.'
   },
   {
+    /* El anexo reporta el puntaje (variable 115, regla A2.115). La
+       clasificación se deriva de él: aquí sólo se comprueba que no se haya
+       escrito otra a mano. */
     codigo: 'RN-053',
-    campo: 'zarit',
-    aplica: function (f) { return f.cuidadorPrincipal === 'si'; },
-    valida: function (f) { return perteneceA(CAT_ZARIT, f.zarit); },
-    mensaje: 'Aplique la escala Zarit y registre la clasificación del resultado.'
+    campo: 'zaritPuntaje',
+    aplica: function (f) { return f.cuidadorPrincipal === 'si' && typeof f.zaritPuntaje === 'number'; },
+    valida: function (f) { return f.zarit === clasificarZarit(f.zaritPuntaje); },
+    mensaje: 'La clasificación de sobrecarga no corresponde al puntaje ZARIT registrado.'
   },
   {
     codigo: 'RN-054',
     campo: 'situacionesRiesgo',
-    valida: function (f) { return seleccionMultipleValida(f.situacionesRiesgo, VALOR_NINGUNA); },
+    valida: function (f) { return seleccionValidaDeCatalogo(CAT_SITUACIONES_RIESGO_FAMILIAR, f.situacionesRiesgo); },
     mensaje: 'Marque las situaciones familiares de riesgo o seleccione "Ninguna".'
   },
   {
@@ -1147,17 +1181,13 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-065',
     campo: 'nacionalidad',
-    valida: function (i) { return perteneceA(CAT_NACIONALIDAD, i.nacionalidad); },
-    mensaje: 'Seleccione la nacionalidad del integrante.'
-  },
-  {
-    /* 65.1 — Cuando la nacionalidad es «Otra» se escribe el país: es lo que
-       permite el seguimiento a población extranjera sin cerrar la lista. */
-    codigo: 'RN-065',
-    campo: 'nacionalidadOtra',
-    aplica: function (i) { return i.nacionalidad === NACIONALIDAD_OTRA; },
-    valida: function (i) { return !esVacio(i.nacionalidadOtra) && soloAlfabetico(i.nacionalidadOtra); },
-    mensaje: 'Escriba el país de nacionalidad del integrante (sólo letras).'
+    valida: function (i) { return perteneceA(CAT_PAIS, i.nacionalidad); },
+    mensaje: function (i) {
+      return i.nacionalidad === NACIONALIDAD_OTRA
+        ? 'Elija el país de origen de la lista' + (esVacio(i.nacionalidadOtra) ? '' : ' (antes se escribió «' + i.nacionalidadOtra + '»)') +
+          ': el reporte SI-APS exige su código.'
+        : 'Seleccione el país de origen del integrante.';
+    }
   },
   {
     // Los documentos de extranjería exigen nacionalidad distinta de Colombia.
@@ -1212,7 +1242,7 @@ const REGLAS_INTEGRANTE = [
     campo: 'telefono1',
     aplica: function (i) { return !esVacio(i.telefono1); },
     valida: function (i) { return telefonoValido(i.telefono1); },
-    mensaje: 'Teléfono inválido. Use 10 dígitos para móvil o 7 para fijo, sin secuencias repetidas.'
+    mensaje: 'Teléfono inválido. Use 10 dígitos (celular, o fijo con 60 + indicativo), sin secuencias repetidas.'
   },
   {
     codigo: 'RN-071',
@@ -1233,8 +1263,12 @@ const REGLAS_INTEGRANTE = [
     codigo: 'RN-073',
     campo: 'ocupacion',
     aplica: function (i, c) { return esMayorDe(c, 15); },
-    valida: function (i) { return !esVacio(i.ocupacion); },
-    mensaje: 'Registre la ocupación (obligatoria desde los 15 años).'
+    valida: function (i) { return perteneceA(CAT_OCUPACION_CIUO, String(i.ocupacion || '').trim()); },
+    mensaje: function (i) {
+      return esVacio(i.ocupacion)
+        ? 'Registre la ocupación con su código CIUO (obligatoria desde los 15 años). Sin ocupación: 9998.'
+        : '«' + i.ocupacion + '» no es un código de la tabla CIUO. Escríbalo o búsquelo por nombre y elíjalo de la lista.';
+    }
   },
   {
     codigo: 'RN-074',
@@ -1272,7 +1306,7 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-077',
     campo: 'sujetoEspecialProteccion',
-    valida: function (i) { return seleccionMultipleValida(i.sujetoEspecialProteccion, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_SUJETO_ESPECIAL_PROTECCION, i.sujetoEspecialProteccion); },
     mensaje: 'Marque las condiciones de especial protección o seleccione "Ninguna".'
   },
   {
@@ -1285,11 +1319,15 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-078',
     campo: 'modalidadViolencia',
-    aplica: function (i) { return contiene(i.sujetoEspecialProteccion, SUJETO_VIOLENCIA_GENERO); },
+    aplica: function (i) {
+      return comoLista(i.sujetoEspecialProteccion).some(function (valor) {
+        return SUJETOS_CON_MODALIDAD_VIOLENCIA.indexOf(valor) !== -1;
+      });
+    },
     valida: function (i) {
       return !listaVacia(i.modalidadViolencia) && todosPertenecenA(CAT_MODALIDAD_VIOLENCIA, i.modalidadViolencia);
     },
-    mensaje: 'Registre la modalidad de la violencia de género e intrafamiliar.'
+    mensaje: 'Registre la modalidad de la violencia interpersonal.'
   },
   {
     codigo: 'RN-079',
@@ -1311,13 +1349,13 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-081',
     campo: 'saberesAncestrales',
-    valida: function (i) { return seleccionMultipleValida(i.saberesAncestrales, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_SABERES_ANCESTRALES, i.saberesAncestrales); },
     mensaje: 'Registre las prácticas de saberes ancestrales o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-082',
     campo: 'discapacidad',
-    valida: function (i) { return seleccionMultipleValida(i.discapacidad, SIN_DISCAPACIDAD); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_DISCAPACIDAD, i.discapacidad); },
     mensaje: 'Registre el tipo de discapacidad o seleccione "Sin discapacidad".'
   },
   {
@@ -1357,13 +1395,13 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-086',
     campo: 'practicasCuidado',
-    valida: function (i) { return seleccionMultipleValida(i.practicasCuidado, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_PRACTICAS_CUIDADO, i.practicasCuidado); },
     mensaje: 'Registre las prácticas rutinarias de cuidado de la salud o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-087',
     campo: 'atencionesPendientesRpms',
-    valida: function (i) { return seleccionMultipleValida(i.atencionesPendientesRpms, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_ATENCIONES_RPMS, i.atencionesPendientesRpms); },
     mensaje: 'Registre las atenciones pendientes de promoción y mantenimiento o seleccione "Ninguna".'
   },
   {
@@ -1383,23 +1421,23 @@ const REGLAS_INTEGRANTE = [
     codigo: 'RN-088',
     campo: 'atencionesPendientesMaterno',
     aplica: function (i, c) { return c.gestante; },
-    valida: function (i) { return seleccionMultipleValida(i.atencionesPendientesMaterno, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_ATENCIONES_MATERNO, i.atencionesPendientesMaterno); },
     mensaje: 'Registre las atenciones pendientes de la ruta materno perinatal o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-089',
     campo: 'barrerasAcceso',
     aplica: function (i) { return tieneAtencionesPendientes(i); },
-    valida: function (i) { return seleccionMultipleValida(i.barrerasAcceso, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_BARRERAS_ACCESO, i.barrerasAcceso); },
     mensaje: 'Hay atenciones pendientes: registre el motivo por el cual no las ha recibido.'
   },
   {
     codigo: 'RN-090',
     campo: 'conocimientoDerecho',
-    valida: function (i) {
-      return Array.isArray(i.conocimientoDerecho) && todosPertenecenA(CAT_CONOCIMIENTO_DERECHO, i.conocimientoDerecho);
-    },
-    mensaje: 'Registre las prácticas para el ejercicio y exigibilidad del derecho a la salud.'
+    /* Obligatoria desde el anexo (variable 27), que añade «No registra» y
+       «Ninguna» para quien no conoce ninguna de las cuatro prácticas. */
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_CONOCIMIENTO_DERECHO, i.conocimientoDerecho); },
+    mensaje: 'Registre las prácticas para el ejercicio del derecho a la salud, o "No registra" / "Ninguna".'
   },
   {
     codigo: 'RN-091',
@@ -1493,7 +1531,7 @@ const REGLAS_INTEGRANTE = [
     codigo: 'RN-097',
     campo: 'signosDesnutricion',
     aplica: function (i, c) { return edadEntre(c, 3, 60); },
-    valida: function (i) { return seleccionMultipleValida(i.signosDesnutricion, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_SIGNOS_DESNUTRICION, i.signosDesnutricion); },
     mensaje: 'En niños de 3 meses a 5 años registre los signos físicos de desnutrición o seleccione "Ninguna".'
   },
   {
@@ -1533,20 +1571,25 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-100',
     campo: 'enfermedadesNoTransmisibles',
-    valida: function (i) { return seleccionMultipleValida(i.enfermedadesNoTransmisibles, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_ENFERMEDADES_NO_TRANSMISIBLES, i.enfermedadesNoTransmisibles); },
     mensaje: 'Registre las enfermedades no transmisibles diagnosticadas o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-101',
     campo: 'condicionesTransmisibles',
-    valida: function (i) { return seleccionMultipleValida(i.condicionesTransmisibles, VALOR_NINGUNA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_CONDICIONES_TRANSMISIBLES, i.condicionesTransmisibles); },
     mensaje: 'Registre las condiciones de salud transmisible o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-102',
     campo: 'zonaEndemica',
-    valida: function (i) { return seleccionMultipleValida(i.zonaEndemica, VALOR_NINGUNA); },
-    mensaje: 'Registre los eventos de zona endémica o seleccione "Ninguna".'
+    /* Respuesta única en el anexo (variable 60). Una ficha anterior puede
+       traer una lista de un elemento: se acepta igual. */
+    valida: function (i) {
+      const lista = comoLista(i.zonaEndemica);
+      return lista.length === 1 && perteneceA(CAT_ZONA_ENDEMICA, lista[0]);
+    },
+    mensaje: 'Registre el evento de zona endémica principal o seleccione "Ninguna" (una sola respuesta).'
   },
   {
     codigo: 'RN-103',
@@ -1559,21 +1602,21 @@ const REGLAS_INTEGRANTE = [
     codigo: 'RN-104',
     campo: 'motivoNoTratamiento',
     aplica: function (i) { return i.adherenciaTratamiento === 'no'; },
-    valida: function (i) { return seleccionMultipleValida(i.motivoNoTratamiento, VALOR_NO_APLICA); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_MOTIVO_NO_TRATAMIENTO, i.motivoNoTratamiento); },
     mensaje: 'Registre el motivo por el cual no ha recibido la atención.'
   },
   {
     codigo: 'RN-105',
     campo: 'riesgosSaludMentalJoven',
-    aplica: function (i, c) { return edadEntre(c, 14 * 12, 28 * 12 + 11); },
-    valida: function (i) { return seleccionMultipleValida(i.riesgosSaludMentalJoven, VALOR_NINGUNA); },
-    mensaje: 'En personas entre 14 y 28 años registre los riesgos en salud mental o seleccione "Ninguna".'
+    /* El anexo (variable 54) la pide a todo integrante, no sólo de 14 a 28. */
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_RIESGOS_SALUD_MENTAL_JOVEN, i.riesgosSaludMentalJoven); },
+    mensaje: 'Registre los riesgos para la salud física o mental o seleccione "Ninguna".'
   },
   {
     codigo: 'RN-106',
     campo: 'sintomatologiaDepresiva',
     aplica: function (i, c) { return esMayorDe(c, 14); },
-    valida: function (i) { return seleccionMultipleValida(i.sintomatologiaDepresiva, VALOR_NINGUNO); },
+    valida: function (i) { return seleccionValidaDeCatalogo(CAT_SINTOMATOLOGIA_DEPRESIVA, i.sintomatologiaDepresiva); },
     mensaje: 'Desde los 14 años aplique el tamizaje de sintomatología depresiva o seleccione "Ninguno".'
   },
   {
@@ -1633,6 +1676,125 @@ const REGLAS_INTEGRANTE = [
     mensaje: 'Indique si alguna situación de salud limitó sus actividades cotidianas en la última semana.'
   }
 ];
+
+/* ---------------------------------------------------------
+   3.6b VARIABLES DEL ANEXO TÉCNICO SI-APS (anexo.js)
+   ---------------------------------------------------------
+   No se escriben a mano: se generan de la declaración de cada
+   pregunta, que es la misma que pinta el formulario y la misma
+   que arma la base y el reporte. Por pregunta salen hasta dos:
+
+     obligatoriedad  cuando la pregunta aplica (su `visible`) y
+                     `requerido` lo pide; en bloqueo o advertencia
+     dominio         cuando trae valor: opción del catálogo, largo
+                     del texto, rango del entero, fecha válida
+
+   El código de la regla es el de la variable: A2.34 es la 34 del
+   registro tipo 2 del archivo plano.
+   --------------------------------------------------------- */
+
+/* Construye el lector de respuestas con los argumentos que el motor pasa
+   a cada ámbito (ver la cabecera de este archivo). */
+function lectorParaAmbito(nivel, args) {
+  if (nivel === 'integrante') {
+    const integrante = args[0], contexto = args[1] || {}, familia = args[2], datos = args[3] || {};
+    return lectorDeRespuestas([integrante, familia, datos], {
+      edadMeses: contexto.edadMeses, sexo: contexto.sexo, gestante: contexto.gestante,
+      fechaFicha: datos.fechaDiligenciamiento
+    });
+  }
+  if (nivel === 'familia') {
+    const familiaDatos = args[1] || {};
+    return lectorDeRespuestas([args[0], familiaDatos], { fechaFicha: familiaDatos.fechaDiligenciamiento });
+  }
+  return lectorDeRespuestas([args[0]], { fechaFicha: (args[0] || {}).fechaDiligenciamiento });
+}
+
+function respuestaPresente(pregunta, valor) {
+  if (pregunta.tipo === 'multiple') return comoLista(valor).length > 0;
+  return !esVacio(valor);
+}
+
+function valorDelAnexoValido(pregunta, valor, lector) {
+  const catalogo = catalogoDePregunta(pregunta);
+  if (pregunta.tipo === 'multiple') return seleccionValidaDeCatalogo(catalogo, valor);
+  if (pregunta.tipo === 'unica') return perteneceA(catalogo, valor);
+  if (pregunta.tipo === 'entero') {
+    return esEntero(valor) &&
+      (pregunta.min === undefined || valor >= pregunta.min) &&
+      (pregunta.max === undefined || valor <= pregunta.max);
+  }
+  if (pregunta.tipo === 'fecha') {
+    if (!esFechaValida(valor)) return false;
+    return !pregunta.noPosterior || fechaNoPosteriorA(valor, lector.fechaFicha);
+  }
+  const texto = String(valor).trim();
+  if (pregunta.formato === 'telefono') return telefonoValido(texto) && texto.replace(/\D/g, '').length === 10;
+  return texto.length <= (pregunta.max || 200) && texto.indexOf('|') === -1;
+}
+
+function mensajeDeDominioAnexo(pregunta) {
+  if (pregunta.tipo === 'multiple') {
+    return 'Opción no válida. Marque opciones de la lista; «Ninguno» o «No aplica» van solas.';
+  }
+  if (pregunta.tipo === 'unica') return 'Seleccione una opción de la lista.';
+  if (pregunta.tipo === 'entero') {
+    return 'Registre un número entero' +
+      (pregunta.min !== undefined && pregunta.max !== undefined
+        ? ' entre ' + pregunta.min + ' y ' + pregunta.max : '') + '.';
+  }
+  if (pregunta.tipo === 'fecha') {
+    return pregunta.noPosterior
+      ? 'Registre una fecha válida que no sea posterior a la visita.'
+      : 'Registre una fecha válida (AAAA-MM-DD).';
+  }
+  if (pregunta.formato === 'telefono') return 'Registre un teléfono de 10 dígitos, sin secuencias repetidas.';
+  return 'Máximo ' + (pregunta.max || 200) + ' caracteres y sin el carácter «|».';
+}
+
+function reglasDelAnexo(nivel) {
+  const incluidos = nivel === 'vivienda' ? ['ficha', 'vivienda'] : [nivel];
+
+  return PREGUNTAS_ANEXO.filter(function (pregunta) {
+    return incluidos.indexOf(pregunta.nivel) !== -1;
+  }).reduce(function (reglas, pregunta) {
+    const codigo = codigoDePregunta(pregunta);
+    const valorDe = function (args) { return (args[0] || {})[pregunta.clave]; };
+
+    if (pregunta.requerido) {
+      reglas.push({
+        codigo: codigo,
+        campo: pregunta.clave,
+        severidad: pregunta.requerido === 'advertencia' ? SEVERIDAD.ADVERTENCIA : SEVERIDAD.BLOQUEO,
+        aplica: function () {
+          return esVisibleAnexo(pregunta, lectorParaAmbito(nivel, arguments));
+        },
+        valida: function () { return respuestaPresente(pregunta, valorDe(arguments)); },
+        mensaje: pregunta.requerido === 'advertencia'
+          ? 'El reporte SI-APS pide esta variable y el anexo no trae una opción «ninguna». ' +
+            'Si de verdad no aplica, puede guardar así: el archivo plano la señalará.'
+          : 'Obligatoria en el reporte SI-APS (variable ' + pregunta.variable + ' del registro tipo ' +
+            pregunta.registro + ').'
+      });
+    }
+
+    reglas.push({
+      codigo: codigo,
+      campo: pregunta.clave,
+      aplica: function () { return respuestaPresente(pregunta, valorDe(arguments)); },
+      valida: function () {
+        return valorDelAnexoValido(pregunta, valorDe(arguments), lectorParaAmbito(nivel, arguments));
+      },
+      mensaje: mensajeDeDominioAnexo(pregunta)
+    });
+
+    return reglas;
+  }, []);
+}
+
+const REGLAS_ANEXO_VIVIENDA = reglasDelAnexo('vivienda');
+const REGLAS_ANEXO_FAMILIA = reglasDelAnexo('familia');
+const REGLAS_ANEXO_INTEGRANTE = reglasDelAnexo('integrante');
 
 /* ---------------------------------------------------------
    3.7 BLOQUE 10 — Plan de cuidado (ítems 111-140)
@@ -2031,6 +2193,8 @@ function evaluarTodo(datos) {
     evaluarConjunto(REGLAS_BLOQUE_4, [datos], { ambito: AMBITO.SANEAMIENTO }, salida);
   }
 
+  evaluarConjunto(REGLAS_ANEXO_VIVIENDA, [datos], { ambito: AMBITO.VIVIENDA }, salida);
+
   if (secciones.familia) {
     /* RN-028 — Tantas familias caracterizadas como declara el ítem 28.
        Advierte, no bloquea: la otra familia puede no estar en la visita, y la
@@ -2071,14 +2235,14 @@ function evaluarTodo(datos) {
       const rutaFamilia = 'familias[' + indiceFamilia + ']';
       const referenciaFamilia = 'Familia ' + (indiceFamilia + 1);
 
-      evaluarConjunto(REGLAS_FAMILIA, [familia, datos], {
+      evaluarConjunto(REGLAS_FAMILIA.concat(REGLAS_ANEXO_FAMILIA), [familia, datos], {
         ruta: rutaFamilia, ambito: AMBITO.FAMILIA, referencia: referenciaFamilia
       }, salida);
       evaluarResponsableEconomico(familia, rutaFamilia, referenciaFamilia, salida);
 
       (familia.integrantes || []).forEach(function (integrante, indiceIntegrante) {
         const contexto = contextoIntegrante(integrante, datos);
-        evaluarConjunto(REGLAS_INTEGRANTE, [integrante, contexto, familia, datos], {
+        evaluarConjunto(REGLAS_INTEGRANTE.concat(REGLAS_ANEXO_INTEGRANTE), [integrante, contexto, familia, datos], {
           ruta: rutaFamilia + '.integrantes[' + indiceIntegrante + ']',
           ambito: AMBITO.INTEGRANTE,
           referencia: referenciaFamilia + ' · ' + nombreIntegrante(integrante, indiceIntegrante)
@@ -2132,8 +2296,15 @@ function evaluarAdvertencias(datos) {
  * RN-002 — Determina si la situación registrada exige atención prioritaria.
  */
 function requiereAtencionPrioritaria(valorSituacion) {
-  const opcion = opcionDe(CAT_SITUACION_INMINENTE, valorSituacion);
-  return !!(opcion && opcion.prioritaria);
+  return situacionesPrioritarias(valorSituacion).length > 0;
+}
+
+/** Las situaciones marcadas que exigen atención prioritaria (RN-002). */
+function situacionesPrioritarias(valorSituacion) {
+  return comoLista(valorSituacion).filter(function (valor) {
+    const opcion = opcionDe(CAT_SITUACION_INMINENTE, valor);
+    return !!(opcion && opcion.prioritaria);
+  });
 }
 
 /* =========================================================
@@ -2176,7 +2347,7 @@ function crearAlerta(codigo, prioridad, titulo, descripcion, opciones) {
 /* --- RN-201 — Urgencia vital detectada al inicio --- */
 function alertasUrgenciaVital(datos) {
   if (!requiereAtencionPrioritaria(datos.situacionInminente)) return [];
-  const etiqueta = etiquetaDeCatalogo(CAT_SITUACION_INMINENTE, datos.situacionInminente);
+  const etiqueta = etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, situacionesPrioritarias(datos.situacionInminente));
   return [crearAlerta(
     'RN-201', PRIORIDAD.INMEDIATA,
     'Urgencia vital en el entorno',
@@ -2200,42 +2371,54 @@ function alertasEntorno(datos) {
     ));
   }
 
-  const agua = opcionDe(CAT_FUENTE_AGUA, datos.fuenteAgua);
-  if (agua && agua.noSegura) {
+  /* Ítems 46 a 49: desde el anexo son selección múltiple. Basta con que una
+     de las opciones marcadas sea de riesgo para que haya alerta; la alerta
+     nombra todas las que lo son. */
+  const deRiesgo = function (catalogo, valores, marca) {
+    return comoLista(valores)
+      .map(function (valor) { return opcionDe(catalogo, valor); })
+      .filter(function (opcion) { return opcion && opcion[marca]; });
+  };
+  const nombres = function (opciones) {
+    return opciones.map(function (opcion) { return opcion.etiqueta; }).join(', ');
+  };
+
+  const agua = deRiesgo(CAT_FUENTE_AGUA, datos.fuenteAgua, 'noSegura');
+  if (agua.length > 0) {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.PRIORITARIA,
       'Agua no apta para consumo humano',
-      'Fuente registrada: ' + agua.etiqueta + '. Canalice a tratamiento del agua y vigilancia sanitaria.',
+      'Fuente registrada: ' + nombres(agua) + '. Canalice a tratamiento del agua y vigilancia sanitaria.',
       { plan: 'vivienda', ruta: 'fuenteAgua' }
     ));
   }
 
-  const excretas = opcionDe(CAT_DISPOSICION_EXCRETAS, datos.disposicionExcretas);
-  if (excretas && excretas.critica) {
+  const excretas = deRiesgo(CAT_DISPOSICION_EXCRETAS, datos.disposicionExcretas, 'critica');
+  if (excretas.length > 0) {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.PRIORITARIA,
       'Disposición inadecuada de excretas',
-      'Sistema registrado: ' + excretas.etiqueta + '. Canalice a saneamiento básico.',
+      'Sistema registrado: ' + nombres(excretas) + '. Canalice a saneamiento básico.',
       { plan: 'vivienda', ruta: 'disposicionExcretas' }
     ));
   }
 
-  const residuales = opcionDe(CAT_AGUAS_RESIDUALES, datos.aguasResiduales);
-  if (residuales && residuales.critica) {
+  const residuales = deRiesgo(CAT_AGUAS_RESIDUALES, datos.aguasResiduales, 'critica');
+  if (residuales.length > 0) {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.REGULAR,
       'Disposición inadecuada de aguas residuales',
-      'Sistema registrado: ' + residuales.etiqueta + '.',
+      'Sistema registrado: ' + nombres(residuales) + '.',
       { plan: 'vivienda', ruta: 'aguasResiduales' }
     ));
   }
 
-  const residuos = opcionDe(CAT_RESIDUOS_SOLIDOS, datos.residuosSolidos);
-  if (residuos && residuos.critica) {
+  const residuos = deRiesgo(CAT_RESIDUOS_SOLIDOS, datos.residuosSolidos, 'critica');
+  if (residuos.length > 0) {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.REGULAR,
       'Disposición inadecuada de residuos sólidos',
-      'Manejo registrado: ' + residuos.etiqueta + '.',
+      'Manejo registrado: ' + nombres(residuos) + '.',
       { plan: 'vivienda', ruta: 'residuosSolidos' }
     ));
   }
@@ -2249,7 +2432,7 @@ function alertasEntorno(datos) {
     ));
   }
 
-  if (datos.materialTecho === 'fibrocemento_con_asbesto') {
+  if (datos.materialTecho === 'fibrocemento_con_asbesto' || datos.materialTecho === 'fibrocemento_asbesto') {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.PRIORITARIA,
       'Techo con asbesto',
@@ -2522,7 +2705,7 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
     ));
   });
 
-  (integrante.zonaEndemica || []).forEach(function (valor) {
+  comoLista(integrante.zonaEndemica).forEach(function (valor) {
     const evento = opcionDe(CAT_ZONA_ENDEMICA, valor);
     if (!evento || valor === VALOR_NINGUNA) return;
     alertas.push(crearAlerta(
@@ -2607,7 +2790,8 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
   }
 
   /* RN-073 — Posible trabajo infantil o adolescente. */
-  if (!esVacio(integrante.ocupacion) && edadEntre(contexto, 15 * 12, 17 * 12 + 11)) {
+  if (!esVacio(integrante.ocupacion) && integrante.ocupacion !== OCUPACION_SIN_OCUPACION &&
+      edadEntre(contexto, 15 * 12, 17 * 12 + 11)) {
     alertas.push(crearAlerta(
       'RN-210', PRIORIDAD.REGULAR, 'Posible trabajo adolescente',
       'Adolescente con ocupación registrada. Verifique las condiciones de protección laboral (Ley 1098 de 2006).',

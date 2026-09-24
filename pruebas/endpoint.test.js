@@ -19,6 +19,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { Client } = require('pg');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba, USUARIO_PRUEBA } = require('./_sesion_prueba');
+const { completarAnexo } = require('./_anexo_datos');
 
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
 const RAIZ = path.join(__dirname, '..');
@@ -71,7 +72,7 @@ function integranteValido() {
     clasificacionAntropometrica: 'normal',
     tensionSistolica: 118, tensionDiastolica: 75, clasificacionTension: 'normal',
     enfermedadesNoTransmisibles: ['ninguna'], condicionesTransmisibles: ['ninguna'],
-    zonaEndemica: ['ninguna'], sintomatologiaDepresiva: ['ninguno'],
+    zonaEndemica: 'ninguna', sintomatologiaDepresiva: ['ninguno'],
     ideacionSuicida: 'ninguno', consumoSpa: 'no', limitacionCotidiana: 'no'
   };
 }
@@ -79,9 +80,10 @@ function integranteValido() {
 function fichaValida(sufijo) {
   const integrante = integranteValido();
 
-  return {
+  /* completarAnexo: las variables obligatorias del anexo técnico SI-APS. */
+  return completarAnexo({
     consentimiento: 'si',
-    situacionInminente: 'no_aplica',
+    situacionInminente: ['no_aplica'],
     departamentoCodigo: '76',
     municipioCodigo: '76001',
     uzpe: 'UZPE006',
@@ -125,10 +127,10 @@ function fichaValida(sufijo) {
     gatos: 0,
     gatosVacunados: 0,
     carnetAntirrabico: 'no_aplica',
-    fuenteAgua: 'acueducto_esp',
-    disposicionExcretas: 'alcantarillado',
-    aguasResiduales: 'alcantarillado',
-    residuosSolidos: 'servicio_aseo',
+    fuenteAgua: ['acueducto_esp'],
+    disposicionExcretas: ['alcantarillado'],
+    aguasResiduales: ['alcantarillado'],
+    residuosSolidos: ['servicio_aseo'],
     familias: [{
       idFamilia: 'FM-TEST-' + sufijo,
       tipoFamilia: 'nuclear_monoparental',
@@ -140,7 +142,7 @@ function fichaValida(sufijo) {
       redesApoyo: 'cuenta_protectoras',
       practicasCuidadoHogar: ['ventilacion']
     }]
-  };
+  });
 }
 
 async function enviar(ficha, cabeceras) {
@@ -495,17 +497,18 @@ async function correrPruebas() {
     verificar('  Sexo conservado', g.sexo === 'mujer', g.sexo);
     verificar('  Estado cerrada', g.estado === 'cerrada', g.estado);
 
-    /* Observaciones del equipo (2026-09): territorios T01–T110, nacionalidad
-       «Otra» con el país escrito (65.1), líder derivado en Hogar (RN-019),
-       familia declarada ausente (RN-028) y ficha que igual se guarda. */
+    /* Observaciones del equipo (2026-09): territorios T01–T110, líder
+       derivado en Hogar (RN-019), familia declarada ausente (RN-028) y ficha
+       que igual se guarda. Desde el anexo técnico la nacionalidad es el país
+       (tabla Pais de SISPRO) con su estatus migratorio (variable 10). */
     const obs = fichaValida(sello + 'o');
     obs.territorio = 'T01';
     obs.microterritorio = 'MT02';
     obs.entornoAbordaje = 'hogar';
     obs.cabezaFamilia = '';
     obs.hogaresEnVivienda = 2;                                   // la otra familia no estaba
-    obs.familias[0].integrantes[0].nacionalidad = 'OT';
-    obs.familias[0].integrantes[0].nacionalidadOtra = 'Ecuador';
+    obs.familias[0].integrantes[0].nacionalidad = 'EC';
+    obs.familias[0].integrantes[0].estatusMigratorio = 'regular';
     obs.familias[0].integrantes[0].tipoId = 'CE';                 // extranjería: exige nacionalidad ≠ CO
     obs.familias[0].integrantes[0].numeroId = 'E1234567';
     const rObs = await enviar(obs);
@@ -514,7 +517,7 @@ async function correrPruebas() {
     if (rObs.estado === 200) {
       const fObs = await cliente.query(`
         SELECT f.lider_entorno, h.territorio_codigo, h.microterritorio_codigo,
-               p.nacionalidad, p.nacionalidad_otra
+               p.nacionalidad, i.estatus_migratorio
           FROM aps.ficha f
           JOIN aps.hogar h          ON h.id = f.hogar_id
           JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
@@ -526,8 +529,8 @@ async function correrPruebas() {
       verificar('  territorio T01 / MT02 aceptado por la base', o.territorio_codigo === 'T01' && o.microterritorio_codigo === 'MT02',
         o.territorio_codigo + '/' + o.microterritorio_codigo);
       verificar('  el líder del entorno se derivó del responsable económico', o.lider_entorno === 'Ana Gomez', o.lider_entorno);
-      verificar('  nacionalidad OT con el país escrito', o.nacionalidad === 'OT' && o.nacionalidad_otra === 'Ecuador',
-        o.nacionalidad + '/' + o.nacionalidad_otra);
+      verificar('  nacionalidad EC (Ecuador) con su estatus migratorio', o.nacionalidad === 'EC' && o.estatus_migratorio === 'regular',
+        o.nacionalidad + '/' + o.estatus_migratorio);
       verificar('  la familia ausente quedó como advertencia',
         (rObs.cuerpo.advertencias || []).some(function (a) { return a.codigo === 'RN-028'; }),
         JSON.stringify((rObs.cuerpo.advertencias || []).map(function (a) { return a.codigo; })));
@@ -535,8 +538,203 @@ async function correrPruebas() {
     const otraSinPais = fichaValida(sello + 'o');
     otraSinPais.familias[0].integrantes[0].nacionalidad = 'OT';
     const rSinPais = await enviar(otraSinPais);
-    verificar('Nacionalidad «Otra» sin país => 400 en 65.1', rSinPais.estado === 400 && bloqueoEn(rSinPais.cuerpo, 'nacionalidadOtra'),
+    verificar('Nacionalidad «Otra» (sin país) => 400 en el ítem 65', rSinPais.estado === 400 && bloqueoEn(rSinPais.cuerpo, 'nacionalidad'),
       'estado ' + rSinPais.estado);
+    const sinEstatus = fichaValida(sello + 'o');
+    sinEstatus.familias[0].integrantes[0].nacionalidad = 'VE';
+    const rSinEstatus = await enviar(sinEstatus);
+    verificar('Extranjera sin estatus migratorio => 400 (A3.10)',
+      rSinEstatus.estado === 400 && bloqueoEn(rSinEstatus.cuerpo, 'estatusMigratorio'), 'estado ' + rSinEstatus.estado);
+
+    console.log('\n=== 6b. Corregir desde cualquier dispositivo: la ficha vuelve entera ===');
+
+    const completa = fichaValida(sello + 'fc');
+    completa.idFamilia = 'REF-FAM-77';
+    completa.direccionComponentes = {
+      modo: 'urbana', viaTipo: 'CL', viaNumero: '45', viaLetra: 'A', viaBis: true, viaLetraBis: '',
+      viaCuadrante: 'SUR', genNumero: '27', genLetra: 'B', genCuadrante: '', placa: '15',
+      complementos: [{ tipo: 'CA', valor: '3' }]
+    };
+    completa.animales = ['perros'];
+    completa.perros = 2;
+    completa.perrosVacunados = 1;
+    completa.carnetAntirrabico = 'si';
+    /* Con animales, el anexo técnico pide su tenencia (variables 97 a 102). */
+    completa.finalidadTenencia = ['compania'];
+    completa.confinamientoAnimales = ['parcial'];
+    completa.desparasitaAnimales = 'si';
+    completa.instalacionesSegurasAnimales = 'si';
+    completa.excretasAnimales = 'si';
+    completa.barrerasContactoAnimales = 'no';
+    completa.familias[0].integrantes[0].practicasCuidado = ['alimentacion', 'actividad_fisica'];
+    r = await enviar(completa);
+    verificar('Ficha con dirección por partes, ítem 26 y animales => 200', r.estado === 200,
+      'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 300));
+
+    const leer = async function (codigo, cabeceras) {
+      const x = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(codigo), { headers: cabeceras });
+      return { estado: x.status, cuerpo: await x.json().catch(function () { return {}; }) };
+    };
+
+    const leida = await leer(completa.codigoFicha, sesion.cabeceras);
+    verificar('La responsable la lee completa => 200', leida.estado === 200 && leida.cuerpo.encuesta, 'estado ' + leida.estado);
+
+    if (leida.estado === 200) {
+      const e = leida.cuerpo.encuesta;
+      const ie = e.familias && e.familias[0] && e.familias[0].integrantes[0];
+      const orden = function (lista) { return JSON.stringify((lista || []).slice().sort()); };
+      verificar('  ficha: código, UZPE, territorio, fecha', e.codigoFicha === completa.codigoFicha && e.uzpe === 'UZPE006' &&
+        e.territorio === 'T48' && e.microterritorio === 'MT01' && e.fechaDiligenciamiento === completa.fechaDiligenciamiento,
+        JSON.stringify([e.codigoFicha, e.uzpe, e.territorio, e.microterritorio, e.fechaDiligenciamiento]));
+      verificar('  dirección por partes (ítem 21) vuelve igual',
+        e.direccionComponentes && e.direccionComponentes.viaTipo === 'CL' && e.direccionComponentes.viaBis === true &&
+        e.direccionComponentes.viaCuadrante === 'SUR' && e.direccionComponentes.complementos.length === 1,
+        JSON.stringify(e.direccionComponentes));
+      verificar('  ítem 26 (referencia de la familia) vuelve igual', e.idFamilia === 'REF-FAM-77', e.idFamilia);
+      verificar('  vivienda: conteos, animales y carné', e.personasEnVivienda === 4 && e.perros === 2 &&
+        orden(e.animales) === orden(['perros']) && e.carnetAntirrabico === 'si',
+        JSON.stringify([e.personasEnVivienda, e.perros, e.animales, e.carnetAntirrabico]));
+      verificar('  sí/no vuelven como en el formulario', e.consentimiento === 'si' && e.jovenesEnPaz === 'no' &&
+        e.actividadEconomica === 'no' && e.familias[0].cuidadorPrincipal === 'no',
+        JSON.stringify([e.consentimiento, e.jovenesEnPaz, e.actividadEconomica]));
+      verificar('  integrante: identidad, clínica y catálogos', ie && ie.numeroId === '1144099887' &&
+        ie.fechaNacimiento === '1996-05-10' && ie.peso === 65 && ie.talla === 160 && ie.eapb === 'ESS024' &&
+        ie.ocupacion === '5223' && ie.ideacionSuicida === 'ninguno' && ie.limitacionCotidiana === 'no',
+        JSON.stringify(ie && [ie.numeroId, ie.fechaNacimiento, ie.peso, ie.talla, ie.eapb, ie.ocupacion, ie.ideacionSuicida]));
+      verificar('  selección múltiple del integrante', ie && orden(ie.practicasCuidado) === orden(['alimentacion', 'actividad_fisica']),
+        JSON.stringify(ie && ie.practicasCuidado));
+
+      /* La prueba de verdad: lo leído se puede volver a guardar tal cual. */
+      const reenvio = await enviar(e);
+      verificar('  lo leído se vuelve a guardar sin tocarlo => 200', reenvio.estado === 200,
+        'estado ' + reenvio.estado + ' ' + JSON.stringify(reenvio.cuerpo).slice(0, 300));
+      const familiasTrasReenvio = (await cliente.query(`
+        SELECT count(*)::int AS n FROM aps.familia_ficha ff JOIN aps.ficha f ON f.id = ff.ficha_id WHERE f.codigo = $1
+      `, [completa.codigoFicha])).rows[0].n;
+      verificar('  y no duplica familias', familiasTrasReenvio === 1, String(familiasTrasReenvio));
+    }
+
+    const leidaOtroEquipo = await leer(completa.codigoFicha, otroEquipoSesion.cabeceras);
+    verificar('Otro equipo => 404 (no se confirma que exista)', leidaOtroEquipo.estado === 404, 'estado ' + leidaOtroEquipo.estado);
+    const leidaAuxiliar = await leer(completa.codigoFicha, auxiliar.cabeceras);
+    verificar('La auxiliar del mismo equipo, sobre la ficha de otra => 403', leidaAuxiliar.estado === 403, 'estado ' + leidaAuxiliar.estado);
+    const leidaMaestro = await leer(completa.codigoFicha, maestro.cabeceras);
+    verificar('El maestro la lee completa => 200', leidaMaestro.estado === 200, 'estado ' + leidaMaestro.estado);
+
+    const auditada = (await cliente.query(`
+      SELECT count(*)::int AS n FROM aud.acceso_sensible a JOIN aps.ficha f ON f.id = a.ficha_id
+       WHERE f.codigo = $1 AND a.grupo_dato = 'ficha_completa'
+    `, [completa.codigoFicha])).rows[0].n;
+    verificar('  cada lectura completa quedó en aud.acceso_sensible', auditada >= 2, String(auditada));
+
+    /* RN-016: el tope de 30 días es para registrar, no para corregir. */
+    await cliente.query(`UPDATE aps.ficha SET fecha_diligenciamiento = CURRENT_DATE - 45 WHERE codigo = $1`, [completa.codigoFicha]);
+    const vieja = await leer(completa.codigoFicha, maestro.cabeceras);
+    const rVieja = vieja.estado === 200 ? await enviar(vieja.cuerpo.encuesta, maestro.cabeceras) : { estado: vieja.estado };
+    verificar('Corregir una ficha ya registrada de hace 45 días => 200 (RN-016 no aplica)', rVieja.estado === 200,
+      'estado ' + rVieja.estado + ' ' + JSON.stringify(rVieja.cuerpo || {}).slice(0, 300));
+    const nuevaVieja = fichaValida(sello + 'fv');
+    const hace45 = new Date(); hace45.setDate(hace45.getDate() - 45);
+    nuevaVieja.fechaDiligenciamiento = hace45.toISOString().split('T')[0];
+    nuevaVieja.yaRegistradaEnLaBase = true;
+    const rNuevaVieja = await enviar(nuevaVieja, maestro.cabeceras);
+    verificar('Una ficha NUEVA de hace 45 días sigue rechazada aunque el cuerpo diga «ya registrada»',
+      rNuevaVieja.estado === 400 && bloqueoEn(rNuevaVieja.cuerpo, 'fechaDiligenciamiento'), 'estado ' + rNuevaVieja.estado);
+
+    console.log('\n=== 6c. Anexo técnico SI-APS: variables nuevas ===');
+
+    const anx = fichaValida(sello + 'ax');
+    anx.direccionComponentes = {
+      modo: 'urbana', viaTipo: 'CL', viaNumero: '45', viaLetra: 'A', viaBis: true, viaLetraBis: '',
+      viaCuadrante: 'SUR', genNumero: '27', genLetra: 'B', genCuadrante: '', placa: '15', complementos: []
+    };
+    anx.fuenteAgua = ['acueducto_esp', 'aguas_lluvias'];
+    anx.ambientesLuzNatural = ['cocina', 'sala_comedor'];
+    anx.familias[0].cuidadorPrincipal = 'si';
+    anx.familias[0].zaritPuntaje = 60;
+    anx.familias[0].zarit = 'ausencia';                  // el cliente no decide: se deriva del puntaje
+    /* Respuestas a preguntas que NO aplican: un POST armado a mano no debe
+       poder dejarlas guardadas (sin tanque no hay limpieza del tanque; sin
+       actividad económica no hay área de trabajo; colombiana sin estatus). */
+    anx.frecuenciaLimpiezaTanque = 'semestral';
+    anx.areaTrabajoIndependiente = 'si';
+    anx.familias[0].integrantes[0].estatusMigratorio = 'sin_autorizacion';
+    const rAnx = await enviar(anx);
+    verificar('Ficha con las variables del anexo => 200', rAnx.estado === 200,
+      'estado ' + rAnx.estado + ' ' + JSON.stringify(rAnx.cuerpo).slice(0, 300));
+    if (rAnx.estado === 200) {
+      const a = (await cliente.query(`
+        SELECT h.tipo_ubicacion, h.consecutivo_sispro, v.alumbrado, v.frecuencia_limpieza_tanque,
+               v.area_trabajo_independiente, v.fuente_agua,
+               ff.alias_familia, ff.apgar_familiar, ff.zarit, ff.zarit_puntaje,
+               i.lavado_manos, i.consumo_tabaco, i.estatus_migratorio,
+               (SELECT array_agg(codigo ORDER BY codigo) FROM aps.vivienda_fuente_agua x WHERE x.ficha_id = f.id) AS fuentes,
+               (SELECT array_agg(codigo ORDER BY codigo) FROM aps.vivienda_ambientes_luz_natural x WHERE x.ficha_id = f.id) AS luz,
+               (SELECT array_agg(codigo ORDER BY codigo) FROM aps.ficha_situacion_inminente x WHERE x.ficha_id = f.id) AS situaciones
+          FROM aps.ficha f
+          JOIN aps.hogar h          ON h.id = f.hogar_id
+          JOIN aps.vivienda v       ON v.ficha_id = f.id
+          JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
+          JOIN aps.integrante i     ON i.familia_ficha_id = ff.id
+         WHERE f.codigo = $1`, [anx.codigoFicha])).rows[0] || {};
+      verificar('  columnas del anexo en hogar, vivienda, familia e integrante',
+        a.tipo_ubicacion === 'barrio' && a.alumbrado === 'electrica' && a.alias_familia === 'Familia Gomez' &&
+        a.apgar_familiar === 'alta' && a.lavado_manos === 'si' && a.consumo_tabaco === 'no_aplica',
+        JSON.stringify([a.tipo_ubicacion, a.alumbrado, a.alias_familia, a.apgar_familiar, a.lavado_manos, a.consumo_tabaco]));
+      verificar('  el hogar recibió su consecutivo para el ID de vivienda (var. 123)',
+        Number.isInteger(a.consecutivo_sispro) && a.consecutivo_sispro > 0, String(a.consecutivo_sispro));
+      verificar('  ítem 46 selección múltiple: la lista en el puente y la principal en la columna',
+        JSON.stringify(a.fuentes) === JSON.stringify(['acueducto_esp', 'aguas_lluvias']) && a.fuente_agua === 'acueducto_esp',
+        JSON.stringify([a.fuentes, a.fuente_agua]));
+      verificar('  pregunta múltiple del anexo en su puente', JSON.stringify(a.luz) === JSON.stringify(['cocina', 'sala_comedor']),
+        JSON.stringify(a.luz));
+      verificar('  ítem 2 en su puente', JSON.stringify(a.situaciones) === JSON.stringify(['no_aplica']), JSON.stringify(a.situaciones));
+      verificar('  Zarit: se guarda el puntaje y la categoría se deriva en el servidor',
+        a.zarit_puntaje === 60 && a.zarit === 'intensa', a.zarit_puntaje + ' / ' + a.zarit);
+      verificar('  las respuestas que no aplican quedan vacías aunque el cuerpo las traiga',
+        a.frecuencia_limpieza_tanque === null && a.area_trabajo_independiente === null && a.estatus_migratorio === null,
+        JSON.stringify([a.frecuencia_limpieza_tanque, a.area_trabajo_independiente, a.estatus_migratorio]));
+
+      /* Otro hogar del mismo microterritorio recibe el siguiente consecutivo. */
+      const anx2 = fichaValida(sello + 'ay');
+      anx2.familias[0].integrantes[0].numeroId = '1144055099';
+      const rAnx2 = await enviar(anx2);
+      const consecutivos = (await cliente.query(`
+        SELECT h.codigo, h.consecutivo_sispro FROM aps.hogar h WHERE h.codigo = ANY($1) ORDER BY h.codigo`,
+        [[anx.idHogar, anx2.idHogar]])).rows;
+      verificar('  otro hogar del microterritorio => consecutivo distinto',
+        rAnx2.estado === 200 && consecutivos.length === 2 &&
+        consecutivos[0].consecutivo_sispro !== consecutivos[1].consecutivo_sispro,
+        'estado ' + rAnx2.estado + ' ' + JSON.stringify(consecutivos));
+
+      const leidaAnx = await leer(anx.codigoFicha, sesion.cabeceras);
+      const ea = leidaAnx.cuerpo.encuesta || {};
+      const fa = (ea.familias || [])[0] || {};
+      const ia = (fa.integrantes || [])[0] || {};
+      verificar('  ficha_completa devuelve las variables del anexo',
+        ea.tipoUbicacion === 'barrio' && JSON.stringify(ea.ambientesLuzNatural) === JSON.stringify(['cocina', 'sala_comedor']) &&
+        JSON.stringify(ea.fuenteAgua) === JSON.stringify(['acueducto_esp', 'aguas_lluvias']) &&
+        JSON.stringify(ea.situacionInminente) === JSON.stringify(['no_aplica']) &&
+        fa.aliasFamilia === 'Familia Gomez' && fa.zaritPuntaje === 60 && ia.lavadoManos === 'si' &&
+        ia.zonaEndemica === 'ninguna' && ia.ocupacion === '5223',
+        JSON.stringify([ea.tipoUbicacion, ea.ambientesLuzNatural, ea.fuenteAgua, ea.situacionInminente,
+          fa.aliasFamilia, fa.zaritPuntaje, ia.lavadoManos, ia.zonaEndemica, ia.ocupacion]));
+      const reenvioAnx = leidaAnx.estado === 200 ? await enviar(ea) : { estado: leidaAnx.estado };
+      verificar('  y lo leído se vuelve a guardar tal cual => 200', reenvioAnx.estado === 200,
+        'estado ' + reenvioAnx.estado + ' ' + JSON.stringify(reenvioAnx.cuerpo || {}).slice(0, 300));
+    }
+
+    const tanqueMalo = fichaValida(sello + 'az');
+    tanqueMalo.tanqueAlmacenamiento = 'bajo_suelo_sin_tapa';
+    const rTanque = await enviar(tanqueMalo);
+    verificar('Opción inexistente en una pregunta del anexo => 400 y señala el campo',
+      rTanque.estado === 400 && bloqueoEn(rTanque.cuerpo, 'tanqueAlmacenamiento'), 'estado ' + rTanque.estado);
+
+    const sinAnexo = fichaValida(sello + 'a0');
+    delete sinAnexo.alumbrado;
+    const rSinAnexo = await enviar(sinAnexo);
+    verificar('Sin una variable obligatoria del anexo => 400 (A2.37)',
+      rSinAnexo.estado === 400 && bloqueoEn(rSinAnexo.cuerpo, 'alumbrado'), 'estado ' + rSinAnexo.estado);
 
     console.log('\n=== 7. Tablas puente de selección múltiple ===');
 
@@ -882,6 +1080,68 @@ async function correrPruebas() {
     verificar('  el historial la muestra con plan registrado',
       !!filaConPlan && filaConPlan.planCuidado && filaConPlan.planCuidado.pendiente === false,
       JSON.stringify(filaConPlan && filaConPlan.planCuidado));
+
+    console.log('\n=== 13. Archivo plano APS124CCFP (reporte SI-APS) ===');
+
+    const pedirReporte = async function (cabeceras, cuerpo, metodo) {
+      const x = await fetch(BASE + '/api/reporte_sispro', {
+        method: metodo || 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, cabeceras),
+        body: metodo === 'GET' ? undefined : JSON.stringify(cuerpo)
+      });
+      const texto = await x.text();
+      let json = null;
+      try { json = JSON.parse(texto); } catch (error) { json = null; }
+      return { estado: x.status, texto: texto, cuerpo: json, cabeceras: x.headers };
+    };
+    const hoy = hoyIso();
+
+    let rr = await pedirReporte(sesion.cabeceras, { desde: hoy, hasta: hoy });
+    verificar('Una profesional asistencial no genera el reporte => 403', rr.estado === 403, 'estado ' + rr.estado);
+    rr = await pedirReporte({ Cookie: maestro.cabeceras.Cookie }, { desde: hoy, hasta: hoy });
+    verificar('Sin la cabecera anti-CSRF => 403', rr.estado === 403, 'estado ' + rr.estado);
+    rr = await pedirReporte(maestro.cabeceras, null, 'GET');
+    verificar('Por GET => 405 (un enlace no lo dispara)', rr.estado === 405, 'estado ' + rr.estado);
+    rr = await pedirReporte(maestro.cabeceras, { desde: '2026-02-30', hasta: hoy });
+    verificar('Fecha imposible => 400', rr.estado === 400, 'estado ' + rr.estado);
+    rr = await pedirReporte(maestro.cabeceras, { desde: '2024-01-01', hasta: '2026-01-01' });
+    verificar('Período de más de un año => 400', rr.estado === 400, 'estado ' + rr.estado);
+    rr = await pedirReporte(maestro.cabeceras, { desde: hoy, hasta: hoy, formato: 'pdf' });
+    verificar('Formato desconocido => 400', rr.estado === 400, 'estado ' + rr.estado);
+
+    const resumenReporte = await pedirReporte(maestro.cabeceras, { desde: hoy, hasta: hoy, formato: 'resumen' });
+    const cr = resumenReporte.cuerpo || {};
+    verificar('El maestro pide el resumen => 200 con el nombre oficial del archivo',
+      resumenReporte.estado === 200 && /^APS124CCFP\d{8}NI000805027289\.TXT$/.test(cr.nombreArchivo || ''),
+      'estado ' + resumenReporte.estado + ' ' + resumenReporte.texto.slice(0, 200));
+    verificar('  incluye las fichas de prueba de hoy',
+      cr.registros && cr.registros.tipo2 >= 1 && cr.registros.tipo3 >= 1, JSON.stringify(cr.registros));
+    verificar('  el resumen no trae datos personales, sólo códigos de ficha',
+      resumenReporte.texto.indexOf('1144099887') === -1 && resumenReporte.texto.toUpperCase().indexOf('GOMEZ') === -1);
+
+    const archivoReporte = await pedirReporte(admin.cabeceras, { desde: hoy, hasta: hoy, formato: 'archivo' });
+    verificar('El administrador descarga el archivo => 200 como adjunto',
+      archivoReporte.estado === 200 &&
+      /attachment; filename="APS124CCFP\d{8}NI000805027289\.TXT"/.test(archivoReporte.cabeceras.get('content-disposition') || ''),
+      'estado ' + archivoReporte.estado + ' ' + archivoReporte.cabeceras.get('content-disposition'));
+    const lineasReporte = archivoReporte.texto.split('\r\n');
+    lineasReporte.pop();
+    const control = (lineasReporte[0] || '').split('|');
+    verificar('  el registro de control cuenta los registros de detalle',
+      control[0] === '1' && control[1] === 'NI' && control[2] === '805027289' && control[3] === hoy &&
+      Number(control[5]) === lineasReporte.length - 1, lineasReporte[0]);
+    verificar('  cada tipo 2 lleva 125 variables y cada tipo 3, 119',
+      lineasReporte.length > 1 && lineasReporte.slice(1).every(function (l) {
+        return (l[0] === '2' && l.split('|').length === 125) || (l[0] === '3' && l.split('|').length === 119);
+      }));
+    verificar('  la persona de prueba está en un registro tipo 3',
+      lineasReporte.some(function (l) { return l[0] === '3' && l.split('|')[7] === '1144099887'; }));
+    const auditoriaReporte = (await cliente.query(`
+      SELECT count(*)::int AS n
+        FROM aud.evento e JOIN aps.usuario u ON u.funcionario_id = e.funcionario_id
+       WHERE e.entidad = 'reporte_sispro' AND u.documento = ANY($1) AND e.ocurrido_en > now() - interval '10 minutes'
+    `, [['1144099010', '1144099011']])).rows[0].n;
+    verificar('  cada generación quedó en aud.evento', auditoriaReporte >= 2, String(auditoriaReporte));
 
     /* Limpieza. El orden importa: `familia` cuelga de `hogar` y la ficha
        arrastra en cascada su vivienda, familia_ficha e integrantes, pero no

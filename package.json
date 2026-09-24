@@ -9,7 +9,7 @@
     "bd:recrear": "node bd/crear_bd.js --recrear",
     "bd:migrar": "node bd/crear_bd.js --migrar",
     "usuario:crear": "node bd/crear_usuario.js",
-    "test": "node pruebas/reglas.test.js && node pruebas/formulario.test.js && node pruebas/validacion.test.js && node pruebas/campos_catalogo.test.js && node pruebas/correccion.test.js && node pruebas/acceso.test.js",
+    "test": "node pruebas/reglas.test.js && node pruebas/formulario.test.js && node pruebas/validacion.test.js && node pruebas/campos_catalogo.test.js && node pruebas/correccion.test.js && node pruebas/acceso.test.js && node pruebas/reporte_sispro.test.js && node pruebas/reporte_vista.test.js",
     "test:bd": "node pruebas/endpoint.test.js && node pruebas/extremo_a_extremo.test.js",
     "test:todo": "npm test && npm run test:bd",
     "e2e": "playwright test --config=playwright.config.lento.js",

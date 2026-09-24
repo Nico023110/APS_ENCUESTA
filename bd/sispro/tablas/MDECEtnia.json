@@ -1,0 +1,37 @@
+[
+ {
+  "codigo": "01",
+  "nombre": "Indígena",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "02",
+  "nombre": "ROM (Gitanos)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "03",
+  "nombre": "Raizal (San Andrés y Providencia)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "04",
+  "nombre": "Palenquero de San Basilio de Palenque",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "05",
+  "nombre": "Negro(a)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "06",
+  "nombre": "Afrocolombiano",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "07",
+  "nombre": "Ninguna de las anteriores",
+  "habilitado": "SI"
+ }
+]

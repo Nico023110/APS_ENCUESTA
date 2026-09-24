@@ -35,7 +35,7 @@ window.addEventListener('error', (e) => errores.push(e.message));
 
 // Los <script> del navegador comparten el alcance global: se concatenan
 // en un solo eval para reproducir esa semántica con const/let.
-const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
+const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
   'cups.js', 'correccion.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
@@ -97,8 +97,128 @@ check('El integrante 2 quedó como familias[0].integrantes[1]',
   !!fam1.querySelector('[name="familias[0].integrantes[1].primerNombre"]'));
 
 fam2.querySelector('[data-accion="quitarFamilia"]').click();
-check('Eliminar familia deja 1 bloque',
+check('Eliminar familia abre el modal de confirmación', $('#modalConfirmar').hidden === false);
+check('Mientras se confirma no se quitó nada', $$('#contenedorFamilias > [data-bloque="familia"]').length === 2);
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina familia y deja 1 bloque',
   $$('#contenedorFamilias > [data-bloque="familia"]').length === 1);
+
+console.log('\n=== 2b. Confirmar antes de eliminar: integrante y familia ===');
+// Autocontenido en una familia aparte (fam3), para no alterar fam1, que las
+// secciones siguientes dan por hecha con sus dos integrantes. El modal se
+// pide siempre, tenga o no datos el bloque: es un botón "Eliminar" explícito,
+// no un efecto colateral de escribir en otro campo (a diferencia de RN-051,
+// más abajo, que sí distingue: ver sincronizarIntegrantes).
+$('#btnAgregarFamilia').click();
+const fam3 = $$('#contenedorFamilias > [data-bloque="familia"]')[1];
+fam3.querySelector('[data-accion="agregarIntegrante"]').click();
+const integrantesFam3 = () => fam3.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]');
+check('fam3 arrancó con 2 integrantes (uno de plantilla + uno agregado)', integrantesFam3().length === 2);
+
+const integSinDatos = integrantesFam3()[0];
+integSinDatos.querySelector('[data-accion="quitarIntegrante"]').click();
+check('Integrante sin datos: igual abre el modal', $('#modalConfirmar').hidden === false);
+check('El modal lo nombra genéricamente («Integrante 1»)',
+  $('#modalConfirmarMensaje').textContent.indexOf('Integrante 1') !== -1,
+  $('#modalConfirmarMensaje').textContent);
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina al integrante sin datos', integrantesFam3().length === 1);
+
+fam3.querySelector('[data-accion="agregarIntegrante"]').click();
+const integConDatos = integrantesFam3()[1];
+setVal(integConDatos.querySelector('[name$=".primerNombre"]'), 'Ana');
+setVal(integConDatos.querySelector('[name$=".primerApellido"]'), 'Prueba');
+
+integConDatos.querySelector('[data-accion="quitarIntegrante"]').click();
+check('Integrante con datos: abre el modal', $('#modalConfirmar').hidden === false);
+check('El modal nombra al integrante por su nombre',
+  $('#modalConfirmarMensaje').textContent.indexOf('Ana Prueba') !== -1,
+  $('#modalConfirmarMensaje').textContent);
+check('El título del modal es «Eliminar integrante»',
+  $('#modalConfirmarTitulo').textContent === 'Eliminar integrante');
+check('Mientras se confirma no se quitó nada', integrantesFam3().length === 2);
+
+$('#btnCancelarEliminar').click();
+check('Cancelar conserva el integrante', integrantesFam3().length === 2 && $('#modalConfirmar').hidden === true);
+
+integConDatos.querySelector('[data-accion="quitarIntegrante"]').click();
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina al integrante', integrantesFam3().length === 1);
+
+// fam3 misma: el modal se abre igual, tenga o no datos.
+fam3.querySelector('[data-accion="quitarFamilia"]').click();
+check('Eliminar la familia también abre el modal', $('#modalConfirmar').hidden === false);
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina fam3 y vuelve a quedar sólo fam1',
+  $$('#contenedorFamilias > [data-bloque="familia"]').length === 1);
+
+$('#btnAgregarFamilia').click();
+const fam4 = $$('#contenedorFamilias > [data-bloque="familia"]')[1];
+setVal(fam4.querySelector('[data-rol="numeroIntegrantes"]'), '1');
+fam4.querySelector('[data-accion="quitarFamilia"]').click();
+check('El modal la nombra por su título («Familia 2») y cuenta sus integrantes',
+  $('#modalConfirmarMensaje').textContent.indexOf('Familia 2') !== -1 &&
+  $('#modalConfirmarMensaje').textContent.indexOf('integrante') !== -1,
+  $('#modalConfirmarMensaje').textContent);
+$('#btnCancelarEliminar').click();
+check('Cancelar conserva la familia', $$('#contenedorFamilias > [data-bloque="familia"]').length === 2);
+
+fam4.querySelector('[data-accion="quitarFamilia"]').click();
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina la familia y vuelve a quedar sólo fam1',
+  $$('#contenedorFamilias > [data-bloque="familia"]').length === 1);
+
+console.log('\n=== 2c. Confirmar antes de eliminar: plan de cuidado y filas del plan ===');
+$('#btnAgregarPlanFamilia').click();
+const plan2 = $$('#contenedorPlanFamilia > [data-bloque="planFamilia"]')[1];
+plan2.querySelector('[data-accion="quitarPlanFamilia"]').click();
+check('Plan de familia: abre el modal aunque esté vacío', $('#modalConfirmar').hidden === false);
+check('El título del modal es «Eliminar plan de cuidado»',
+  $('#modalConfirmarTitulo').textContent === 'Eliminar plan de cuidado');
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina el plan agregado',
+  $$('#contenedorPlanFamilia > [data-bloque="planFamilia"]').length === 1);
+
+$('#btnAgregarPlanFamilia').click();
+const plan3 = $$('#contenedorPlanFamilia > [data-bloque="planFamilia"]')[1];
+setVal(plan3.querySelector('[name$=".procedimientoRealizado"]'), 'Visita de control');
+plan3.querySelector('[data-accion="quitarPlanFamilia"]').click();
+check('Plan de familia con datos: abre el modal', $('#modalConfirmar').hidden === false);
+$('#btnCancelarEliminar').click();
+plan3.querySelector('[data-accion="quitarPlanFamilia"]').click();
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina el plan de familia agregado',
+  $$('#contenedorPlanFamilia > [data-bloque="planFamilia"]').length === 1);
+
+// Filas de acción / seguimiento (6.1 vivienda: siempre presente, ajena a
+// las familias, así que no interfiere con las secciones que siguen).
+$('#btnAgregarAccionVivienda').click();
+const filasAccion = () => $$('#filasAccionVivienda > tr[data-fila]');
+check('Se agregó una segunda fila de acción', filasAccion().length === 2);
+
+filasAccion()[1].querySelector('[data-accion="quitarFila"]').click();
+check('Fila de acción vacía: igual abre el modal', $('#modalConfirmar').hidden === false);
+check('El mensaje dice que es una fila de acción',
+  $('#modalConfirmarMensaje').textContent.indexOf('de acción') !== -1,
+  $('#modalConfirmarMensaje').textContent);
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina la fila vacía', filasAccion().length === 1);
+
+$('#btnAgregarAccionVivienda').click();
+setVal(filasAccion()[1].querySelector('[name$=".procedimientoRealizado"]'), 'Revisión de humedad');
+filasAccion()[1].querySelector('[data-accion="quitarFila"]').click();
+check('Fila de acción con datos: abre el modal', $('#modalConfirmar').hidden === false);
+$('#btnCancelarEliminar').click();
+check('Cancelar conserva la fila', filasAccion().length === 2);
+
+filasAccion()[1].querySelector('[data-accion="quitarFila"]').click();
+$('#btnConfirmarEliminar').click();
+check('Confirmar elimina la fila de acción agregada', filasAccion().length === 1);
+
+// Con una sola fila, ni siquiera se pregunta: no se puede quitar la última.
+filasAccion()[0].querySelector('[data-accion="quitarFila"]').click();
+check('No deja quitar la única fila (aviso, no modal)',
+  filasAccion().length === 1 && $('#modalConfirmar').hidden === true);
 
 console.log('\n=== 3. RN-051 — el ítem 51 genera bloques de integrante ===');
 setVal(fam1.querySelector('[data-rol="numeroIntegrantes"]'), '4');
@@ -218,7 +338,7 @@ setVal(selRegimen, 'subsidiado');
 check('Afiliado => EAPB habilitada',
   integrante.querySelector('[data-rol="eapb"]').disabled === false);
 
-marcar('.sujetoEspecialProteccion', 'victima_violencia_genero', integrante);
+marcar('.sujetoEspecialProteccion', 'victima_violencia_interpersonal', integrante);
 check('Víctima de violencia => modalidad visible (RN-078)',
   integrante.querySelector('[data-rol="campoViolencia"]').hidden === false);
 

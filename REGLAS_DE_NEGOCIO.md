@@ -3,8 +3,9 @@
 **Instrumento fuente:** SI-APS – Formulario para identificación APS – Equipos Básicos de Salud
 **Versión del instrumento:** v2 – 2025 (Ministerio de Salud y Protección Social)
 **Ámbito de despliegue:** Santiago de Cali, Valle del Cauca
-**Versión del documento:** 2.0
-**Fecha:** 12 de agosto de 2026
+**Anexo técnico de reporte:** SI-APS – Fuente APS124CCFP, versión 7 – junio de 2026 (PISIS / SISPRO)
+**Versión del documento:** 2.1
+**Fecha:** 23 de septiembre de 2026
 
 ---
 
@@ -83,9 +84,9 @@ Si el usuario selecciona **"NO"**, el sistema bloquea la captura de datos subsig
 
 ### RN-002 — Identificación de situaciones inminentes que ponen en peligro la vida
 
-**Ítem 2.** Al inicio de la interacción, el sistema exige clasificar el estado de riesgo inmediato del entorno o de los individuos bajo cuatro opciones mutuamente excluyentes: "Física (urgencia vital)", "Psicológica (urgencia vital en salud mental)", "Situación de emergencia o desastre" o "No aplica".
+**Ítem 2.** Al inicio de la interacción, el sistema exige clasificar el estado de riesgo inmediato del entorno o de los individuos. Desde el anexo técnico (variable 23 del registro tipo 2) es de **selección múltiple**: "Física (urgencia vital)", "Psicológica (urgencia vital en salud mental)" y "Situación de emergencia o desastre" pueden marcarse juntas; "No aplica" es **excluyente**.
 
-Si se selecciona cualquiera de las tres primeras, el sistema dispara una alerta visual de atención prioritaria y aplica el procedimiento de **RN-201**.
+Si se selecciona cualquiera de las tres primeras, el sistema dispara una alerta visual de atención prioritaria, aplica el procedimiento de **RN-201** y exige describir la situación atendida en **Observaciones de la situación** (A2.24, hasta 200 caracteres).
 
 ---
 
@@ -109,7 +110,7 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 ### RN-006 — Área de ubicación de la vivienda
 
-**Ítem 6.** Selección única y obligatoria del área geográfica de la vivienda bajo las categorías exclusivas: "Área Urbana", "Área rural" o "Centro poblado".
+**Ítem 6.** Selección única y obligatoria del área geográfica de la vivienda: "Área Urbana" o "Área rural" (variable 10 del registro tipo 2: 1 y 2). El anexo retiró "Centro poblado" de esta lista: ahora es un **tipo de ubicación** (A2.8: corregimiento, centro poblado, vereda, localidad, barrio o resguardo indígena), que se pregunta aparte. Las fichas anteriores con "Centro poblado" se conservan y se reportan como rurales.
 
 ### RN-007 — Territorio
 
@@ -168,6 +169,7 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 - **No admite fechas futuras.**
 - No admite fechas anteriores en más de **30 días** a la fecha de sincronización.
+- El tope de antigüedad se evalúa al registrar la ficha en la base, no al corregirla: una ficha que ya está en la base puede corregirse aunque la visita tenga más de 30 días. Lo decide el servidor contra la base, no el dispositivo; la fecha futura se rechaza siempre.
 - Toda fecha de seguimiento del Plan de Cuidado (ítems 118, 119, 128, 129, 139, 140) debe ser cronológicamente igual o posterior a esta fecha.
 
 ### RN-017 — Entorno de identificación
@@ -349,21 +351,23 @@ Toda respuesta "No" activa la alerta de **riesgo de rabia** y obliga a registrar
 
 ### RN-046 — Fuente de agua para consumo humano
 
-**Ítem 46.** Selección única obligatoria del método principal de abasto de agua a partir de las trece opciones del instrumento: acueducto administrado por ESP, acueducto veredal o comunitario, pila pública, agua embotellada o en bolsa, carro tanque, abasto con distribución comunitaria, pozo con bomba, pozo sin bomba/aljibe/jagüey/barreno, laguna o jagüey, río o quebrada, manantial o nacimiento, aguas lluvias, aguatero.
+**Ítem 46.** Selección **múltiple** obligatoria (desde el anexo técnico, variable 53) de las fuentes de abasto de agua, a partir de las opciones del instrumento más "Otro": acueducto administrado por ESP, acueducto veredal o comunitario, pila pública, agua embotellada o en bolsa, carro tanque, abasto con distribución comunitaria, pozo con bomba, pozo sin bomba/aljibe/jagüey/barreno, laguna o jagüey, río o quebrada, manantial o nacimiento, aguas lluvias, aguatero.
 
 Las fuentes no tratadas activan alerta de **agua no apta para consumo humano** conforme a RN-211.
 
 ### RN-047 — Sistema de disposición de excretas
 
-**Ítem 47.** Selección única obligatoria: sanitario conectado al alcantarillado, sanitario y letrina, sanitario conectado a pozo séptico, sanitario ecológico seco, sanitario sin conexión, sanitario con disposición a fuente hídrica, o campo abierto.
+**Ítem 47.** Selección **múltiple** obligatoria (anexo, variable 58): sanitario conectado al alcantarillado, sanitario y letrina, sanitario conectado a pozo séptico, sanitario ecológico seco, sanitario sin conexión, sanitario con disposición a fuente hídrica, o campo abierto.
 
 ### RN-048 — Disposición de aguas residuales domésticas
 
-**Ítem 48.** Selección única obligatoria entre seis opciones: Alcantarillado, Pozo séptico, Campo de oxidación, Biofiltro, Fuente hídrica o Campo abierto.
+**Ítem 48.** Selección **múltiple** obligatoria (anexo, variable 59) entre seis opciones: Alcantarillado, Pozo séptico, Campo de oxidación, Biofiltro, Fuente hídrica o Campo abierto.
 
 ### RN-049 — Disposición final de residuos sólidos
 
-**Ítem 49.** Selección única obligatoria: recolección por servicio de aseo distrital o municipal, enterramiento, quema a campo abierto, disposición en fuentes de agua cercana, o disposición a campo abierto.
+**Ítem 49.** Selección **múltiple** obligatoria (anexo, variable 62): recolección por servicio de aseo distrital o municipal, enterramiento, quema a campo abierto, disposición en fuentes de agua cercana, o disposición a campo abierto.
+
+> **Ítems 2 y 46 a 49 en la base.** La lista completa va a su tabla puente (`aps.ficha_situacion_inminente`, `aps.vivienda_fuente_agua`, …) y la columna de siempre conserva una opción principal —en el ítem 2, la primera que exige atención prioritaria—, para que las consultas y vistas anteriores sigan funcionando.
 
 ---
 
@@ -393,7 +397,7 @@ Las fuentes no tratadas activan alerta de **agua no apta para consumo humano** c
 
 ### RN-053 — Puntaje Escala de Zarit
 
-**Ítem 53.** Campo condicionado y obligatorio únicamente si el ítem 52 fue "Sí". El sistema fuerza la selección exclusiva de una de las tres clasificaciones: "Ausencia de sobrecarga (≤ 46)", "Sobrecarga ligera (47–55)" o "Sobrecarga intensa (≥ 56)".
+**Ítem 53.** Campo condicionado y obligatorio únicamente si el ítem 52 fue "Sí". Desde el anexo técnico (variable 115) se registra el **puntaje** de la escala, entero de **0 a 100**, y la clasificación se **calcula** a partir de él, de sólo lectura: "Ausencia de sobrecarga (≤ 46)", "Sobrecarga ligera (47–55)" o "Sobrecarga intensa (≥ 56)". El servidor recalcula la clasificación desde el puntaje y no acepta la que envíe el dispositivo.
 
 El resultado determina la conducta definida en **RN-212**.
 
@@ -449,7 +453,7 @@ La tercera opción constituye determinante social de aislamiento y se cruza con 
 
 ### RN-062 — Tipo de identificación del integrante
 
-**Ítem 62.** Selección obligatoria restrictiva del catálogo legal vigente en Colombia:
+**Ítem 62.** Selección obligatoria restrictiva de la tabla **TipoIDAfiliado** de SISPRO, que es la que exige el anexo técnico (variable 6 del registro tipo 3):
 
 | Código | Documento |
 |---|---|
@@ -458,11 +462,13 @@ La tercera opción constituye determinante social de aislamiento y se cruza con 
 | CD | Carné Diplomático |
 | CE | Cédula de Extranjería |
 | MS | Menor sin Identificación |
-| NV | Certificado de Nacido Vivo |
+| PA | Pasaporte |
 | PE | Permiso Especial de Permanencia |
 | PT | Permiso por Protección Temporal |
 | RC | Registro Civil |
 | TI | Tarjeta de Identidad |
+
+**NV (Certificado de Nacido Vivo) quedó retirado:** no existe en TipoIDAfiliado, así que no puede reportarse. Un recién nacido se registra con RC o, mientras se tramita, con MS. Las fichas anteriores con NV se conservan y el reporte las señala como incidencia para corregirlas.
 
 ### RN-063 — Número de identificación del integrante
 
@@ -473,7 +479,7 @@ La tercera opción constituye determinante social de aislamiento y se cruza con 
 | CC, TI | 6 a 10 dígitos numéricos |
 | RC | 8 a 11 dígitos numéricos |
 | CE, PE, PT, CD | 5 a 16 caracteres alfanuméricos |
-| NV | Número de certificado de nacido vivo |
+| PA | 5 a 16 caracteres alfanuméricos |
 | MS, AS | Identificador temporal autogenerado por el sistema |
 
 El número **debe ser único dentro de la ficha**: dos integrantes de la misma familia no pueden compartir tipo y número de documento.
@@ -494,7 +500,6 @@ A partir de ella el sistema calcula automáticamente un campo derivado de sólo 
 
 | Tipo | Documento | Edad esperada | Por debajo del mínimo | Por encima del máximo |
 |---|---|---|---|---|
-| **NV** | Certificado de Nacido Vivo | 0 a 1 año | — | Advertencia |
 | **RC** | Registro Civil | 0 a 6 años | — | Advertencia |
 | **TI** | Tarjeta de Identidad | 7 a 17 años | **Bloqueo** | Advertencia |
 | **CC** | Cédula de Ciudadanía | ≥ 18 años | **Bloqueo** | — |
@@ -504,6 +509,7 @@ A partir de ella el sistema calcula automáticamente un campo derivado de sólo 
 | **CD** | Carné Diplomático | Cualquier edad | Exige nacionalidad ≠ Colombia | |
 | **PE** | Permiso Especial de Permanencia | Cualquier edad | Exige nacionalidad ≠ Colombia | |
 | **PT** | Permiso por Protección Temporal | Cualquier edad | Exige nacionalidad ≠ Colombia | |
+| **PA** | Pasaporte | Cualquier edad | — | — |
 
 **Criterio de severidad.** Un documento no puede existir antes de la edad a la que se expide: una **cédula en un menor de 18 años** o una **TI en un menor de 7** no es un trámite pendiente sino un dato mal digitado (el tipo o la fecha de nacimiento), y por eso **bloquea**. Por encima del rango sí existen casos legítimos de trámite pendiente —un niño de 8 años que aún no ha tramitado la TI, o un joven de 18 que no ha renovado la CC— y se resuelven con **advertencia y confirmación**, sin impedir la caracterización.
 
@@ -515,7 +521,11 @@ Los tipos **PE y PT** activan automáticamente la alerta de **población migrant
 
 ### RN-065 — Nacionalidad
 
-**Ítem 65.** Selección única obligatoria entre **Colombia**, **Venezuela** y **Otra**. Cuando se elige «Otra» se habilita el ítem **65.1 ¿Cuál país?**, de texto obligatorio (sólo letras), que permite el seguimiento a población extranjera sin cerrar la lista de países. En la base la nacionalidad se guarda como código (`CO`, `VE`, `OT`) y el país escrito en `nacionalidad_otra`.
+**Ítem 65.** Selección única obligatoria del **país de origen** de la tabla **Pais** de SISPRO (variable 9 del registro tipo 3, que se reporta con el código numérico de la tabla: 170 para Colombia). Colombia y Venezuela van primero en la lista. En la base se guarda el código ISO de dos letras (`CO`, `VE`, `EC`…).
+
+La opción «Otra» y el ítem 65.1 (país escrito) quedaron retirados: el anexo no admite texto libre. Una ficha anterior con «Otra» se conserva, pero al corregirla el sistema pide elegir el país y muestra el que se había escrito.
+
+**Estatus migratorio** (A3.10). Obligatorio cuando el país es distinto de Colombia: "Regular" o "Sin autorización de permanencia". Para colombianos no se pregunta y se reporta "No aplica".
 
 Cuando la nacionalidad es distinta de Colombia, el sistema debe:
 
@@ -546,7 +556,7 @@ Este dato es **sensible** y tiene tratamiento reforzado conforme a RN-224.
 
 ### RN-070 — Teléfono 1
 
-**Ítem 70.** Campo numérico **obligatorio a nivel de familia**: al menos un integrante del núcleo debe registrar un número de contacto válido. Acepta 10 dígitos para telefonía móvil o 7 dígitos para fija; el sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
+**Ítem 70.** Campo numérico **obligatorio a nivel de familia**: al menos un integrante del núcleo debe registrar un número de contacto válido. Acepta de **10 a 20 dígitos** (anexo técnico, variable 15 del registro tipo 3: numérico de hasta 20). Los fijos de 7 dígitos ya no se aceptan: desde la marcación nacional los fijos de Cali también tienen 10 (60 2 + número). El sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
 
 Sin un número de contacto válido en la familia, el sistema **no permite cerrar la ficha**, porque toda derivación registrada en el Plan de Cuidado y todo seguimiento de los ítems 118, 119, 128, 129, 139 y 140 dependen de la posibilidad de contactar al hogar.
 
@@ -570,9 +580,9 @@ Debe existir exactamente un "Responsable económico" por familia (RN-051).
 
 ### RN-073 — Ocupación
 
-**Ítem 73.** Campo de texto o catálogo obligatorio para personas de **15 años o más**, que registra la actividad u oficio principal desempeñado. Para menores de 15 años se autoasigna "No aplica".
+**Ítem 73.** Código **CIUO** obligatorio de la tabla **SGDCIUO** de SISPRO (variable 18 del registro tipo 3), que registra la actividad u oficio principal desempeñado. Se busca por nombre o por código y el formulario muestra el nombre de la ocupación elegida; no admite texto libre. **9998 — Sin ocupación** cubre a quien no trabaja; para menores de 15 años sin ocupación registrada el reporte envía 9998.
 
-Se recomienda el uso del catálogo **CIUO** (Clasificación Internacional Uniforme de Ocupaciones) para permitir análisis de riesgo ocupacional.
+Las fichas de cuando la ocupación era texto libre conservan el texto; al corregirlas, el sistema pide cambiarlo por un código y el reporte lo señala como incidencia.
 
 El registro de una ocupación en personas **entre 15 y 17 años** debe cruzarse con el ítem 39 y activa la alerta de **posible trabajo infantil o adolescente**, que exige verificación de las condiciones de protección laboral conforme al Código de Infancia y Adolescencia.
 
@@ -580,7 +590,7 @@ Las ocupaciones asociadas a exposición a agroquímicos, minería, construcción
 
 ### RN-074 — Nivel educativo
 
-**Ítem 74.** Selección única obligatoria para personas de **5 años o más**, con las trece categorías del formulario: Preescolar, Básica Primaria, Básica Secundaria, Media Académica o Clásica, Media Técnica, Normalista, Técnica Profesional, Tecnológica, Profesional, Especialización, Maestría, Doctorado, Técnica Laboral o Ninguno.
+**Ítem 74.** Selección única obligatoria para personas de **5 años o más**, con las trece categorías del formulario: Preescolar, Básica Primaria, Básica Secundaria, Media Académica o Clásica, Media Técnica, Normalista, Técnica Profesional, Tecnológica, Profesional, Especialización, Maestría, Doctorado o Ninguno (tabla SGDNivEducativo, variable 19). **"Técnica Laboral" quedó retirada**: no está en el anexo.
 
 **Coherencia con la edad:** el sistema advierte cuando el nivel declarado es incompatible con la edad calculada (por ejemplo, "Profesional" en un menor de 17 años, o "Doctorado" antes de los 24).
 
@@ -594,17 +604,21 @@ En personas de 18 años o más, "Ninguno" se registra como determinante social d
 
 ### RN-076 — EAPB
 
-**Ítem 76.** Campo de texto o catálogo dinámico obligatorio para registrar la Entidad Administradora de Planes de Beneficios a la que está afiliado el individuo. Se desactiva automáticamente y se autoasigna "No aplica" si en el ítem 75 se seleccionó "No afiliado".
+**Ítem 76.** Selección obligatoria de la Entidad Administradora de Planes de Beneficios a la que está afiliado el individuo, de la tabla oficial **SGDCodigoEAPB** de SISPRO (variable 21 del registro tipo 3; 91 entidades habilitadas). Se desactiva automáticamente y se autoasigna "No aplica" si en el ítem 75 se seleccionó "No afiliado".
+
+Los códigos salen de la tabla oficial y no se escriben a mano: la carga manual anterior tenía errores (Coosalud figuraba como `EPS026`, que no existe —es `ESS024`, `ESSC24` o `ESSS24`— y Mallamas como `EPSI01`, que es Dusakawi —Mallamas es `EPSI05`—).
 
 ### RN-077 — Sujeto de especial protección constitucional
 
-**Ítem 77.** Selección múltiple aplicable para identificar vulnerabilidades específicas: Niñas, niños o adolescentes; Gestante; Persona adulta mayor; Personas con orientación sexual diversa; Campesina o campesino; Migrantes; Madre cabeza de familia; Personas con enfermedades huérfanas; Víctima del conflicto armado; Víctima de violencia de género e intrafamiliar; Víctima de violencia interpersonal; Persona privada de la libertad (medida domiciliaria); Personas en el sistema de responsabilidad penal adolescente; Otro (con campo "¿Cuál?" obligatorio).
+**Ítem 77.** Selección múltiple aplicable para identificar vulnerabilidades específicas: Niñas, niños o adolescentes; Gestante; Persona adulta mayor; Personas con orientación sexual diversa; Campesina o campesino; Migrantes; Madre cabeza de familia; Personas con enfermedades huérfanas; Víctima del conflicto armado; Víctima de violencia interpersonal; Persona privada de la libertad (medida domiciliaria); Personas en el sistema de responsabilidad penal adolescente; Persona con condición de discapacidad; Otro (con campo "¿Cuál?" obligatorio). Es la tabla APSGrupoPoblacionEspecial del anexo (variable 22).
+
+"Víctima de violencia de género e intrafamiliar" quedó retirada: el anexo la reúne en "Víctima de violencia interpersonal" (código 10), y las fichas anteriores se migraron a esa opción.
 
 Admite la opción excluyente **"Ninguna"**. Las opciones de violencia activan **RN-206**; "Gestante" activa **RN-205**; "Migrantes" se cruza con RN-065.
 
 ### RN-078 — Modalidad de la violencia
 
-**Ítem 78.** Campo de selección múltiple **condicionado**, obligatorio únicamente si en el ítem 77 se marcó "Víctima de violencia de género e intrafamiliar". Opciones válidas: **Física, Psicológica, Negligencia y abandono, Sexual, Patrimonial o económica**.
+**Ítem 78.** Campo de selección múltiple **condicionado**, obligatorio únicamente si en el ítem 77 se marcó "Víctima de violencia interpersonal" (variable 23 del anexo, que se habilita con la opción 10 de la variable 22). Opciones válidas: **Física, Psicológica, Negligencia y abandono, Sexual, Patrimonial o económica**.
 
 > **Corrección documental.** El formulario impreso presenta la opción *"Negligencia y abandono" duplicada*. El sistema debe registrarla **una sola vez**; la duplicación es un defecto de diagramación del instrumento y debe reportarse al Ministerio para su corrección (ver **Anexo C**).
 
@@ -612,7 +626,7 @@ La selección de la modalidad **Sexual**, o de cualquier modalidad en un menor d
 
 ### RN-079 — Pertenencia étnica
 
-**Ítem 79.** Selección única obligatoria: "Indígena", "Rrom (Gitanos)", "Negro", "Afrocolombiano", "Raizal (San Andrés y Providencia)", "Palenquero de San Basilio de Palenque" o "Ninguna".
+**Ítem 79.** Selección única obligatoria de la tabla **MDECEtnia** (variable 24, códigos de dos dígitos): 01 Indígena, 02 Rrom (Gitanos), 03 Raizal (San Andrés y Providencia), 04 Palenquero de San Basilio de Palenque, 05 Negro(a), 06 Afrocolombiano, 07 Ninguna de las anteriores.
 
 ### RN-080 — Pueblo o comunidad étnica
 
@@ -698,7 +712,7 @@ La clasificación y gestión de la barrera se define en **RN-210**.
 
 ### RN-090 — Conocimiento del derecho a la salud
 
-**Ítem 90.** Selección múltiple de los niveles de empoderamiento y conocimiento normativo del usuario respecto al SGSSS: conoce los derechos y deberes en salud; tiene información sobre las atenciones y servicios a los que tiene derecho; conoce los lugares donde pueden prestar los servicios de salud; conoce cómo resolver las dificultades de acceso.
+**Ítem 90.** Selección múltiple **obligatoria** (anexo, variable 27) de los niveles de empoderamiento y conocimiento normativo del usuario respecto al SGSSS: conoce los derechos y deberes en salud; tiene información sobre las atenciones y servicios a los que tiene derecho; conoce los lugares donde pueden prestar los servicios de salud; conoce cómo resolver las dificultades de acceso. El anexo añadió dos opciones **excluyentes**: "No registra" y "Ninguna".
 
 La ausencia de conocimiento se cruza con el ítem 89 como barrera de información (RN-210).
 
@@ -774,7 +788,7 @@ La conducta y notificación se definen en **RN-208**.
 
 ### RN-102 — Zona endémica y sintomatología específica
 
-**Ítem 102.** Selección múltiple de riesgos por vectores o parásitos ligados a la geografía: Geohelmintiasis, Teniasis/cisticercosis, Tracoma, Escabiosis, Pian, Malaria. En ausencia de síntomas: **"Ninguna"**.
+**Ítem 102.** Selección **única** (el anexo la define así, variable 60) de riesgos por vectores o parásitos ligados a la geografía: Geohelmintiasis, Teniasis/cisticercosis, Tracoma, Escabiosis, Pian, Malaria. En ausencia de síntomas: **"Ninguna"**.
 
 ### RN-103 — Adherencia a tratamiento de salud actual
 
@@ -790,7 +804,7 @@ La clasificación y gestión se definen en **RN-210**.
 
 ### RN-105 — Riesgos en salud mental de jóvenes y adolescentes
 
-**Ítem 105.** Campo condicionado por edad, obligatorio exclusivamente para integrantes entre **14 y 28 años**. Evalúa situaciones estresantes específicas del ciclo vital: inicio de la convivencia en pareja, llegada de un nuevo integrante, ingreso a estudiar, pérdida del año escolar, embarazo temprano o adolescente, independencia o salida del hogar paterno-materno, separación de pareja, duelo, desempleo, pérdidas o crisis económicas, conflictos familiares, situación de abandono, ausencia de redes de apoyo, estigma y discriminación, conflictos relacionados con su orientación sexual, trastorno de salud mental en algún integrante de la familia. Opción excluyente: **"Ninguna"**.
+**Ítem 105.** Obligatorio para **todos los integrantes** desde el anexo técnico (variable 54, "Identifica riesgos para su salud física o mental"); antes sólo se preguntaba entre los 14 y los 28 años. Usa la tabla APSRiesgoFisicoMental del anexo, de 21 opciones: inicio de la convivencia en pareja, llegada de un nuevo integrante, ingreso a estudiar, pérdida del año escolar, embarazo temprano o adolescente, independencia o salida del hogar, separación de pareja, jubilación, duelo, desempleo, pérdidas o crisis económicas, enfermedad terminal u orfandad, antecedentes de intento o muerte por suicidio, accidente o situación que genera discapacidad, muerte inesperada, vivencia de violencia, abandono, migración, consumo problemático de SPA, trastorno de salud mental en la familia. Opción excluyente: **"Ninguna"**. Las opciones anteriores que el anexo no trae (conflictos familiares, ausencia de redes de apoyo, estigma y discriminación, conflictos por la orientación sexual) quedaron retiradas.
 
 ### RN-106 — Tamizaje de sintomatología depresiva y ansiosa
 
@@ -1283,7 +1297,56 @@ Los seguimientos de los ítems **118, 119, 128, 129, 139 y 140** se rigen por:
 
 ---
 
-## 15. Notas sobre aplicación de las reglas
+## 15. Bloque 13: Anexo técnico SI-APS (fuente APS124CCFP)
+
+El Ministerio publica el **anexo técnico de reporte** (versión 7, junio de 2026) que dice cómo debe ir cada dato en el archivo plano que se carga en PISIS: registro tipo 1 (control), tipo 2 (entorno, EBS, vivienda y familia, 125 variables) y tipo 3 (integrante, 119 variables). La copia de trabajo está en `bd/sispro/anexo_APS124CCFP_v7.md`. Este bloque recoge lo que el anexo cambia en la captura y cómo se genera el archivo.
+
+### 15.1 Códigos del anexo en los catálogos
+
+Cada opción de catálogo conserva su valor interno (el que se guarda en la base) y lleva además el **código con que se reporta** (`sispro`). Los catálogos que el anexo remite a tablas de SISPRO —país (Pais), ocupación (SGDCIUO), EAPB (SGDCodigoEAPB)— se generan desde las tablas oficiales (`bd/sispro/`), no se escriben a mano.
+
+Una opción que el anexo ya no admite queda **retirada** (`vigente: false`): el formulario no la ofrece, una ficha nueva que la envíe se rechaza, y las fichas anteriores la conservan para poder leerse. Si una opción retirada no tiene equivalente en el anexo, el reporte la señala como incidencia en vez de inventar un código.
+
+### 15.2 Variables nuevas del anexo
+
+El anexo añade 129 preguntas que el instrumento impreso no tenía. Se declaran una sola vez en `anexo.js` —nivel, registro y variable, catálogo, condición de visibilidad y obligatoriedad— y de esa declaración salen el formulario, las reglas, la estructura de la base y la columna del archivo plano.
+
+| Nivel | Variables |
+|---|---|
+| Ficha y hogar | Tipo de ubicación (A2.8); observaciones de la situación inminente (A2.24) |
+| Vivienda | Teléfono (A2.15); ambientes con luz y ventilación, elementos, alumbrado, acceso, transporte y desplazamiento (A2.34–49); área de trabajo y afectación por la actividad económica (A2.51–52); suministro, tanque y limpieza del agua (A2.54–57); almacenamiento, reducción, aprovechamiento y residuos peligrosos (A2.60–75); limpieza de superficies, energía para cocinar, humo, calidad del aire y estufa (A2.76–83); vectores y animales ponzoñosos (A2.85–91); tenencia de animales (A2.97–102); productos químicos (A2.104–109) |
+| Familia | Alias (A2.111), Apgar familiar (A2.113), puntaje de Zarit (A2.115), medidas ante enfermedades respiratorias e higiene compartida (A2.120–122) |
+| Integrante | Estatus migratorio (A3.10); lavado de manos (A3.43); urgencias, enfermedades del último mes y qué hizo (A3.47–51); diagnóstico y síntomas sin diagnóstico (A3.56–57); tabaco (A3.64–66); módulo materno y perinatal (A3.70–91); historial laboral (A3.92–102) y exposición a asbesto (A3.103–116) |
+
+Los módulos materno, laboral y de asbesto son **opcionales** en el anexo (su obligatoriedad es "NO"): se ofrecen a quien aplican y la ficha se guarda sin ellos. Las variables 71 (mujer en edad fértil) y 72 (¿se encuentra en embarazo?) no se preguntan: se derivan del sexo, la edad y el ítem 85.
+
+**Reglas generadas (A{registro}.{variable}).** Cada pregunta del anexo produce dos reglas con el código de su variable (por ejemplo, A2.37 para el alumbrado), que se muestra también junto a la pregunta en el formulario:
+
+1. **Obligatoriedad**, sólo cuando la pregunta aplica: **bloqueo** si el anexo la exige; **advertencia** en las listas que el anexo no cierra con una opción "Ninguno" (dejarlas en blanco significa que no hay nada que marcar).
+2. **Dominio**: la opción pertenece a su catálogo vigente (y una opción excluyente va sola), los enteros están en su rango, las fechas no son posteriores a la visita cuando así se declara, el texto no supera su longitud ni lleva el carácter `|`, y el teléfono tiene 10 dígitos.
+
+Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un valor: el servidor evalúa la condición con los mismos datos y descarta la respuesta. Su "No aplica" (por ejemplo, la limpieza del tanque cuando no hay tanque) sólo se escribe en el archivo plano.
+
+### 15.3 Identificadores de vivienda, familia e integrante
+
+- **Vivienda (A2.123):** departamento + subregión + municipio + territorio + microterritorio + `H` + consecutivo de 4 dígitos. El consecutivo se asigna al hogar la primera vez que se guarda una ficha suya, reinicia en 0001 en cada microterritorio y no cambia después; si el hogar cambia de territorio o microterritorio, recibe uno nuevo en el destino. La asignación es atómica: dos fichas guardadas a la vez en el mismo microterritorio no pueden recibir el mismo número.
+- **Familia (A2.124):** identificador de la vivienda + `F` + consecutivo de la familia dentro del hogar.
+- **Integrante (A3.118):** identificador de la familia + tipo + número de documento.
+- **Territorio (A2.6):** tres caracteres. El anexo reserva `T99` y continúa con `U01`, `U02`…, así que los territorios `T99` a `T110` se reportan como `U01` a `U12`.
+- **Subregión (A2.4):** es el código de 3 dígitos parametrizado para Cali en la gestión técnica del SI-APS. Se configura en `cat.parametro` (`subregion_sispro`); mientras no esté, el reporte deja vacías las variables 4, 123 y 124 y lo advierte.
+
+### RN-227 — Archivo plano APS124CCFP para PISIS
+
+1. **Quién.** Sólo los roles con el permiso `reporte.generar` (administrador y maestro), porque el archivo reúne los datos de todas las personas del período, sensibles incluidos. La generación se pide por `POST` con sesión y cabecera anti-CSRF, y cada generación queda en `aud.evento` (quién, cuándo, período y volumen) conforme a RN-225.
+2. **Qué fichas.** Las diligenciadas dentro del período, **con consentimiento** y **cerradas**. De cada hogar entra sólo la **visita más reciente** del período, porque el identificador de la familia es llave primaria del anexo. Las demás se cuentan en el resumen como excluidas, con su motivo.
+3. **Formato.** Un registro por línea, terminado en `CRLF`; campos separados por `|`; texto en mayúsculas, sin tildes (la Ñ se reporta como N), sin comillas ni `|`; selección múltiple como códigos separados por coma; fechas `AAAA-MM-DD`; peso y talla con un decimal; IMC con un decimal y sólo desde los 5 años; cintura y tensión arterial desde los 18. Un ítem del instrumento que no aplica por edad lleva el código "No aplica" del anexo.
+4. **Nombre.** `APS124CCFP` + fecha de corte (`AAAAMMDD`) + tipo y número de la entidad (`NI` + NIT a 12 dígitos) + `.TXT`, a partir del parámetro `entidad_reportante`.
+5. **Incidencias.** Antes de descargar se revisa un resumen con las variables obligatorias vacías, las respuestas sin código en el anexo y los textos recortados, agrupados por variable y con los códigos de las fichas a corregir. El resumen no contiene datos personales. Nada se rellena para cuadrar el archivo: lo que falta se corrige en la ficha.
+6. **Firma.** El archivo debe firmarse digitalmente con el certificado de la entidad antes de cargarlo en PISIS; la firma no la hace la aplicación.
+
+---
+
+## 16. Notas sobre aplicación de las reglas
 
 - Todas las reglas deben validarse antes de permitir el cierre o sincronización de una visita (RN-222).
 - El sistema debe mantener un registro de auditoría de todas las transacciones y cambios realizados (RN-225).
@@ -1576,6 +1639,7 @@ Durante la elaboración de estas reglas se identificaron tres inconsistencias en
 |---|---|---|
 | 1.0 | — | Documento inicial con 105 reglas de captura (RN-001 a RN-140, con vacíos). |
 | **2.0** | **12/08/2026** | Cobertura completa de los 140 ítems del instrumento. Se agregan 32 reglas de captura faltantes; se corrigen 12 reglas existentes; se incorporan las familias nuevas **RN-200 a RN-212** (decisión clínica y canalización) y **RN-220 a RN-226** (cierre, integridad, seguridad y seguimiento); se agrega **RN-000** (modelo de cardinalidad). El catálogo de territorios se traslada al **Anexo A**. Se incorporan los anexos B y C. |
+| **2.1** | **23/09/2026** | Aplicación del **anexo técnico SI-APS APS124CCFP v7**: códigos del anexo en todos los catálogos y opciones retiradas; ítems 2 y 46 a 49 pasan a selección múltiple; ítem 102 a respuesta única; ítem 105 para todas las edades; Zarit por puntaje; país, ocupación y EAPB desde las tablas de SISPRO; estatus migratorio; NV y Técnica Laboral retirados. Nuevo **Bloque 13** con las 129 variables del anexo, sus reglas A{registro}.{variable}, los identificadores de vivienda, familia e integrante, y **RN-227** (archivo plano para PISIS). |
 
 ### Resumen de la versión 2.0
 

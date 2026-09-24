@@ -847,19 +847,28 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 /* Opciones apiladas cuando el texto es largo (ítem 2) */
 .radio-group--columna { flex-direction: column; align-items: flex-start; }
-.radio-group--columna .radio-pill { width: 100%; border-radius: 10px; }
+.radio-group--columna .radio-pill { width: 100%; height: auto; border-radius: 10px; }
 
-/* Selección múltiple (RN-036, RN-038) */
+/* Selección múltiple (RN-036, RN-038)
+   Flexbox y no grid, a propósito: con grid, una fila con menos opciones que
+   columnas (o una opción sola tras la excluyente de ancho completo, como
+   "Otro" después de "Ninguno") deja huecos vacíos en esa fila porque las
+   columnas son compartidas por toda la cuadrícula. Con flex-wrap cada fila
+   reparte su espacio sobrante entre sus propias pastillas, así que una
+   pastilla que queda sola en la última fila se estira a lo ancho en vez de
+   quedar angosta con un vacío al lado. */
 .check-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px 14px;
 }
+
+.check-group--una-columna .check-pill { flex-basis: 100% !important; }
 
 .check-pill {
   display: flex;
   align-items: flex-start;
-  height: 100%;
+  flex: 1 1 280px;
   gap: var(--s-2);
   padding: 9px var(--s-3);
   border: none;
@@ -901,7 +910,7 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 /* «Ninguna de las anteriores» ocupa la fila entera y va sobre lienzo: es la
    opción que anula a las demás, así que no debe parecer una más de la lista. */
 .check-pill--excluyente {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   font-weight: 600;
   background: var(--ink-50);
 }
@@ -1009,6 +1018,24 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--ink-400);
   font-weight: 500;
 }
+
+/* Preguntas que añade el anexo técnico SI-APS: el número no es un ítem del
+   instrumento impreso sino la variable del reporte (A2.34 = registro 2,
+   variable 34). Se distingue para que nadie la busque en la ficha en papel. */
+.item-num--anexo {
+  min-width: 0;
+  margin-right: 2px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  cursor: help;
+}
+
+/* Contenedor de preguntas del anexo dentro de una cuadrícula existente: sus
+   campos ocupan celdas de esa cuadrícula en vez de apilarse en una sola. */
+.anexo-grupo--en-linea { display: contents; }
+.anexo-grupo:empty { display: none; }
 
 /* ================= DIRECCIÓN NORMALIZADA (ítem 21) ================= */
 .direccion-modo {
@@ -1364,6 +1391,11 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 /* ================= TABLES ================= */
 .table-wrapper { overflow-x: auto; }
+
+/* Separa "+ Agregar acción" / "+ Agregar seguimiento" de la última tarjeta
+   de la tabla que tienen encima: sin este margen quedaban pegados al borde
+   inferior de la última fila. */
+.table-wrapper + .btn--icon { margin-top: 12px; }
 
 /* ---- Tabla del historial ----------------------------------------------
    La cabecera se queda pegada al desplazar: en una tabla de doce columnas,
@@ -2101,6 +2133,9 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .calc-strip[hidden] { display: none; }
 
+/* La clasificación del ZARIT sólo tiene algo que decir con puntaje. */
+.calc-strip--zarit:has(.badge[hidden]) { display: none; }
+
 .calc-strip__etiqueta {
   font-size: 11.5px;
   font-weight: 700;
@@ -2126,7 +2161,6 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   border-radius: 10px;
 }
 
-.check-group--una-columna { grid-template-columns: 1fr; }
 
 .radio-group--compacto { 
   gap: 6px; 
@@ -4160,6 +4194,28 @@ html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
 #formUsuario .field input.mono { font-family: var(--font-mono); }
 .usuarios__ayuda { margin: -8px 0 0; }
 .usuarios__acciones .btn[hidden] { display: none; }
+
+/* ---- Vista Reporte SI-APS ------------------------------------------------ */
+#formReporte { margin-top: var(--s-4); }
+.reporte__criterio { margin: var(--s-2) 0 0; }
+.reporte__acciones { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-4); }
+.reporte__error { margin-top: var(--s-4); color: var(--alert-700); }
+.reporte__resultado { margin-top: var(--s-5); border-top: 1px solid var(--ink-100); padding-top: var(--s-5); }
+.reporte__resultado[hidden] { display: none; }
+.reporte__archivo { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); font-weight: 600; color: var(--ink-800); overflow-wrap: anywhere; }
+.reporte__archivo i { font-size: 20px; color: var(--brand-600); }
+.reporte__resultado .mono { font-family: var(--font-mono); }
+.reporte__cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-3); }
+.reporte__cifra { display: grid; gap: 2px; padding: var(--s-3) var(--s-4); border-radius: var(--r-core); background: var(--brand-50); }
+.reporte__cifra-valor { font-size: 22px; font-weight: 700; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.reporte__cifra-etiqueta { font-size: var(--fs-small); color: var(--ink-500); }
+.reporte__aviso { display: flex; align-items: flex-start; gap: var(--s-3); margin: var(--s-3) 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-core); background: var(--warn-50); box-shadow: inset 0 0 0 1px var(--warn-100); font-size: var(--fs-small); color: var(--warn-700); }
+.reporte__aviso i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.reporte__ok { color: var(--ink-700); font-weight: 600; }
+.reporte__subtitulo { margin: var(--s-5) 0 var(--s-3); font-size: var(--fs-label); font-weight: 700; color: var(--ink-800); }
+.reporte__tabla td { vertical-align: top; }
+.reporte__casos { font-variant-numeric: tabular-nums; text-align: right; }
+.reporte__firma { margin-top: var(--s-4); }
 
 .app-usuario__avatar {
   display: grid;

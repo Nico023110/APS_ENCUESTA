@@ -8,9 +8,12 @@ const path = require('path');
 const BASE = require('path').join(__dirname, '..');
 const contexto = vm.createContext({ console: console });
 
-['catalogos.js', 'reglas.js'].forEach(function (archivo) {
+['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'reglas.js'].forEach(function (archivo) {
   vm.runInContext(fs.readFileSync(path.join(BASE, archivo), 'utf8'), contexto, { filename: archivo });
 });
+
+/* Las variables obligatorias del anexo técnico SI-APS (anexo.js). */
+const { viviendaAnexo, familiaAnexo, integranteAnexo } = require('./_anexo_datos');
 
 const { validarReglas, evaluarAdvertencias, evaluarAlertas, validarCierre,
         evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno } = contexto;
@@ -26,7 +29,7 @@ const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, 
 
 /* ---------- Ficha base: ítems 1 a 38 completos y válidos ---------- */
 function fichaBase() {
-  return {
+  return Object.assign(viviendaAnexo(), {
     consentimiento: 'si',
     situacionInminente: 'no_aplica',
     departamentoCodigo: '76',
@@ -60,12 +63,12 @@ function fichaBase() {
     riesgosAccidente: ['ninguno'],
     vectores: 'no',
     factoresContaminacion: ['ninguno']
-  };
+  });
 }
 
 /* ---------- Integrante adulto válido ---------- */
 function adultaValida() {
-  return {
+  return Object.assign(integranteAnexo(), {
     primerNombre: 'Ana', primerApellido: 'Gomez',
     tipoId: 'CC', numeroId: '1144099887',
     fechaNacimiento: '1996-05-10',
@@ -85,19 +88,19 @@ function adultaValida() {
     clasificacionAntropometrica: 'normal',
     tensionSistolica: 118, tensionDiastolica: 75, clasificacionTension: 'normal',
     enfermedadesNoTransmisibles: ['ninguna'], condicionesTransmisibles: ['ninguna'],
-    zonaEndemica: ['ninguna'], sintomatologiaDepresiva: ['ninguno'],
+    zonaEndemica: 'ninguna', sintomatologiaDepresiva: ['ninguno'], riesgosSaludMentalJoven: ['ninguna'],
     ideacionSuicida: 'ninguno', consumoSpa: 'no', limitacionCotidiana: 'no'
-  };
+  });
 }
 
 function familiaValida(integrantes) {
-  return {
+  return Object.assign(familiaAnexo(), {
     idFamilia: 'FAM-001', tipoFamilia: 'nuclear_monoparental',
     numeroIntegrantes: integrantes.length, integrantes: integrantes,
     cuidadorPrincipal: 'no', situacionesRiesgo: ['ninguna'],
     practicasVinculo: ['escucha_activa'], redesApoyo: 'cuenta_protectoras',
     practicasCuidadoHogar: ['ventilacion']
-  };
+  });
 }
 
 console.log('\n=== 1. Compatibilidad: la app actual (ítems 1-38) sigue funcionando ===');
@@ -244,15 +247,23 @@ const comunitarioSinLider = Object.assign(fichaBase(), { entornoAbordaje: 'comun
 verificar('Entorno comunitario sin ítem 19 => sigue bloqueando RN-019',
   validarReglas(comunitarioSinLider).some(e => e.codigo === 'RN-019'));
 
-/* RN-065: «Otra» exige el país en 65.1. */
-const otraSinPais = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'OT', nacionalidadOtra: '' })]);
-verificar('Nacionalidad «Otra» sin país => bloqueo RN-065 en 65.1',
-  validarReglas(Object.assign(fichaBase(), { familias: [otraSinPais] }))
-    .some(e => e.codigo === 'RN-065' && e.campo === 'nacionalidadOtra'));
-const otraConPais = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'OT', nacionalidadOtra: 'Ecuador' })]);
-verificar('Nacionalidad «Otra» con país => sin incumplimiento RN-065',
-  validarReglas(Object.assign(fichaBase(), { familias: [otraConPais] }))
-    .filter(e => e.codigo === 'RN-065').length === 0);
+/* RN-065: el país sale de la tabla de SISPRO (variable 9). Una ficha anterior
+   con «Otra» y el país escrito ya no se puede reportar: hay que elegirlo. */
+const otraEscrita = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'OT', nacionalidadOtra: 'Ecuador' })]);
+const errOtra = validarReglas(Object.assign(fichaBase(), { familias: [otraEscrita] }))
+  .filter(e => e.codigo === 'RN-065' && e.campo === 'nacionalidad');
+verificar('País «Otra» de una ficha antigua => bloqueo RN-065 que recuerda lo escrito',
+  errOtra.length === 1 && /Ecuador/.test(errOtra[0].mensaje), JSON.stringify(errOtra));
+const ecuatoriana = familiaValida([Object.assign(adultaValida(), {
+  nacionalidad: 'EC', tipoId: 'PT', numeroId: 'PT12345', estatusMigratorio: 'regular'
+})]);
+verificar('País de la tabla (Ecuador) con estatus migratorio => sin RN-065 ni A3.10',
+  validarReglas(Object.assign(fichaBase(), { familias: [ecuatoriana] }))
+    .filter(e => e.codigo === 'RN-065' || e.codigo === 'A3.10').length === 0,
+  JSON.stringify(validarReglas(Object.assign(fichaBase(), { familias: [ecuatoriana] })).map(e => e.codigo + ':' + e.campo)));
+const sinEstatus = familiaValida([Object.assign(adultaValida(), { nacionalidad: 'VE', tipoId: 'PT', numeroId: 'PT12345' })]);
+verificar('Extranjero sin estatus migratorio => bloqueo A3.10',
+  validarReglas(Object.assign(fichaBase(), { familias: [sinEstatus] })).some(e => e.codigo === 'A3.10'));
 
 const dosResponsables = familiaValida([adultaValida(),
   Object.assign(adultaValida(), { numeroId: '1144099888', primerNombre: 'Luz' })]);
@@ -405,6 +416,18 @@ const territorioRuralEnUrbano = Object.assign(fichaBase(), { territorio: 'T55', 
 verificar('Territorio rural con área urbana => advertencia RN-007',
   evaluarAdvertencias(territorioRuralEnUrbano).some(a => a.codigo === 'RN-007'));
 
+console.log('\n=== 9b. RN-016 — registrar a tiempo vs. corregir lo ya registrado ===');
+const hace45 = new Date(HOY.getTime());
+hace45.setDate(hace45.getDate() - 45);
+const fichaVieja = Object.assign(fichaBase(), { fechaDiligenciamiento: iso(hace45) });
+verificar('Ficha nueva de hace 45 días => bloqueo RN-016',
+  validarReglas(fichaVieja).some(e => e.codigo === 'RN-016'));
+verificar('La misma ficha ya registrada en la base => sin bloqueo RN-016 al corregirla',
+  !validarReglas(Object.assign(fichaVieja, { yaRegistradaEnLaBase: true })).some(e => e.codigo === 'RN-016'));
+const fichaFutura = Object.assign(fichaBase(), { fechaDiligenciamiento: '2999-01-01', yaRegistradaEnLaBase: true });
+verificar('Una fecha futura sigue bloqueada aunque esté registrada',
+  validarReglas(fichaFutura).some(e => e.codigo === 'RN-016'));
+
 console.log('\n=== 10. Campos calculados y llaves del plan de cuidado ===');
 const hacinamientoManipulado = Object.assign(fichaBase(), {
   personasEnVivienda: 6, habitacionesVivienda: 2,
@@ -487,6 +510,107 @@ const llaveViviendaErrada = Object.assign(fichaBase(), {
 });
 verificar('Código de EBS divergente en el plan => bloqueo RN-111',
   validarReglas(llaveViviendaErrada).some(e => e.codigo === 'RN-111'));
+
+console.log('\n=== 12. Variables del anexo técnico SI-APS (anexo.js) ===');
+const codigos = (datos) => validarReglas(datos).map(e => e.codigo);
+const avisos = (datos) => evaluarAdvertencias(datos).map(e => e.codigo);
+const fichaConFamilia = (cambiosIntegrante, cambiosFamilia, cambiosVivienda) => Object.assign(fichaBase(), cambiosVivienda || {}, {
+  familias: [Object.assign(familiaValida([Object.assign(adultaValida(), cambiosIntegrante || {})]), cambiosFamilia || {})]
+});
+
+verificar('Ficha completa con el anexo => sin bloqueos', codigos(fichaConFamilia()).length === 0,
+  JSON.stringify(validarReglas(fichaConFamilia()).map(e => e.codigo + ':' + e.campo)));
+
+const sinAlumbrado = fichaBase(); delete sinAlumbrado.alumbrado;
+verificar('Falta el alumbrado => bloqueo A2.37', codigos(sinAlumbrado).indexOf('A2.37') !== -1);
+verificar('Alumbrado fuera del catálogo => bloqueo A2.37',
+  codigos(Object.assign(fichaBase(), { alumbrado: 'antorcha' })).indexOf('A2.37') !== -1);
+
+verificar('Transporte «otro» sin decir cuál => bloqueo A2.45',
+  codigos(Object.assign(fichaBase(), { mediosTransporte: ['publico', 'otro'] })).indexOf('A2.45') !== -1);
+verificar('Transporte «otro» con cuál => sin A2.45',
+  codigos(Object.assign(fichaBase(), { mediosTransporte: ['otro'], mediosTransporteOtro: 'Mototaxi' })).indexOf('A2.45') === -1);
+
+verificar('Sin tanque => no se exigen limpieza ni distancia (A2.56, A2.57)',
+  codigos(fichaBase()).filter(c => c === 'A2.56' || c === 'A2.57').length === 0);
+const conTanque = codigos(Object.assign(fichaBase(), { tanqueAlmacenamiento: 'aereo' }));
+verificar('Con tanque aéreo => se exigen limpieza y distancia',
+  conTanque.indexOf('A2.56') !== -1 && conTanque.indexOf('A2.57') !== -1, JSON.stringify(conTanque));
+
+const sinElementos = Object.assign(fichaBase(), { elementosVivienda: [] });
+verificar('Sin elementos en la vivienda (sin opción «ninguno» en el anexo) => advertencia A2.36, no bloqueo',
+  codigos(sinElementos).indexOf('A2.36') === -1 && avisos(sinElementos).indexOf('A2.36') !== -1);
+
+verificar('«No aplica» junto con otra fuente de humo => bloqueo A2.80',
+  codigos(Object.assign(fichaBase(), { fuentesHumo: ['no_aplica', 'lena'] })).indexOf('A2.80') !== -1);
+verificar('Texto con barra vertical «|» => bloqueo (rompe el archivo plano)',
+  codigos(Object.assign(fichaBase(), { otrosAccesosVivienda: 'Por la loma | escaleras' })).indexOf('A2.39') !== -1);
+verificar('Teléfono de la vivienda de 7 dígitos => bloqueo A2.15',
+  codigos(Object.assign(fichaBase(), { telefonoVivienda: '4451234' })).indexOf('A2.15') !== -1);
+
+verificar('Situación inminente múltiple (física y emergencia) con observaciones => válida',
+  codigos(Object.assign(fichaBase(), {
+    situacionInminente: ['fisica', 'emergencia'], observacionesSituacion: 'Adulto mayor con caída reciente'
+  })).filter(c => c === 'RN-002' || c === 'A2.24').length === 0);
+verificar('Situación inminente sin observaciones => bloqueo A2.24',
+  codigos(Object.assign(fichaBase(), { situacionInminente: ['fisica'] })).indexOf('A2.24') !== -1);
+verificar('«No aplica» junto con una situación => bloqueo RN-002',
+  codigos(Object.assign(fichaBase(), { situacionInminente: ['no_aplica', 'fisica'] })).indexOf('RN-002') !== -1);
+verificar('Situación inminente de una ficha antigua (texto) => se sigue leyendo',
+  codigos(Object.assign(fichaBase(), { situacionInminente: 'no_aplica' })).indexOf('RN-002') === -1);
+
+verificar('Fuente de agua como lista (ítem 46 múltiple) => válida',
+  codigos(Object.assign(fichaBase(), {
+    actividadEconomica: 'no', animales: ['ninguno'], carnetAntirrabico: 'no_aplica',
+    fuenteAgua: ['acueducto_esp', 'agua_embotellada'], disposicionExcretas: ['alcantarillado'],
+    aguasResiduales: ['alcantarillado'], residuosSolidos: ['servicio_aseo']
+  })).filter(c => /^RN-04[6-9]$/.test(c)).length === 0);
+const aguaDeRio = evaluarAlertas(Object.assign(fichaBase(), { fuenteAgua: ['acueducto_esp', 'rio_quebrada'] }));
+verificar('Una de las fuentes no es segura => alerta RN-211 que la nombra',
+  aguaDeRio.some(a => a.codigo === 'RN-211' && /Río/.test(a.descripcion)));
+
+verificar('Cuidador principal sin puntaje ZARIT => bloqueo A2.115',
+  codigos(fichaConFamilia({}, { cuidadorPrincipal: 'si' })).indexOf('A2.115') !== -1);
+verificar('Puntaje ZARIT de 101 => fuera de rango (A2.115)',
+  codigos(fichaConFamilia({}, { cuidadorPrincipal: 'si', zaritPuntaje: 101, zarit: 'intensa' })).indexOf('A2.115') !== -1);
+verificar('Puntaje ZARIT 60 con clasificación derivada «intensa» => válido',
+  codigos(fichaConFamilia({}, { cuidadorPrincipal: 'si', zaritPuntaje: 60, zarit: 'intensa' }))
+    .filter(c => c === 'A2.115' || c === 'RN-053').length === 0);
+verificar('Clasificación ZARIT que no corresponde al puntaje => bloqueo RN-053',
+  codigos(fichaConFamilia({}, { cuidadorPrincipal: 'si', zaritPuntaje: 60, zarit: 'ausencia' })).indexOf('RN-053') !== -1);
+
+verificar('Fumador activo sin cigarrillos ni años => bloqueos A3.65 y A3.66',
+  ['A3.65', 'A3.66'].every(c => codigos(fichaConFamilia({ consumoTabaco: 'activo' })).indexOf(c) !== -1));
+verificar('Asbesto: actividad relacionada «sí» sin decir cuál => bloqueo A3.105',
+  codigos(fichaConFamilia({ actividadRelacionadaAsbesto: 'si' })).indexOf('A3.105') !== -1);
+verificar('Módulo materno opcional: una gestante sin responderlo guarda igual',
+  codigos(fichaConFamilia({ gestacionActual: 'si', sujetoEspecialProteccion: ['gestante'],
+    atencionesPendientesMaterno: ['ninguna'] })).filter(c => /^A3\.(7\d|8\d|9[01])$/.test(c)).length === 0);
+verificar('Fecha de última menstruación posterior a la visita => bloqueo A3.70',
+  codigos(fichaConFamilia({ fechaUltimaMenstruacion: iso(new Date(HOY.getFullYear() + 1, 0, 1)) })).indexOf('A3.70') !== -1);
+verificar('Evento del último mes sin decir qué hizo => bloqueo A3.50',
+  codigos(fichaConFamilia({ enfermedadesUltimoMes: ['resfriado'] })).indexOf('A3.50') !== -1);
+
+verificar('Ocupación que no es código CIUO => bloqueo RN-073',
+  codigos(fichaConFamilia({ ocupacion: 'Ingeniera de Sistemas' })).indexOf('RN-073') !== -1);
+verificar('Ocupación 9998 (sin ocupación remunerada) => válida',
+  codigos(fichaConFamilia({ ocupacion: '9998' })).indexOf('RN-073') === -1);
+verificar('Teléfono de 7 dígitos (fijo antiguo) => bloqueo RN-070',
+  codigos(fichaConFamilia({ telefono1: '4451234' })).indexOf('RN-070') !== -1);
+verificar('Nivel educativo retirado («Técnica laboral») => bloqueo RN-074',
+  codigos(fichaConFamilia({ nivelEducativo: 'tecnica_laboral' })).indexOf('RN-074') !== -1);
+verificar('Sujeto «violencia de género» (retirado del anexo) => bloqueo RN-077',
+  codigos(fichaConFamilia({ sujetoEspecialProteccion: ['victima_violencia_genero'], modalidadViolencia: ['fisica'] }))
+    .indexOf('RN-077') !== -1);
+verificar('Violencia interpersonal sin modalidad => bloqueo RN-078',
+  codigos(fichaConFamilia({ sujetoEspecialProteccion: ['victima_violencia_interpersonal'] })).indexOf('RN-078') !== -1);
+verificar('Zona endémica con dos respuestas => bloqueo RN-102 (respuesta única en el anexo)',
+  codigos(fichaConFamilia({ zonaEndemica: ['malaria', 'tracoma'] })).indexOf('RN-102') !== -1);
+verificar('Derecho a la salud sin respuesta => bloqueo RN-090 (obligatoria desde el anexo)',
+  codigos(fichaConFamilia({ conocimientoDerecho: [] })).indexOf('RN-090') !== -1);
+verificar('Riesgos para la salud mental se exigen también a un niño de 8 años (RN-105)',
+  codigos(fichaConFamilia({ riesgosSaludMentalJoven: [], tipoId: 'TI', numeroId: '1144099887',
+    fechaNacimiento: iso(new Date(HOY.getFullYear() - 8, 0, 1)) })).indexOf('RN-105') !== -1);
 
 console.log('\n---------------------------------------------');
 console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);

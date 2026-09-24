@@ -468,6 +468,7 @@ CREATE TABLE aps.ficha (
   entorno_abordaje      text NOT NULL,                 -- ítem 17, dominio ENTORNO
   nombre_institucion    text,                          -- ítem 18, condicionado
   lider_entorno         text NOT NULL,                 -- ítem 19
+  referencia_familia    text,                          -- ítem 26: número que la familia usa como referencia (no es su llave)
   jovenes_en_paz        boolean NOT NULL,              -- ítem 20
   -- Auditoria y Versionamiento
   fechas_modificacion   jsonb DEFAULT '[]'::jsonb,     -- Arreglo de fechas de modificacion

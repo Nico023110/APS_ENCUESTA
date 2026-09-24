@@ -1,0 +1,67 @@
+[
+ {
+  "codigo": "1",
+  "nombre": "Preescolar",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "10",
+  "nombre": "Especialización",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "11",
+  "nombre": "Maestría",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "12",
+  "nombre": "Doctorado",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "13",
+  "nombre": "Ninguno",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2",
+  "nombre": "Básica Primaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3",
+  "nombre": "Básica Secundaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4",
+  "nombre": "Media Académica o Clásica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5",
+  "nombre": "Media Técnica (Bachillerato Técnico)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6",
+  "nombre": "Normalista",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7",
+  "nombre": "Técnica Profesional",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8",
+  "nombre": "Tecnológica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9",
+  "nombre": "Profesional",
+  "habilitado": "SI"
+ }
+]

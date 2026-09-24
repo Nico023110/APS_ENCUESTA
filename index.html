@@ -180,8 +180,10 @@
           </div>
           <div class="field field--full field--block" data-campo="situacionInminente">
             <label><span class="item-num">2.</span> Antes de iniciar, verifique si hay alguna situación que ponga en peligro la vida de la persona con quien va a interactuar o la de alguien más en el lugar: *</label>
-            <div class="radio-group radio-group--columna" id="grupoSituacionInminente"></div>
+            <span class="field-hint field-hint--inline">Selección múltiple. Marcar "No aplica" desmarca las demás opciones.</span>
+            <div class="check-group check-group--una-columna" id="grupoSituacionInminente" data-catalogo="CAT_SITUACION_INMINENTE" data-name="situacionInminente"></div>
           </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="situacion"></div>
           <div class="alert alert--urgent" id="alertaSituacion" hidden>
             <strong>⚠ Atención prioritaria requerida.</strong>
             <span id="alertaSituacionTexto"></span>
@@ -226,8 +228,9 @@
               <label for="comuna">Comuna <span class="field-auto">(derivada del territorio)</span></label>
               <input type="text" id="comuna" name="comuna" readonly>
             </div>
+            <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="ubicacion"></div>
             <div class="field field--full" data-campo="divisionTerritorial">
-              <label for="divisionTerritorial"><span class="item-num">9.</span> Corregimiento / Centro de poblado / Vereda / Localidad / Barrio / Resguardo Indígena: *</label>
+              <label for="divisionTerritorial"><span class="item-num">9.</span> Nombre del corregimiento, centro poblado, vereda, localidad, barrio o resguardo indígena: *</label>
               <input type="text" id="divisionTerritorial" name="divisionTerritorial" placeholder="Ej. Barrio El Caney">
             </div>
           </div>
@@ -475,6 +478,7 @@
               <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): *</label>
               <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" placeholder="Ej. Casa verde esquinera con rejas negras">
             </div>
+            <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="vivienda-contacto"></div>
             <div class="field" data-campo="idHogar">
               <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar:</label>
               <input type="text" id="idHogar" name="idHogar" placeholder="Ej. H0001">
@@ -537,6 +541,8 @@
             </div>
           </div>
 
+          <div class="form-grid anexo-grupo" data-anexo-grupo="vivienda-condiciones" style="margin-bottom: 24px;"></div>
+
           <div class="field field--full field--block" data-campo="riesgosAccidente">
             <label><span class="item-num">36.</span> Escenarios de riesgo de accidente en la vivienda: *</label>
             <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguno" desmarca las demás opciones.</span>
@@ -550,7 +556,7 @@
           </div>
 
           <div class="field field--full field--block" data-campo="factoresContaminacion" style="margin-top: 24px;">
-            <label><span class="item-num">38.</span> Factores de contaminación cercanos a la vivienda: *</label>
+            <label><span class="item-num">38.</span> Cerca de la vivienda hay: *</label>
             <span class="field-hint field-hint--inline">Selección múltiple. Marcar "Ninguno" desmarca las demás opciones.</span>
             <div class="check-group" id="grupoFactoresContaminacion"></div>
           </div>
@@ -567,6 +573,7 @@
             <label><span class="item-num">39.</span> Actividad económica en el interior de la vivienda: *</label>
             <div class="radio-group" id="grupoActividadEconomica"></div>
           </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="actividad" style="margin-top: 16px;"></div>
 
           <div class="field field--full field--block" data-campo="animales" style="margin-top: 24px;">
             <label><span class="item-num">40.</span> Animales que conviven en la vivienda o entorno inmediato: *</label>
@@ -615,6 +622,7 @@
             <span class="field-hint field-hint--inline">Se autoasigna "No aplica" cuando no hay caninos ni felinos en la vivienda.</span>
             <div class="radio-group" id="grupoCarnetAntirrabico"></div>
           </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="animales" style="margin-top: 24px;"></div>
         </div>
 
         <!-- ---------- 3.3 Agua y saneamiento básico (46-49) ---------- -->
@@ -623,24 +631,73 @@
             <h2>3.3 Agua y saneamiento básico</h2>
             <span class="rule-tag">RN-046 · RN-047 · RN-048 · RN-049</span>
           </div>
-          <div class="form-grid">
-            <div class="field" data-campo="fuenteAgua">
-              <label for="fuenteAgua"><span class="item-num">46.</span> Fuente de agua para consumo humano: *</label>
-              <select id="fuenteAgua" name="fuenteAgua"></select>
-            </div>
-            <div class="field" data-campo="disposicionExcretas">
-              <label for="disposicionExcretas"><span class="item-num">47.</span> Sistema de disposición de excretas: *</label>
-              <select id="disposicionExcretas" name="disposicionExcretas"></select>
-            </div>
-            <div class="field" data-campo="aguasResiduales">
-              <label for="aguasResiduales"><span class="item-num">48.</span> Sistema de disposición de aguas residuales: *</label>
-              <select id="aguasResiduales" name="aguasResiduales"></select>
-            </div>
-            <div class="field" data-campo="residuosSolidos">
-              <label for="residuosSolidos"><span class="item-num">49.</span> Disposición final de residuos sólidos: *</label>
-              <select id="residuosSolidos" name="residuosSolidos"></select>
-            </div>
+          <div class="field field--full field--block" data-campo="fuenteAgua">
+            <label><span class="item-num">46.</span> Fuente principal de agua para consumo humano: *</label>
+            <span class="field-hint field-hint--inline">Selección múltiple.</span>
+            <div class="check-group" data-catalogo="CAT_FUENTE_AGUA" data-name="fuenteAgua"></div>
           </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="agua" style="margin-top: 16px;"></div>
+
+          <div class="field field--full field--block" data-campo="disposicionExcretas" style="margin-top: 24px;">
+            <label><span class="item-num">47.</span> Sistema de disposición de excretas: *</label>
+            <span class="field-hint field-hint--inline">Selección múltiple.</span>
+            <div class="check-group" data-catalogo="CAT_DISPOSICION_EXCRETAS" data-name="disposicionExcretas"></div>
+          </div>
+
+          <div class="field field--full field--block" data-campo="aguasResiduales" style="margin-top: 24px;">
+            <label><span class="item-num">48.</span> Sistema de disposición de aguas residuales domésticas: *</label>
+            <span class="field-hint field-hint--inline">Selección múltiple.</span>
+            <div class="check-group" data-catalogo="CAT_AGUAS_RESIDUALES" data-name="aguasResiduales"></div>
+          </div>
+
+          <div class="form-grid anexo-grupo" data-anexo-grupo="residuos-almacenamiento" style="margin-top: 24px;"></div>
+
+          <div class="field field--full field--block" data-campo="residuosSolidos" style="margin-top: 24px;">
+            <label><span class="item-num">49.</span> Disposición final de los residuos sólidos ordinarios: *</label>
+            <span class="field-hint field-hint--inline">Selección múltiple.</span>
+            <div class="check-group" data-catalogo="CAT_RESIDUOS_SOLIDOS" data-name="residuosSolidos"></div>
+          </div>
+        </div>
+
+        <!-- ---------- 3.4 a 3.8 Variables del anexo técnico SI-APS ---------- -->
+        <div class="card" id="seccion-3-4">
+          <div class="card__header">
+            <h2>3.4 Acceso a la vivienda y desplazamiento</h2>
+            <span class="rule-tag">Anexo SI-APS · variables 38, 39 y 44 a 49</span>
+          </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="acceso"></div>
+        </div>
+
+        <div class="card" id="seccion-3-5">
+          <div class="card__header">
+            <h2>3.5 Manejo de residuos</h2>
+            <span class="rule-tag">Anexo SI-APS · variables 63 a 77</span>
+          </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="residuos"></div>
+        </div>
+
+        <div class="card" id="seccion-3-6">
+          <div class="card__header">
+            <h2>3.6 Calidad del aire y energía</h2>
+            <span class="rule-tag">Anexo SI-APS · variables 78 a 83</span>
+          </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="aire"></div>
+        </div>
+
+        <div class="card" id="seccion-3-7">
+          <div class="card__header">
+            <h2>3.7 Vectores y animales ponzoñosos</h2>
+            <span class="rule-tag">Anexo SI-APS · variables 85 a 91</span>
+          </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="vectores"></div>
+        </div>
+
+        <div class="card" id="seccion-3-8">
+          <div class="card__header">
+            <h2>3.8 Productos químicos en el hogar</h2>
+            <span class="rule-tag">Anexo SI-APS · variables 104 a 109</span>
+          </div>
+          <div class="form-grid anexo-grupo" data-anexo-grupo="quimicos"></div>
         </div>
 
         <!-- ============ 4 y 5. FAMILIAS E INTEGRANTES (bloques repetibles) ============ -->
@@ -679,13 +736,14 @@
                   <span class="rule-tag">RN-050 a RN-054</span>
                 </div>
                 <div class="form-grid">
+                  <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="familia-alias"></div>
                   <div class="field" data-campo="tipoFamilia">
                     <label><span class="item-num">50.</span> Tipo de familia: *</label>
                     <select name="familias[0].tipoFamilia" data-catalogo="CAT_TIPO_FAMILIA"></select>
                   </div>
                   <div class="field" data-campo="numeroIntegrantes">
                     <label><span class="item-num">51.</span> N.° de personas que conforman la familia: *</label>
-                    <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Genera un bloque de sección 5 por cada integrante.</span>
+                    <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Genera un bloque de sección 5 por integrante.</span>
                     <input type="number" name="familias[0].numeroIntegrantes" min="1" step="1" data-rol="numeroIntegrantes" placeholder="Ej. 3">
                   </div>
                   <div class="field" data-campo="idFamiliaBloque">
@@ -699,11 +757,11 @@
                   <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].cuidadorPrincipal"></div>
                 </div>
 
-                <div class="field field--full field--block" data-campo="zarit" data-rol="campoZarit" style="margin-top: 24px;">
-                  <label><span class="item-num">53.</span> Escala ZARIT (resultado/puntaje) del cuidador principal:</label>
-                  <span class="field-hint field-hint--inline">Aplicar escala ZARIT si la respuesta anterior es SÍ.</span>
-                  <div class="radio-group radio-group--columna" data-catalogo="CAT_ZARIT" data-name="familias[0].zarit"></div>
+                <div class="form-grid anexo-grupo" data-anexo-grupo="familia-zarit" style="margin-top: 24px;"></div>
+                <div class="calc-strip calc-strip--zarit">
+                  <span class="badge" data-rol="badgeZarit" hidden></span>
                 </div>
+                <div class="form-grid anexo-grupo" data-anexo-grupo="familia-apgar" style="margin-top: 24px;"></div>
 
                 <div class="field field--full field--block" data-campo="situacionesRiesgo" style="margin-top: 24px;">
                   <label><span class="item-num">54.</span> Situaciones o condiciones de riesgo para la salud (física o mental): *</label>
@@ -735,6 +793,8 @@
                   <span class="field-hint field-hint--inline">Selección múltiple.</span>
                   <div class="check-group" data-catalogo="CAT_PRACTICAS_CUIDADO_HOGAR" data-name="familias[0].practicasCuidadoHogar"></div>
                 </div>
+
+                <div class="form-grid anexo-grupo" data-anexo-grupo="familia-practicas" style="margin-top: 24px;"></div>
 
                 <div class="field field--full field--block" data-campo="sinContactoTelefonico" style="margin-top: 24px;">
                   <label>Novedad de contacto <span class="rule-tag">RN-070</span></label>
@@ -809,13 +869,10 @@
                           <input type="text" name="familias[0].integrantes[0].edadTexto" readonly data-rol="edadCalculada" placeholder="—">
                         </div>
                         <div class="field" data-campo="nacionalidad">
-                          <label><span class="item-num">65.</span> Nacionalidad: *</label>
-                          <select name="familias[0].integrantes[0].nacionalidad" data-catalogo="CAT_NACIONALIDAD"></select>
+                          <label><span class="item-num">65.</span> País de origen: *</label>
+                          <select name="familias[0].integrantes[0].nacionalidad" data-catalogo="CAT_PAIS"></select>
                         </div>
-                        <div class="field" data-campo="nacionalidadOtra" data-rol="campoNacionalidadOtra" hidden>
-                          <label>65.1 ¿Cuál país? *</label>
-                          <input type="text" name="familias[0].integrantes[0].nacionalidadOtra" placeholder="Ej. Ecuador">
-                        </div>
+                        <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="integrante-migracion"></div>
                       </div>
 
                       <div class="field field--full field--block" data-campo="sexo" style="margin-top: 24px;">
@@ -872,12 +929,13 @@
                         <h2>5.2 Características socioeconómicas</h2>
                         <span class="rule-tag">RN-073 a RN-080</span>
                       </div>
-                      <div class="form-grid form-grid--2col">
-                        <div class="field" data-campo="ocupacion">
-                          <label><span class="item-num">73.</span> Ocupación:</label>
-                          <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Obligatoria desde los 15 años.</span>
-                          <input type="text" name="familias[0].integrantes[0].ocupacion" maxlength="100" autocomplete="off" placeholder="Ej. Estudiante">
-                        </div>
+                      <div class="field field--full" data-campo="ocupacion">
+                        <label><span class="item-num">73.</span> Ocupación (código CIUO):</label>
+                        <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Obligatoria desde los 15 años. Escriba el código o parte del nombre y elija de la lista. Desempleado, ama de casa o estudiante: 9998.</span>
+                        <input type="text" name="familias[0].integrantes[0].ocupacion" list="listaOcupacionesCiuo" maxlength="120" autocomplete="off" placeholder="Ej. 5321" data-rol="ocupacion">
+                        <span class="field-hint field-hint--inline" data-rol="nombreOcupacion"></span>
+                      </div>
+                      <div class="form-grid" style="margin-top: 16px;">
                         <div class="field" data-campo="nivelEducativo">
                           <label><span class="item-num">74.</span> Nivel Educativo:</label>
                           <span class="field-hint field-hint--inline" style="margin-bottom: 6px;">Obligatorio desde los 5 años.</span>
@@ -1027,6 +1085,8 @@
                         <div class="check-group" data-catalogo="CAT_SIGNOS_DESNUTRICION" data-name="familias[0].integrantes[0].signosDesnutricion"></div>
                       </div>
 
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-lavado" style="margin-top: 24px;"></div>
+
                       <!-- Tensión arterial (98-99) -->
                       <h3 class="card__subtitle">Tensión arterial <span class="rule-tag">RN-098 · RN-099</span></h3>
                       <div class="form-grid form-grid--2col" data-rol="campoTension">
@@ -1047,8 +1107,13 @@
                         </div>
                       </div>
 
+                      <!-- Eventos del último mes (anexo, variables 47 a 51) -->
+                      <h3 class="card__subtitle">Eventos de salud del último mes <span class="rule-tag">Anexo SI-APS · variables 47 a 51</span></h3>
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-eventos"></div>
+
                       <!-- Morbilidad (100-104) -->
                       <h3 class="card__subtitle">Morbilidad y adherencia <span class="rule-tag">RN-100 a RN-104</span></h3>
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-diagnostico" style="margin-top: 16px;"></div>
 
                       <div class="field field--full field--block" data-campo="enfermedadesNoTransmisibles" style="margin-top: 24px;">
                         <label><span class="item-num">100.</span> ¿Algún profesional de salud le ha diagnosticado o le ha dicho que tiene alguna enfermedad no transmisible? *</label>
@@ -1064,8 +1129,8 @@
 
                       <div class="field field--full field--block" data-campo="zonaEndemica" style="margin-top: 24px;">
                         <label><span class="item-num">102.</span> ¿Vive en zona endémica para alguno de los siguientes eventos o presenta signos y síntomas? *</label>
-                        <span class="field-hint field-hint--inline">Selección múltiple.</span>
-                        <div class="check-group" data-catalogo="CAT_ZONA_ENDEMICA" data-name="familias[0].integrantes[0].zonaEndemica"></div>
+                        <span class="field-hint field-hint--inline">Una sola respuesta: el evento principal.</span>
+                        <div class="radio-group" data-catalogo="CAT_ZONA_ENDEMICA" data-name="familias[0].integrantes[0].zonaEndemica"></div>
                       </div>
 
                       <div class="field field--full field--block" data-campo="adherenciaTratamiento" data-rol="campoAdherencia" style="margin-top: 24px;">
@@ -1082,9 +1147,9 @@
                       <!-- Salud mental y consumo (105-110) -->
                       <h3 class="card__subtitle">Salud mental y consumo de sustancias <span class="rule-tag">RN-105 a RN-110</span></h3>
 
-                      <div class="field field--full field--block" data-campo="riesgosSaludMentalJoven" data-rol="campoRiesgoJoven" hidden style="margin-top: 24px;">
+                      <div class="field field--full field--block" data-campo="riesgosSaludMentalJoven" data-rol="campoRiesgoJoven" style="margin-top: 24px;">
                         <label><span class="item-num">105.</span> ¿Identifica alguna de las siguientes situaciones o condiciones familiares o personales que pueden alterar o generar riesgo para su salud física o mental? *</label>
-                        <span class="field-hint field-hint--inline">Selección múltiple. Indagar sólo en personas entre los 14 y 28 años.</span>
+                        <span class="field-hint field-hint--inline">Selección múltiple. Se indaga a todo integrante (anexo SI-APS, variable 54).</span>
                         <div class="check-group" data-catalogo="CAT_RIESGOS_SALUD_MENTAL_JOVEN" data-name="familias[0].integrantes[0].riesgosSaludMentalJoven"></div>
                       </div>
 
@@ -1110,6 +1175,8 @@
                         <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].consumoSpa"></div>
                       </div>
 
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-tabaco" style="margin-top: 24px;"></div>
+
                       <div class="subpanel" data-rol="panelTamizajeSpa" hidden style="margin-top: 24px;">
                         <span class="subpanel__titulo"><span class="item-num">109.</span> Resultados de riesgos, instrumentos de consumo (no obligatorio)</span>
                         <div class="form-grid">
@@ -1133,6 +1200,27 @@
                         <label><span class="item-num">110.</span> ¿Ha presentado alguna otra situación de salud que limite sus actividades cotidianas en la última semana? *</label>
                         <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].limitacionCotidiana"></div>
                       </div>
+                    </div>
+
+                    <!-- ---------- 5.4 y 5.5 Módulos opcionales del anexo técnico SI-APS ---------- -->
+                    <div class="card card--anidada">
+                      <div class="card__header">
+                        <h2>5.4 Salud materna y perinatal</h2>
+                        <span class="rule-tag">Anexo SI-APS · variables 70 a 91 · opcional</span>
+                      </div>
+                      <p class="field-hint">Para mujeres de 10 a 54 años y gestantes. Las preguntas del puerperio se abren cuando la fecha del evento obstétrico ya pasó.</p>
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-materno"></div>
+                    </div>
+
+                    <div class="card card--anidada">
+                      <div class="card__header">
+                        <h2>5.5 Historial laboral y exposición a asbesto</h2>
+                        <span class="rule-tag">Anexo SI-APS · variables 92 a 116 · opcional</span>
+                      </div>
+                      <p class="field-hint">Desde los 15 años.</p>
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-laboral"></div>
+                      <h3 class="card__subtitle">Exposición a asbesto</h3>
+                      <div class="form-grid anexo-grupo" data-anexo-grupo="integrante-asbesto"></div>
                     </div>
 
 
@@ -1711,6 +1799,41 @@
     </div>
   </section>
 
+  <!-- ===================== VISTA: REPORTE SI-APS (reporte.generar) ===================== -->
+  <section class="view" id="view-reporte">
+    <div class="card">
+      <div class="card__header usuarios__cabecera">
+        <div>
+          <h2>Reporte SI-APS</h2>
+          <p class="usuarios__sub">Archivo plano APS124CCFP del anexo técnico (versión 7) para cargar en PISIS.</p>
+        </div>
+      </div>
+      <form id="formReporte" novalidate>
+        <div class="form-grid form-grid--2col">
+          <div class="field" data-campo="desde">
+            <label for="reporteDesde">Desde *</label>
+            <input type="date" id="reporteDesde" name="desde" required>
+          </div>
+          <div class="field" data-campo="hasta">
+            <label for="reporteHasta">Hasta (fecha de corte) *</label>
+            <input type="date" id="reporteHasta" name="hasta" required>
+          </div>
+        </div>
+        <p class="field-hint reporte__criterio">Entran las fichas cerradas y con consentimiento diligenciadas en el período; de cada hogar, sólo la visita más reciente.</p>
+        <div class="reporte__acciones">
+          <button type="submit" class="btn btn--ghost" id="btnReporteRevisar">
+            <i class="ph ph-list-checks" aria-hidden="true"></i><span>Revisar</span>
+          </button>
+          <button type="button" class="btn btn--primary" id="btnReporteDescargar">
+            <i class="ph ph-download-simple" aria-hidden="true"></i><span>Descargar archivo</span>
+          </button>
+        </div>
+      </form>
+      <p class="empty-state reporte__error" id="reporteError" hidden role="alert"></p>
+      <div class="reporte__resultado" id="reporteResultado" hidden aria-live="polite"></div>
+    </div>
+  </section>
+
 </main>
 
 <!-- ===================== BLOQUEO POR INACTIVIDAD (RN-223.6) ===================== -->
@@ -1863,7 +1986,10 @@
 <!-- ===================== CONTENEDOR DE NOTIFICACIONES ===================== -->
 <div class="toast-container" id="toastContainer"></div>
 
+<datalist id="listaOcupacionesCiuo"></datalist>
+<script src="catalogos_sispro.js"></script>
 <script src="catalogos.js"></script>
+<script src="anexo.js"></script>
 <script src="direccion.js"></script>
 <script src="geocodificacion.js"></script>
 <script src="reglas.js"></script>
@@ -1873,5 +1999,6 @@
 <script src="app.js"></script>
 <script src="roles.js"></script>
 <script src="usuarios.js"></script>
+<script src="reporte.js"></script>
 </body>
 </html>

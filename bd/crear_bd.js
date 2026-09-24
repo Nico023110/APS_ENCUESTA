@@ -35,8 +35,16 @@ const SCRIPTS = [
   /* Idempotente: sobre una base recién creada no encuentra nada que hacer.
      Existe para las bases que ya tienen fichas capturadas y no se pueden
      recrear. Ver el encabezado de 06_migraciones.sql. */
-  { archivo: '06_migraciones.sql', descripcion: 'Migraciones sobre bases ya creadas' }
+  { archivo: '06_migraciones.sql', descripcion: 'Migraciones sobre bases ya creadas' },
+  /* Generado desde anexo.js (node bd/gen_anexo.js): las variables del anexo
+     técnico SI-APS. También idempotente. */
+  { archivo: '07_anexo_sispro.sql', descripcion: 'Variables del anexo técnico SI-APS' }
 ];
+
+/* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
+   seed de catálogos (todo ON CONFLICT) y las migraciones. El seed va primero
+   porque las migraciones validan contra sus dominios. */
+const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN
@@ -259,7 +267,7 @@ async function principal() {
   }
 
   const pendientes = soloMigraciones
-    ? SCRIPTS.filter(function (script) { return /migraciones\.sql$/.test(script.archivo); })
+    ? SCRIPTS.filter(function (script) { return DE_MIGRACION.indexOf(script.archivo) !== -1; })
     : SCRIPTS;
 
   if (!soloMigraciones) await crearBaseSiNoExiste(conexion, recrear);

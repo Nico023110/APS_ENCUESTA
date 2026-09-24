@@ -25,6 +25,10 @@
 
    4. Poner una ficha a corregir tiene que devolver TODAS sus respuestas al
       formulario: es la prueba de ida y vuelta completa.
+
+   5. Lo mismo con la ficha reconstruida desde la base, que es la que se
+      corrige desde otro dispositivo: trae las selecciones múltiples al final
+      del objeto y las coordenadas en campos de sólo lectura.
    ========================================================================= */
 
 'use strict';
@@ -134,7 +138,7 @@ ventana.addEventListener('error', function (e) { errores.push(String(e.message))
 
 /* Los <script> del navegador comparten un único alcance global. Evaluar
    archivo por archivo aísla cada `const`, así que hay que concatenarlos. */
-const fuentes = ['catalogos.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
+const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
   'cups.js', 'correccion.js', 'app.js']
   .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
   .join('\n;\n');
@@ -327,7 +331,10 @@ async function ejecutar() {
   await comprobarBuscadorDeCups();
 
   console.log('\n=== 7. Poner una ficha a corregir devuelve sus respuestas ===');
-  comprobarIdaYVuelta();
+  const original = comprobarIdaYVuelta();
+
+  console.log('\n=== 8. La ficha traída de la base se carga completa ===');
+  comprobarFichaDeLaBase(original);
 
   console.log('\n---------------------------------------------');
   console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);
@@ -548,4 +555,54 @@ function comprobarIdaYVuelta() {
   verificar('se recupera el procedimiento escrito a mano',
     acciones[0] && acciones[0].procedimientoRealizado === 'Se revisó la humedad del muro de la cocina',
     JSON.stringify(acciones[0] && acciones[0].procedimientoRealizado));
+
+  return original;
+}
+
+/* -------------------------------------------------------------------------
+   Corregir desde otro dispositivo: la ficha no está en este equipo y se
+   reconstruye desde la base (api/ficha_completa). Esa reconstrucción deja las
+   listas de selección múltiple al final del objeto, y así el carné
+   antirrábico (ítem 45) se aplicaba antes que los animales (ítem 40): sin
+   perros ni gatos marcados se autoasigna «No aplica», y al llegar los perros
+   la respuesta quedaba en blanco. Además latitud y longitud son de sólo
+   lectura, y el formulario no escribe en esos controles.
+   ------------------------------------------------------------------------- */
+
+function comprobarFichaDeLaBase(original) {
+  const formulario = $('#encuestaForm');
+
+  const desdeLaBase = JSON.parse(JSON.stringify(original));
+  delete desdeLaBase.animales;
+  Object.assign(desdeLaBase, {
+    latitud: 3.451647,
+    longitud: -76.531985,
+    origenCoordenadas: 'gps',
+    perros: 2,
+    perrosVacunados: 2,
+    carnetAntirrabico: 'si',
+    animales: ['perros']
+  });
+
+  const claves = Object.keys(desdeLaBase);
+  verificar('el caso reproduce el orden de la base: el carné va antes que los animales',
+    claves.indexOf('carnetAntirrabico') < claves.indexOf('animales'),
+    claves.join(', '));
+
+  api.cargarEncuestaEnFormulario(desdeLaBase);
+  const recuperado = api.recolectarDatosFormulario(formulario);
+
+  verificar('se recuperan los animales', (recuperado.animales || []).indexOf('perros') !== -1,
+    JSON.stringify(recuperado.animales));
+  verificar('se recupera el número de perros', String(recuperado.perros) === '2',
+    JSON.stringify(recuperado.perros));
+  verificar('el carné antirrábico sobrevive a que los animales lleguen después',
+    recuperado.carnetAntirrabico === 'si', JSON.stringify(recuperado.carnetAntirrabico));
+
+  verificar('se recupera la latitud, aunque el campo es de sólo lectura',
+    recuperado.latitud === 3.451647, JSON.stringify(recuperado.latitud));
+  verificar('se recupera la longitud', recuperado.longitud === -76.531985,
+    JSON.stringify(recuperado.longitud));
+  verificar('las coordenadas conservan su procedencia', recuperado.origenCoordenadas === 'gps',
+    JSON.stringify(recuperado.origenCoordenadas));
 }

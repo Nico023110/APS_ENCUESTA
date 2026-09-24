@@ -28,7 +28,9 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 - Vista **Historial**: fichas locales y de la base, con estado de sincronización, estado del plan de cuidado, filtros, detalle y corrección.
 - Flujo de trabajo real: consentimiento → situación inminente → vivienda → familias → integrantes → plan de cuidado (puede diferirse) → cierre → guardar. Una visita puede cerrarse como incompleta por causa externa.
 - Sin conexión la ficha queda en el dispositivo y se sincroniza después («Sincronizar a la nube»).
-- Corregir una ficha reusa el mismo formulario y reemplaza el registro; hoy sólo para fichas capturadas en el mismo dispositivo.
+- Corregir una ficha reusa el mismo formulario y reemplaza el registro, desde cualquier dispositivo: si la ficha no está en el equipo se trae de la base, según los permisos del rol.
+- El formulario incluye las variables del **anexo técnico SI-APS APS124CCFP v7** (junio 2026), con su código A{registro}.{variable} junto a cada pregunta; los módulos materno, laboral y de asbesto son opcionales.
+- Vista **Reporte SI-APS** (administrador y maestro, desde el menú del usuario): revisa las incidencias de un período y descarga el archivo plano APS124CCFP para PISIS, que se firma digitalmente fuera de la aplicación.
 
 ## Capabilities and Constraints
 
@@ -38,7 +40,7 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 - Los textos de los ítems, las etiquetas de catálogo y los mensajes de las reglas son parte del instrumento: no se reescriben con criterio de diseño.
 - Ids y atributos `data-*` del formulario son contrato con `formulario.js`, `reglas.js`, `correccion.js` y las pruebas jsdom; un rediseño cambia clases y estilos, no ese contrato.
 - Pruebas: `npm test` (jsdom) y `npm run test:bd` (contra la base) deben seguir pasando.
-- Pendiente / no decidido: corrección de fichas desde otro dispositivo; paginación del historial.
+- Pendiente / no decidido: paginación del historial.
 
 ## Brand Commitments
 
@@ -52,7 +54,8 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 - `logo ladera.jpg` (750×415, JPG con fondo blanco).
 - `SI-APS - Poblacional instrumento identificación v2-imprimible 2025.pdf`: el instrumento oficial que la ficha reproduce.
 - `lineamiento-equipos-basicos-territorios-atencion-primaria-salud-2026.pdf`: lineamiento de los EBS.
-- `REGLAS_DE_NEGOCIO.md`: las reglas RN-001 a RN-226 con su justificación.
+- `REGLAS_DE_NEGOCIO.md`: las reglas RN-001 a RN-227 con su justificación, y el bloque 13 del anexo técnico.
+- `bd/sispro/anexo_APS124CCFP_v7.md`: el anexo técnico de reporte SI-APS (fuente APS124CCFP) y `bd/sispro/tablas/`: las tablas de referencia de SISPRO que usan los catálogos.
 - No hay fotografías, testimonios, cifras de cobertura ni material de comunicación de la entidad: no se inventan.
 
 ## Product Principles

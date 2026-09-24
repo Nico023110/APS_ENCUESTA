@@ -19,6 +19,10 @@
                      cualquier ficha y administra. Es la cuenta de quien
                      responde por el proyecto entero; debería haber una.
 
+   «reporte.generar» es el archivo plano APS124CCFP para PISIS: trae los
+   datos de todas las fichas del período, sensibles incluidos, así que sólo
+   lo generan los perfiles institucionales (administrador y maestro).
+
    Los permisos son cadenas «recurso.accion[.alcance]». Ver
    ROLES_Y_PERMISOS.md para la matriz completa y su justificación.
    ========================================================= */
@@ -62,7 +66,8 @@ const PERMISOS_POR_NIVEL = {
     'catalogos.consultar',
     'usuarios.gestionar',
     'equipos.gestionar',
-    'auditoria.ver'
+    'auditoria.ver',
+    'reporte.generar'
   ],
   maestro: [
     'ficha.crear',
@@ -74,7 +79,8 @@ const PERMISOS_POR_NIVEL = {
     'catalogos.consultar',
     'usuarios.gestionar',
     'equipos.gestionar',
-    'auditoria.ver'
+    'auditoria.ver',
+    'reporte.generar'
   ]
 };
 

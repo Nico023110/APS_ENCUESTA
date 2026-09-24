@@ -1,0 +1,1745 @@
+[
+ {
+  "codigo": "004",
+  "nombre": "AFGANISTÁN",
+  "habilitado": "SI",
+  "extra2": "AF",
+  "extra3": "AFG"
+ },
+ {
+  "codigo": "008",
+  "nombre": "ALBANIA",
+  "habilitado": "SI",
+  "extra2": "AL",
+  "extra3": "ALB"
+ },
+ {
+  "codigo": "010",
+  "nombre": "ANTÁRTIDA",
+  "habilitado": "SI",
+  "extra2": "AQ",
+  "extra3": "ATA"
+ },
+ {
+  "codigo": "012",
+  "nombre": "ARGELIA",
+  "habilitado": "SI",
+  "extra2": "DZ",
+  "extra3": "DZA"
+ },
+ {
+  "codigo": "016",
+  "nombre": "SAMOA AMERICANA",
+  "habilitado": "SI",
+  "extra2": "AS",
+  "extra3": "ASM"
+ },
+ {
+  "codigo": "020",
+  "nombre": "ANDORRA",
+  "habilitado": "SI",
+  "extra2": "AD",
+  "extra3": "AND"
+ },
+ {
+  "codigo": "024",
+  "nombre": "ANGOLA",
+  "habilitado": "SI",
+  "extra2": "AO",
+  "extra3": "AGO"
+ },
+ {
+  "codigo": "028",
+  "nombre": "ANTIGUA Y BARBUDA",
+  "habilitado": "SI",
+  "extra2": "AG",
+  "extra3": "ATG"
+ },
+ {
+  "codigo": "031",
+  "nombre": "AZERBAIYÁN",
+  "habilitado": "SI",
+  "extra2": "AZ",
+  "extra3": "AZE"
+ },
+ {
+  "codigo": "032",
+  "nombre": "ARGENTINA",
+  "habilitado": "SI",
+  "extra2": "AR",
+  "extra3": "ARG"
+ },
+ {
+  "codigo": "036",
+  "nombre": "AUSTRALIA",
+  "habilitado": "SI",
+  "extra2": "AU",
+  "extra3": "AUS"
+ },
+ {
+  "codigo": "040",
+  "nombre": "AUSTRIA",
+  "habilitado": "SI",
+  "extra2": "AT",
+  "extra3": "AUT"
+ },
+ {
+  "codigo": "044",
+  "nombre": "BAHAMAS",
+  "habilitado": "SI",
+  "extra2": "BS",
+  "extra3": "BHS"
+ },
+ {
+  "codigo": "048",
+  "nombre": "BARÉIN",
+  "habilitado": "SI",
+  "extra2": "BH",
+  "extra3": "BHR"
+ },
+ {
+  "codigo": "050",
+  "nombre": "BANGLADÉS",
+  "habilitado": "SI",
+  "extra2": "BD",
+  "extra3": "BGD"
+ },
+ {
+  "codigo": "051",
+  "nombre": "ARMENIA",
+  "habilitado": "SI",
+  "extra2": "AM",
+  "extra3": "ARM"
+ },
+ {
+  "codigo": "052",
+  "nombre": "BARBADOS",
+  "habilitado": "SI",
+  "extra2": "BB",
+  "extra3": "BRB"
+ },
+ {
+  "codigo": "056",
+  "nombre": "BÉLGICA",
+  "habilitado": "SI",
+  "extra2": "BE",
+  "extra3": "BEL"
+ },
+ {
+  "codigo": "060",
+  "nombre": "BERMUDA",
+  "habilitado": "SI",
+  "extra2": "BM",
+  "extra3": "BMU"
+ },
+ {
+  "codigo": "064",
+  "nombre": "BUTÁN",
+  "habilitado": "SI",
+  "extra2": "BT",
+  "extra3": "BTN"
+ },
+ {
+  "codigo": "068",
+  "nombre": "BOLIVIA",
+  "habilitado": "SI",
+  "extra2": "BO",
+  "extra3": "BOL"
+ },
+ {
+  "codigo": "070",
+  "nombre": "BOSNIA-HERZEGOVINA",
+  "habilitado": "SI",
+  "extra2": "BA",
+  "extra3": "BIH"
+ },
+ {
+  "codigo": "072",
+  "nombre": "BOTSUANA",
+  "habilitado": "SI",
+  "extra2": "BW",
+  "extra3": "BWA"
+ },
+ {
+  "codigo": "074",
+  "nombre": "ISLA BOUVET",
+  "habilitado": "SI",
+  "extra2": "BV",
+  "extra3": "BVT"
+ },
+ {
+  "codigo": "076",
+  "nombre": "BRAZIL",
+  "habilitado": "SI",
+  "extra2": "BR",
+  "extra3": "BRA"
+ },
+ {
+  "codigo": "084",
+  "nombre": "BELICE",
+  "habilitado": "SI",
+  "extra2": "BZ",
+  "extra3": "BLZ"
+ },
+ {
+  "codigo": "086",
+  "nombre": "TERRITORIO BRITÁNICO DEL OCÉANO ÍNDICO",
+  "habilitado": "SI",
+  "extra2": "IO",
+  "extra3": "IOT"
+ },
+ {
+  "codigo": "090",
+  "nombre": "ISLAS SOLOMON",
+  "habilitado": "SI",
+  "extra2": "SB",
+  "extra3": "SLB"
+ },
+ {
+  "codigo": "092",
+  "nombre": "ISLAS VÍRGENES BRITÁNICAS",
+  "habilitado": "SI",
+  "extra2": "VG",
+  "extra3": "VGB"
+ },
+ {
+  "codigo": "096",
+  "nombre": "BRUNÉI",
+  "habilitado": "SI",
+  "extra2": "BN",
+  "extra3": "BRN"
+ },
+ {
+  "codigo": "100",
+  "nombre": "BULGARIA",
+  "habilitado": "SI",
+  "extra2": "BG",
+  "extra3": "BGR"
+ },
+ {
+  "codigo": "104",
+  "nombre": "MYANMAR (FORMER BURMA)",
+  "habilitado": "SI",
+  "extra2": "MM",
+  "extra3": "MMR"
+ },
+ {
+  "codigo": "108",
+  "nombre": "BURUNDI",
+  "habilitado": "SI",
+  "extra2": "BI",
+  "extra3": "BDI"
+ },
+ {
+  "codigo": "112",
+  "nombre": "BIELORRUSIA",
+  "habilitado": "SI",
+  "extra2": "BY",
+  "extra3": "BLR"
+ },
+ {
+  "codigo": "116",
+  "nombre": "CAMBOYA",
+  "habilitado": "SI",
+  "extra2": "KH",
+  "extra3": "KHM"
+ },
+ {
+  "codigo": "120",
+  "nombre": "CAMERÚN",
+  "habilitado": "SI",
+  "extra2": "CM",
+  "extra3": "CMR"
+ },
+ {
+  "codigo": "124",
+  "nombre": "CANADÁ",
+  "habilitado": "SI",
+  "extra2": "CA",
+  "extra3": "CAN"
+ },
+ {
+  "codigo": "132",
+  "nombre": "CABO VERDE",
+  "habilitado": "SI",
+  "extra2": "CV",
+  "extra3": "CPV"
+ },
+ {
+  "codigo": "136",
+  "nombre": "ISLAS CAIMÁN",
+  "habilitado": "SI",
+  "extra2": "KY",
+  "extra3": "CYM"
+ },
+ {
+  "codigo": "140",
+  "nombre": "REPÚBLICA CENTROAFRICANA",
+  "habilitado": "SI",
+  "extra2": "CF",
+  "extra3": "CAF"
+ },
+ {
+  "codigo": "144",
+  "nombre": "SRI LANKA",
+  "habilitado": "SI",
+  "extra2": "LK",
+  "extra3": "LKA"
+ },
+ {
+  "codigo": "148",
+  "nombre": "CHAD",
+  "habilitado": "SI",
+  "extra2": "TD",
+  "extra3": "TCD"
+ },
+ {
+  "codigo": "152",
+  "nombre": "CHILE",
+  "habilitado": "SI",
+  "extra2": "CL",
+  "extra3": "CHL"
+ },
+ {
+  "codigo": "156",
+  "nombre": "CHINA",
+  "habilitado": "SI",
+  "extra2": "CN",
+  "extra3": "CHN"
+ },
+ {
+  "codigo": "158",
+  "nombre": "TAIWAN",
+  "habilitado": "SI",
+  "extra2": "TW",
+  "extra3": "TWN"
+ },
+ {
+  "codigo": "162",
+  "nombre": "ISLA DE NAVIDAD",
+  "habilitado": "SI",
+  "extra2": "CX",
+  "extra3": "CXR"
+ },
+ {
+  "codigo": "166",
+  "nombre": "ISLAS COCOS",
+  "habilitado": "SI",
+  "extra2": "CC",
+  "extra3": "CCK"
+ },
+ {
+  "codigo": "170",
+  "nombre": "COLOMBIA",
+  "habilitado": "SI",
+  "extra2": "CO",
+  "extra3": "COL"
+ },
+ {
+  "codigo": "174",
+  "nombre": "COMORAS",
+  "habilitado": "SI",
+  "extra2": "KM",
+  "extra3": "COM"
+ },
+ {
+  "codigo": "175",
+  "nombre": "MAYOTTE",
+  "habilitado": "SI",
+  "extra2": "YT",
+  "extra3": "MYT"
+ },
+ {
+  "codigo": "178",
+  "nombre": "CONGO",
+  "habilitado": "SI",
+  "extra2": "CG",
+  "extra3": "COG"
+ },
+ {
+  "codigo": "180",
+  "nombre": "REPÚBLICA DEMOCRÁTICA DEL CONGO",
+  "habilitado": "SI",
+  "extra2": "CD",
+  "extra3": "COD"
+ },
+ {
+  "codigo": "184",
+  "nombre": "ISLAS COOK",
+  "habilitado": "SI",
+  "extra2": "CK",
+  "extra3": "COK"
+ },
+ {
+  "codigo": "188",
+  "nombre": "COSTA RICA",
+  "habilitado": "SI",
+  "extra2": "CR",
+  "extra3": "CRI"
+ },
+ {
+  "codigo": "191",
+  "nombre": "CROACIA",
+  "habilitado": "SI",
+  "extra2": "HR",
+  "extra3": "HRV"
+ },
+ {
+  "codigo": "192",
+  "nombre": "CUBA",
+  "habilitado": "SI",
+  "extra2": "CU",
+  "extra3": "CUB"
+ },
+ {
+  "codigo": "196",
+  "nombre": "CHIPRE",
+  "habilitado": "SI",
+  "extra2": "CY",
+  "extra3": "CYP"
+ },
+ {
+  "codigo": "203",
+  "nombre": "REPÚBLICA CHECA",
+  "habilitado": "SI",
+  "extra2": "CZ",
+  "extra3": "CZE"
+ },
+ {
+  "codigo": "204",
+  "nombre": "BENIN",
+  "habilitado": "SI",
+  "extra2": "BJ",
+  "extra3": "BEN"
+ },
+ {
+  "codigo": "208",
+  "nombre": "DINAMARCA",
+  "habilitado": "SI",
+  "extra2": "DK",
+  "extra3": "DNK"
+ },
+ {
+  "codigo": "212",
+  "nombre": "DOMINICA",
+  "habilitado": "SI",
+  "extra2": "DM",
+  "extra3": "DMA"
+ },
+ {
+  "codigo": "214",
+  "nombre": "REPÚBLICA DOMINICANA",
+  "habilitado": "SI",
+  "extra2": "DO",
+  "extra3": "DOM"
+ },
+ {
+  "codigo": "218",
+  "nombre": "ECUADOR",
+  "habilitado": "SI",
+  "extra2": "EC",
+  "extra3": "ECU"
+ },
+ {
+  "codigo": "222",
+  "nombre": "EL SALVADOR",
+  "habilitado": "SI",
+  "extra2": "SV",
+  "extra3": "SLV"
+ },
+ {
+  "codigo": "226",
+  "nombre": "GUINEA ECUATORIAL",
+  "habilitado": "SI",
+  "extra2": "GQ",
+  "extra3": "GNQ"
+ },
+ {
+  "codigo": "231",
+  "nombre": "ETIOPIA",
+  "habilitado": "SI",
+  "extra2": "ET",
+  "extra3": "ETH"
+ },
+ {
+  "codigo": "232",
+  "nombre": "ERITREA",
+  "habilitado": "SI",
+  "extra2": "ER",
+  "extra3": "ERI"
+ },
+ {
+  "codigo": "233",
+  "nombre": "ESTONIA",
+  "habilitado": "SI",
+  "extra2": "EE",
+  "extra3": "EST"
+ },
+ {
+  "codigo": "234",
+  "nombre": "ISLAS FEROE",
+  "habilitado": "SI",
+  "extra2": "FO",
+  "extra3": "FRO"
+ },
+ {
+  "codigo": "238",
+  "nombre": "ISLAS MALVINAS",
+  "habilitado": "SI",
+  "extra2": "FK",
+  "extra3": "FLK"
+ },
+ {
+  "codigo": "239",
+  "nombre": "ISLAS GEORGIAS DEL SUR Y SANDWICH DEL SUR",
+  "habilitado": "SI",
+  "extra2": "GS",
+  "extra3": "SGS"
+ },
+ {
+  "codigo": "242",
+  "nombre": "FIYI",
+  "habilitado": "SI",
+  "extra2": "FJ",
+  "extra3": "FJI"
+ },
+ {
+  "codigo": "246",
+  "nombre": "FINLANDIA",
+  "habilitado": "SI",
+  "extra2": "FI",
+  "extra3": "FIN"
+ },
+ {
+  "codigo": "248",
+  "nombre": "ALAND",
+  "habilitado": "SI",
+  "extra2": "AX",
+  "extra3": "ALA"
+ },
+ {
+  "codigo": "250",
+  "nombre": "FRANCIA",
+  "habilitado": "SI",
+  "extra2": "FR",
+  "extra3": "FRA"
+ },
+ {
+  "codigo": "254",
+  "nombre": "GUAYANA FRANCESA",
+  "habilitado": "SI",
+  "extra2": "GF",
+  "extra3": "GUF"
+ },
+ {
+  "codigo": "258",
+  "nombre": "POLINESIA FRANCESA",
+  "habilitado": "SI",
+  "extra2": "PF",
+  "extra3": "PYF"
+ },
+ {
+  "codigo": "260",
+  "nombre": "TIERRAS AUSTRALES Y ANTÁRTICAS FRANCESAS",
+  "habilitado": "SI",
+  "extra2": "TF",
+  "extra3": "ATF"
+ },
+ {
+  "codigo": "262",
+  "nombre": "YIBUTI",
+  "habilitado": "SI",
+  "extra2": "DJ",
+  "extra3": "DJI"
+ },
+ {
+  "codigo": "266",
+  "nombre": "GABON",
+  "habilitado": "SI",
+  "extra2": "GA",
+  "extra3": "GAB"
+ },
+ {
+  "codigo": "268",
+  "nombre": "GEORGIA",
+  "habilitado": "SI",
+  "extra2": "GE",
+  "extra3": "GEO"
+ },
+ {
+  "codigo": "270",
+  "nombre": "GAMBIA",
+  "habilitado": "SI",
+  "extra2": "GM",
+  "extra3": "GMB"
+ },
+ {
+  "codigo": "275",
+  "nombre": "PALESTINA",
+  "habilitado": "SI",
+  "extra2": "PS",
+  "extra3": "PSE"
+ },
+ {
+  "codigo": "276",
+  "nombre": "ALEMANIA",
+  "habilitado": "SI",
+  "extra2": "DE",
+  "extra3": "DEU"
+ },
+ {
+  "codigo": "288",
+  "nombre": "GHANA",
+  "habilitado": "SI",
+  "extra2": "GH",
+  "extra3": "GHA"
+ },
+ {
+  "codigo": "292",
+  "nombre": "GIBRALTAR",
+  "habilitado": "SI",
+  "extra2": "GI",
+  "extra3": "GIB"
+ },
+ {
+  "codigo": "296",
+  "nombre": "KIRIBATI",
+  "habilitado": "SI",
+  "extra2": "KI",
+  "extra3": "KIR"
+ },
+ {
+  "codigo": "300",
+  "nombre": "GRECIA",
+  "habilitado": "SI",
+  "extra2": "GR",
+  "extra3": "GRC"
+ },
+ {
+  "codigo": "304",
+  "nombre": "GROENLANDIA",
+  "habilitado": "SI",
+  "extra2": "GL",
+  "extra3": "GRL"
+ },
+ {
+  "codigo": "308",
+  "nombre": "GRANADA",
+  "habilitado": "SI",
+  "extra2": "GD",
+  "extra3": "GRD"
+ },
+ {
+  "codigo": "312",
+  "nombre": "GUADALUOE",
+  "habilitado": "SI",
+  "extra2": "GP",
+  "extra3": "GLP"
+ },
+ {
+  "codigo": "316",
+  "nombre": "GUAM",
+  "habilitado": "SI",
+  "extra2": "GU",
+  "extra3": "GUM"
+ },
+ {
+  "codigo": "320",
+  "nombre": "GUATEMALA",
+  "habilitado": "SI",
+  "extra2": "GT",
+  "extra3": "GTM"
+ },
+ {
+  "codigo": "324",
+  "nombre": "GUINEA",
+  "habilitado": "SI",
+  "extra2": "GN",
+  "extra3": "GIN"
+ },
+ {
+  "codigo": "328",
+  "nombre": "GUYANA",
+  "habilitado": "SI",
+  "extra2": "GY",
+  "extra3": "GUY"
+ },
+ {
+  "codigo": "332",
+  "nombre": "HAITI",
+  "habilitado": "SI",
+  "extra2": "HT",
+  "extra3": "HTI"
+ },
+ {
+  "codigo": "334",
+  "nombre": "ISLA HEARD Y MCDONALD",
+  "habilitado": "SI",
+  "extra2": "HM",
+  "extra3": "HMD"
+ },
+ {
+  "codigo": "336",
+  "nombre": "SANTA SEDE",
+  "habilitado": "SI",
+  "extra2": "VA",
+  "extra3": "VAT"
+ },
+ {
+  "codigo": "340",
+  "nombre": "HONDURAS",
+  "habilitado": "SI",
+  "extra2": "HN",
+  "extra3": "HND"
+ },
+ {
+  "codigo": "344",
+  "nombre": "HONG KONG",
+  "habilitado": "SI",
+  "extra2": "HK",
+  "extra3": "HKG"
+ },
+ {
+  "codigo": "348",
+  "nombre": "HUNGRÍA",
+  "habilitado": "SI",
+  "extra2": "HU",
+  "extra3": "HUN"
+ },
+ {
+  "codigo": "352",
+  "nombre": "ISLANDIA",
+  "habilitado": "SI",
+  "extra2": "IS",
+  "extra3": "ISL"
+ },
+ {
+  "codigo": "356",
+  "nombre": "INDIA",
+  "habilitado": "SI",
+  "extra2": "IN",
+  "extra3": "IND"
+ },
+ {
+  "codigo": "360",
+  "nombre": "INDONESIA",
+  "habilitado": "SI",
+  "extra2": "ID",
+  "extra3": "IDN"
+ },
+ {
+  "codigo": "364",
+  "nombre": "IRÁN",
+  "habilitado": "SI",
+  "extra2": "IR",
+  "extra3": "IRN"
+ },
+ {
+  "codigo": "368",
+  "nombre": "IRAQ",
+  "habilitado": "SI",
+  "extra2": "IQ",
+  "extra3": "IRQ"
+ },
+ {
+  "codigo": "372",
+  "nombre": "IRLANDA",
+  "habilitado": "SI",
+  "extra2": "IE",
+  "extra3": "IRL"
+ },
+ {
+  "codigo": "376",
+  "nombre": "ISRAEL",
+  "habilitado": "SI",
+  "extra2": "IL",
+  "extra3": "ISR"
+ },
+ {
+  "codigo": "380",
+  "nombre": "ITALIA",
+  "habilitado": "SI",
+  "extra2": "IT",
+  "extra3": "ITA"
+ },
+ {
+  "codigo": "384",
+  "nombre": "COSTA DE MARFIL",
+  "habilitado": "SI",
+  "extra2": "CI",
+  "extra3": "CIV"
+ },
+ {
+  "codigo": "388",
+  "nombre": "JAMAICA",
+  "habilitado": "SI",
+  "extra2": "JM",
+  "extra3": "JAM"
+ },
+ {
+  "codigo": "392",
+  "nombre": "JAPÓN",
+  "habilitado": "SI",
+  "extra2": "JP",
+  "extra3": "JPN"
+ },
+ {
+  "codigo": "398",
+  "nombre": "KAZAJISTÁN",
+  "habilitado": "SI",
+  "extra2": "KZ",
+  "extra3": "KAZ"
+ },
+ {
+  "codigo": "400",
+  "nombre": "JORDANIA",
+  "habilitado": "SI",
+  "extra2": "JO",
+  "extra3": "JOR"
+ },
+ {
+  "codigo": "404",
+  "nombre": "KENYA",
+  "habilitado": "SI",
+  "extra2": "KE",
+  "extra3": "KEN"
+ },
+ {
+  "codigo": "408",
+  "nombre": "COREA DEL NORTE",
+  "habilitado": "SI",
+  "extra2": "KP",
+  "extra3": "PRK"
+ },
+ {
+  "codigo": "410",
+  "nombre": "COREA DEL SUR",
+  "habilitado": "SI",
+  "extra2": "KR",
+  "extra3": "KOR"
+ },
+ {
+  "codigo": "414",
+  "nombre": "KUWAIT",
+  "habilitado": "SI",
+  "extra2": "KW",
+  "extra3": "KWT"
+ },
+ {
+  "codigo": "417",
+  "nombre": "KIRGUISTÁN",
+  "habilitado": "SI",
+  "extra2": "KG",
+  "extra3": "KGZ"
+ },
+ {
+  "codigo": "418",
+  "nombre": "LAOS",
+  "habilitado": "SI",
+  "extra2": "LA",
+  "extra3": "LAO"
+ },
+ {
+  "codigo": "422",
+  "nombre": "LÍBANO",
+  "habilitado": "SI",
+  "extra2": "LB",
+  "extra3": "LBN"
+ },
+ {
+  "codigo": "426",
+  "nombre": "LESOTO",
+  "habilitado": "SI",
+  "extra2": "LS",
+  "extra3": "LSO"
+ },
+ {
+  "codigo": "428",
+  "nombre": "LETONIA",
+  "habilitado": "SI",
+  "extra2": "LV",
+  "extra3": "LVA"
+ },
+ {
+  "codigo": "430",
+  "nombre": "LIBERIA",
+  "habilitado": "SI",
+  "extra2": "LR",
+  "extra3": "LBR"
+ },
+ {
+  "codigo": "434",
+  "nombre": "LIBIA",
+  "habilitado": "SI",
+  "extra2": "LY",
+  "extra3": "LBY"
+ },
+ {
+  "codigo": "438",
+  "nombre": "LIECHTENSTEIN",
+  "habilitado": "SI",
+  "extra2": "LI",
+  "extra3": "LIE"
+ },
+ {
+  "codigo": "440",
+  "nombre": "LITUANIA",
+  "habilitado": "SI",
+  "extra2": "LT",
+  "extra3": "LTU"
+ },
+ {
+  "codigo": "442",
+  "nombre": "LUXEMBURGO",
+  "habilitado": "SI",
+  "extra2": "LU",
+  "extra3": "LUX"
+ },
+ {
+  "codigo": "446",
+  "nombre": "MACAO",
+  "habilitado": "SI",
+  "extra2": "MO",
+  "extra3": "MAC"
+ },
+ {
+  "codigo": "450",
+  "nombre": "MADAGASCAR",
+  "habilitado": "SI",
+  "extra2": "MG",
+  "extra3": "MDG"
+ },
+ {
+  "codigo": "454",
+  "nombre": "MALAUI",
+  "habilitado": "SI",
+  "extra2": "MW",
+  "extra3": "MWI"
+ },
+ {
+  "codigo": "458",
+  "nombre": "MALASIA",
+  "habilitado": "SI",
+  "extra2": "MY",
+  "extra3": "MYS"
+ },
+ {
+  "codigo": "462",
+  "nombre": "MALDIVAS",
+  "habilitado": "SI",
+  "extra2": "MV",
+  "extra3": "MDV"
+ },
+ {
+  "codigo": "466",
+  "nombre": "MALI",
+  "habilitado": "SI",
+  "extra2": "ML",
+  "extra3": "MLI"
+ },
+ {
+  "codigo": "470",
+  "nombre": "MALTA",
+  "habilitado": "SI",
+  "extra2": "MT",
+  "extra3": "MLT"
+ },
+ {
+  "codigo": "474",
+  "nombre": "MARTINICA",
+  "habilitado": "SI",
+  "extra2": "MQ",
+  "extra3": "MTQ"
+ },
+ {
+  "codigo": "478",
+  "nombre": "MAURITANIA",
+  "habilitado": "SI",
+  "extra2": "MR",
+  "extra3": "MRT"
+ },
+ {
+  "codigo": "480",
+  "nombre": "MAURICIO",
+  "habilitado": "SI",
+  "extra2": "MU",
+  "extra3": "MUS"
+ },
+ {
+  "codigo": "484",
+  "nombre": "MÉXICO",
+  "habilitado": "SI",
+  "extra2": "MX",
+  "extra3": "MEX"
+ },
+ {
+  "codigo": "492",
+  "nombre": "MÓNACO",
+  "habilitado": "SI",
+  "extra2": "MC",
+  "extra3": "MCO"
+ },
+ {
+  "codigo": "496",
+  "nombre": "MONGOLIA",
+  "habilitado": "SI",
+  "extra2": "MN",
+  "extra3": "MNG"
+ },
+ {
+  "codigo": "498",
+  "nombre": "MOLDAVIA",
+  "habilitado": "SI",
+  "extra2": "MD",
+  "extra3": "MDA"
+ },
+ {
+  "codigo": "499",
+  "nombre": "MONTENEGRO",
+  "habilitado": "SI",
+  "extra2": "ME",
+  "extra3": "MNE"
+ },
+ {
+  "codigo": "500",
+  "nombre": "MONTSERRAT",
+  "habilitado": "SI",
+  "extra2": "MS",
+  "extra3": "MSR"
+ },
+ {
+  "codigo": "504",
+  "nombre": "MARRUECOS",
+  "habilitado": "SI",
+  "extra2": "MA",
+  "extra3": "MAR"
+ },
+ {
+  "codigo": "508",
+  "nombre": "MOZAMBIQUE",
+  "habilitado": "SI",
+  "extra2": "MZ",
+  "extra3": "MOZ"
+ },
+ {
+  "codigo": "512",
+  "nombre": "OMÁN",
+  "habilitado": "SI",
+  "extra2": "OM",
+  "extra3": "OMN"
+ },
+ {
+  "codigo": "516",
+  "nombre": "NAMIBIA",
+  "habilitado": "SI",
+  "extra2": "NA",
+  "extra3": "NAM"
+ },
+ {
+  "codigo": "520",
+  "nombre": "NAURU",
+  "habilitado": "SI",
+  "extra2": "NR",
+  "extra3": "NRU"
+ },
+ {
+  "codigo": "524",
+  "nombre": "NEPAL",
+  "habilitado": "SI",
+  "extra2": "NP",
+  "extra3": "NPL"
+ },
+ {
+  "codigo": "528",
+  "nombre": "PAÍSES BAJOS",
+  "habilitado": "SI",
+  "extra2": "NL",
+  "extra3": "NLD"
+ },
+ {
+  "codigo": "531",
+  "nombre": "CURAZAO",
+  "habilitado": "SI",
+  "extra2": "CW",
+  "extra3": "CUW"
+ },
+ {
+  "codigo": "533",
+  "nombre": "ARUBA",
+  "habilitado": "SI",
+  "extra2": "AW",
+  "extra3": "ABW"
+ },
+ {
+  "codigo": "534",
+  "nombre": "SAN MARTÍN (parte holandesa)",
+  "habilitado": "SI",
+  "extra2": "SX",
+  "extra3": "SXM"
+ },
+ {
+  "codigo": "535",
+  "nombre": "BONAIRE, SAN EUSTAQUIO Y SABA",
+  "habilitado": "SI",
+  "extra2": "BQ",
+  "extra3": "BES"
+ },
+ {
+  "codigo": "540",
+  "nombre": "NUEVA CALEDONIA",
+  "habilitado": "SI",
+  "extra2": "NC",
+  "extra3": "NCL"
+ },
+ {
+  "codigo": "548",
+  "nombre": "VANUATU",
+  "habilitado": "SI",
+  "extra2": "VU",
+  "extra3": "VUT"
+ },
+ {
+  "codigo": "554",
+  "nombre": "NUEVA ZELANDA",
+  "habilitado": "SI",
+  "extra2": "NZ",
+  "extra3": "NZL"
+ },
+ {
+  "codigo": "558",
+  "nombre": "NICARAGUA",
+  "habilitado": "SI",
+  "extra2": "NI",
+  "extra3": "NIC"
+ },
+ {
+  "codigo": "562",
+  "nombre": "NIGER",
+  "habilitado": "SI",
+  "extra2": "NE",
+  "extra3": "NER"
+ },
+ {
+  "codigo": "566",
+  "nombre": "NIGERIA",
+  "habilitado": "SI",
+  "extra2": "NG",
+  "extra3": "NGA"
+ },
+ {
+  "codigo": "570",
+  "nombre": "NIUE",
+  "habilitado": "SI",
+  "extra2": "NU",
+  "extra3": "NIU"
+ },
+ {
+  "codigo": "574",
+  "nombre": "ISLA NORFOLK",
+  "habilitado": "SI",
+  "extra2": "NF",
+  "extra3": "NFK"
+ },
+ {
+  "codigo": "578",
+  "nombre": "NORUEGA",
+  "habilitado": "SI",
+  "extra2": "NO",
+  "extra3": "NOR"
+ },
+ {
+  "codigo": "580",
+  "nombre": "ISLAS MARIANAS DEL NORTE",
+  "habilitado": "SI",
+  "extra2": "MP",
+  "extra3": "MNP"
+ },
+ {
+  "codigo": "581",
+  "nombre": "ISLAS ULTRAMARINAS MENORES DE ESTADOS UNIDOS",
+  "habilitado": "SI",
+  "extra2": "UM",
+  "extra3": "UMI"
+ },
+ {
+  "codigo": "583",
+  "nombre": "MICRONESIA",
+  "habilitado": "SI",
+  "extra2": "FM",
+  "extra3": "FSM"
+ },
+ {
+  "codigo": "584",
+  "nombre": "ISLAS MARSHALL",
+  "habilitado": "SI",
+  "extra2": "MH",
+  "extra3": "MHL"
+ },
+ {
+  "codigo": "585",
+  "nombre": "PALAOS",
+  "habilitado": "SI",
+  "extra2": "PW",
+  "extra3": "PLW"
+ },
+ {
+  "codigo": "586",
+  "nombre": "PAQUISTAN",
+  "habilitado": "SI",
+  "extra2": "PK",
+  "extra3": "PAK"
+ },
+ {
+  "codigo": "591",
+  "nombre": "PANAMÁ",
+  "habilitado": "SI",
+  "extra2": "PA",
+  "extra3": "PAN"
+ },
+ {
+  "codigo": "598",
+  "nombre": "PAPUA NUEVA GUINEA",
+  "habilitado": "SI",
+  "extra2": "PG",
+  "extra3": "PNG"
+ },
+ {
+  "codigo": "600",
+  "nombre": "PARAGUAY",
+  "habilitado": "SI",
+  "extra2": "PY",
+  "extra3": "PRY"
+ },
+ {
+  "codigo": "604",
+  "nombre": "PERÚ",
+  "habilitado": "SI",
+  "extra2": "PE",
+  "extra3": "PER"
+ },
+ {
+  "codigo": "608",
+  "nombre": "FILIPINAS",
+  "habilitado": "SI",
+  "extra2": "PH",
+  "extra3": "PHL"
+ },
+ {
+  "codigo": "612",
+  "nombre": "PITCAIRN",
+  "habilitado": "SI",
+  "extra2": "PN",
+  "extra3": "PCN"
+ },
+ {
+  "codigo": "616",
+  "nombre": "POLONIA",
+  "habilitado": "SI",
+  "extra2": "PL",
+  "extra3": "POL"
+ },
+ {
+  "codigo": "620",
+  "nombre": "PORTUGAL",
+  "habilitado": "SI",
+  "extra2": "PT",
+  "extra3": "PRT"
+ },
+ {
+  "codigo": "624",
+  "nombre": "GUINEA-BISÁU",
+  "habilitado": "SI",
+  "extra2": "GW",
+  "extra3": "GNB"
+ },
+ {
+  "codigo": "626",
+  "nombre": "TIMOR ORIENTAL",
+  "habilitado": "SI",
+  "extra2": "TL",
+  "extra3": "TLS"
+ },
+ {
+  "codigo": "630",
+  "nombre": "PUERTO RICO",
+  "habilitado": "SI",
+  "extra2": "PR",
+  "extra3": "PRI"
+ },
+ {
+  "codigo": "634",
+  "nombre": "CATAR",
+  "habilitado": "SI",
+  "extra2": "QA",
+  "extra3": "QAT"
+ },
+ {
+  "codigo": "638",
+  "nombre": "REUNION",
+  "habilitado": "SI",
+  "extra2": "RE",
+  "extra3": "REU"
+ },
+ {
+  "codigo": "642",
+  "nombre": "RUMANIA",
+  "habilitado": "SI",
+  "extra2": "RO",
+  "extra3": "ROU"
+ },
+ {
+  "codigo": "643",
+  "nombre": "RUSIA",
+  "habilitado": "SI",
+  "extra2": "RU",
+  "extra3": "RUS"
+ },
+ {
+  "codigo": "646",
+  "nombre": "RUANDA",
+  "habilitado": "SI",
+  "extra2": "RW",
+  "extra3": "RWA"
+ },
+ {
+  "codigo": "652",
+  "nombre": "SAN BARTOLOMÉ",
+  "habilitado": "SI",
+  "extra2": "BL",
+  "extra3": "BLM"
+ },
+ {
+  "codigo": "654",
+  "nombre": "SANTA HELENA, ASCENSIÓN Y TRISTÁN DE ACUÑA",
+  "habilitado": "SI",
+  "extra2": "SH",
+  "extra3": "SHN"
+ },
+ {
+  "codigo": "659",
+  "nombre": "SAN CRISTÓBAL Y NIEVES",
+  "habilitado": "SI",
+  "extra2": "KN",
+  "extra3": "KNA"
+ },
+ {
+  "codigo": "660",
+  "nombre": "ANGUILA",
+  "habilitado": "SI",
+  "extra2": "AI",
+  "extra3": "AIA"
+ },
+ {
+  "codigo": "662",
+  "nombre": "SANTA LUCIA",
+  "habilitado": "SI",
+  "extra2": "LC",
+  "extra3": "LCA"
+ },
+ {
+  "codigo": "663",
+  "nombre": "SAN MARTÍN (parte francesa)",
+  "habilitado": "SI",
+  "extra2": "MF",
+  "extra3": "MAF"
+ },
+ {
+  "codigo": "666",
+  "nombre": "SAN PEDRO Y MIQUELON",
+  "habilitado": "SI",
+  "extra2": "PM",
+  "extra3": "SPM"
+ },
+ {
+  "codigo": "670",
+  "nombre": "SAN VICENTE Y LAS GRANADINAS",
+  "habilitado": "SI",
+  "extra2": "VC",
+  "extra3": "VCT"
+ },
+ {
+  "codigo": "674",
+  "nombre": "SAN MARINO",
+  "habilitado": "SI",
+  "extra2": "SM",
+  "extra3": "SMR"
+ },
+ {
+  "codigo": "678",
+  "nombre": "SANTO TOME Y PRINCIPE",
+  "habilitado": "SI",
+  "extra2": "ST",
+  "extra3": "STP"
+ },
+ {
+  "codigo": "682",
+  "nombre": "ARABIA SAUDITA",
+  "habilitado": "SI",
+  "extra2": "SA",
+  "extra3": "SAU"
+ },
+ {
+  "codigo": "686",
+  "nombre": "SENEGAL",
+  "habilitado": "SI",
+  "extra2": "SN",
+  "extra3": "SEN"
+ },
+ {
+  "codigo": "688",
+  "nombre": "SERBIA",
+  "habilitado": "SI",
+  "extra2": "RS",
+  "extra3": "SRB"
+ },
+ {
+  "codigo": "690",
+  "nombre": "SEYCHELLES",
+  "habilitado": "SI",
+  "extra2": "SC",
+  "extra3": "SYC"
+ },
+ {
+  "codigo": "694",
+  "nombre": "SIERRA LEONA",
+  "habilitado": "SI",
+  "extra2": "SL",
+  "extra3": "SLE"
+ },
+ {
+  "codigo": "702",
+  "nombre": "SINGAPUR",
+  "habilitado": "SI",
+  "extra2": "SG",
+  "extra3": "SGP"
+ },
+ {
+  "codigo": "703",
+  "nombre": "ESLOVAQUIA",
+  "habilitado": "SI",
+  "extra2": "SK",
+  "extra3": "SVK"
+ },
+ {
+  "codigo": "704",
+  "nombre": "VIETNAM",
+  "habilitado": "SI",
+  "extra2": "VN",
+  "extra3": "VNM"
+ },
+ {
+  "codigo": "705",
+  "nombre": "ESLOVENIA",
+  "habilitado": "SI",
+  "extra2": "SI",
+  "extra3": "SVN"
+ },
+ {
+  "codigo": "706",
+  "nombre": "SOMALIA",
+  "habilitado": "SI",
+  "extra2": "SO",
+  "extra3": "SOM"
+ },
+ {
+  "codigo": "710",
+  "nombre": "SUDÁFRICA",
+  "habilitado": "SI",
+  "extra2": "ZA",
+  "extra3": "ZAF"
+ },
+ {
+  "codigo": "716",
+  "nombre": "ZIMBABUE",
+  "habilitado": "SI",
+  "extra2": "ZW",
+  "extra3": "ZWE"
+ },
+ {
+  "codigo": "724",
+  "nombre": "ESPAÑA",
+  "habilitado": "SI",
+  "extra2": "ES",
+  "extra3": "ESP"
+ },
+ {
+  "codigo": "728",
+  "nombre": "SUDÁN DEL SUR",
+  "habilitado": "SI",
+  "extra2": "SS",
+  "extra3": "SSD"
+ },
+ {
+  "codigo": "729",
+  "nombre": "SUDÁN",
+  "habilitado": "SI",
+  "extra2": "SD",
+  "extra3": "SDN"
+ },
+ {
+  "codigo": "732",
+  "nombre": "SAHARA OCCIDENTAL",
+  "habilitado": "SI",
+  "extra2": "EH",
+  "extra3": "ESH"
+ },
+ {
+  "codigo": "740",
+  "nombre": "SURINAM",
+  "habilitado": "SI",
+  "extra2": "SR",
+  "extra3": "SUR"
+ },
+ {
+  "codigo": "744",
+  "nombre": "SVALBARD Y JAN MAYEN",
+  "habilitado": "SI",
+  "extra2": "SJ",
+  "extra3": "SJM"
+ },
+ {
+  "codigo": "748",
+  "nombre": "SUAZILANDIA",
+  "habilitado": "SI",
+  "extra2": "SZ",
+  "extra3": "SWZ"
+ },
+ {
+  "codigo": "752",
+  "nombre": "SUECIA",
+  "habilitado": "SI",
+  "extra2": "SE",
+  "extra3": "SWE"
+ },
+ {
+  "codigo": "756",
+  "nombre": "SUIZA",
+  "habilitado": "SI",
+  "extra2": "CH",
+  "extra3": "CHE"
+ },
+ {
+  "codigo": "760",
+  "nombre": "SIRIA",
+  "habilitado": "SI",
+  "extra2": "SY",
+  "extra3": "SYR"
+ },
+ {
+  "codigo": "762",
+  "nombre": "TAYIKISTÁN",
+  "habilitado": "SI",
+  "extra2": "TJ",
+  "extra3": "TJK"
+ },
+ {
+  "codigo": "764",
+  "nombre": "TAILANDIA",
+  "habilitado": "SI",
+  "extra2": "TH",
+  "extra3": "THA"
+ },
+ {
+  "codigo": "768",
+  "nombre": "TOGO",
+  "habilitado": "SI",
+  "extra2": "TG",
+  "extra3": "TGO"
+ },
+ {
+  "codigo": "772",
+  "nombre": "TOKELAU",
+  "habilitado": "SI",
+  "extra2": "TK",
+  "extra3": "TKL"
+ },
+ {
+  "codigo": "776",
+  "nombre": "TONGA",
+  "habilitado": "SI",
+  "extra2": "TO",
+  "extra3": "TON"
+ },
+ {
+  "codigo": "780",
+  "nombre": "TRINIDAD Y TOBAGO",
+  "habilitado": "SI",
+  "extra2": "TT",
+  "extra3": "TTO"
+ },
+ {
+  "codigo": "784",
+  "nombre": "EMIRATOS ÁRABES UNIDOS",
+  "habilitado": "SI",
+  "extra2": "AE",
+  "extra3": "ARE"
+ },
+ {
+  "codigo": "788",
+  "nombre": "TÚNEZ",
+  "habilitado": "SI",
+  "extra2": "TN",
+  "extra3": "TUN"
+ },
+ {
+  "codigo": "792",
+  "nombre": "TURQUÍA",
+  "habilitado": "SI",
+  "extra2": "TR",
+  "extra3": "TUR"
+ },
+ {
+  "codigo": "795",
+  "nombre": "TURKMENISTAN",
+  "habilitado": "SI",
+  "extra2": "TM",
+  "extra3": "TKM"
+ },
+ {
+  "codigo": "796",
+  "nombre": "ISLAS TURCAS Y CAICOS",
+  "habilitado": "SI",
+  "extra2": "TC",
+  "extra3": "TCA"
+ },
+ {
+  "codigo": "798",
+  "nombre": "TUVALU",
+  "habilitado": "SI",
+  "extra2": "TV",
+  "extra3": "TUV"
+ },
+ {
+  "codigo": "800",
+  "nombre": "UGANDA",
+  "habilitado": "SI",
+  "extra2": "UG",
+  "extra3": "UGA"
+ },
+ {
+  "codigo": "804",
+  "nombre": "UCRANIA",
+  "habilitado": "SI",
+  "extra2": "UA",
+  "extra3": "UKR"
+ },
+ {
+  "codigo": "807",
+  "nombre": "MACEDONIA",
+  "habilitado": "SI",
+  "extra2": "MK",
+  "extra3": "MKD"
+ },
+ {
+  "codigo": "818",
+  "nombre": "EGIPTO",
+  "habilitado": "SI",
+  "extra2": "EG",
+  "extra3": "EGY"
+ },
+ {
+  "codigo": "826",
+  "nombre": "REINO UNIDO",
+  "habilitado": "SI",
+  "extra2": "GB",
+  "extra3": "GBR"
+ },
+ {
+  "codigo": "831",
+  "nombre": "GUERNSEY",
+  "habilitado": "SI",
+  "extra2": "GG",
+  "extra3": "GGY"
+ },
+ {
+  "codigo": "832",
+  "nombre": "JERSEY",
+  "habilitado": "SI",
+  "extra2": "JE",
+  "extra3": "JEY"
+ },
+ {
+  "codigo": "833",
+  "nombre": "ISLA DE MAN",
+  "habilitado": "SI",
+  "extra2": "IM",
+  "extra3": "IMN"
+ },
+ {
+  "codigo": "834",
+  "nombre": "TANZANIA",
+  "habilitado": "SI",
+  "extra2": "TZ",
+  "extra3": "TZA"
+ },
+ {
+  "codigo": "840",
+  "nombre": "ESTADOS UNIDOS",
+  "habilitado": "SI",
+  "extra2": "US",
+  "extra3": "USA"
+ },
+ {
+  "codigo": "850",
+  "nombre": "ISLAS VÍRGENES DE LOS ESTADOS UNIDOS",
+  "habilitado": "SI",
+  "extra2": "VI",
+  "extra3": "VIR"
+ },
+ {
+  "codigo": "854",
+  "nombre": "BURKINA FASO",
+  "habilitado": "SI",
+  "extra2": "BF",
+  "extra3": "BFA"
+ },
+ {
+  "codigo": "858",
+  "nombre": "URUGUAY",
+  "habilitado": "SI",
+  "extra2": "UY",
+  "extra3": "URY"
+ },
+ {
+  "codigo": "860",
+  "nombre": "UZBEKISTAN",
+  "habilitado": "SI",
+  "extra2": "UZ",
+  "extra3": "UZB"
+ },
+ {
+  "codigo": "862",
+  "nombre": "VENEZUELA",
+  "habilitado": "SI",
+  "extra2": "VE",
+  "extra3": "VEN"
+ },
+ {
+  "codigo": "876",
+  "nombre": "WALLIS Y FUTUNA",
+  "habilitado": "SI",
+  "extra2": "WF",
+  "extra3": "WLF"
+ },
+ {
+  "codigo": "882",
+  "nombre": "SAMOA",
+  "habilitado": "SI",
+  "extra2": "WS",
+  "extra3": "WSM"
+ },
+ {
+  "codigo": "887",
+  "nombre": "YEMEN",
+  "habilitado": "SI",
+  "extra2": "YE",
+  "extra3": "YEM"
+ },
+ {
+  "codigo": "894",
+  "nombre": "ZAMBIA",
+  "habilitado": "SI",
+  "extra2": "ZM",
+  "extra3": "ZMB"
+ }
+]

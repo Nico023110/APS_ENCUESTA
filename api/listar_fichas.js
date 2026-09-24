@@ -60,6 +60,8 @@ module.exports = async (req, res) => {
         f.capturada_en,
         f.fechas_modificacion,
         f.situacion_inminente,
+        (SELECT array_agg(s.codigo ORDER BY s.codigo) FROM aps.ficha_situacion_inminente s
+          WHERE s.ficha_id = f.id) AS situaciones_inminentes,
         eq.codigo                 AS equipo_codigo,
         f.responsable_id,
         r.nombre_completo         AS responsable_nombre,
@@ -90,7 +92,11 @@ module.exports = async (req, res) => {
         codigoFicha: fila.codigo_ficha,
         fechaRegistro: fila.capturada_en,
         fechasModificacion: Array.isArray(fila.fechas_modificacion) ? fila.fechas_modificacion : [],
-        situacionInminente: fila.situacion_inminente,
+        /* Ítem 2 es selección múltiple desde el anexo técnico: la lista vive
+           en su puente y la columna guarda sólo la opción principal. */
+        situacionInminente: Array.isArray(fila.situaciones_inminentes)
+          ? fila.situaciones_inminentes
+          : (fila.situacion_inminente ? [fila.situacion_inminente] : []),
         equipoSaludId: fila.equipo_codigo,
         responsableId: Number(fila.responsable_id),
         responsableNombre: fila.responsable_nombre,

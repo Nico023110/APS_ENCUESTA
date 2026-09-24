@@ -66,7 +66,7 @@ function obtenerMotor() {
 
   /* `direccion.js` entra porque el servidor recompone la dirección en vez de
      creer la que llega. Es texto puro, sin DOM, y sólo depende de catalogos.js. */
-  ['catalogos.js', 'direccion.js', 'reglas.js'].forEach(function (archivo) {
+  ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'reglas.js'].forEach(function (archivo) {
     const fuente = fs.readFileSync(resolverArchivo(archivo), 'utf8');
     vm.runInContext(fuente, contexto, { filename: archivo });
   });
@@ -74,6 +74,27 @@ function obtenerMotor() {
   if (typeof contexto.validarReglas !== 'function') {
     throw new Error('reglas.js no expuso validarReglas: revise que el archivo cargue completo.');
   }
+
+  /* Las funciones de un script quedan como propiedades del contexto, pero
+     sus `const` de nivel superior no: viven en el ámbito léxico global. Las
+     que usan el guardado, la lectura y el reporte se exponen aquí. */
+  ['PREGUNTAS_ANEXO', 'CATALOGOS_ANEXO', 'CAT_OCUPACION_CIUO', 'CAT_PAIS', 'CAT_EAPB', 'PRESTADOR_FIJO',
+    'CAT_SITUACION_INMINENTE', 'CAT_AREA_UBICACION', 'CAT_ESTRATO', 'CAT_TIPO_VIVIENDA', 'CAT_MATERIAL_TECHO',
+    'CAT_RIESGOS_ACCIDENTE', 'CAT_FACTORES_CONTAMINACION', 'CAT_ANIMALES', 'CAT_FUENTE_AGUA',
+    'CAT_DISPOSICION_EXCRETAS', 'CAT_AGUAS_RESIDUALES', 'CAT_RESIDUOS_SOLIDOS', 'CAT_TIPO_FAMILIA',
+    'CAT_SITUACIONES_RIESGO_FAMILIAR', 'CAT_PRACTICAS_VINCULO', 'CAT_REDES_APOYO', 'CAT_PRACTICAS_CUIDADO_HOGAR',
+    'CAT_TIPO_ID_INTEGRANTE', 'CAT_SEXO', 'CAT_GENERO', 'CAT_AUTOIDENTIFICACION_GENERO', 'CAT_ORIENTACION_SEXUAL',
+    'CAT_ROL_FAMILIAR', 'CAT_NIVEL_EDUCATIVO', 'CAT_REGIMEN_AFILIACION', 'CAT_SUJETO_ESPECIAL_PROTECCION',
+    'CAT_MODALIDAD_VIOLENCIA', 'CAT_PERTENENCIA_ETNICA', 'CAT_SABERES_ANCESTRALES', 'CAT_CONOCIMIENTO_DERECHO',
+    'CAT_PRACTICAS_CUIDADO', 'CAT_ATENCIONES_RPMS', 'CAT_DISCAPACIDAD', 'CAT_SI_NO', 'CAT_SI_NO_NA',
+    'CAT_ATENCIONES_MATERNO', 'CAT_BARRERAS_ACCESO', 'CAT_SIGNOS_DESNUTRICION', 'CAT_CLASIFICACION_ANTROPOMETRICA',
+    'CAT_CLASIFICACION_TENSION', 'CAT_SINTOMATOLOGIA_DEPRESIVA', 'CAT_IDEACION_SUICIDA',
+    'CAT_RIESGOS_SALUD_MENTAL_JOVEN', 'CAT_CONDICIONES_TRANSMISIBLES', 'CAT_ENFERMEDADES_NO_TRANSMISIBLES',
+    'CAT_ZONA_ENDEMICA', 'CAT_MOTIVO_NO_TRATAMIENTO', 'CAT_PERFIL_PROFESIONAL', 'CAT_TIPO_ID_RESPONSABLE',
+    'CAT_MEDIDAS_VECTORES', 'CAT_DEPARTAMENTO', 'CAT_MUNICIPIO', 'OCUPACION_SIN_OCUPACION', 'CAT_PRESTADOR'
+  ].forEach(function (nombre) {
+    contexto[nombre] = vm.runInContext(nombre, contexto);
+  });
 
   motor = contexto;
   return motor;
@@ -172,7 +193,6 @@ function revisarOpcion(cat, dominio, valor, ruta) {
 /* Campos de la ficha, la vivienda y el hogar que el esquema restringe a un
    dominio de catálogo. Refleja los CHECK cat.es_opcion(...) de 01_esquema.sql. */
 const OPCIONES_FICHA = [
-  ['situacionInminente', 'SITUACION_INMINENTE'],
   ['entornoAbordaje', 'ENTORNO'],
   ['areaUbicacion', 'AREA_UBICACION'],
   ['responsableTipoId', 'TIPO_ID_RESPONSABLE'],
@@ -181,22 +201,25 @@ const OPCIONES_FICHA = [
   ['tipoVivienda', 'TIPO_VIVIENDA'],
   ['materialTecho', 'MATERIAL_TECHO'],
   ['vectores', 'SI_NO_NA'],
-  ['carnetAntirrabico', 'SI_NO_NA'],
+  ['carnetAntirrabico', 'SI_NO_NA']
+];
+
+/* La situación inminente (ítem 2) y los ítems 46 a 49 son selección múltiple
+   desde el anexo técnico (variables 23, 53, 58, 59 y 62). */
+const OPCIONES_LISTA_VIVIENDA = [
+  ['situacionInminente', 'SITUACION_INMINENTE'],
+  ['riesgosAccidente', 'RIESGOS_ACCIDENTE'],
+  ['factoresContaminacion', 'FACTORES_CONTAMINACION'],
+  ['animales', 'ANIMALES'],
   ['fuenteAgua', 'FUENTE_AGUA'],
   ['disposicionExcretas', 'DISPOSICION_EXCRETAS'],
   ['aguasResiduales', 'AGUAS_RESIDUALES'],
   ['residuosSolidos', 'RESIDUOS_SOLIDOS']
 ];
 
-const OPCIONES_LISTA_VIVIENDA = [
-  ['riesgosAccidente', 'RIESGOS_ACCIDENTE'],
-  ['factoresContaminacion', 'FACTORES_CONTAMINACION'],
-  ['animales', 'ANIMALES']
-];
-
+/* El ZARIT no está: su clasificación se deriva del puntaje (prepararFicha). */
 const OPCIONES_FAMILIA = [
   ['tipoFamilia', 'TIPO_FAMILIA'],
-  ['zarit', 'ZARIT'],
   ['redesApoyo', 'REDES_APOYO']
 ];
 
@@ -248,11 +271,36 @@ const OPCIONES_LISTA_INTEGRANTE = [
   ['motivoNoTratamiento', 'MOTIVO_NO_TRATAMIENTO']
 ];
 
+/* Una ficha anterior al anexo trae un texto donde ahora va una lista (y la
+   zona endémica, al revés): se revisa igual, como lista de uno. */
+function comoLista(valores) {
+  if (Array.isArray(valores)) return valores;
+  return vacio(valores) ? [] : [valores];
+}
+
 function revisarListaOpciones(cat, dominio, valores, ruta, errores) {
-  if (!Array.isArray(valores)) return;
-  valores.forEach(function (valor, i) {
+  comoLista(valores).forEach(function (valor, i) {
     const error = revisarOpcion(cat, dominio, valor, ruta + '[' + i + ']');
     if (error) errores.push(error);
+  });
+}
+
+/* Las preguntas del anexo con catálogo, contra su dominio en la base. Los
+   CHECK de las columnas nuevas harían lo mismo, pero con un error de
+   PostgreSQL en vez de un aviso que nombre el campo. */
+function revisarAnexo(cat, niveles, objeto, prefijoRuta, errores) {
+  if (!objeto || typeof objeto !== 'object') return;
+  const m = obtenerMotor();
+  m.PREGUNTAS_ANEXO.forEach(function (pregunta) {
+    if (niveles.indexOf(pregunta.nivel) === -1 || !pregunta.catalogo) return;
+    const dominio = m.dominioDePregunta(pregunta);
+    const ruta = prefijoRuta + pregunta.clave;
+    if (pregunta.tipo === 'multiple') {
+      revisarListaOpciones(cat, dominio, objeto[pregunta.clave], ruta, errores);
+    } else {
+      const error = revisarOpcion(cat, dominio, objeto[pregunta.clave], ruta);
+      if (error) errores.push(error);
+    }
   });
 }
 
@@ -271,6 +319,9 @@ async function validarIntegridad(cliente, encuesta) {
   OPCIONES_LISTA_VIVIENDA.forEach(function (par) {
     revisarListaOpciones(cat, par[1], encuesta[par[0]], par[0], errores);
   });
+
+  /* Variables del anexo técnico: cada una sabe su dominio (anexo.js). */
+  revisarAnexo(cat, ['ficha', 'vivienda'], encuesta, '', errores);
 
   /* --- Saneamiento básico, ítems 39 a 49 ---
      `aps.vivienda` declara estas columnas NOT NULL, pero `seccionesPresentes`
@@ -338,6 +389,7 @@ async function validarIntegridad(cliente, encuesta) {
     OPCIONES_LISTA_FAMILIA.forEach(function (par) {
       revisarListaOpciones(cat, par[1], familia[par[0]], rutaF + '.' + par[0], errores);
     });
+    revisarAnexo(cat, ['familia'], familia, rutaF + '.', errores);
 
     const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
 
@@ -355,6 +407,7 @@ async function validarIntegridad(cliente, encuesta) {
       OPCIONES_LISTA_INTEGRANTE.forEach(function (par) {
         revisarListaOpciones(cat, par[1], integrante[par[0]], rutaI + '.' + par[0], errores);
       });
+      revisarAnexo(cat, ['integrante'], integrante, rutaI + '.', errores);
 
       if (!vacio(integrante.tipoId) && !vacio(integrante.numeroId)) {
         const clave = integrante.tipoId + '-' + integrante.numeroId;
@@ -568,6 +621,16 @@ function prepararFicha(m, encuesta) {
      una ficha sin componentes de dirección también lo necesita. */
   if (typeof m.liderDelEntorno === 'function') {
     copia.cabezaFamilia = m.liderDelEntorno(copia) || copia.cabezaFamilia || null;
+  }
+
+  /* RN-053: la clasificación del ZARIT sale del puntaje (variable 115 del
+     anexo), no del cuerpo de la petición. */
+  if (Array.isArray(copia.familias) && typeof m.clasificarZarit === 'function') {
+    copia.familias = copia.familias.map(function (familia) {
+      if (!familia || typeof familia !== 'object') return familia;
+      const puntaje = typeof familia.zaritPuntaje === 'number' ? familia.zaritPuntaje : null;
+      return Object.assign({}, familia, { zarit: puntaje === null ? null : m.clasificarZarit(puntaje) });
+    });
   }
 
   return copia;

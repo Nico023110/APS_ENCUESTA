@@ -1,0 +1,2257 @@
+[
+ {
+  "codigo": "0110",
+  "nombre": "Oficiales de las Fuerzas Militares",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "0210",
+  "nombre": "Suboficiales de las Fuerzas Militares",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "0310",
+  "nombre": "Otros miembros de las Fuerzas Militares",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1111",
+  "nombre": "Directores formuladores de políticas y normas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1112",
+  "nombre": "Directores del gobierno",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1113",
+  "nombre": "Jefes de comunidades étnicas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1114",
+  "nombre": "Dirigentes de organizaciones con un interés específico partidos políticos, sindicatos y organizaciones sociales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1120",
+  "nombre": "Directores y gerentes generales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1211",
+  "nombre": "Directores financieros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1212",
+  "nombre": "Directores de recursos humanos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1213",
+  "nombre": "Directores de políticas y planificación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1219",
+  "nombre": "Directores de administración y servicios no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1221",
+  "nombre": "Directores de ventas y comercialización",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1222",
+  "nombre": "Directores de publicidad y relaciones públicas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1223",
+  "nombre": "Directores de investigación y desarrollo",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1311",
+  "nombre": "Directores de producción agropecuaria y silvicultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1312",
+  "nombre": "Directores de producción de piscicultura y pesca",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1321",
+  "nombre": "Directores de industrias manufactureras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1322",
+  "nombre": "Directores de explotaciones de minería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1323",
+  "nombre": "Directores de empresas de construcción",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1324",
+  "nombre": "Directores de empresas de abastecimiento, distribución y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1330",
+  "nombre": "Directores de servicios de tecnología de la información y las comunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1341",
+  "nombre": "Directores de servicios de cuidados infantiles",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1342",
+  "nombre": "Directores de servicios de salud",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1343",
+  "nombre": "Directores de servicios de atención a personas mayores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1344",
+  "nombre": "Directores de servicios de bienestar social",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1345",
+  "nombre": "Directores de servicios de educación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1346",
+  "nombre": "Gerentes de sucursales de bancos, de servicios financieros y de seguros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1349",
+  "nombre": "Directores y gerentes de servicios profesionales no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1411",
+  "nombre": "Gerentes de hoteles",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1412",
+  "nombre": "Gerentes de restaurantes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1420",
+  "nombre": "Gerentes de comercios al por mayor y al por menor",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1431",
+  "nombre": "Gerentes de centros deportivos, de esparcimiento y culturales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "1439",
+  "nombre": "Otros gerentes de servicios no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2111",
+  "nombre": "Físicos y astrónomos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2112",
+  "nombre": "Meteorólogos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2113",
+  "nombre": "Químicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2114",
+  "nombre": "Geólogos y geofísicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2120",
+  "nombre": "Matemáticos, actuarios y estadísticos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2131",
+  "nombre": "Biólogos, botánicos, zoólogos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2132",
+  "nombre": "Agrónomos, silvicultores, zootecnistas y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2133",
+  "nombre": "Profesionales de la protección medioambiental",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2141",
+  "nombre": "Ingenieros industriales y de producción",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2142",
+  "nombre": "Ingenieros civiles",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2143",
+  "nombre": "Ingenieros medioambientales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2144",
+  "nombre": "Ingenieros mecánicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2145",
+  "nombre": "Ingenieros químicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2146",
+  "nombre": "Ingenieros de minas, metalúrgicos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2149",
+  "nombre": "Ingenieros no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2151",
+  "nombre": "Ingenieros electricistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2152",
+  "nombre": "Ingenieros electrónicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2153",
+  "nombre": "Ingenieros de telecomunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2161",
+  "nombre": "Arquitectos constructores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2162",
+  "nombre": "Arquitectos paisajistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2163",
+  "nombre": "Diseñadores de productos y de prendas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2164",
+  "nombre": "Planificadores urbanos, regionales y de tránsito",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2165",
+  "nombre": "Cartógrafos y topógrafos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2166",
+  "nombre": "Diseñadores gráficos y multimedia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2211",
+  "nombre": "Médicos generales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2212",
+  "nombre": "Médicos especialistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2221",
+  "nombre": "Profesionales de enfermería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2222",
+  "nombre": "Profesionales de partería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2230",
+  "nombre": "Profesionales de medicina tradicional y alternativa",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2240",
+  "nombre": "Paramédicos e instrumentadores quirúrgicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2250",
+  "nombre": "Veterinarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2261",
+  "nombre": "Odontólogos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2262",
+  "nombre": "Farmacéuticos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2263",
+  "nombre": "Profesionales de la salud y la higiene laboral y ambiental",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2264",
+  "nombre": "Fisioterapeutas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2265",
+  "nombre": "Dietistas y nutricionistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2266",
+  "nombre": "Fonoaudiólogos y terapeutas del lenguaje",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2267",
+  "nombre": "Optómetras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2269",
+  "nombre": "Otros profesionales de la salud no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2310",
+  "nombre": "Profesores de instituciones de educación superior",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2320",
+  "nombre": "Profesores de formación profesional",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2330",
+  "nombre": "Profesores de educación secundaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2341",
+  "nombre": "Profesores de educación primaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2342",
+  "nombre": "Profesores de primera infancia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2351",
+  "nombre": "Especialistas en métodos pedagógicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2352",
+  "nombre": "Profesores de educación especial e inclusiva",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2353",
+  "nombre": "Otros profesores de idiomas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2354",
+  "nombre": "Otros profesores de música",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2355",
+  "nombre": "Otros profesores de artes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2356",
+  "nombre": "Instructores de tecnología de la información",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2359",
+  "nombre": "Otros profesionales de la educación no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2411",
+  "nombre": "Contadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2412",
+  "nombre": "Asesores financieros y de inversiones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2413",
+  "nombre": "Analistas financieros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2421",
+  "nombre": "Analistas de gestión y organización",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2422",
+  "nombre": "Profesionales en políticas de administración",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2423",
+  "nombre": "Profesionales de gestión de talento humano",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2424",
+  "nombre": "Profesionales en formación y desarrollo de personal",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2431",
+  "nombre": "Profesionales de la publicidad y la comercialización",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2432",
+  "nombre": "Profesionales de relaciones públicas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2433",
+  "nombre": "Profesionales de ventas técnicas y médicas (excluyendo las TIC)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2434",
+  "nombre": "Profesionales de ventas de tecnología de la información y las comunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2511",
+  "nombre": "Analistas de sistemas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2512",
+  "nombre": "Desarrolladores de software",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2513",
+  "nombre": "Desarrolladores web y multimedia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2514",
+  "nombre": "Programadores de aplicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2519",
+  "nombre": "Desarrolladores y analistas de software y multimedia no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2521",
+  "nombre": "Diseñadores y administradores de bases de datos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2522",
+  "nombre": "Administradores de sistemas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2523",
+  "nombre": "Profesionales en redes de computadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2529",
+  "nombre": "Profesionales en bases de datos y en redes de computadores no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2611",
+  "nombre": "Abogados",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2612",
+  "nombre": "Jueces",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2619",
+  "nombre": "Profesionales en derecho no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2621",
+  "nombre": "Archivistas y curadores de arte",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2622",
+  "nombre": "Bibliotecarios, documentalistas y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2631",
+  "nombre": "Economistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2632",
+  "nombre": "Sociólogos, antropólogos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2633",
+  "nombre": "Filósofos, historiadores y especialistas en ciencias políticas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2634",
+  "nombre": "Psicólogos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2635",
+  "nombre": "Profesionales del trabajo social y consejeros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2636",
+  "nombre": "Profesionales religiosos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2641",
+  "nombre": "Autores y otros escritores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2642",
+  "nombre": "Periodistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2643",
+  "nombre": "Traductores, intérpretes y otros lingüistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2651",
+  "nombre": "Escultores, pintores artísticos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2652",
+  "nombre": "Compositores, músicos y cantantes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2653",
+  "nombre": "Coreógrafos y bailarines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2654",
+  "nombre": "Directores y productores de cine, de teatro y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2655",
+  "nombre": "Actores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2656",
+  "nombre": "Locutores de radio, televisión y otros medios de comunicación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "2659",
+  "nombre": "Artistas creativos e interpretativos no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3111",
+  "nombre": "Técnicos en ciencias físicas y químicas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3112",
+  "nombre": "Técnicos en ingeniería civil",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3113",
+  "nombre": "Electrotécnicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3114",
+  "nombre": "Técnicos en electrónica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3115",
+  "nombre": "Técnicos en ingeniería mecánica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3116",
+  "nombre": "Técnicos en química industrial",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3117",
+  "nombre": "Técnicos de minas y metalurgia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3118",
+  "nombre": "Delineantes y dibujantes técnicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3119",
+  "nombre": "Técnicos en ciencias físicas y en ingeniería no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3121",
+  "nombre": "Supervisores de minas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3122",
+  "nombre": "Supervisores de industrias manufactureras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3123",
+  "nombre": "Supervisores de la construcción",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3131",
+  "nombre": "Operadores de plantas de producción de energía",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3132",
+  "nombre": "Operadores de incineradores, instalaciones de tratamiento de agua y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3133",
+  "nombre": "Controladores de instalaciones de procesamiento de productos químicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3134",
+  "nombre": "Operadores de instalaciones de refinación de petróleo y gas natural",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3135",
+  "nombre": "Operadores de procesos de producción de metales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3139",
+  "nombre": "Técnicos en control de procesos no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3141",
+  "nombre": "Técnicos en ciencias biológicas (excluyendo la medicina)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3142",
+  "nombre": "Técnicos agropecuarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3143",
+  "nombre": "Técnicos forestales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3151",
+  "nombre": "Oficiales maquinistas en navegación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3152",
+  "nombre": "Capitanes, oficiales de cubierta y prácticos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3153",
+  "nombre": "Pilotos de aviación y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3154",
+  "nombre": "Controladores de tráfico aéreo y marítimo",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3155",
+  "nombre": "Técnicos en seguridad aeronáutica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3211",
+  "nombre": "Técnicos en aparatos de diagnóstico y tratamiento médico",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3212",
+  "nombre": "Técnicos de laboratorios médicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3213",
+  "nombre": "Técnicos y asistentes farmacéuticos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3214",
+  "nombre": "Técnicos de prótesis médicas y dentales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3221",
+  "nombre": "Técnicos y profesionales del nivel medio en enfermería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3222",
+  "nombre": "Técnicos y profesionales del nivel medio en partería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3230",
+  "nombre": "Técnicos y profesionales del nivel medio en medicina tradicional y alternativa",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3240",
+  "nombre": "Técnicos y asistentes veterinarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3251",
+  "nombre": "Higienistas y asistentes odontológicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3252",
+  "nombre": "Técnicos en documentación sanitaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3253",
+  "nombre": "Trabajadores comunitarios de la salud",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3254",
+  "nombre": "Técnicos en optometría y ópticas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3255",
+  "nombre": "Técnicos y asistentes terapeutas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3256",
+  "nombre": "Asistentes médicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3257",
+  "nombre": "Inspectores de seguridad, salud ocupacional, medioambiental y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3258",
+  "nombre": "Técnicos en atención prehospitalaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3259",
+  "nombre": "Otros técnicos y profesionales del nivel medio de la salud, no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3311",
+  "nombre": "Agentes de bolsa, cambio y otros servicios financieros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3312",
+  "nombre": "Analistas de préstamos y créditos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3313",
+  "nombre": "Técnicos de contabilidad y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3314",
+  "nombre": "Técnicos y profesionales del nivel medio de servicios estadísticos, matemáticos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3315",
+  "nombre": "Tasadores y evaluadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3321",
+  "nombre": "Agentes de seguros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3322",
+  "nombre": "Representantes comerciales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3323",
+  "nombre": "Agentes de compras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3324",
+  "nombre": "Agentes de operaciones comerciales y consignatarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3331",
+  "nombre": "Declarantes o gestores de aduana",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3332",
+  "nombre": "Organizadores de conferencias y eventos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3333",
+  "nombre": "Agentes de empleo y contratistas de mano de obra",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3334",
+  "nombre": "Agentes inmobiliarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3339",
+  "nombre": "Agentes de servicios comerciales no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3341",
+  "nombre": "Supervisores de oficina",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3342",
+  "nombre": "Secretarios jurídicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3343",
+  "nombre": "Secretarios administrativos y ejecutivos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3344",
+  "nombre": "Secretarios médicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3351",
+  "nombre": "Agentes de aduana e inspectores de frontera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3352",
+  "nombre": "Agentes de administración tributaria",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3353",
+  "nombre": "Agentes de servicios de seguridad social",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3354",
+  "nombre": "Agentes gubernamentales de expedición de licencias",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3355",
+  "nombre": "Inspectores de policía y detectives",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3359",
+  "nombre": "Agentes de gobierno y profesionales del nivel medio para la aplicación de regulaciones no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3411",
+  "nombre": "Técnicos y profesionales del nivel medio del derecho de servicios legales y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3412",
+  "nombre": "Trabajadores y asistentes sociales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3413",
+  "nombre": "Auxiliares laicos de las religiones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3421",
+  "nombre": "Atletas y deportistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3422",
+  "nombre": "Entrenadores, instructores y árbitros de actividades deportivas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3423",
+  "nombre": "Instructores de educación física y actividades recreativas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3431",
+  "nombre": "Fotógrafos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3432",
+  "nombre": "Diseñadores y decoradores de interiores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3433",
+  "nombre": "Técnicos en galerías de arte, museos y bibliotecas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3434",
+  "nombre": "Chefs",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3435",
+  "nombre": "Otros técnicos y profesionales del nivel medio en actividades culturales y artísticas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3511",
+  "nombre": "Técnicos en operaciones de tecnología de la información y las comunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3512",
+  "nombre": "Técnicos en asistencia y soporte al usuario de tecnología de la información y las comunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3513",
+  "nombre": "Técnicos en redes y sistemas de computación",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3514",
+  "nombre": "Técnicos de la Web",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3521",
+  "nombre": "Técnicos de radiodifusión y grabación audio visual",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "3522",
+  "nombre": "Técnicos de ingeniería de las telecomunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4110",
+  "nombre": "Oficinistas generales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4120",
+  "nombre": "Secretarios generales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4131",
+  "nombre": "Operadores de máquinas de procesamiento de texto y mecanógrafos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4132",
+  "nombre": "Grabadores de datos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4211",
+  "nombre": "Cajeros de bancos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4212",
+  "nombre": "Receptores de apuestas y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4213",
+  "nombre": "Prestamistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4214",
+  "nombre": "Cobradores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4221",
+  "nombre": "Empleados y consultores de viajes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4222",
+  "nombre": "Empleados de centros de llamadas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4223",
+  "nombre": "Telefonistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4224",
+  "nombre": "Recepcionistas de hoteles",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4225",
+  "nombre": "Empleados de ventanillas de informaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4226",
+  "nombre": "Recepcionistas generales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4227",
+  "nombre": "Entrevistadores de encuestas y de investigaciones de mercados",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4229",
+  "nombre": "Otros empleados de servicios de información al cliente no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4311",
+  "nombre": "Auxiliares de contabilidad y cálculo de costos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4312",
+  "nombre": "Auxiliares de servicios estadísticos, financieros y de seguros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4313",
+  "nombre": "Auxiliares encargados de las nóminas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4321",
+  "nombre": "Empleados de control de abastecimientos e inventario",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4322",
+  "nombre": "Empleados de servicios de apoyo a la producción",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4323",
+  "nombre": "Empleados de servicios de transporte",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4411",
+  "nombre": "Empleados de bibliotecas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4412",
+  "nombre": "Empleados de servicios de correos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4413",
+  "nombre": "Codificadores de datos, correctores de pruebas de imprenta y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4414",
+  "nombre": "Escribientes públicos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4415",
+  "nombre": "Empleados de archivos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4416",
+  "nombre": "Empleados del servicio de personal",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "4419",
+  "nombre": "Otro personal de apoyo administrativo no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5111",
+  "nombre": "Personal de servicio a pasajeros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5112",
+  "nombre": "Revisores y cobradores de los transportes públicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5113",
+  "nombre": "Guías",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5120",
+  "nombre": "Cocineros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5131",
+  "nombre": "Meseros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5132",
+  "nombre": "Bármanes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5141",
+  "nombre": "Peluqueros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5142",
+  "nombre": "Especialistas en tratamientos de belleza y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5151",
+  "nombre": "Supervisores de mantenimiento y limpieza en oficinas, hoteles y otros establecimientos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5152",
+  "nombre": "Mayordomos domésticos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5153",
+  "nombre": "Conserjes y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5161",
+  "nombre": "Astrólogos, adivinos y trabajadores afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5162",
+  "nombre": "Acompañantes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5163",
+  "nombre": "Personal de servicios funerarios y embalsamadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5164",
+  "nombre": "Cuidadores de animales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5165",
+  "nombre": "Instructores de conducción",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5169",
+  "nombre": "Otros trabajadores de servicios personales no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5211",
+  "nombre": "Vendedores de quioscos y de puestos de mercado",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5212",
+  "nombre": "Vendedores ambulantes de alimentos preparados para consumo inmediato",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5221",
+  "nombre": "Comerciantes de tiendas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5222",
+  "nombre": "Supervisores de tiendas y almacenes",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5223",
+  "nombre": "Vendedores y auxiliares de venta en tiendas, almacenes y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5230",
+  "nombre": "Cajeros de comercio, taquilleros y expendedores de boletas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5241",
+  "nombre": "Modelos de moda, arte y publicidad",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5242",
+  "nombre": "Demostradores de tiendas, almacenes y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5243",
+  "nombre": "Vendedores puerta a puerta",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5244",
+  "nombre": "Vendedores a través de medios tecnológicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5245",
+  "nombre": "Expendedores de combustibles para vehículos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5246",
+  "nombre": "Vendedores de comidas al mostrador",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5249",
+  "nombre": "Otros vendedores no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5311",
+  "nombre": "Cuidadores de niños",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5312",
+  "nombre": "Auxiliares de maestros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5321",
+  "nombre": "Trabajadores de los cuidados personales en instituciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5322",
+  "nombre": "Trabajadores de los cuidados personales a domicilio",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5329",
+  "nombre": "Trabajadores de los cuidados personales en servicios de salud no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5411",
+  "nombre": "Bomberos y rescatistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5412",
+  "nombre": "Policías",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5413",
+  "nombre": "Guardianes de prisión",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5414",
+  "nombre": "Guardias de seguridad",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "5419",
+  "nombre": "Personal de los servicios de protección no clasificadosen otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6111",
+  "nombre": "Agricultores y trabajadores calificados de cultivos extensivos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6112",
+  "nombre": "Agricultores y trabajadores calificados de plantaciones de árboles y arbustos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6113",
+  "nombre": "Agricultores y trabajadores calificados de huertas, invernaderos, viveros y jardines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6114",
+  "nombre": "Agricultores y trabajadores calificados de cultivos mixtos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6121",
+  "nombre": "Criadores de ganado y trabajadores de la cría de animales domésticos (excepto aves de corral)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6122",
+  "nombre": "Avicultores y trabajadores calificados de la avicultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6123",
+  "nombre": "Criadores y trabajadores calificados de la apicultura y la sericicultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6129",
+  "nombre": "Criadores y trabajadores pecuarios calificados, avicultores y criadores de insectos no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6130",
+  "nombre": "Productores y trabajadores calificados de explotaciones agropecuarias mixtas cuya producción se destina al mercado",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6210",
+  "nombre": "Trabajadores forestales calificados y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6221",
+  "nombre": "Trabajadores de explotaciones de acuicultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6222",
+  "nombre": "Pescadores de agua dulce y en aguas costeras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6223",
+  "nombre": "Pescadores de alta mar",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6224",
+  "nombre": "Cazadores y tramperos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6310",
+  "nombre": "Trabajadores agrícolas de subsistencia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6320",
+  "nombre": "Trabajadores pecuarios de subsistencia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6330",
+  "nombre": "Trabajadores agropecuarios de subsistencia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "6340",
+  "nombre": "Pescadores, cazadores, tramperos y recolectores de subsistencia",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7111",
+  "nombre": "Constructores de casas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7112",
+  "nombre": "Albañiles",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7113",
+  "nombre": "Labrantes, tronzadores y grabadores de piedra",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7114",
+  "nombre": "Operarios en cemento armado, enfoscadores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7115",
+  "nombre": "Carpinteros de armar y de obra blanca",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7119",
+  "nombre": "Oficiales y operarios de la construcción de obra gruesa y afines no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7121",
+  "nombre": "Techadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7122",
+  "nombre": "Enchapadores, parqueteros y colocadores de suelos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7123",
+  "nombre": "Revocadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7124",
+  "nombre": "Instaladores de material aislante y de insonorización",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7125",
+  "nombre": "Cristaleros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7126",
+  "nombre": "Fontaneros e instaladores de tuberías",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7127",
+  "nombre": "Mecánicos montadores de aire acondicionado y refrigeración",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7131",
+  "nombre": "Pintores y empapeladores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7132",
+  "nombre": "Barnizadores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7133",
+  "nombre": "Limpiadores de fachadas y deshollinadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7211",
+  "nombre": "Moldeadores y macheros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7212",
+  "nombre": "Soldadores y oxicortadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7213",
+  "nombre": "Chapistas y caldereros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7214",
+  "nombre": "Montadores de estructuras metálicas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7215",
+  "nombre": "Aparejadores y empalmadores de cables",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7221",
+  "nombre": "Herreros y forjadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7222",
+  "nombre": "Herramentistas y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7223",
+  "nombre": "Ajustadores y operadores de máquinas herramientas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7224",
+  "nombre": "Pulidores de metales y afiladores de herramientas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7231",
+  "nombre": "Mecánicos y reparadores de vehículos de motor",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7232",
+  "nombre": "Mecánicos y reparadores de sistemas y motores de aeronaves",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7233",
+  "nombre": "Mecánicos y reparadores de máquinas agrícolas e industriales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7234",
+  "nombre": "Reparadores de bicicletas y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7311",
+  "nombre": "Mecánicos y reparadores de instrumentos de precisión",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7312",
+  "nombre": "Fabricantes y afinadores de instrumentos musicales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7314",
+  "nombre": "Alfareros y ceramistas (barro y arcilla)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7315",
+  "nombre": "Sopladores, modeladores, laminadores, cortadores y pulidores de vidrio",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7316",
+  "nombre": "Rotulistas, pintores decorativos y grabadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7321",
+  "nombre": "Preimpresores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7322",
+  "nombre": "Impresores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7323",
+  "nombre": "Encuadernadores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7331",
+  "nombre": "Tejedores con telares",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7332",
+  "nombre": "Tejedores con agujas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7333",
+  "nombre": "Otros tejedores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7341",
+  "nombre": "Cesteros y mimbreros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7342",
+  "nombre": "Sombrereros artesanales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7351",
+  "nombre": "Talladores piezas artesanales de madera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7352",
+  "nombre": "Decoradores de piezas artesanales en madera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7361",
+  "nombre": "Joyeros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7362",
+  "nombre": "Orfebres y plateros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7363",
+  "nombre": "Bisuteros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7370",
+  "nombre": "Artesanos del cuero",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7391",
+  "nombre": "Artesanos de papel",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7392",
+  "nombre": "Artesanos del hierro y otros metales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7393",
+  "nombre": "Artesanos de las semillas y cortezas vegetales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7399",
+  "nombre": "Artesanos de otros materiales no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7411",
+  "nombre": "Electricistas de obras y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7412",
+  "nombre": "Mecánicos y ajustadores electricistas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7413",
+  "nombre": "Instaladores y reparadores de líneas eléctricas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7421",
+  "nombre": "Mecánicos y reparadores en electrónica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7422",
+  "nombre": "Instaladores y reparadores en tecnología de la información y las comunicaciones",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7511",
+  "nombre": "Carniceros, pescaderos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7512",
+  "nombre": "Panaderos, pasteleros y confiteros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7513",
+  "nombre": "Operarios de la elaboración de productos lácteos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7514",
+  "nombre": "Operarios de la conservación de frutas, legumbres, verduras y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7515",
+  "nombre": "Catadores y clasificadores de alimentos y bebidas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7516",
+  "nombre": "Preparadores y elaboradores de tabaco y sus productos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7521",
+  "nombre": "Operarios del tratamiento de la madera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7522",
+  "nombre": "Ebanistas y carpinteros (excluye carpinteros de armar y de obra blanca)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7523",
+  "nombre": "Ajustadores y operadores de máquinas para trabajar madera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7531",
+  "nombre": "Sastres, modistos, peleteros y sombrereros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7532",
+  "nombre": "Patronistas y cortadores de tela, cuero y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7533",
+  "nombre": "Costureros, bordadores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7534",
+  "nombre": "Tapiceros, colchoneros y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7535",
+  "nombre": "Apelambradores, pellejeros y curtidores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7536",
+  "nombre": "Zapateros y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7541",
+  "nombre": "Buzos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7542",
+  "nombre": "Dinamiteros y pegadores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7543",
+  "nombre": "Clasificadores y probadores de productos (excluyendo alimentos y bebidas)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7544",
+  "nombre": "Fumigadores y otros controladores de plagas y malas hierbas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "7549",
+  "nombre": "Otros oficiales, operarios y oficios relacionados no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8111",
+  "nombre": "Mineros y operadores de instalaciones mineras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8112",
+  "nombre": "Operadores de instalaciones de procesamiento de minerales y rocas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8113",
+  "nombre": "Perforadores y sondistas de pozos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8114",
+  "nombre": "Operadores de máquinas para fabricar cemento y otros productos minerales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8121",
+  "nombre": "Operadores de instalaciones de procesamiento de metales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8122",
+  "nombre": "Operadores de máquinas pulidoras, galvanizadoras y recubridoras de metales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8131",
+  "nombre": "Operadores de plantas y máquinas de productos químicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8132",
+  "nombre": "Operadores de máquinas para fabricar productos fotográficos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8141",
+  "nombre": "Operadores de máquinas para fabricar productos de caucho",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8142",
+  "nombre": "Operadores de máquinas para fabricar productos de material plástico",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8143",
+  "nombre": "Operadores de máquinas para fabricar productos de papel",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8151",
+  "nombre": "Operadores de máquinas de preparación de fibras, hilado y devanado",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8152",
+  "nombre": "Operadores de telares y otras máquinas tejedoras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8153",
+  "nombre": "Operadores de máquinas de coser",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8154",
+  "nombre": "Operadores de máquinas de blanqueamiento, teñido y limpieza de tejidos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8155",
+  "nombre": "Operadores de máquinas de tratamiento de pieles y cueros",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8156",
+  "nombre": "Operadores de máquinas para la fabricación de calzado y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8157",
+  "nombre": "Operadores de máquinas de lavandería",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8159",
+  "nombre": "Operadores de máquinas para fabricar productos textiles y artículos de piel y cuero no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8160",
+  "nombre": "Operadores de máquinas para elaborar alimentos y productos afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8171",
+  "nombre": "Operadores de instalaciones para la preparación de pasta para papel y papel",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8172",
+  "nombre": "Operadores de instalaciones de procesamiento de la madera",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8181",
+  "nombre": "Operadores de máquinas y de instalaciones para elaborar productos de vidrio y cerámica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8182",
+  "nombre": "Operadores de máquinas de vapor y calderas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8183",
+  "nombre": "Operadores de máquinas de embalaje, embotellamiento y etiquetado",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8189",
+  "nombre": "Otros operadores de máquinas y de instalaciones fijas no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8211",
+  "nombre": "Ensambladores de maquinaria mecánica",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8212",
+  "nombre": "Ensambladores de equipos eléctricos y electrónicos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8219",
+  "nombre": "Ensambladores no clasificados bajo otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8311",
+  "nombre": "Maquinistas de locomotoras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8312",
+  "nombre": "Guardafrenos, guardagujas y agentes de maniobras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8321",
+  "nombre": "Conductores de motocicletas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8323",
+  "nombre": "Conductores de camionetas y vehículos livianos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8324",
+  "nombre": "Conductores de taxis",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8331",
+  "nombre": "Conductores de buses, microbuses y tranvías",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8332",
+  "nombre": "Conductores de camiones y vehículos pesados",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8341",
+  "nombre": "Operadores de maquinaria agrícola y forestal móvil",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8342",
+  "nombre": "Operadores de máquinas de movimiento de tierras, construcción de vías y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8343",
+  "nombre": "Operadores de grúas, aparatos elevadores y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8344",
+  "nombre": "Operadores de montacargas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "8350",
+  "nombre": "Marineros de cubierta y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9111",
+  "nombre": "Personal doméstico",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9112",
+  "nombre": "Aseadores de oficinas, hoteles y otros establecimientos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9121",
+  "nombre": "Lavanderos y planchadores manuales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9122",
+  "nombre": "Lavadores de vehículos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9123",
+  "nombre": "Lavadores de ventanas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9129",
+  "nombre": "Otro personal de limpieza no clasificados bajo otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9211",
+  "nombre": "Obreros y peones de explotaciones agrícolas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9212",
+  "nombre": "Obreros y peones de explotaciones ganaderas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9213",
+  "nombre": "Obreros y peones de explotaciones agropecuarias",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9214",
+  "nombre": "Obreros y peones de jardinería y horticultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9215",
+  "nombre": "Obreros y peones forestales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9216",
+  "nombre": "Obreros y peones de pesca y acuicultura",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9311",
+  "nombre": "Obreros y peones de minas y canteras",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9312",
+  "nombre": "Obreros y peones de obras públicas y mantenimiento",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9313",
+  "nombre": "Obreros y peones de la construcción de edificios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9321",
+  "nombre": "Empacadores manuales",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9329",
+  "nombre": "Obreros y peones de la industria manufacturera no clasificados en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9331",
+  "nombre": "Conductores de vehículos accionados a pedal o a brazo",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9332",
+  "nombre": "Conductores de vehículos y máquinas de tracción animal",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9333",
+  "nombre": "Obreros y peones de carga",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9334",
+  "nombre": "Surtidores de estanterías",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9411",
+  "nombre": "Cocineros de comidas rápidas",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9412",
+  "nombre": "Ayudantes de cocina",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9510",
+  "nombre": "Trabajadores ambulantes de servicios y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9520",
+  "nombre": "Vendedores ambulantes (excluyendo comidas de preparación inmediata)",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9611",
+  "nombre": "Recolectores de basura y material reciclable",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9612",
+  "nombre": "Clasificadores de desechos",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9613",
+  "nombre": "Barrenderos y afines",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9621",
+  "nombre": "Mensajeros, mandaderos, maleteros y repartidores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9622",
+  "nombre": "Personas que realizan trabajos varios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9624",
+  "nombre": "Acarreadores de agua y recolectores de leña",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9625",
+  "nombre": "Recolectores de dinero y surtidores de máquinas de venta automática",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9626",
+  "nombre": "Lectores de medidores",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9629",
+  "nombre": "Otras ocupaciones elementales no clasificadas en otros grupos primarios",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9998",
+  "nombre": "Jubilado, desempleado, ama de casa, estudiante, dedicación al hogar, menor de edad",
+  "habilitado": "SI"
+ },
+ {
+  "codigo": "9999",
+  "nombre": "En los casos en que no se tiene esta información registrar",
+  "habilitado": "SI"
+ }
+]

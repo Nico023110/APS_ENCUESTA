@@ -35,22 +35,56 @@
 /* Ficha que se está corrigiendo. `null` cuando se captura una nueva. */
 let encuestaEnCorreccion = null;
 
+/* Cuando la ficha no está en este dispositivo —se diligenció en otro— se trae
+   entera de la base (/api/ficha_completa). Se guarda aquí lo leído para
+   conservar su historial de modificaciones al volver a guardarla. */
+let correccionDesdeServidor = null;
+
 /* =========================================================
    1. ENTRADA Y SALIDA DEL MODO CORRECCIÓN
    ========================================================= */
 
-function abrirCorreccionDeEncuesta(id) {
-  const encuesta = obtenerEncuestas().find(function (e) { return e.id === id; });
+async function abrirCorreccionDeEncuesta(id) {
+  const local = obtenerEncuestas().find(function (e) { return e.id === id; });
 
-  if (!encuesta) {
+  if (local) {
+    entrarEnCorreccion(id, local, null);
+    return;
+  }
+
+  const remota = (typeof cacheFichasDelServidor !== 'undefined' && cacheFichasDelServidor || [])
+    .find(function (e) { return e.id === id; });
+
+  if (!remota) {
     mostrarNotificacion('No se encontró la encuesta que se quiere corregir.', 'error');
     return;
   }
 
+  let respuesta;
+  let cuerpo;
+  try {
+    respuesta = await fetch('/api/ficha_completa?codigo=' + encodeURIComponent(remota.codigoFicha));
+    cuerpo = await respuesta.json().catch(function () { return {}; });
+  } catch (error) {
+    mostrarNotificacion('Sin conexión: la ficha ' + remota.codigoFicha +
+      ' está en la base y hace falta red para traerla.', 'warning');
+    return;
+  }
+
+  if (!respuesta.ok || !cuerpo.encuesta) {
+    mostrarNotificacion(cuerpo.error || 'No fue posible traer la ficha para corregirla.', 'error');
+    return;
+  }
+
+  entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta);
+}
+
+function entrarEnCorreccion(id, encuesta, desdeServidor) {
   cambiarVista('nueva');
   cargarEncuestaEnFormulario(encuesta);
 
   encuestaEnCorreccion = id;
+  correccionDesdeServidor = desdeServidor;
   mostrarAvisoDeCorreccion(encuesta);
 
   mostrarNotificacion(
@@ -60,8 +94,27 @@ function abrirCorreccionDeEncuesta(id) {
 
 function salirDeCorreccion() {
   encuestaEnCorreccion = null;
+  correccionDesdeServidor = null;
   const aviso = document.getElementById('avisoCorreccion');
   if (aviso) aviso.hidden = true;
+}
+
+/* RN-016: una ficha que ya está en la base se corrige aunque la visita tenga
+   más de 30 días. Aquí sólo evita el aviso en pantalla; quien decide es el
+   servidor, que lo comprueba contra la base. */
+function fichaEnCorreccionYaRegistrada() {
+  if (!encuestaEnCorreccion) return false;
+  if (correccionDesdeServidor) return true;
+  const local = obtenerEncuestas().find(function (e) { return e.id === encuestaEnCorreccion; });
+  return Boolean(local && local.sincronizada === true);
+}
+
+/* Historial de modificaciones de la ficha que se corrige, más la de ahora.
+   Antes cada reenvío mandaba una lista vacía y la base la sobrescribía. */
+function fechasDeModificacionDeLaCorreccion() {
+  const origen = correccionDesdeServidor ||
+    obtenerEncuestas().find(function (e) { return e.id === encuestaEnCorreccion; }) || {};
+  return (origen.fechasModificacion || []).concat([new Date().toISOString()]);
 }
 
 /** Cinta superior que recuerda que no se está capturando una visita nueva. */
@@ -94,9 +147,17 @@ function mostrarAvisoDeCorreccion(encuesta) {
     formulario.parentNode.insertBefore(aviso, formulario);
   }
 
-  document.getElementById('avisoCorreccionTexto').textContent =
-    'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +
+  let texto = 'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +
     '. Al guardar se reemplaza el registro existente, no se crea uno nuevo.';
+
+  /* Las fichas guardadas antes de que la base conservara la dirección por
+     partes la traen sólo como texto: hay que recomponerla en el ítem 21. */
+  if (correccionDesdeServidor && !encuesta.direccionComponentes && encuesta.direccion) {
+    texto += ' La dirección registrada es «' + encuesta.direccion +
+      '»: vuelva a componerla en el ítem 21 antes de guardar.';
+  }
+
+  document.getElementById('avisoCorreccionTexto').textContent = texto;
   aviso.hidden = false;
 }
 
@@ -122,7 +183,7 @@ function cargarEncuestaEnFormulario(encuesta) {
   aplicarValorEnFormulario(formulario, 'consentimiento', encuesta.consentimiento || 'si');
   aplicarBloqueoPorConsentimiento();
 
-  const valores = aplanarEncuesta(encuesta, planes);
+  const valores = ordenarComoElFormulario(formulario, aplanarEncuesta(encuesta, planes));
 
   /* Varias pasadas, mientras la anterior haya colocado algo. Hay dos motivos
      por los que un valor no entra a la primera y sí a la siguiente: la lista
@@ -132,16 +193,24 @@ function cargarEncuestaEnFormulario(encuesta) {
      "perros"—. Repetir mientras haya avance es más robusto que declarar a mano
      qué campo depende de cuál, y termina solo cuando lo que queda no lo
      admite ningún control. */
-  let pendientes = aplicarValores(formulario, valores);
-  let anteriores = valores.length;
+  pausarCondicionesAnexo(true);
+  let pendientes;
+  try {
+    pendientes = aplicarValores(formulario, valores);
+    let anteriores = valores.length;
 
-  while (pendientes.length > 0 && pendientes.length < anteriores) {
-    anteriores = pendientes.length;
-    pendientes = aplicarValores(formulario, pendientes);
+    while (pendientes.length > 0 && pendientes.length < anteriores) {
+      anteriores = pendientes.length;
+      pendientes = aplicarValores(formulario, pendientes);
+    }
+  } finally {
+    pausarCondicionesAnexo(false);
   }
 
   restaurarDireccion(encuesta.direccionComponentes);
+  reponerCoordenadas(encuesta);
   restaurarProcedenciaDeCoordenadas(encuesta);
+  reponerFirmaOriginal(formulario, encuesta);
 
   recalcularFormularioCompleto();
   actualizarTableroDeRiesgo(recolectarDatosFormulario(formulario));
@@ -307,6 +376,29 @@ function aplanar(objeto, prefijo, salida) {
   });
 }
 
+/**
+ * Los valores se aplican en el orden en que aparecen en el formulario, que es
+ * el del instrumento: el campo que gobierna a otros —animales (ítem 40) sobre
+ * el carné (45), el régimen (75) sobre la EAPB (76)— siempre va antes. En el
+ * orden de las claves del objeto, un valor ya puesto podía borrarlo el campo
+ * que lo gobierna al marcarse después: la ficha traída de la base, que trae
+ * las listas de selección múltiple al final, perdía así el carné antirrábico.
+ */
+function ordenarComoElFormulario(formulario, pares) {
+  const posicion = new Map();
+  Array.prototype.forEach.call(formulario.querySelectorAll('[name]'), function (control, i) {
+    const nombre = control.getAttribute('name');
+    if (!posicion.has(nombre)) posicion.set(nombre, i);
+  });
+
+  return pares
+    .map(function (par, i) {
+      return { par: par, i: i, orden: posicion.has(par.nombre) ? posicion.get(par.nombre) : Infinity };
+    })
+    .sort(function (a, b) { return (a.orden - b.orden) || (a.i - b.i); })
+    .map(function (x) { return x.par; });
+}
+
 /* --- 2.3 Aplicación sobre los controles -------------------------------- */
 
 /** @returns {Array} los pares que ningún control aceptó, para reintentarlos. */
@@ -382,7 +474,54 @@ function dispararCambio(control) {
   control.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-/* --- 2.4 Procedencia de las coordenadas (ítem 22) ---------------------- */
+/* --- 2.3b Firma original (ítems 10 y 12-14) ---------------------------- */
+
+/**
+ * La sesión rellena y bloquea el equipo y el responsable al reiniciar el
+ * formulario (sesion.js), y los controles bloqueados no admiten los valores
+ * de la ficha. Al corregir la ficha de otra persona eso mostraba a quien
+ * corrige como responsable de la visita. Se reponen los originales —siguen
+ * bloqueados: una corrección no cambia quién diligenció la ficha, y el
+ * servidor conserva la firma original de todos modos—.
+ */
+const CAMPOS_FIRMA = ['equipoSaludId', 'responsableTipoId', 'responsableNumeroId',
+  'perfilProfesional', 'perfilProfesionalOtro'];
+
+function reponerFirmaOriginal(formulario, encuesta) {
+  CAMPOS_FIRMA.forEach(function (nombre) {
+    const control = formulario.querySelector('[name="' + nombre + '"]');
+    const valor = encuesta[nombre];
+    if (!control || valor === undefined || valor === null || control.value === String(valor)) return;
+    control.value = String(valor);
+    dispararCambio(control);
+  });
+
+  const nota = formulario.querySelector('[data-sesion="nota"]');
+  if (nota && encuesta.responsableNumeroId) {
+    (nota.querySelector('span') || nota).textContent =
+      'Equipo y responsable de la ficha original: ' + encuesta.responsableNumeroId +
+      (encuesta.equipoSaludId ? ', ' + encuesta.equipoSaludId : '') + '. Al corregirla no cambian.';
+    nota.hidden = false;
+  }
+}
+
+/* --- 2.4 Coordenadas y su procedencia (ítems 22 y 23) ----------------- */
+
+/**
+ * Latitud y longitud son de sólo lectura —las llena la geocodificación o el
+ * GPS— y `aplicarValorEnFormulario` no escribe en controles de sólo lectura,
+ * porque los trata como calculados. Éstos no lo son: son lo que se capturó en
+ * la visita. Sin reponerlos, toda corrección perdía la georreferenciación y al
+ * guardar pedía el motivo de RN-022. Va después de la dirección, que al
+ * recomponerse programa una geocodificación que `restaurarProcedencia…` anula.
+ */
+function reponerCoordenadas(encuesta) {
+  ['latitud', 'longitud'].forEach(function (id) {
+    const campo = document.getElementById(id);
+    const valor = encuesta[id];
+    if (campo && valor !== null && valor !== undefined && valor !== '') campo.value = String(valor);
+  });
+}
 
 /**
  * De dónde salieron la latitud y la longitud —geocodificación, GPS o dígito

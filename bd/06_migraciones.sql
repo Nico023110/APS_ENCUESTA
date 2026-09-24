@@ -192,10 +192,25 @@ ALTER TABLE aps.usuario ADD CONSTRAINT usuario_rol_valido
 
 /* -------------------------------------------------------------------------
    2026-09 — EAPB: Coosalud y Mallamas (ítem 76, RN-076)
+   -------------------------------------------------------------------------
+   Esta migración las agregó con códigos equivocados: EPS026 no existe en la
+   tabla SGDCodigoEAPB de SISPRO (Coosalud es ESS024, ESSC24 y ESSS24) y
+   EPSI01 es Dusakawi (Mallamas es EPSI05). Las EAPB salen ahora de la tabla
+   oficial (02_catalogos_seed.sql, desde catalogos_sispro.js): aquí sólo se
+   retira el código inexistente, sin volver a activarlo en cada migración.
    ------------------------------------------------------------------------- */
-INSERT INTO cat.eapb (codigo, nombre, regimen, vigente) VALUES
-  ('EPS026', 'Coosalud EPS-S', 'ambos', true),
-  ('EPSI01', 'Mallamas EPSI', 'subsidiado', true)
-ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, vigente = true;
+UPDATE cat.eapb SET vigente = false WHERE codigo = 'EPS026';
+
+/* -------------------------------------------------------------------------
+   2026-09 — Corrección de fichas desde la base
+   -------------------------------------------------------------------------
+   Para devolver al formulario una ficha diligenciada en otro dispositivo hay
+   que poder leerla entera de la base. El ítem 26 —el número de referencia de
+   la familia que se digita— nunca se guardaba: la llave de la familia es un
+   código derivado del hogar. Se le da su propia columna. (Los componentes de
+   la dirección, el motivo sin georreferenciación y el motivo de cierre
+   incompleto ya tenían columna; sólo faltaba escribirlas.)
+   ------------------------------------------------------------------------- */
+ALTER TABLE aps.ficha ADD COLUMN IF NOT EXISTS referencia_familia text;
 
 COMMIT;
