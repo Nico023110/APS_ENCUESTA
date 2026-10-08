@@ -45,6 +45,10 @@ let correccionDesdeServidor = null;
    ========================================================= */
 
 async function abrirCorreccionDeEncuesta(id) {
+  /* Si en el formulario hay una ficha sin terminar, cargar otra encima la
+     perdería: se pregunta antes (ver captura_local.js). */
+  if (!confirmarAntesDeReemplazarBorrador(id, function () { abrirCorreccionDeEncuesta(id); })) return;
+
   const local = obtenerEncuestas().find(function (e) { return e.id === id; });
 
   if (local) {
@@ -82,6 +86,9 @@ async function abrirCorreccionDeEncuesta(id) {
 function entrarEnCorreccion(id, encuesta, desdeServidor) {
   cambiarVista('nueva');
   cargarEncuestaEnFormulario(encuesta);
+  /* Lo recién cargado es el punto de partida: sólo lo que se cambie después
+     va al borrador automático. */
+  marcarFormularioLimpio();
 
   encuestaEnCorreccion = id;
   correccionDesdeServidor = desdeServidor;
@@ -135,6 +142,7 @@ function mostrarAvisoDeCorreccion(encuesta) {
     cancelar.textContent = 'Cancelar corrección';
     cancelar.addEventListener('click', function () {
       salirDeCorreccion();
+      descartarBorrador();
       document.getElementById('encuestaForm').reset();
       reiniciarEstadoFormulario();
       cambiarVista('historial');
@@ -209,6 +217,7 @@ function cargarEncuestaEnFormulario(encuesta) {
 
   restaurarDireccion(encuesta.direccionComponentes);
   reponerCoordenadas(encuesta);
+  reponerCodigoFicha(encuesta);
   restaurarProcedenciaDeCoordenadas(encuesta);
   reponerFirmaOriginal(formulario, encuesta);
 

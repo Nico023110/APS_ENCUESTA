@@ -34,6 +34,11 @@
                  mostró («No aplica» del anexo). Sin él, se reporta vacío.
      tabla       tabla de la base; por defecto la del nivel
      ayuda       texto de apoyo bajo la pregunta
+     ancho       'corto' | 'medio' | 'largo' | 'completo': fija el ancho del
+                 campo. Sin él, formulario.js lo mide por el tipo y el largo
+                 del dato (un texto de 200 caracteres a media fila, una cifra
+                 a un cuarto); se declara cuando la pregunta abre un grupo que
+                 debe quedar en su propia fila o es una descripción.
 
    `r` es un lector de respuestas (ver `lectorDeRespuestas`): r.v(clave),
    r.lista(clave), r.tiene(clave, valor), r.edadMeses, r.sexo, r.gestante.
@@ -153,7 +158,7 @@ const PREGUNTAS_ANEXO = [
   /* ================= Registro tipo 2 — ficha y vivienda ================= */
 
   { clave: 'observacionesSituacion', nivel: 'ficha', registro: 2, variable: 24, grupo: 'situacion',
-    etiqueta: 'Observaciones de la situación atendida', tipo: 'texto', max: 200,
+    etiqueta: 'Observaciones de la situación atendida', tipo: 'texto', max: 200, ancho: 'completo',
     ayuda: 'Describa la situación encontrada y la conducta adoptada.',
     visible: function (r) { return r.algunoSalvo('situacionInminente', VALOR_NO_APLICA); },
     requerido: 'bloqueo' },
@@ -527,33 +532,33 @@ const PREGUNTAS_ANEXO = [
   /* --- Historial laboral (variables 92 a 102, opcionales, desde los 15 años) --- */
   { clave: 'historialLaboral', nivel: 'integrante', registro: 3, variable: 92, grupo: 'integrante-laboral',
     etiqueta: '¿Cuenta con historial laboral?', tipo: 'unica', catalogo: 'CAT_SI_NO',
-    visible: function (r) { return mayorDeAnios(r, 15); }, requerido: false },
+    visible: function (r) { return mayorDeAnios(r, 15); }, ancho: 'completo', requerido: false },
   { clave: 'trabajoRecienteLugar', nivel: 'integrante', registro: 3, variable: 93, grupo: 'integrante-laboral',
     etiqueta: 'Lugar de trabajo o actividad específica más reciente', tipo: 'texto', max: 200,
-    visible: esSi('historialLaboral'), requerido: false },
+    visible: esSi('historialLaboral'), ancho: 'medio', requerido: false },
   { clave: 'trabajoRecienteEmpleador', nivel: 'integrante', registro: 3, variable: 94, grupo: 'integrante-laboral',
-    etiqueta: 'Nombre del empleador', tipo: 'texto', max: 200, visible: esSi('historialLaboral'), requerido: false },
+    etiqueta: 'Nombre del empleador', tipo: 'texto', max: 200, visible: esSi('historialLaboral'), ancho: 'medio', requerido: false },
   { clave: 'trabajoRecienteMeses', nivel: 'integrante', registro: 3, variable: 95, grupo: 'integrante-laboral',
     etiqueta: 'Periodo laboral (meses)', tipo: 'entero', min: 0, max: 99,
     visible: esSi('historialLaboral'), requerido: false },
   { clave: 'empleosPrevios', nivel: 'integrante', registro: 3, variable: 96, grupo: 'integrante-laboral',
     etiqueta: '¿Cuenta con más empleos previos al actual?', tipo: 'unica', catalogo: 'CAT_SI_NO',
-    visible: esSi('historialLaboral'), requerido: false },
+    visible: esSi('historialLaboral'), ancho: 'completo', requerido: false },
   { clave: 'empleoPrevio1Lugar', nivel: 'integrante', registro: 3, variable: 97, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 1: lugar de trabajo o actividad específica', tipo: 'texto', max: 200,
-    visible: esSi('empleosPrevios'), requerido: false },
+    visible: esSi('empleosPrevios'), ancho: 'medio', requerido: false },
   { clave: 'empleoPrevio1Empleador', nivel: 'integrante', registro: 3, variable: 98, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 1: nombre del empleador', tipo: 'texto', max: 200,
-    visible: esSi('empleosPrevios'), requerido: false },
+    visible: esSi('empleosPrevios'), ancho: 'medio', requerido: false },
   { clave: 'empleoPrevio1Meses', nivel: 'integrante', registro: 3, variable: 99, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 1: periodo laboral (meses)', tipo: 'entero', min: 0, max: 99,
     visible: esSi('empleosPrevios'), requerido: false },
   { clave: 'empleoPrevio2Lugar', nivel: 'integrante', registro: 3, variable: 100, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 2: lugar de trabajo o actividad específica', tipo: 'texto', max: 200,
-    visible: esSi('empleosPrevios'), requerido: false },
+    visible: esSi('empleosPrevios'), ancho: 'medio', requerido: false },
   { clave: 'empleoPrevio2Empleador', nivel: 'integrante', registro: 3, variable: 101, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 2: nombre del empleador', tipo: 'texto', max: 200,
-    visible: esSi('empleosPrevios'), requerido: false },
+    visible: esSi('empleosPrevios'), ancho: 'medio', requerido: false },
   { clave: 'empleoPrevio2Meses', nivel: 'integrante', registro: 3, variable: 102, grupo: 'integrante-laboral',
     etiqueta: 'Empleo previo 2: periodo laboral (meses)', tipo: 'entero', min: 0, max: 99,
     visible: esSi('empleosPrevios'), requerido: false },

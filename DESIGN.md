@@ -331,7 +331,27 @@ sirve de mojón al desplazarse. El cierre invierte su placa a tinta sólida.
 Etiqueta encima (13/500), control debajo, ayuda opcional. Fondo apagado en
 reposo, **blanco puro al enfocar** —el campo activo se enciende— con pelo azul
 de 1.5 px y anillo de 3 px. Error: fondo teñido y anillo rojos, mensaje
-RN-### pulsable que lleva al campo.
+RN-### pulsable que lleva al campo. Deshabilitado por una regla: apagado como
+el de sólo lectura, con texto más tenue.
+
+**El ancho lo decide el dato, no la tarjeta.** `.form-grid` tiene siempre doce
+columnas y cada campo declara su ancho:
+
+| Clase | Columnas | Para |
+|---|---|---|
+| `.field--sm` | 3 | cifras, fechas, documentos, teléfonos, códigos, valores calculados |
+| `.field--md` | 4 | selects de opciones cortas |
+| `.field--lg` | 6 | nombres, selects largos, «¿cuál?», preguntas Sí / No (van de a dos) |
+| `.field--xl` | 8 | textos medianos |
+| `.field--full` | 12 | descripciones y grupos de opciones |
+
+Con consultas de contenedor (no de pantalla, porque la misma rejilla vive en
+tarjetas, bloques y subpaneles de anchos distintos): bajo 820 px de rejilla,
+sm pasa a tercio y md/lg a mitad; bajo 520, todo a fila entera salvo sm, que
+va de a dos (la fecha, entera). Un campo suelto con ancho declarado mide lo
+mismo que en la rejilla. Las preguntas del anexo toman el ancho de su tipo en
+`formulario.js`, o el `ancho` que declaren en `anexo.js`. El aire entre
+preguntas de una tarjeta es de 24 px y sale de la hoja, no de estilos en línea.
 
 ### Píldoras de opción
 Contorno por sombra; seleccionada en tinte azul con pelo de 1.5 px y peso 600.

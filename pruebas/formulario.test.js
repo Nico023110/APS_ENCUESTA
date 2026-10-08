@@ -36,7 +36,7 @@ window.addEventListener('error', (e) => errores.push(e.message));
 // Los <script> del navegador comparten el alcance global: se concatenan
 // en un solo eval para reproducir esa semántica con const/let.
 const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
-  'cups.js', 'correccion.js', 'app.js']
+  'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
 window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo };');

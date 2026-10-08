@@ -3057,6 +3057,7 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      no hay por qué dejar en el navegador los datos de una visita ajena. Si
      no se pudo guardar, sí se conserva aquí, pendiente de sincronizar, para
      no perder la corrección. */
+  const eraCorreccion = Boolean(encuestaEnCorreccion);
   if (encuestaEnCorreccion) {
     if (!(correccionDesdeServidor && encuesta.sincronizada)) {
       reemplazarEncuesta(encuestaEnCorreccion, encuesta);
@@ -3081,6 +3082,11 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
       mensaje + ' No hubo conexión con el servidor: quedó pendiente de sincronizar.',
       'warning');
   }
+
+  /* La ficha ya quedó en el dispositivo o en la base: su consecutivo queda
+     usado y el borrador automático ya no hace falta. */
+  if (!eraCorreccion) confirmarCodigoFicha(encuesta.codigoFicha);
+  descartarBorrador();
 
   formulario.reset();
   reiniciarEstadoFormulario();
@@ -3240,6 +3246,12 @@ function reiniciarEstadoFormulario() {
      que volver a escribirlos. Sin sesión cargada (pruebas jsdom) no hay nada
      que aplicar. */
   if (typeof SESION !== 'undefined' && SESION.aplicarEnFormulario) SESION.aplicarEnFormulario(formulario);
+
+  /* RN-015: cada ficha nueva nace con su código (ver captura_local.js). Va
+     después de la firma, porque el código lleva el equipo. Lo que queda en
+     pantalla es el punto de partida del borrador automático. */
+  asignarCodigoFicha();
+  marcarFormularioLimpio();
 }
 
 /** Devuelve las colecciones repetibles a una sola instancia en blanco. */
@@ -3339,8 +3351,16 @@ function inicializarFormulario() {
   document.getElementById('personasEnVivienda').addEventListener('input', actualizarCalculoHacinamientoEnFormulario);
   document.getElementById('habitacionesVivienda').addEventListener('input', actualizarCalculoHacinamientoEnFormulario);
 
-  document.getElementById('btnLimpiar').addEventListener('click', function () {
-    setTimeout(reiniciarEstadoFormulario, 0);
+  /* Limpiar ahora también borra el borrador automático, y con él la última
+     copia de la ficha: se pregunta antes. */
+  document.getElementById('btnLimpiar').addEventListener('click', function (evento) {
+    evento.preventDefault();
+    pedirConfirmacion({
+      titulo: 'Limpiar formulario',
+      mensaje: 'Se borrarán todas las respuestas de esta ficha y no se podrán recuperar.',
+      textoConfirmar: 'Limpiar',
+      alConfirmar: reiniciarFichaEnCurso
+    });
   });
 }
 
@@ -3474,6 +3494,9 @@ function inicializarAplicacion() {
     renderizarHistorial();
   });
 
+  /* Borrador automático y, si quedó una ficha sin terminar, su recuperación.
+     Va al final: necesita el formulario ya armado y los catálogos puestos. */
+  inicializarCapturaLocal();
 }
 
 document.addEventListener('DOMContentLoaded', inicializarAplicacion);

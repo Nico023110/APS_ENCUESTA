@@ -139,7 +139,7 @@ ventana.addEventListener('error', function (e) { errores.push(String(e.message))
 /* Los <script> del navegador comparten un único alcance global. Evaluar
    archivo por archivo aísla cada `const`, así que hay que concatenarlos. */
 const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
-  'cups.js', 'correccion.js', 'app.js']
+  'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
   .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
   .join('\n;\n');
 

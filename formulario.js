@@ -541,6 +541,27 @@ function renderizarPreguntasAnexo(raiz) {
   });
 }
 
+/* Ancho del campo según el dato que recibe (ver .field--sm … --full en
+   styles.css). Un select se mide por su opción más larga: con menos ancho
+   la respuesta elegida queda cortada. */
+function anchoDeSelect(opciones) {
+  const largo = opciones.reduce(function (maximo, o) { return Math.max(maximo, String(o.etiqueta).length); }, 0);
+  if (largo <= 22) return 'field--sm';
+  if (largo <= 40) return 'field--md';
+  if (largo <= 70) return 'field--lg';
+  return 'field--full';
+}
+
+/* El ancho declarado en anexo.js manda sobre el calculado. */
+const CLASE_DE_ANCHO = { corto: 'field--sm', medio: 'field--md', largo: 'field--lg', completo: 'field--full' };
+
+function anchoDeTexto(pregunta) {
+  const maximo = pregunta.max || 200;
+  if (pregunta.formato === 'telefono' || maximo <= 12) return 'field--sm';
+  if (maximo <= 60) return 'field--md';
+  return 'field--lg';
+}
+
 function htmlDePreguntaAnexo(pregunta) {
   const nombre = escaparHtml(PREFIJO_NOMBRE_ANEXO[pregunta.nivel] + pregunta.clave);
   const catalogo = pregunta.catalogo ? escaparHtml(pregunta.catalogo) : '';
@@ -548,35 +569,43 @@ function htmlDePreguntaAnexo(pregunta) {
   const largas = opciones.some(function (o) { return String(o.etiqueta).length > 34; });
 
   let control;
-  let ancha = true;
+  let ancho = 'field--full field--block';
 
   if (pregunta.tipo === 'multiple') {
     control = '<div class="check-group" data-catalogo="' + catalogo + '" data-name="' + nombre + '"></div>';
   } else if (pregunta.tipo === 'unica' && pregunta.control === 'select') {
     control = '<select name="' + nombre + '" data-catalogo="' + catalogo + '"></select>';
-    ancha = false;
+    ancho = anchoDeSelect(opciones);
   } else if (pregunta.tipo === 'unica') {
-    control = '<div class="radio-group' + (largas || opciones.length > 4 ? ' radio-group--columna' : '') +
+    const enColumna = largas || opciones.length > 4;
+    control = '<div class="radio-group' + (enColumna ? ' radio-group--columna' : '') +
       '" data-catalogo="' + catalogo + '" data-name="' + nombre + '"></div>';
+    /* Sí / No (y No aplica) caben en media fila: dos preguntas seguidas de
+       este tipo quedan lado a lado en vez de una debajo de otra. */
+    if (!enColumna && opciones.length <= 3) ancho = 'field--lg field--block';
   } else if (pregunta.tipo === 'entero') {
     control = '<input type="number" name="' + nombre + '" step="1"' +
       (pregunta.min !== undefined ? ' min="' + pregunta.min + '"' : '') +
       (pregunta.max !== undefined ? ' max="' + pregunta.max + '"' : '') + '>';
-    ancha = false;
+    ancho = 'field--sm';
   } else if (pregunta.tipo === 'fecha') {
     control = '<input type="date" name="' + nombre + '">';
-    ancha = false;
+    ancho = 'field--sm';
   } else {
     const telefono = pregunta.formato === 'telefono';
     control = '<input type="text" name="' + nombre + '" maxlength="' + (pregunta.max || 200) + '"' +
       (telefono ? ' inputmode="numeric" placeholder="Ej. 3001234567"' : '') + '>';
-    ancha = (pregunta.max || 200) > 60;
+    ancho = anchoDeTexto(pregunta);
+  }
+
+  if (CLASE_DE_ANCHO[pregunta.ancho]) {
+    ancho = CLASE_DE_ANCHO[pregunta.ancho] + (/field--block/.test(ancho) ? ' field--block' : '');
   }
 
   const obligatoria = pregunta.requerido === 'bloqueo' ? ' *' : '';
   const condicionada = typeof pregunta.visible === 'function';
 
-  return '<div class="field' + (ancha ? ' field--full field--block' : '') + '"' +
+  return '<div class="field ' + ancho + '"' +
       ' data-campo="' + escaparHtml(pregunta.clave) + '"' +
       ' data-anexo="' + escaparHtml(pregunta.clave) + '"' +
       ' data-anexo-nivel="' + pregunta.nivel + '"' +
