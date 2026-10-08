@@ -993,9 +993,15 @@ const CAT_TIPO_PREDIO_RURAL = [
 ];
 
 /* Modos de nomenclatura disponibles (ítem 21) */
+/* Ficha técnica, variable 7: «si no hay dirección colocar SIN DIRECCION». La
+   vivienda se ubica entonces por el punto de referencia (variable 9, ítem 24),
+   que sigue siendo obligatorio. */
+const MODO_SIN_DIRECCION = 'sin_direccion';
+
 const CAT_MODO_DIRECCION = [
   { valor: 'urbana', etiqueta: 'Urbana (nomenclatura vial)' },
-  { valor: 'rural', etiqueta: 'Rural (vía, kilómetro y predio)' }
+  { valor: 'rural', etiqueta: 'Rural (vía, kilómetro y predio)' },
+  { valor: MODO_SIN_DIRECCION, etiqueta: 'Sin dirección' }
 ];
 
 /* El modo se preselecciona a partir del ítem 6 (área de ubicación) */
@@ -1333,11 +1339,14 @@ const CAT_TIPO_ID_INTEGRANTE = [
   }
 ];
 
-/* Formatos de documento reutilizados por RN-013 y RN-063 */
+/* Formatos de documento reutilizados por RN-013 y RN-063.
+   Sin guiones: la ficha técnica (variable 54) no admite puntos, comas ni
+   guiones en el número, y la base lo impone igual (persona_formato_documento
+   y func_formato_documento, ^[A-Za-z0-9]{5,16}$). */
 const FORMATOS_DOCUMENTO = {
   numerico_6_10: /^\d{6,10}$/,
   numerico_8_11: /^\d{8,11}$/,
-  alfanumerico_5_16: /^[A-Za-z0-9-]{5,16}$/
+  alfanumerico_5_16: /^[A-Za-z0-9]{5,16}$/
 };
 
 /* ---------------------------------------------------------

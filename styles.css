@@ -871,6 +871,110 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 }
 :is(.card, .subpanel) > .field + .field[data-campo$="Otro"] { margin-top: var(--s-3); }
 
+/* ---- Guía de diligenciamiento (ficha técnica APS124CCFP) ----------------
+   Equivale a las ayudas emergentes del instrumento en Excel. El botón va en
+   la esquina de la etiqueta, fuera del flujo, para no mover el control; el
+   panel se abre debajo de la etiqueta y empuja el campo, sin taparlo. */
+.field.tiene-guia { position: relative; }
+.field.tiene-guia > label:first-of-type { padding-right: 34px; }
+
+.guia-boton {
+  position: absolute;
+  top: -3px;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-chip);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  color: var(--ink-500);
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+
+/* El círculo mide 26 px, pero el dedo necesita 44: el área de toque crece
+   por fuera sin mover nada. */
+.guia-boton::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
+.guia-boton:active { transform: scale(0.94); }
+
+.guia-boton:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
+}
+
+.guia-boton[aria-expanded="true"] {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: inset 0 0 0 1.5px var(--brand-600);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guia-boton:hover {
+    background: var(--brand-50);
+    color: var(--brand-700);
+  }
+}
+
+.guia-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 6px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+  color: var(--ink-700);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.guia-campo[hidden] { display: none; }
+
+/* Con la guía abierta el campo ocupa la fila entera, dentro o fuera de la
+   rejilla: en un cuarto de fila el texto quedaba en una columna angosta. */
+.form-grid .field.guia-abierta { grid-column: 1 / -1; }
+.field.tiene-guia.guia-abierta:not(.form-grid .field) { max-width: none; }
+
+.guia-campo__fuente {
+  margin: 0;
+  color: var(--brand-700);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+}
+
+.guia-campo__parrafo { margin: 0; }
+.guia-campo__parrafo strong { color: var(--ink-900); font-weight: 600; }
+
+.guia-campo__opciones {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.guia-campo__opciones strong { color: var(--ink-900); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .guia-boton:active { transform: none; }
+}
+
 .radio-group {
   display: flex;
   flex-wrap: wrap;

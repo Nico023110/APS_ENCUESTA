@@ -134,6 +134,8 @@ Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad;
 
 **Ítem 10.** Campo alfanumérico obligatorio y único que identifica el código asignado al Equipo Básico de Salud (EBS) que realiza la caracterización. Formato: 3 a 20 caracteres alfanuméricos. Se hereda a los ítems 111, 120 y 130.
 
+**Estructura de la ficha técnica APS124CCFP (variable 15):** las letras EBS seguidas de un consecutivo de 3 dígitos (`EBS001`). Se verifica como **advertencia**, no como bloqueo: hay equipos registrados con otra forma y sus fichas cuelgan de ese código. La gestión de usuarios lo advierte al guardar un equipo que no la sigue.
+
 ### RN-011 — Prestador primario / Organismo de adscripción
 
 **Ítem 11.** Campo obligatorio para registrar la Institución Prestadora de Servicios de Salud (IPS) pública o entidad de adscripción legal a la que pertenece el EBS.
@@ -162,6 +164,10 @@ Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad;
 **Ítem 15.** Identificador **alfanumérico único, generado automáticamente por el sistema y de sólo lectura**. Se compone de: código de municipio + código de EBS + consecutivo + fecha de captura.
 
 Es la llave primaria de trazabilidad de la caracterización y no puede ser modificado ni reutilizado. En captura sin conexión, el código se genera localmente con un prefijo de dispositivo que garantice unicidad al sincronizar.
+
+**Relación con la ficha técnica APS124CCFP (variable 19).** La ficha técnica numera las visitas `CF001`, `CF002`… y reinicia el consecutivo con cada familia. Aquí el consecutivo va dentro del código generado, junto con el municipio, el equipo y el dispositivo, para que no se repita entre equipos.
+
+**Código repetido en otra vivienda.** Una visita nueva cuyo código ya pertenece a la ficha de **otra vivienda** —por ejemplo, una ficha antigua con código digitado a mano— se rechaza con bloqueo sobre el ítem 15, en lugar de tomarse como corrección de la ficha ajena y reescribirla. Una corrección (marcada por el formulario) o el reenvío de la misma visita —mismo hogar— no se rechazan.
 
 ### RN-016 — Fecha de diligenciamiento de la ficha
 
@@ -199,6 +205,8 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 **Ítem 21.** Campo de texto alfanumérico obligatorio para registrar la dirección exacta de la vivienda, estructurada bajo nomenclatura urbana o rural. La captura se realiza por componentes y la regla se cumple cuando la nomenclatura queda completa y puede componerse la cadena normalizada.
 
+**Vivienda sin dirección (ficha técnica, variable 7).** La nomenclatura «Sin dirección» registra `SIN DIRECCION` y da la regla por cumplida; la vivienda se ubica por el punto de referencia (ítem 24), que sigue siendo obligatorio. En ese modo no se buscan coordenadas automáticamente: se toman del GPS.
+
 ### RN-022 — Coordenada geográfica de latitud
 
 **Ítem 22.** Campo numérico decimal obligatorio, capturado automáticamente por el GPS del dispositivo y editable sólo por excepción justificada. Rango válido de captura: **−90 a 90**, con mínimo 6 decimales.
@@ -219,7 +227,7 @@ Latitud y longitud deben registrarse siempre **como par**: no se admite una sin 
 
 ### RN-024 — Punto de referencia
 
-**Ítem 24.** Campo de texto alfanumérico obligatorio para consignar descripciones geográficas o hitos visuales que faciliten la localización exacta del hogar en territorio.
+**Ítem 24.** Campo de texto alfanumérico obligatorio para consignar descripciones geográficas o hitos visuales que faciliten la localización exacta del hogar en territorio. Máximo **200 caracteres**, escritos de manera clara y concreta (ficha técnica, variable 9).
 
 ### RN-025 — Número de identificación del hogar
 
@@ -227,11 +235,15 @@ Latitud y longitud deben registrarse siempre **como par**: no se admite una sin 
 
 Se conserva estable entre visitas: si el EBS regresa a la misma dirección georreferenciada, el sistema debe recuperar el hogar existente en lugar de crear uno nuevo. Es la llave que se hereda en los ítems 112, 121 y 131.
 
+Estructura: la letra H seguida de 4 dígitos (`H0001`), igual que el número de la familia, según las observaciones de la E.S.E. Se verifica como **advertencia**.
+
 ### RN-026 — Número de identificación de la familia
 
 **Ítem 26.** **Llave alfanumérica única generada por el sistema**, de sólo lectura, subordinada al ID del hogar (RN-025). Una vivienda puede contener varias familias; cada una recibe su propio identificador.
 
 Es la llave que se hereda en los ítems 122 y 132. La cantidad de identificadores de familia creados bajo un hogar debe coincidir exactamente con el valor del ítem 28.
+
+**Estructura de la ficha técnica APS124CCFP (variable 10):** la letra F seguida de un serial de 4 dígitos por microterritorio (`F0001`, `F0002`…). Se verifica como **advertencia**.
 
 ### RN-027 — Estrato socioeconómico
 
@@ -481,6 +493,8 @@ La tercera opción constituye determinante social de aislamiento y se cruza con 
 | CE, PE, PT, CD | 5 a 16 caracteres alfanuméricos |
 | PA | 5 a 16 caracteres alfanuméricos |
 | MS, AS | Identificador temporal autogenerado por el sistema |
+
+El número va **sin puntos, comas ni guiones** (ficha técnica, variable 54): el formulario los retira al salir del campo («1.144.000.000» se registra como `1144000000`) y los formatos alfanuméricos no admiten guion, igual que la base.
 
 El número **debe ser único dentro de la ficha**: dos integrantes de la misma familia no pueden compartir tipo y número de documento.
 

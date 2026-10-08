@@ -473,13 +473,45 @@ async function fichaExistente(cliente, codigo) {
   if (!codigo) return null;
   const r = await cliente.query(`
     SELECT f.id, f.equipo_salud_id, f.responsable_id, eq.codigo AS equipo_codigo,
-           r.tipo_id, r.numero_id, r.nombre_completo, r.perfil_profesional, r.perfil_otro
+           r.tipo_id, r.numero_id, r.nombre_completo, r.perfil_profesional, r.perfil_otro,
+           h.codigo AS hogar_codigo
       FROM aps.ficha f
       JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
       JOIN aps.funcionario r   ON r.id = f.responsable_id
+      JOIN aps.hogar h         ON h.id = f.hogar_id
      WHERE f.codigo = $1
   `, [codigo]);
   return r.rows[0] || null;
+}
+
+/* Una visita nueva no puede pisar la ficha de otra vivienda.
+
+   `aps.ficha.codigo` es la llave de la visita en toda la base. El código que
+   genera captura_local.js no se repite, pero quedan fichas con código digitado
+   a mano («CF001», que la ficha técnica APS124CCFP reinicia con cada familia)
+   y dispositivos que pueden restaurarse. Si un código llegaba repetido desde
+   otra vivienda, el segundo guardado se tomaba como corrección del primero:
+   reescribía la ficha ajena —su hogar, su vivienda, sus familias— sin avisar
+   a nadie. Si el equipo era otro, el encuestador recibía un «no puede
+   corregir esta ficha» que no entendía.
+
+   Se distingue por la marca `esCorreccion` que pone el formulario y por el
+   hogar: reenviar la misma visita (un reintento de sincronización) trae el
+   mismo hogar y pasa. Corregir una ficha sí puede cambiarle el hogar. */
+function colisionDeCodigoDeFicha(existente, cuerpo) {
+  if (!existente || cuerpo.esCorreccion === true) return null;
+  if (existente.hogar_codigo === texto(cuerpo.idHogar)) return null;
+
+  const codigo = texto(cuerpo.codigoFicha);
+  return {
+    codigo: 'RN-015',
+    ruta: 'codigoFicha',
+    campo: 'codigoFicha',
+    severidad: 'bloqueo',
+    mensaje: 'El código de ficha ' + codigo + ' ya está registrado para otra vivienda. ' +
+      'No se guardó para no reemplazar esa ficha; comuníquelo al administrador.',
+    recibido: codigo
+  };
 }
 
 function fijarFirma(cuerpo, firma) {
@@ -524,6 +556,17 @@ module.exports = async (req, res) => {
     /* --- Autorización sobre la ficha concreta ------------------------------ */
     const existente = await fichaExistente(cliente, texto(req.body.codigoFicha));
     let tipoEvento;
+
+    const colision = colisionDeCodigoDeFicha(existente, req.body);
+    if (colision) {
+      console.error('  Ficha rechazada: ' + colision.recibido + ' ya pertenece a otra vivienda');
+      return res.status(400).json({
+        error: 'La ficha no cumple las reglas de negocio',
+        total: 1,
+        bloqueos: [colision],
+        advertencias: []
+      });
+    }
 
     if (existente) {
       const permitido = roles.puedeCorregir(usuario, {

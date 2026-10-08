@@ -221,10 +221,23 @@ function normalizarDireccionRural(d) {
    5. PUNTO DE ENTRADA
    --------------------------------------------------------- */
 
+/* Ficha técnica, variable 7: la vivienda sin dirección se registra como
+   SIN DIRECCION y se ubica por el punto de referencia (ítem 24). Los
+   complementos no se toman: sin vía no hay a qué agregarlos. */
+function normalizarSinDireccion() {
+  return {
+    canonica: 'SIN DIRECCION',
+    legible: 'Sin dirección (se ubica por el punto de referencia)',
+    faltantes: [],
+    completa: true
+  };
+}
+
 function normalizarDireccion(d) {
   if (!d || !d.modo) {
     return { canonica: '', legible: '', faltantes: ['modo de nomenclatura'], completa: false };
   }
+  if (d.modo === MODO_SIN_DIRECCION) return normalizarSinDireccion();
   return d.modo === 'rural' ? normalizarDireccionRural(d) : normalizarDireccionUrbana(d);
 }
 
@@ -240,7 +253,7 @@ function normalizarDireccion(d) {
  *     El barrio se consulta por separado como ancla territorial.
  */
 function textoViaParaGeocodificar(d) {
-  if (!d || !d.modo) return '';
+  if (!d || !d.modo || d.modo === MODO_SIN_DIRECCION) return '';
 
   if (d.modo === 'rural') {
     if (limpiarTexto(d.ruralViaTipo) === 'SN' || limpiarTexto(d.ruralViaTipo) === '') return '';

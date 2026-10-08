@@ -426,8 +426,14 @@
               </div>
             </div>
 
+            <!-- Sin dirección (ficha técnica, variable 7) -->
+            <p class="field-hint field-hint--inline" id="avisoSinDireccion" hidden>
+              La vivienda se registra como SIN DIRECCION. Describa en el ítem 24 cómo llegar a ella;
+              para las coordenadas, use el GPS del dispositivo.
+            </p>
+
             <!-- Complementos (comunes a ambos modos) -->
-            <div class="direccion-linea">
+            <div class="direccion-linea" id="lineaComplementosDireccion">
               <span class="direccion-linea__titulo">Datos complementarios</span>
               <div class="complementos" id="complementosDireccion"></div>
               <button type="button" class="btn btn--ghost btn--icon" id="btnAgregarComplemento"><i class="ph ph-plus" aria-hidden="true"></i> Agregar complemento</button>
@@ -476,7 +482,8 @@
           <div class="form-grid">
             <div class="field field--full" data-campo="ubicacionReferencia">
               <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): *</label>
-              <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" placeholder="Ej. Casa verde esquinera con rejas negras">
+              <span class="field-hint field-hint--inline">Clara y concreta, máximo 200 caracteres.</span>
+              <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" maxlength="200" placeholder="Ej. Al lado derecho de la iglesia, casa verde con rejas negras">
             </div>
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="vivienda-contacto"></div>
             <div class="field field--sm" data-campo="idHogar">
@@ -1898,7 +1905,7 @@
             <label for="usuarioEquipo">Equipo Básico de Salud</label>
             <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
           </div>
-          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para quien captura fichas: firma el ítem 10 de cada ficha.</p>
+          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para quien captura fichas: firma el ítem 10 de cada ficha. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
           <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
             <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
             <select id="usuarioPerfil" name="perfil"></select>
@@ -1997,6 +2004,7 @@
 <script src="cups.js"></script>
 <script src="correccion.js"></script>
 <script src="captura_local.js"></script>
+<script src="guia_campos.js"></script>
 <script src="app.js"></script>
 <script src="roles.js"></script>
 <script src="usuarios.js"></script>

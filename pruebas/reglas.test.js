@@ -612,6 +612,71 @@ verificar('Riesgos para la salud mental se exigen también a un niño de 8 años
   codigos(fichaConFamilia({ riesgosSaludMentalJoven: [], tipoId: 'TI', numeroId: '1144099887',
     fechaNacimiento: iso(new Date(HOY.getFullYear() - 8, 0, 1)) })).indexOf('RN-105') !== -1);
 
+/* ---------- Ficha técnica APS124CCFP: formatos de los campos ---------- */
+console.log('\n=== Ficha técnica APS124CCFP ===');
+
+const { limpiarNumeroDocumento } = contexto;
+
+verificar('Variable 54: el documento se limpia de puntos, comas, guiones y espacios',
+  limpiarNumeroDocumento('1.144.000.000') === '1144000000' &&
+  limpiarNumeroDocumento('AB-12,3 4') === 'AB1234');
+
+const conGuion = familiaValida([Object.assign(adultaValida(), {
+  tipoId: 'CE', numeroId: 'AB-12345', nacionalidad: 'VE'
+})]);
+verificar('Variable 54: un documento con guion => bloqueo RN-063 (antes pasaba y lo rechazaba la base)',
+  validarReglas(Object.assign(fichaBase(), { familias: [conGuion] }))
+    .some(e => e.codigo === 'RN-063' && /sin puntos, comas ni guiones/.test(e.mensaje)),
+  JSON.stringify(validarReglas(Object.assign(fichaBase(), { familias: [conGuion] })).map(e => e.codigo)));
+
+const conDocumentoLimpio = familiaValida([Object.assign(adultaValida(), {
+  tipoId: 'CE', numeroId: 'AB12345', nacionalidad: 'VE'
+})]);
+verificar('  y el mismo documento sin guion => sin bloqueo RN-063',
+  !validarReglas(Object.assign(fichaBase(), { familias: [conDocumentoLimpio] })).some(e => e.codigo === 'RN-063'));
+
+verificar('Variable 9: punto de referencia de 200 caracteres => válido',
+  !validarReglas(Object.assign(fichaBase(), { ubicacionReferencia: 'x'.repeat(200) }))
+    .some(e => e.codigo === 'RN-024'));
+verificar('Variable 9: punto de referencia de 201 caracteres => bloqueo RN-024',
+  validarReglas(Object.assign(fichaBase(), { ubicacionReferencia: 'x'.repeat(201) }))
+    .some(e => e.codigo === 'RN-024'));
+
+function advertenciasDe(campo, valor) {
+  const ficha = fichaBase();
+  ficha[campo] = valor;
+  return evaluarAdvertencias(ficha).filter(a => a.campo === campo);
+}
+
+verificar('Códigos con la estructura de la ficha (EBS001, H0001, F0001) => sin advertencia',
+  advertenciasDe('equipoSaludId', 'EBS001').length === 0 &&
+  advertenciasDe('codigoFicha', 'CF001').length === 0 &&
+  advertenciasDe('idHogar', 'H0001').length === 0 &&
+  advertenciasDe('idFamilia', 'F0001').length === 0);
+
+verificar('Variable 15: EBS12 => advertencia RN-010, no bloqueo',
+  advertenciasDe('equipoSaludId', 'EBS12').some(a => a.codigo === 'RN-010') &&
+  !validarReglas(Object.assign(fichaBase(), { equipoSaludId: 'EBS12' })).some(e => e.codigo === 'RN-010'));
+verificar('Código de hogar HOG-001 => advertencia RN-025',
+  advertenciasDe('idHogar', 'HOG-001').some(a => a.codigo === 'RN-025'));
+verificar('Variable 10: FAM-001 => advertencia RN-026',
+  advertenciasDe('idFamilia', 'FAM-001').some(a => a.codigo === 'RN-026'));
+
+/* Variable 7: la vivienda sin dirección. direccion.js no lo carga este
+   contexto, así que se arma uno con los tres archivos, como el servidor. */
+const contextoDireccion = vm.createContext({ console: console });
+['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'reglas.js'].forEach(function (archivo) {
+  vm.runInContext(fs.readFileSync(path.join(BASE, archivo), 'utf8'), contextoDireccion, { filename: archivo });
+});
+const sinDireccion = contextoDireccion.normalizarDireccion({ modo: 'sin_direccion', complementos: [{ tipo: 'AP', valor: '1' }] });
+verificar('Variable 7: «Sin dirección» queda completa como SIN DIRECCION, sin complementos',
+  sinDireccion.completa === true && sinDireccion.canonica === 'SIN DIRECCION', JSON.stringify(sinDireccion));
+verificar('  y no se manda vía al geocodificador',
+  contextoDireccion.textoViaParaGeocodificar({ modo: 'sin_direccion' }) === '');
+verificar('  y la ficha sin dirección pasa RN-021',
+  !contextoDireccion.validarReglas(Object.assign(fichaBase(), { direccionNormalizada: sinDireccion }))
+    .some(e => e.codigo === 'RN-021'));
+
 console.log('\n---------------------------------------------');
 console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);
 process.exit(fallidas > 0 ? 1 : 0);

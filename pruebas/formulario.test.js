@@ -36,7 +36,7 @@ window.addEventListener('error', (e) => errores.push(e.message));
 // Los <script> del navegador comparten el alcance global: se concatenan
 // en un solo eval para reproducir esa semántica con const/let.
 const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js', 'formulario.js',
-  'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
+  'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
 window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo };');
@@ -526,6 +526,76 @@ async function cerrarPruebas() {
 
   const campoNombre = intVivo.querySelector('[data-campo="primerNombre"]');
   check('Un campo que no se ha tocado sigue sin marcar', !!campoNombre && !campoNombre.classList.contains('has-error'));
+
+  /* Variable 54: el número se limpia al confirmar el campo, antes de validarlo. */
+  setVal(inputNumero, '1.144.099.887');
+  await esperarValidacionEnVivo();
+  check('Documento con puntos => se registra 1144099887 y no queda error',
+    inputNumero.value === '1144099887' && !campoNumero.classList.contains('has-error'), inputNumero.value);
+
+  console.log('\n=== 14b. Ficha técnica APS124CCFP ===');
+
+  /* Guía de diligenciamiento por campo (ayudas emergentes). */
+  const botonesGuia = $$('#encuestaForm .guia-boton');
+  check('Los campos con variable en la ficha técnica traen su guía', botonesGuia.length >= 60, botonesGuia.length);
+  check('La guía no se pinta fuera del formulario de la ficha', $$('.guia-boton').length === botonesGuia.length);
+
+  const campoUzpe = $('[data-campo="uzpe"]');
+  const botonUzpe = campoUzpe.querySelector('.guia-boton');
+  const panelUzpe = campoUzpe.querySelector('.guia-campo');
+  check('La guía de UZPE cita la variable 2 y nace cerrada',
+    !!botonUzpe && panelUzpe.hidden && /variable 2$/.test(panelUzpe.querySelector('.guia-campo__fuente').textContent) &&
+    botonUzpe.getAttribute('aria-expanded') === 'false');
+  check('El botón se anuncia con el número del ítem',
+    botonUzpe.getAttribute('aria-label') === 'Guía de diligenciamiento del ítem 4', botonUzpe.getAttribute('aria-label'));
+  check('La etiqueta del campo no cambia', campoUzpe.querySelector('label').textContent.indexOf('?') === -1);
+
+  botonUzpe.click();
+  check('Pulsar el botón abre la guía y la enlaza con aria-controls',
+    !panelUzpe.hidden && botonUzpe.getAttribute('aria-expanded') === 'true' &&
+    botonUzpe.getAttribute('aria-controls') === panelUzpe.id);
+  check('La guía dice cómo se estructura el código (UZPE + 3 dígitos)', /UZPE001/.test(panelUzpe.textContent));
+  check('Con la guía abierta el campo toma la fila entera', campoUzpe.classList.contains('guia-abierta'));
+  botonUzpe.click();
+  check('Pulsarlo otra vez la cierra y el campo vuelve a su ancho',
+    panelUzpe.hidden && botonUzpe.getAttribute('aria-expanded') === 'false' && !campoUzpe.classList.contains('guia-abierta'));
+
+  setVal($('#contenedorFamilias [data-rol="numeroIntegrantes"]'), '3');
+  const integrantesConGuia = $$('[data-bloque="integrante"]').filter(function (b) {
+    return !!b.querySelector('[data-campo="numeroId"] .guia-boton');
+  });
+  check('Los integrantes clonados también traen la guía',
+    integrantesConGuia.length === $$('[data-bloque="integrante"]').length && integrantesConGuia.length > 1,
+    integrantesConGuia.length + ' de ' + $$('[data-bloque="integrante"]').length);
+  check('La guía no se envía con la ficha',
+    !Object.keys(window.__api.recolectarDatosFormulario($('#encuestaForm'))).some(function (k) { return /guia/i.test(k); }));
+
+  const panelTipoFamilia = $('[data-campo="tipoFamilia"] .guia-campo');
+  check('La guía del tipo de familia define cada opción',
+    panelTipoFamilia.querySelectorAll('.guia-campo__opciones li').length === 7);
+
+  /* Código del hogar: mayúscula y sin espacios (el de la ficha lo genera dev). */
+  setVal('#idHogar', 'h0001');
+  check('Código de hogar «h0001» => H0001, y los planes heredan el código limpio',
+    $('#idHogar').value === 'H0001' &&
+    $$('[data-hereda="idHogar"]').every(function (c) { return c.value === 'H0001'; }));
+
+  /* Variable 9: máximo 200 caracteres. */
+  check('El punto de referencia admite máximo 200 caracteres',
+    $('#ubicacionReferencia').getAttribute('maxlength') === '200');
+
+
+  /* Variable 7: vivienda sin dirección. */
+  marcar('modoDireccion', 'sin_direccion');
+  check('«Sin dirección» oculta la nomenclatura y los complementos',
+    $('#panelDireccionUrbana').hidden && $('#panelDireccionRural').hidden &&
+    $('#lineaComplementosDireccion').hidden && !$('#avisoSinDireccion').hidden);
+  check('  y la dirección se registra como SIN DIRECCION',
+    $('#direccionCanonica').textContent === 'SIN DIRECCION' &&
+    window.__api.recolectarDatosFormulario($('#encuestaForm')).direccionNormalizada.completa === true);
+  marcar('modoDireccion', 'urbana');
+  check('Volver a urbana muestra otra vez la nomenclatura',
+    !$('#panelDireccionUrbana').hidden && !$('#lineaComplementosDireccion').hidden && $('#avisoSinDireccion').hidden);
 
   console.log('\n=== 15. Sin errores de JS en toda la sesión ===');
   check('Ningún error capturado', errores.length === 0, errores.join(' | '));

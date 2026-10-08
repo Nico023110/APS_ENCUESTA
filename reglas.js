@@ -81,6 +81,21 @@ const TALLA_MINIMA_CM = 20;
 const TALLA_MAXIMA_CM = 250;
 const IMC_MAXIMO = 200;
 
+/* Ficha técnica APS124CCFP — estructura de los códigos que digita el equipo.
+   La ficha fija la forma de cada código (variables 10, 15 y 19); el código
+   del hogar no existe en la ficha y sigue la misma forma que el de la
+   familia, como pidió la E.S.E. en sus observaciones. Se verifican como
+   advertencia, no como bloqueo: hay fichas y equipos registrados antes de
+   adoptar la estructura y deben poder corregirse y guardarse. */
+const FORMATO_CODIGO_EBS = /^EBS\d{3}$/;      // variable 15 — ítem 10
+const FORMATO_CODIGO_FICHA = /^CF\d{3}$/;     // variable 19 — ítem 15
+const FORMATO_CODIGO_HOGAR = /^H\d{4}$/;      // observaciones — ítem 25
+const FORMATO_CODIGO_FAMILIA = /^F\d{4}$/;    // variable 10 — ítem 26
+
+/* Ficha técnica, variable 9 — el punto de referencia se escribe «de manera
+   clara y concreta, usando como máximo 200 caracteres». */
+const MAX_PUNTO_REFERENCIA = 200;
+
 /* RN-114 / RN-124 / RN-136a — Forma de un código de procedimiento. Los 10.044
    códigos de `cat.cups` miden entre 6 y 9 caracteres alfanuméricos, con guion
    sólo en los NoCUPS. Que EXISTA lo comprueba el servidor contra la tabla:
@@ -195,13 +210,33 @@ function soloAlfabetico(valor) {
   return /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' ]+$/.test(String(valor).trim());
 }
 
-/* RN-013 / RN-063 — Formato de documento según el tipo seleccionado. */
+/* RN-013 / RN-063 — Formato de documento según el tipo seleccionado.
+   Ficha técnica, variable 54: el número va sin puntos, comas ni guiones. El
+   patrón alfanumérico admitía el guion y la base no (persona_formato_documento),
+   así que un documento con guion pasaba aquí y lo rechazaba PostgreSQL. */
 function documentoValidoParaFormato(formato, numero) {
   if (esVacio(numero)) return false;
   const limpio = String(numero).trim();
   if (formato === 'temporal') return true; // MS y AS reciben identificador del sistema
   const patron = FORMATOS_DOCUMENTO[formato];
-  return patron ? patron.test(limpio) : /^[A-Za-z0-9-]{5,16}$/.test(limpio);
+  return patron ? patron.test(limpio) : /^[A-Za-z0-9]{5,16}$/.test(limpio);
+}
+
+/* Lo que se le dice al encuestador cuando el número no cumple. */
+const DESCRIPCION_FORMATO_DOCUMENTO = {
+  numerico_6_10: 'de 6 a 10 dígitos',
+  numerico_8_11: 'de 8 a 11 dígitos',
+  alfanumerico_5_16: 'de 5 a 16 letras o números'
+};
+
+/**
+ * Quita los separadores que la ficha técnica no admite en un número de
+ * documento (puntos, comas, guiones y espacios): «1.144.000.000» se registra
+ * como 1144000000. No toca nada más del valor.
+ */
+function limpiarNumeroDocumento(valor) {
+  if (valor === null || valor === undefined) return valor;
+  return String(valor).replace(/[.,\s-]/g, '');
 }
 
 /* RN-012 / RN-013 — El responsable sólo usa CC, CD, CE o PT. */
@@ -534,6 +569,16 @@ const REGLAS_BLOQUE_2 = [
     mensaje: 'Obligatorio. Código alfanumérico del EBS de 3 a 20 caracteres, sin guiones ni espacios.'
   },
   {
+    // Ficha técnica, variable 15: EBS más un consecutivo de 3 dígitos.
+    codigo: 'RN-010',
+    campo: 'equipoSaludId',
+    severidad: SEVERIDAD.ADVERTENCIA,
+    aplica: function (d) { return /^[A-Za-z0-9]{3,20}$/.test(String(d.equipoSaludId || '').trim()); },
+    valida: function (d) { return FORMATO_CODIGO_EBS.test(String(d.equipoSaludId).trim()); },
+    mensaje: 'La ficha técnica estructura el código del equipo como EBS seguido de 3 dígitos (EBS001). ' +
+      'Solicite al administrador corregir el código del equipo.'
+  },
+  {
     codigo: 'RN-011',
     campo: 'prestadorPrimario',
     valida: function (d) { return !esVacio(d.prestadorPrimario); },
@@ -549,7 +594,8 @@ const REGLAS_BLOQUE_2 = [
     codigo: 'RN-013',
     campo: 'responsableNumeroId',
     valida: function (d) { return documentoValidoParaTipo(d.responsableTipoId, d.responsableNumeroId); },
-    mensaje: 'Número inválido para el tipo de documento seleccionado (CC: 6 a 10 dígitos; otros: 5 a 16 alfanuméricos).'
+    mensaje: 'Número inválido para el tipo de documento seleccionado (CC: 6 a 10 dígitos; otros: 5 a 16 letras ' +
+      'o números), sin puntos, comas ni guiones.'
   },
   {
     codigo: 'RN-014',
@@ -718,6 +764,15 @@ const REGLAS_BLOQUE_3 = [
     mensaje: 'Registre un punto de referencia que facilite la localización del hogar.'
   },
   {
+    // Ficha técnica, variable 9: claro, concreto y de máximo 200 caracteres.
+    codigo: 'RN-024',
+    campo: 'ubicacionReferencia',
+    aplica: function (d) { return !esVacio(d.ubicacionReferencia); },
+    valida: function (d) { return String(d.ubicacionReferencia).trim().length <= MAX_PUNTO_REFERENCIA; },
+    mensaje: 'El punto de referencia admite máximo ' + MAX_PUNTO_REFERENCIA +
+      ' caracteres. Escríbalo de manera clara y concreta.'
+  },
+  {
     codigo: 'RN-025',
     campo: 'idHogar',
     aplica: function (d) { return d.idHogar !== undefined; },
@@ -725,11 +780,30 @@ const REGLAS_BLOQUE_3 = [
     mensaje: 'El identificador del hogar lo genera el sistema y no puede quedar vacío.'
   },
   {
+    codigo: 'RN-025',
+    campo: 'idHogar',
+    severidad: SEVERIDAD.ADVERTENCIA,
+    aplica: function (d) { return !esVacio(d.idHogar); },
+    valida: function (d) { return FORMATO_CODIGO_HOGAR.test(String(d.idHogar).trim()); },
+    mensaje: 'El código del hogar se estructura como H seguida de 4 dígitos (H0001), igual que el de la familia. ' +
+      'Verifique el código.'
+  },
+  {
     codigo: 'RN-026',
     campo: 'idFamilia',
     aplica: function (d) { return d.idFamilia !== undefined; },
     valida: function (d) { return !esVacio(d.idFamilia); },
     mensaje: 'El identificador de la familia lo genera el sistema y no puede quedar vacío.'
+  },
+  {
+    // Ficha técnica, variable 10: F más un serial de 4 dígitos por microterritorio.
+    codigo: 'RN-026',
+    campo: 'idFamilia',
+    severidad: SEVERIDAD.ADVERTENCIA,
+    aplica: function (d) { return !esVacio(d.idFamilia); },
+    valida: function (d) { return FORMATO_CODIGO_FAMILIA.test(String(d.idFamilia).trim()); },
+    mensaje: 'La ficha técnica estructura el número de la familia como F seguida de un serial de 4 dígitos ' +
+      '(F0001, F0002…). Verifique el código.'
   },
   {
     codigo: 'RN-027',
@@ -1095,7 +1169,9 @@ const REGLAS_INTEGRANTE = [
     aplica: function (i, c) { return c.tipoId !== null; },
     valida: function (i, c) { return documentoValidoParaFormato(c.tipoId.formato, i.numeroId); },
     mensaje: function (i, c) {
-      return 'Número inválido para el tipo ' + c.tipoId.valor + '. Verifique el formato exigido.';
+      const formato = DESCRIPCION_FORMATO_DOCUMENTO[c.tipoId.formato];
+      return 'Número inválido para el tipo ' + c.tipoId.valor + '. ' +
+        (formato ? 'Debe tener ' + formato + ', ' : 'Escríbalo ') + 'sin puntos, comas ni guiones.';
     }
   },
   {

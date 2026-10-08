@@ -71,7 +71,7 @@ function montar() {
   w.HTMLElement.prototype.scrollIntoView = function () {};
 
   const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js',
-    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
+    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
     .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
     .join('\n;\n');
 
@@ -313,7 +313,9 @@ async function limpiar(cliente, sufijo) {
 }
 
 async function principal() {
-  const sufijo = Date.now().toString(36);
+  /* En mayúscula: el formulario normaliza los códigos digitados (ficha
+     técnica APS124CCFP) y «hg-e2e-…» llega al modelo como «HG-E2E-…». */
+  const sufijo = Date.now().toString(36).toUpperCase();
 
   console.log('\n=== 1. El formulario se diligencia con los controles reales ===');
 

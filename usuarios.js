@@ -299,6 +299,14 @@
       if (indice === -1) usuarios.unshift(guardado); else usuarios[indice] = guardado;
       pintarLista();
 
+      /* Ficha técnica APS124CCFP, variable 15: EBS más 3 dígitos. No bloquea
+         —hay equipos registrados antes de adoptar la estructura y sus fichas
+         cuelgan de ese código—, pero se dice al guardar. */
+      const avisoEquipo = datos.equipo && !/^EBS\d{3}$/.test(datos.equipo)
+        ? ' El código de equipo ' + datos.equipo + ' no sigue la estructura de la ficha técnica ' +
+          '(EBS seguido de 3 dígitos, por ejemplo EBS001).'
+        : '';
+
       if (cuerpo.claveTemporal) {
         /* La cuenta nueva se queda abierta para poder copiar la clave; desde
            aquí ya se edita como una existente. */
@@ -311,10 +319,11 @@
         $('usuarioCampoActivo').hidden = false;
         $('usuarioActivo').checked = true;
         mostrarClaveTemporal(cuerpo.claveTemporal);
-        avisar('Usuario ' + guardado.nombre + ' creado. Entréguele la contraseña temporal en persona.', 'success');
+        avisar('Usuario ' + guardado.nombre + ' creado. Entréguele la contraseña temporal en persona.' + avisoEquipo,
+          avisoEquipo ? 'warning' : 'success');
       } else {
         cerrarFormulario();
-        avisar('Usuario ' + guardado.nombre + ' actualizado.', 'success');
+        avisar('Usuario ' + guardado.nombre + ' actualizado.' + avisoEquipo, avisoEquipo ? 'warning' : 'success');
       }
     } catch (error) {
       marcarError(error.campo, error.message);

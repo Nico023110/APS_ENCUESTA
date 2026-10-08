@@ -606,8 +606,11 @@ function sincronizarModoDireccionConArea() {
 
 function aplicarModoDireccion() {
   const modo = obtenerModoDireccion();
+  const sinDireccion = modo === MODO_SIN_DIRECCION;
   document.getElementById('panelDireccionUrbana').hidden = modo !== 'urbana';
   document.getElementById('panelDireccionRural').hidden = modo !== 'rural';
+  document.getElementById('lineaComplementosDireccion').hidden = sinDireccion;
+  document.getElementById('avisoSinDireccion').hidden = !sinDireccion;
 
   const area = document.getElementById('areaUbicacion').value;
   const sugerido = MODO_DIRECCION_POR_AREA[area];
@@ -755,6 +758,11 @@ function programarGeocodificacion(direccionCompleta) {
   clearTimeout(temporizadorGeocodificacion);
 
   if (!direccionCompleta) return;
+
+  /* Sin dirección no hay vía que buscar: la consulta caería en el centro del
+     barrio y lo dejaría como si fuera la vivienda. Ahí las coordenadas salen
+     del GPS (o del botón «Buscar dir.», si el encuestador lo decide). */
+  if (obtenerModoDireccion() === MODO_SIN_DIRECCION) return;
 
   temporizadorGeocodificacion = setTimeout(function () {
     geocodificarDesdeFormulario(false);
@@ -3030,6 +3038,11 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      base lo reemplaza con lo que llegue, y antes llegaba vacío. */
   if (encuestaEnCorreccion) encuesta.fechasModificacion = fechasDeModificacionDeLaCorreccion();
 
+  /* El servidor necesita distinguir una corrección de una visita nueva que
+     trae un código de ficha ya usado en otra vivienda: la primera reemplaza
+     el registro, la segunda no puede pisarlo (ver guardar_encuesta.js). */
+  encuesta.esCorreccion = !!encuestaEnCorreccion;
+
   const resultado = await enviarFichaAlServidor(encuesta, boton);
 
   /* Rechazo por reglas de negocio: la ficha NO se guarda ni se limpia el
@@ -3284,9 +3297,34 @@ function reiniciarBloquesRepetibles() {
    19. INICIALIZACIÓN GENERAL
    --------------------------------------------------------- */
 
+/* Ficha técnica APS124CCFP. Los códigos que digita el equipo (variables 10,
+   15 y 19 y el código del hogar) van en mayúscula y sin espacios: «cf 001» es
+   CF001. El número de documento (variable 54) va sin puntos, comas ni
+   guiones: «1.144.000.000» es 1144000000. */
+const CAMPOS_CODIGO_FICHA_TECNICA = ['equipoSaludId', 'codigoFicha', 'idHogar', 'idFamilia'];
+
+function normalizarCampoCapturado(evento) {
+  const campo = evento.target;
+  if (!campo || campo.tagName !== 'INPUT' || campo.readOnly) return;
+
+  const nombre = campo.name || '';
+  let limpio = campo.value;
+  if (nombre === 'responsableNumeroId' || /\.numeroId$/.test(nombre)) {
+    limpio = limpiarNumeroDocumento(campo.value);
+  } else if (CAMPOS_CODIGO_FICHA_TECNICA.indexOf(nombre) !== -1) {
+    limpio = campo.value.toUpperCase().replace(/\s+/g, '');
+  }
+
+  if (limpio !== campo.value) campo.value = limpio;
+}
+
 function inicializarFormulario() {
   const formulario = document.getElementById('encuestaForm');
   formulario.addEventListener('submit', manejarEnvioFormulario);
+
+  /* En fase de captura: la validación en vivo escucha el mismo `change` en
+     burbuja y tiene que recibir ya el valor limpio. */
+  formulario.addEventListener('change', normalizarCampoCapturado, true);
 
   // RN-001 — bloqueo de captura sin consentimiento
   document.querySelectorAll('input[name="consentimiento"]').forEach(function (radio) {
@@ -3471,6 +3509,9 @@ function inicializarAplicacion() {
   inicializarIndiceActivo();
   inicializarCatalogosDelFormulario();
   inicializarModoRevision();
+  /* La guía va antes del formulario dinámico: ahí se guardan los prototipos
+     de familia e integrante, y los bloques que se clonen deben traerla. */
+  if (typeof inicializarGuiaCampos === 'function') inicializarGuiaCampos();
   inicializarFormularioDinamico();
   inicializarBuscadorCups();
   inicializarCierreIncompleto();
