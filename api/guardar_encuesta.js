@@ -474,7 +474,7 @@ async function fichaExistente(cliente, codigo) {
   const r = await cliente.query(`
     SELECT f.id, f.equipo_salud_id, f.responsable_id, eq.codigo AS equipo_codigo,
            r.tipo_id, r.numero_id, r.nombre_completo, r.perfil_profesional, r.perfil_otro,
-           h.codigo AS hogar_codigo
+           f.hogar_id, h.codigo AS hogar_codigo
       FROM aps.ficha f
       JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
       JOIN aps.funcionario r   ON r.id = f.responsable_id
@@ -484,23 +484,27 @@ async function fichaExistente(cliente, codigo) {
   return r.rows[0] || null;
 }
 
-/* Una visita nueva no puede pisar la ficha de otra vivienda.
+/* Una visita nueva no puede pisar la ficha de otra persona.
 
    `aps.ficha.codigo` es la llave de la visita en toda la base. El código que
    genera captura_local.js no se repite, pero quedan fichas con código digitado
    a mano («CF001», que la ficha técnica APS124CCFP reinicia con cada familia)
    y dispositivos que pueden restaurarse. Si un código llegaba repetido desde
-   otra vivienda, el segundo guardado se tomaba como corrección del primero:
-   reescribía la ficha ajena —su hogar, su vivienda, sus familias— sin avisar
-   a nadie. Si el equipo era otro, el encuestador recibía un «no puede
-   corregir esta ficha» que no entendía.
+   otro encuestador, el segundo guardado se tomaba como corrección del
+   primero: reescribía la ficha ajena —su hogar, su vivienda, sus familias—
+   sin avisar a nadie. Si el equipo era otro, el encuestador recibía un «no
+   puede corregir esta ficha» que no entendía.
 
-   Se distingue por la marca `esCorreccion` que pone el formulario y por el
-   hogar: reenviar la misma visita (un reintento de sincronización) trae el
-   mismo hogar y pasa. Corregir una ficha sí puede cambiarle el hogar. */
-function colisionDeCodigoDeFicha(existente, cuerpo) {
+   Se distingue por la marca `esCorreccion` que pone el formulario y por quién
+   la envía: una corrección pasa (la autorización decide si puede hacerla), y
+   el responsable que reenvía su propia visita —un reintento de
+   sincronización, o la señal que se cayó antes de recibir los códigos—
+   también. El código de vivienda ya no sirve para distinguirlas: lo asigna
+   el servidor (08_codigos_vivienda.sql) y una ficha anterior trae el que se
+   digitó. */
+function colisionDeCodigoDeFicha(existente, cuerpo, usuario) {
   if (!existente || cuerpo.esCorreccion === true) return null;
-  if (existente.hogar_codigo === texto(cuerpo.idHogar)) return null;
+  if (usuario && Number(existente.responsable_id) === Number(usuario.funcionarioId)) return null;
 
   const codigo = texto(cuerpo.codigoFicha);
   return {
@@ -508,7 +512,7 @@ function colisionDeCodigoDeFicha(existente, cuerpo) {
     ruta: 'codigoFicha',
     campo: 'codigoFicha',
     severidad: 'bloqueo',
-    mensaje: 'El código de ficha ' + codigo + ' ya está registrado para otra vivienda. ' +
+    mensaje: 'El código de ficha ' + codigo + ' ya está registrado por otro encuestador. ' +
       'No se guardó para no reemplazar esa ficha; comuníquelo al administrador.',
     recibido: codigo
   };
@@ -536,6 +540,68 @@ function fijarFirma(cuerpo, firma) {
   });
 }
 
+/* =========================================================================
+   Códigos de vivienda y familia (ítems 25 y 26) y NUV
+   -------------------------------------------------------------------------
+   No se digitan: los asigna el servidor al guardar, con la estructura del
+   anexo técnico SI-APS (variables 123 y 124, ver 08_codigos_vivienda.sql):
+
+     vivienda  T53MT03H0005        el consecutivo H reinicia por microterritorio
+     familia   T53MT03H0005F0001   el consecutivo F reinicia en cada vivienda
+     NUV       NUV0012             número único de vivienda, global, no se
+                                   reinicia y no va en el archivo plano
+
+   Se asignan aquí y no en el dispositivo: el consecutivo es de todo el
+   microterritorio, y dos tabletas sin señal tomarían el mismo número. Una
+   ficha guardada sin conexión los recibe al sincronizarse.
+   ========================================================================= */
+const DIGITOS_CONSECUTIVO = 4;
+
+function consecutivoConCeros(n) {
+  return String(n).padStart(DIGITOS_CONSECUTIVO, '0');
+}
+
+function codigoDeVivienda(territorio, microterritorio, consecutivo) {
+  return territorio + microterritorio + 'H' + consecutivoConCeros(consecutivo);
+}
+
+function codigoDeFamilia(codigoVivienda, consecutivo) {
+  return codigoVivienda + 'F' + consecutivoConCeros(consecutivo);
+}
+
+function textoNuv(nuv) {
+  return nuv === null || nuv === undefined ? null : 'NUV' + consecutivoConCeros(nuv);
+}
+
+/* Máximo + 1 bajo un bloqueo consultivo de la transacción: quienes guardan a
+   la vez en la misma serie esperan su turno, así el número no se repite ni
+   deja huecos (una secuencia los dejaría con cada transacción revertida). */
+async function siguienteNuv(cliente) {
+  await cliente.query("SELECT pg_advisory_xact_lock(hashtext('hogar/nuv'))");
+  const r = await cliente.query('SELECT coalesce(max(nuv), 0) + 1 AS n FROM aps.hogar');
+  return Number(r.rows[0].n);
+}
+
+async function siguienteConsecutivoVivienda(cliente, territorio, microterritorio) {
+  await cliente.query(
+    "SELECT pg_advisory_xact_lock(hashtext('hogar/' || $1 || '/' || $2))", [territorio, microterritorio]);
+  const r = await cliente.query(`
+    SELECT coalesce(max(consecutivo_sispro), 0) + 1 AS n
+      FROM aps.hogar
+     WHERE territorio_codigo = $1 AND microterritorio_codigo = $2
+  `, [territorio, microterritorio]);
+  return Number(r.rows[0].n);
+}
+
+/* Las llaves heredadas de un plan (RN-112/121/122/131/132) copian los
+   códigos que se acaban de asignar. Sólo se tocan las que el plan trae: un
+   plan sin código de vivienda no se diligenció y no se guarda (guardarPlan). */
+function fijarLlavesDelPlan(plan, codigoVivienda, codigoFamiliaDelPlan) {
+  if (!plan || typeof plan !== 'object') return;
+  if (plan.codigoVivienda !== undefined) plan.codigoVivienda = codigoVivienda;
+  if (codigoFamiliaDelPlan !== undefined && plan.codigoFamilia !== undefined) plan.codigoFamilia = codigoFamiliaDelPlan;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -557,7 +623,7 @@ module.exports = async (req, res) => {
     const existente = await fichaExistente(cliente, texto(req.body.codigoFicha));
     let tipoEvento;
 
-    const colision = colisionDeCodigoDeFicha(existente, req.body);
+    const colision = colisionDeCodigoDeFicha(existente, req.body, usuario);
     if (colision) {
       console.error('  Ficha rechazada: ' + colision.recibido + ' ya pertenece a otra vivienda');
       return res.status(400).json({
@@ -660,42 +726,20 @@ module.exports = async (req, res) => {
     ]);
     const responsableId = funcionarioRes.rows[0].id;
 
-    /* --- 3. Hogar (RN-025) ---
-       Identidad persistente: si el hogar ya existe se actualiza, no se duplica. */
-    const hogarRes = await cliente.query(`
-      INSERT INTO aps.hogar (
-        codigo, municipio_codigo, area_ubicacion, territorio_codigo,
-        microterritorio_codigo, division_territorial, direccion_normalizada,
-        latitud, longitud, punto_referencia, geo_pendiente,
-        direccion_componentes, geo_motivo_imposibilidad
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13)
-      ON CONFLICT (codigo) DO UPDATE SET
-        /* El consecutivo del reporte (variable 123) reinicia por
-           microterritorio: si la vivienda cambia de microterritorio pierde el
-           suyo y recibe uno nuevo abajo. */
-        consecutivo_sispro       = CASE
-          WHEN aps.hogar.territorio_codigo = EXCLUDED.territorio_codigo
-           AND aps.hogar.microterritorio_codigo = EXCLUDED.microterritorio_codigo
-          THEN aps.hogar.consecutivo_sispro END,
-        area_ubicacion           = EXCLUDED.area_ubicacion,
-        territorio_codigo        = EXCLUDED.territorio_codigo,
-        microterritorio_codigo   = EXCLUDED.microterritorio_codigo,
-        division_territorial     = EXCLUDED.division_territorial,
-        direccion_normalizada    = EXCLUDED.direccion_normalizada,
-        latitud                  = EXCLUDED.latitud,
-        longitud                 = EXCLUDED.longitud,
-        punto_referencia         = EXCLUDED.punto_referencia,
-        geo_pendiente            = EXCLUDED.geo_pendiente,
-        direccion_componentes    = EXCLUDED.direccion_componentes,
-        geo_motivo_imposibilidad = EXCLUDED.geo_motivo_imposibilidad,
-        actualizado_en           = now()
-      RETURNING id
-    `, [
-      texto(encuesta.idHogar),
+    /* --- 3. Hogar (RN-025) y sus códigos ---
+       Ficha nueva: vivienda nueva, con su NUV y su consecutivo dentro del
+       microterritorio; el código del ítem 25 que llegue en el cuerpo no se
+       toma. Corrección o reenvío: la vivienda es la de la ficha guardada y
+       conserva sus códigos; sólo si cambió de microterritorio recibe el
+       consecutivo siguiente del nuevo (la variable 123 reinicia por
+       microterritorio). */
+    const territorio = texto(encuesta.territorio);
+    const microterritorio = texto(encuesta.microterritorio);
+    const datosHogar = [
       texto(encuesta.municipioCodigo) || '76001',
       texto(encuesta.areaUbicacion),
-      texto(encuesta.territorio),
-      texto(encuesta.microterritorio),
+      territorio,
+      microterritorio,
       texto(encuesta.divisionTerritorial),
       texto(encuesta.direccion) || texto(encuesta.direccionLegible),
       decimal(encuesta.latitud),
@@ -706,23 +750,71 @@ module.exports = async (req, res) => {
       /* RN-022: sin coordenadas, el motivo es obligatorio en el formulario;
          antes se validaba y se descartaba. */
       texto(encuesta.motivoSinGeorreferenciacion)
-    ]);
-    const hogarId = hogarRes.rows[0].id;
+    ];
 
-    /* Variable 123 del anexo: la vivienda recibe una vez su consecutivo dentro
-       del microterritorio y lo conserva en todos los reportes. El bloqueo por
-       microterritorio evita que dos fichas guardadas a la vez tomen el mismo. */
-    await cliente.query(
-      "SELECT pg_advisory_xact_lock(hashtext('hogar/' || $1 || '/' || $2))",
-      [texto(encuesta.territorio), texto(encuesta.microterritorio)]);
-    await cliente.query(`
-      UPDATE aps.hogar h
-         SET consecutivo_sispro = (
-               SELECT coalesce(max(o.consecutivo_sispro), 0) + 1 FROM aps.hogar o
-                WHERE o.territorio_codigo = h.territorio_codigo
-                  AND o.microterritorio_codigo = h.microterritorio_codigo)
-       WHERE h.id = $1 AND h.consecutivo_sispro IS NULL
-    `, [hogarId]);
+    let hogarId;
+    let nuv;
+    let consecutivoVivienda;
+
+    if (existente) {
+      const actual = (await cliente.query(`
+        SELECT id, nuv, territorio_codigo, microterritorio_codigo, consecutivo_sispro
+          FROM aps.hogar WHERE id = $1 FOR UPDATE
+      `, [existente.hogar_id])).rows[0];
+      hogarId = actual.id;
+      nuv = actual.nuv !== null ? Number(actual.nuv) : await siguienteNuv(cliente);
+      const mismoMicroterritorio = actual.territorio_codigo === territorio &&
+        actual.microterritorio_codigo === microterritorio;
+      consecutivoVivienda = mismoMicroterritorio && actual.consecutivo_sispro !== null
+        ? Number(actual.consecutivo_sispro)
+        : await siguienteConsecutivoVivienda(cliente, territorio, microterritorio);
+    } else {
+      nuv = await siguienteNuv(cliente);
+      consecutivoVivienda = await siguienteConsecutivoVivienda(cliente, territorio, microterritorio);
+    }
+
+    const codigoHogar = codigoDeVivienda(territorio, microterritorio, consecutivoVivienda);
+
+    if (existente) {
+      await cliente.query(`
+        UPDATE aps.hogar SET
+          municipio_codigo         = $5,
+          area_ubicacion           = $6,
+          territorio_codigo        = $7,
+          microterritorio_codigo   = $8,
+          division_territorial     = $9,
+          direccion_normalizada    = $10,
+          latitud                  = $11,
+          longitud                 = $12,
+          punto_referencia         = $13,
+          geo_pendiente            = $14,
+          direccion_componentes    = $15::jsonb,
+          geo_motivo_imposibilidad = $16,
+          codigo                   = $2,
+          nuv                      = $3,
+          consecutivo_sispro       = $4,
+          actualizado_en           = now()
+         WHERE id = $1
+      `, [hogarId, codigoHogar, nuv, consecutivoVivienda].concat(datosHogar));
+    } else {
+      hogarId = (await cliente.query(`
+        INSERT INTO aps.hogar (
+          codigo, nuv, consecutivo_sispro,
+          municipio_codigo, area_ubicacion, territorio_codigo,
+          microterritorio_codigo, division_territorial, direccion_normalizada,
+          latitud, longitud, punto_referencia, geo_pendiente,
+          direccion_componentes, geo_motivo_imposibilidad
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15)
+        RETURNING id
+      `, [codigoHogar, nuv, consecutivoVivienda].concat(datosHogar))).rows[0].id;
+    }
+
+    /* El resto de la ficha —ítem 26, familias y llaves de los planes— trabaja
+       ya con los códigos asignados. */
+    const familiasCuerpo = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+    encuesta.idHogar = codigoHogar;
+    encuesta.nuv = textoNuv(nuv);
+    encuesta.idFamilia = familiasCuerpo.length ? codigoDeFamilia(codigoHogar, 1) : null;
 
     /* El motor trae anexo.js cargado: con él se escriben las variables nuevas
        del anexo técnico y se decide cuáles aplican. */
@@ -896,20 +988,27 @@ module.exports = async (req, res) => {
 
       /* 6a. Familia — identidad subordinada al hogar (RN-026).
 
-         El código lo genera el sistema: el campo del formulario es de sólo
-         lectura y dice "Se asigna al guardar". Se deriva del código del
-         hogar y del consecutivo, de modo que reenviar la misma ficha
-         produce el mismo código y no crea una familia nueva. */
-      const familiaCodigo = texto(familia.idFamilia) ||
-        (texto(encuesta.idHogar) + '-F' + (fi + 1));
+         El código lo genera el sistema (ítem 26, sólo lectura): el de la
+         vivienda más F y el consecutivo de la familia dentro de ella, que
+         reinicia en F0001 en cada vivienda (anexo SI-APS, variable 124). La
+         familia se reconoce por vivienda y consecutivo, así que reenviar o
+         corregir la ficha la reutiliza; si la vivienda cambió de código, la
+         familia lo toma también. */
+      const familiaCodigo = codigoDeFamilia(codigoHogar, fi + 1);
 
       const familiaRes = await cliente.query(`
         INSERT INTO aps.familia (codigo, hogar_id, consecutivo)
         VALUES ($1, $2, $3)
-        ON CONFLICT (codigo) DO UPDATE SET hogar_id = EXCLUDED.hogar_id
+        ON CONFLICT (hogar_id, consecutivo) DO UPDATE SET codigo = EXCLUDED.codigo
         RETURNING id
       `, [familiaCodigo, hogarId, fi + 1]);
       const familiaId = familiaRes.rows[0].id;
+
+      familia.idFamilia = familiaCodigo;
+      fijarLlavesDelPlan(familia.planFamilia, codigoHogar, familiaCodigo);
+      (Array.isArray(familia.integrantes) ? familia.integrantes : []).forEach(function (integrante) {
+        fijarLlavesDelPlan(integrante && integrante.planPersona, codigoHogar, familiaCodigo);
+      });
 
       /* 6b. Caracterización de la familia en esta visita. */
       const familiaFichaRes = await cliente.query(`
@@ -1137,6 +1236,7 @@ module.exports = async (req, res) => {
     }
 
     /* --- 7. Plan de cuidado de la vivienda (ítems 111 a 119) --- */
+    fijarLlavesDelPlan(encuesta.planVivienda, codigoHogar);
     filasPlan += await guardarPlan(cliente, fichaId, 'vivienda', encuesta.planVivienda, {
       fechaConcertacion: texto(encuesta.fechaDiligenciamiento)
     });
@@ -1160,7 +1260,15 @@ module.exports = async (req, res) => {
       alertas: filasAlerta,
       advertencias: advertencias,
       /* RN-220 (plan diferido): la ficha entró; esto dice si aún le falta el plan. */
-      planCuidado: planCuidado
+      planCuidado: planCuidado,
+      /* Los códigos asignados al guardar: el dispositivo los guarda en su
+         copia de la ficha para mostrarlos y para corregirla después. */
+      codigos: {
+        nuv: encuesta.nuv,
+        idHogar: codigoHogar,
+        idFamilia: encuesta.idFamilia,
+        familias: familias.map(function (familia) { return familia.idFamilia; })
+      }
     });
   } catch (error) {
     if (cliente) {

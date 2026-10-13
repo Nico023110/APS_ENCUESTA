@@ -65,6 +65,8 @@ module.exports = async (req, res) => {
         eq.codigo                 AS equipo_codigo,
         f.responsable_id,
         r.nombre_completo         AS responsable_nombre,
+        h.codigo                  AS hogar_codigo,
+        h.nuv,
         h.territorio_codigo       AS territorio,
         h.microterritorio_codigo  AS microterritorio,
         h.division_territorial,
@@ -100,6 +102,9 @@ module.exports = async (req, res) => {
         equipoSaludId: fila.equipo_codigo,
         responsableId: Number(fila.responsable_id),
         responsableNombre: fila.responsable_nombre,
+        /* Códigos que asigna el servidor (08_codigos_vivienda.sql). */
+        idHogar: fila.hogar_codigo,
+        nuv: fila.nuv === null ? null : 'NUV' + String(fila.nuv).padStart(4, '0'),
         territorio: fila.territorio,
         microterritorio: fila.microterritorio,
         divisionTerritorial: fila.division_territorial,

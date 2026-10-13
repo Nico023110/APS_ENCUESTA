@@ -486,13 +486,19 @@
               <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" maxlength="200" placeholder="Ej. Al lado derecho de la iglesia, casa verde con rejas negras">
             </div>
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="vivienda-contacto"></div>
-            <div class="field field--sm" data-campo="idHogar">
-              <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar:</label>
-              <input type="text" id="idHogar" name="idHogar" placeholder="Ej. H0001">
+            <!-- Ítems 25 y 26 y NUV: los asigna el servidor al guardar
+                 (08_codigos_vivienda.sql). No se digitan. -->
+            <div class="field field--sm" data-campo="nuv">
+              <label for="nuv">NUV <span class="field-auto">(número único de vivienda)</span></label>
+              <input type="text" id="nuv" name="nuv" class="mono" readonly placeholder="Se asigna al guardar">
             </div>
-            <div class="field field--sm" data-campo="idFamilia">
-              <label for="idFamilia"><span class="item-num">26.</span> N.° de Identificación de la familia:</label>
-              <input type="text" id="idFamilia" name="idFamilia" placeholder="Ej. F0001">
+            <div class="field field--sm" data-campo="idHogar">
+              <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar: <span class="field-auto">(automático)</span></label>
+              <input type="text" id="idHogar" name="idHogar" class="mono" readonly placeholder="Se asigna al guardar">
+            </div>
+            <div class="field field--md" data-campo="idFamilia">
+              <label for="idFamilia"><span class="item-num">26.</span> N.° de Identificación de la familia: <span class="field-auto">(automático)</span></label>
+              <input type="text" id="idFamilia" name="idFamilia" class="mono" readonly placeholder="Se asigna al guardar">
             </div>
             <div class="field field--sm" data-campo="estrato">
               <label for="estrato"><span class="item-num">27.</span> Estrato socioeconómico de la vivienda: *</label>
@@ -753,9 +759,9 @@
                     <span class="field-hint field-hint--inline">Genera un bloque de sección 5 por integrante.</span>
                     <input type="number" name="familias[0].numeroIntegrantes" min="1" step="1" data-rol="numeroIntegrantes" placeholder="Ej. 3">
                   </div>
-                  <div class="field field--sm" data-campo="idFamiliaBloque">
-                    <label>N.° de ID de la familia <span class="field-auto">(generado)</span></label>
-                    <input type="text" name="familias[0].idFamilia" readonly placeholder="Se asigna al guardar">
+                  <div class="field field--md" data-campo="idFamiliaBloque">
+                    <label>N.° de ID de la familia <span class="field-auto">(automático)</span></label>
+                    <input type="text" name="familias[0].idFamilia" class="mono" readonly placeholder="Se asigna al guardar">
                   </div>
                 </div>
 

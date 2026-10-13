@@ -225,6 +225,7 @@ function cargarEncuestaEnFormulario(encuesta) {
   restaurarDireccion(encuesta.direccionComponentes);
   reponerCoordenadas(encuesta);
   reponerCodigoFicha(encuesta);
+  reponerCodigosDeVivienda(encuesta);
   restaurarProcedenciaDeCoordenadas(encuesta);
   reponerFirmaOriginal(formulario, encuesta);
 
@@ -232,6 +233,20 @@ function cargarEncuestaEnFormulario(encuesta) {
   actualizarTableroDeRiesgo(recolectarDatosFormulario(formulario));
 
   document.getElementById('seccion-1').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * NUV e ítems 25 y 26 son de sólo lectura —los asigna el servidor— y la carga
+ * general se salta los campos de sólo lectura. Se reponen aquí para que la
+ * corrección muestre los códigos que la ficha ya tiene; el servidor los
+ * conserva de todos modos. Una ficha guardada sin señal aún no los tiene.
+ */
+function reponerCodigosDeVivienda(encuesta) {
+  ['nuv', 'idHogar', 'idFamilia'].forEach(function (id) {
+    const campo = document.getElementById(id);
+    if (campo) campo.value = encuesta[id] ? String(encuesta[id]) : '';
+  });
+  if (typeof propagarLlavesHeredadas === 'function') propagarLlavesHeredadas();
 }
 
 /* --- 2.1 Estructura repetible ------------------------------------------ */

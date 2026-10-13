@@ -300,15 +300,26 @@ function diligenciar(w, sufijo) {
    --------------------------------------------------------- */
 
 async function limpiar(cliente, sufijo) {
-  await cliente.query("DELETE FROM aps.ficha WHERE codigo LIKE 'F-E2E-%'");
-  /* El código de familia lo genera el servidor a partir del hogar (RN-026),
-     así que se borra por hogar y no por patrón de código. */
+  /* Los códigos de vivienda y familia los asigna el servidor
+     (08_codigos_vivienda.sql): las viviendas de la prueba se encuentran por
+     sus fichas y se borran las que quedan sin ficha. Los LIKE quedan para
+     bases anteriores. */
+  const hogares = (await cliente.query(
+    "DELETE FROM aps.ficha WHERE codigo LIKE 'F-E2E-%' RETURNING hogar_id"
+  )).rows.map(function (f) { return f.hogar_id; });
+  const sinFicha = `
+    SELECT h.id FROM aps.hogar h
+     WHERE h.id = ANY($1::bigint[])
+       AND NOT EXISTS (SELECT 1 FROM aps.ficha f WHERE f.hogar_id = h.id)`;
   await cliente.query(`
     DELETE FROM aps.familia
      WHERE hogar_id IN (SELECT id FROM aps.hogar WHERE codigo LIKE 'HG-E2E-%')
         OR codigo LIKE 'FM-E2E-%'
-  `);
-  await cliente.query("DELETE FROM aps.hogar WHERE codigo LIKE 'HG-E2E-%'");
+        OR hogar_id IN (${sinFicha})
+  `, [hogares]);
+  await cliente.query(`
+    DELETE FROM aps.hogar WHERE codigo LIKE 'HG-E2E-%' OR id IN (${sinFicha})
+  `, [hogares]);
   await cliente.query("DELETE FROM aps.persona WHERE numero_id = '1144099887'");
 }
 
@@ -449,9 +460,14 @@ async function principal() {
     verificar('  existe el plan de vivienda', !!pv, JSON.stringify(plan.rows));
 
     if (pv) {
-      verificar('  con las llaves heredadas correctas',
-        pv.codigo_ebs === 'EBSE2E' && pv.codigo_vivienda === 'HG-E2E-' + sufijo,
-        pv.codigo_ebs + ' / ' + pv.codigo_vivienda);
+      /* El ítem 25 digitado no se toma: el plan hereda el código que el
+         servidor asignó a la vivienda (08_codigos_vivienda.sql). */
+      const hogarAsignado = (await cliente.query(
+        'SELECT h.codigo FROM aps.ficha f JOIN aps.hogar h ON h.id = f.hogar_id WHERE f.codigo = $1',
+        [encuesta.codigoFicha])).rows[0].codigo;
+      verificar('  con las llaves heredadas correctas (el código de vivienda asignado)',
+        pv.codigo_ebs === 'EBSE2E' && pv.codigo_vivienda === hogarAsignado && /^T\d+MT\d+H\d{4}$/.test(hogarAsignado),
+        pv.codigo_ebs + ' / ' + pv.codigo_vivienda + ' / ' + hogarAsignado);
       verificar('  con su acción registrada', pv.acciones === 1, String(pv.acciones));
       verificar('  con su seguimiento registrado', pv.seguimientos === 1, String(pv.seguimientos));
     }

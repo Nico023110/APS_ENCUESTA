@@ -1156,6 +1156,9 @@ async function sincronizarEncuestas() {
 
         if (respuesta.ok) {
           encuesta.sincronizada = true;
+          /* Una ficha capturada sin señal recibe aquí sus códigos. */
+          const cuerpo = await respuesta.json().catch(function () { return {}; });
+          aplicarCodigosAsignados(encuesta, cuerpo.codigos);
           exitosas++;
         } else {
           const errorData = await respuesta.json().catch(function () { return {}; });
@@ -1861,6 +1864,7 @@ async function abrirModalDetalle(id) {
     ]) +
     construirSeccionDetalle('Datos generales de la vivienda', [
       { etiqueta: 'Punto de referencia', valor: encuesta.ubicacionReferencia },
+      { etiqueta: 'NUV (número único de vivienda)', valor: encuesta.nuv },
       { etiqueta: 'N.° Identificación del hogar', valor: encuesta.idHogar },
       { etiqueta: 'N.° Identificación de la familia', valor: encuesta.idFamilia },
       { etiqueta: 'Estrato socioeconómico', valor: etiquetaDeCatalogo(CAT_ESTRATO, encuesta.estrato) },
@@ -2027,6 +2031,7 @@ function recolectarDatosFormulario(formulario) {
     ubicacionReferencia: valorOrNull(fd.get('ubicacionReferencia')),
     idHogar: valorOrNull(fd.get('idHogar')),
     idFamilia: valorOrNull(fd.get('idFamilia')),
+    nuv: valorOrNull(fd.get('nuv')),
     estrato: valorOrNull(fd.get('estrato')),
     hogaresEnVivienda: aIntOrNull(fd.get('hogaresEnVivienda')),
     personasEnVivienda: aIntOrNull(fd.get('personasEnVivienda')),
@@ -3061,6 +3066,10 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
   }
 
   encuesta.sincronizada = resultado.estado === 'guardada';
+  aplicarCodigosAsignados(encuesta, resultado.codigos);
+  if (encuesta.nuv && encuesta.idHogar) {
+    mensaje += ' Vivienda ' + encuesta.nuv + ' · código ' + encuesta.idHogar + '.';
+  }
 
   /* El plan diferido no es error: se avisa una vez, al guardar, dónde se
      completa después. */
@@ -3120,6 +3129,38 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
  *   rechazada   el servidor la devolvió por incumplir reglas (400)
  *   sin_red     no se pudo hablar con el servidor
  */
+/**
+ * Escribe en la copia local de la ficha los códigos que asignó el servidor al
+ * guardarla: NUV, ítems 25 y 26, el código de cada familia y las llaves que
+ * heredan los planes de cuidado. Así el historial los muestra y una
+ * corrección posterior los conserva. Sin códigos (no hubo conexión) no toca
+ * nada: llegarán al sincronizar.
+ */
+function aplicarCodigosAsignados(encuesta, codigos) {
+  if (!encuesta || !codigos || !codigos.idHogar) return;
+
+  encuesta.nuv = codigos.nuv || null;
+  encuesta.idHogar = codigos.idHogar;
+  encuesta.idFamilia = codigos.idFamilia || null;
+
+  const llaves = function (plan, codigoFamilia) {
+    if (!plan || typeof plan !== 'object') return;
+    if (plan.codigoVivienda !== undefined) plan.codigoVivienda = codigos.idHogar;
+    if (codigoFamilia && plan.codigoFamilia !== undefined) plan.codigoFamilia = codigoFamilia;
+  };
+
+  llaves(encuesta.planVivienda);
+  (Array.isArray(encuesta.familias) ? encuesta.familias : []).forEach(function (familia, i) {
+    const codigoFamilia = (codigos.familias || [])[i];
+    if (!familia || !codigoFamilia) return;
+    familia.idFamilia = codigoFamilia;
+    llaves(familia.planFamilia, codigoFamilia);
+    (Array.isArray(familia.integrantes) ? familia.integrantes : []).forEach(function (integrante) {
+      llaves(integrante && integrante.planPersona, codigoFamilia);
+    });
+  });
+}
+
 async function enviarFichaAlServidor(encuesta, boton) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { estado: 'sin_red' };
@@ -3140,7 +3181,10 @@ async function enviarFichaAlServidor(encuesta, boton) {
       body: JSON.stringify(encuesta)
     });
 
-    if (respuesta.ok) return { estado: 'guardada' };
+    if (respuesta.ok) {
+      const cuerpo = await respuesta.json().catch(function () { return {}; });
+      return { estado: 'guardada', codigos: cuerpo.codigos || null };
+    }
 
     if (respuesta.status === 400) {
       const cuerpo = await respuesta.json().catch(function () { return {}; });
@@ -3304,11 +3348,12 @@ function reiniciarBloquesRepetibles() {
    19. INICIALIZACIÓN GENERAL
    --------------------------------------------------------- */
 
-/* Ficha técnica APS124CCFP. Los códigos que digita el equipo (variables 10,
-   15 y 19 y el código del hogar) van en mayúscula y sin espacios: «cf 001» es
-   CF001. El número de documento (variable 54) va sin puntos, comas ni
-   guiones: «1.144.000.000» es 1144000000. */
-const CAMPOS_CODIGO_FICHA_TECNICA = ['equipoSaludId', 'codigoFicha', 'idHogar', 'idFamilia'];
+/* Ficha técnica APS124CCFP. El código del equipo (variable 15) va en
+   mayúscula y sin espacios cuando lo digita un administrador; los de la
+   ficha, la vivienda y la familia los asigna el sistema. El número de
+   documento (variable 54) va sin puntos, comas ni guiones: «1.144.000.000»
+   es 1144000000. */
+const CAMPOS_CODIGO_FICHA_TECNICA = ['equipoSaludId'];
 
 function normalizarCampoCapturado(evento) {
   const campo = evento.target;

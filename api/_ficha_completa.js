@@ -268,7 +268,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
            eq.codigo AS equipo_codigo,
            r.tipo_id AS responsable_tipo_id, r.numero_id AS responsable_numero_id,
            r.perfil_profesional, r.perfil_otro,
-           h.id AS hogar_id, h.codigo AS hogar_codigo, h.consecutivo_sispro,
+           h.id AS hogar_id, h.codigo AS hogar_codigo, h.consecutivo_sispro, h.nuv,
            h.area_ubicacion, h.territorio_codigo, h.microterritorio_codigo,
            h.division_territorial, h.direccion_normalizada, h.direccion_componentes,
            h.latitud, h.longitud, h.punto_referencia, h.geo_motivo_imposibilidad,
@@ -371,6 +371,8 @@ async function leerFichasCompletas(cliente, fichaIds) {
       motivoSinGeorreferenciacion: f.geo_motivo_imposibilidad,
       ubicacionReferencia: f.punto_referencia,
       idHogar: f.hogar_codigo,
+      /* Número único de vivienda (08_codigos_vivienda.sql): interno, no va al plano. */
+      nuv: f.nuv === null || f.nuv === undefined ? null : 'NUV' + String(f.nuv).padStart(4, '0'),
 
       estrato: f.estrato,
       hogaresEnVivienda: f.hogares_en_vivienda,

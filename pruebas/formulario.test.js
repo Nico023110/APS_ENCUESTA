@@ -594,11 +594,19 @@ async function cerrarPruebas() {
   check('La guía del tipo de familia define cada opción',
     panelTipoFamilia.querySelectorAll('.guia-campo__opciones li').length === 7);
 
-  /* Código del hogar: mayúscula y sin espacios (el de la ficha lo genera dev). */
-  setVal('#idHogar', 'h0001');
-  check('Código de hogar «h0001» => H0001, y los planes heredan el código limpio',
-    $('#idHogar').value === 'H0001' &&
-    $$('[data-hereda="idHogar"]').every(function (c) { return c.value === 'H0001'; }));
+  /* Ítems 25 y 26 y NUV: los asigna el servidor al guardar. */
+  check('NUV, código de vivienda y de familia son automáticos (sólo lectura, «Se asigna al guardar»)',
+    ['#nuv', '#idHogar', '#idFamilia'].every(function (sel) {
+      return $(sel).readOnly && $(sel).placeholder === 'Se asigna al guardar';
+    }));
+  /* Una ficha que ya tiene código (una corrección) deriva el de cada familia
+     igual que el servidor: vivienda + F + 4 dígitos. */
+  setVal('#idHogar', 'T53MT03H0005');
+  check('Con código de vivienda, la familia 1 muestra T53MT03H0005F0001 y los planes lo heredan',
+    $('#contenedorFamilias [name$=".idFamilia"]').value === 'T53MT03H0005F0001' &&
+    $$('[data-hereda="idHogar"]').every(function (c) { return c.value === 'T53MT03H0005'; }),
+    $('#contenedorFamilias [name$=".idFamilia"]').value);
+  setVal('#idHogar', '');
 
   /* Variable 9: máximo 200 caracteres. */
   check('El punto de referencia admite máximo 200 caracteres',

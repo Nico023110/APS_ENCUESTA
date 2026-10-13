@@ -648,19 +648,19 @@ function advertenciasDe(campo, valor) {
   return evaluarAdvertencias(ficha).filter(a => a.campo === campo);
 }
 
-verificar('Códigos con la estructura de la ficha (EBS001, H0001, F0001) => sin advertencia',
-  advertenciasDe('equipoSaludId', 'EBS001').length === 0 &&
-  advertenciasDe('codigoFicha', 'CF001').length === 0 &&
-  advertenciasDe('idHogar', 'H0001').length === 0 &&
-  advertenciasDe('idFamilia', 'F0001').length === 0);
+verificar('Código del equipo con la estructura de la ficha (EBS001) => sin advertencia',
+  advertenciasDe('equipoSaludId', 'EBS001').length === 0);
 
 verificar('Variable 15: EBS12 => advertencia RN-010, no bloqueo',
   advertenciasDe('equipoSaludId', 'EBS12').some(a => a.codigo === 'RN-010') &&
   !validarReglas(Object.assign(fichaBase(), { equipoSaludId: 'EBS12' })).some(e => e.codigo === 'RN-010'));
-verificar('Código de hogar HOG-001 => advertencia RN-025',
-  advertenciasDe('idHogar', 'HOG-001').some(a => a.codigo === 'RN-025'));
-verificar('Variable 10: FAM-001 => advertencia RN-026',
-  advertenciasDe('idFamilia', 'FAM-001').some(a => a.codigo === 'RN-026'));
+
+/* Ítems 25 y 26: los asigna el servidor (08_codigos_vivienda.sql). Una ficha
+   nueva llega sin ellos y no se bloquea ni se advierte. */
+const fichaSinCodigos = Object.assign(fichaBase(), { idHogar: null, idFamilia: null });
+verificar('Ficha nueva sin códigos de vivienda ni familia => sin bloqueo ni aviso RN-025/RN-026',
+  !validarReglas(fichaSinCodigos).some(e => e.codigo === 'RN-025' || e.codigo === 'RN-026') &&
+  !evaluarAdvertencias(fichaSinCodigos).some(e => e.codigo === 'RN-025' || e.codigo === 'RN-026'));
 
 /* Variable 7: la vivienda sin dirección. direccion.js no lo carga este
    contexto, así que se arma uno con los tres archivos, como el servidor. */

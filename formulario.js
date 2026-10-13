@@ -969,21 +969,21 @@ function propagarLlavesHeredadas() {
     idFamilia: valorDeId('idFamilia')
   };
 
-  /* RN-026: el código de la familia no es el ítem 26 que se digita, sino uno
-     derivado del hogar y del consecutivo —el mismo que el servidor termina
-     escribiendo en `aps.familia.codigo`—. Los planes 6.2 y 6.3 tienen que
-     heredar ése.
+  /* RN-026: el código de la familia es el de la vivienda más F y el
+     consecutivo de la familia dentro de ella, en 4 dígitos (anexo SI-APS,
+     variable 124) —el mismo que el servidor escribe en `aps.familia.codigo`—.
+     Los planes 6.2 y 6.3 heredan ése.
 
-     Heredando el ítem 26, el plan apuntaba a un código de familia que no
-     existía en la base y el disparador RN-122/132 tumbaba la ficha entera con
-     un 500. El ítem 26 sigue siendo el número que la familia usa como
-     referencia; no es su llave. */
+     Los dos códigos los asigna el servidor al guardar (guardar_encuesta.js):
+     en una ficha nueva el ítem 25 está vacío y aquí no se deriva nada; al
+     corregir una ficha ya guardada trae su código y la familia se deriva
+     igual que en el servidor. */
   const codigoDeFamilia = function (indice) {
-    return origenes.idHogar ? origenes.idHogar + '-F' + (indice + 1) : '';
+    return origenes.idHogar ? origenes.idHogar + 'F' + String(indice + 1).padStart(4, '0') : '';
   };
 
-  /* Cada familia muestra desde ya el código que se le va a asignar, en lugar
-     de dejar el campo en «Se asigna al guardar» hasta después de guardar. */
+  /* Cada familia muestra el código que tiene o el que se le va a dar; sin
+     código de vivienda queda en «Se asigna al guardar». */
   Array.prototype.forEach.call(
     document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]'),
     function (familia, i) {

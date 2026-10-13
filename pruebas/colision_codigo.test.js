@@ -87,24 +87,33 @@ const FICHA_DE_OTRA_VIVIENDA = {
 (async function () {
   console.log('\n=== Código de ficha repetido (ficha técnica, variable 19) ===');
 
+  /* La ficha guardada es de otro encuestador (responsable 100); quien envía
+     es el funcionario 5. */
   fichaEnBase = FICHA_DE_OTRA_VIVIENDA;
   let r = await enviar({ codigoFicha: 'CF001', idHogar: 'H0001', esCorreccion: false });
-  verificar('Visita nueva con CF001 de otra vivienda => 400 RN-015 sobre el código de la ficha',
+  verificar('Visita nueva con el CF001 de otro encuestador => 400 RN-015 sobre el código de la ficha',
     esColision(r), r.estado + ' ' + JSON.stringify(r.cuerpo));
   verificar('  el mensaje dice que no se guardó y no revela la otra vivienda',
     esColision(r) && /administrador/.test(r.cuerpo.bloqueos[0].mensaje) &&
     r.cuerpo.bloqueos[0].mensaje.indexOf('H0003') === -1);
   verificar('  y no se intentó escribir nada', consultas.length === 1, consultas.length + ' consultas');
 
-  r = await enviar({ codigoFicha: 'CF001', idHogar: 'H0001' });
-  verificar('Sin la marca de corrección (cliente anterior) también se protege', esColision(r));
+  r = await enviar({ codigoFicha: 'CF001', idHogar: null });
+  verificar('Sin la marca de corrección ni código de vivienda también se protege', esColision(r));
 
   r = await enviar({ codigoFicha: 'CF001', idHogar: 'H0001', esCorreccion: true });
-  verificar('Una corrección que cambia el hogar pasa la protección (llega a la autorización)',
+  verificar('Una corrección pasa la protección (llega a la autorización)',
     !esColision(r) && r.estado === 403, r.estado + ' ' + JSON.stringify(r.cuerpo));
 
-  r = await enviar({ codigoFicha: 'CF001', idHogar: 'H0003', esCorreccion: false });
-  verificar('Reenviar la misma visita (mismo hogar) pasa la protección',
+  /* El mismo responsable reenvía su visita: un reintento de sincronización,
+     con el código de vivienda que se digitó antes o sin él (la señal se cayó
+     antes de recibir los que asignó el servidor). */
+  fichaEnBase = Object.assign({}, FICHA_DE_OTRA_VIVIENDA, { responsable_id: usuario.funcionarioId });
+  r = await enviar({ codigoFicha: 'CF001', idHogar: 'HG-DIGITADO', esCorreccion: false });
+  verificar('Su responsable la reenvía con el código digitado de antes => no es colisión',
+    !esColision(r) && r.estado === 403, r.estado + ' ' + JSON.stringify(r.cuerpo));
+  r = await enviar({ codigoFicha: 'CF001', idHogar: null, esCorreccion: false });
+  verificar('Su responsable la reenvía sin código de vivienda => no es colisión',
     !esColision(r) && r.estado === 403, r.estado + ' ' + JSON.stringify(r.cuerpo));
 
   fichaEnBase = null;

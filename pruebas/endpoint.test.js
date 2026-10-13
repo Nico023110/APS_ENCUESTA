@@ -166,6 +166,24 @@ function bloqueoEn(cuerpo, fragmentoRuta) {
    Casos
    --------------------------------------------------------- */
 
+/* Borra las fichas de prueba y las viviendas y familias que quedan sin
+   ficha. Las viviendas ya no llevan el código que digitaba la prueba
+   (HG-TEST-…): lo asigna el servidor (08_codigos_vivienda.sql), así que se
+   encuentran por sus fichas. Los LIKE quedan para bases anteriores. */
+async function borrarFichasDePrueba(cliente) {
+  const hogares = (await cliente.query(
+    "DELETE FROM aps.ficha WHERE codigo LIKE 'F-TEST-%' OR codigo LIKE 'F-PRUEBA-%' RETURNING hogar_id"
+  )).rows.map(function (f) { return f.hogar_id; });
+  const sinFicha = `
+    SELECT h.id FROM aps.hogar h
+     WHERE h.id = ANY($1::bigint[])
+       AND NOT EXISTS (SELECT 1 FROM aps.ficha f WHERE f.hogar_id = h.id)`;
+  await cliente.query(`DELETE FROM aps.familia
+     WHERE codigo LIKE 'FM-TEST-%' OR codigo LIKE 'FM-PRUEBA-%' OR hogar_id IN (${sinFicha})`, [hogares]);
+  await cliente.query(`DELETE FROM aps.hogar
+     WHERE codigo LIKE 'HG-TEST-%' OR codigo LIKE 'HG-PRUEBA-%' OR id IN (${sinFicha})`, [hogares]);
+}
+
 /* Las comprobaciones de las tablas puente cuentan filas de toda la tabla, así
    que el estado tiene que partir limpio para ser determinista. */
 async function limpiar() {
@@ -174,9 +192,7 @@ async function limpiar() {
     ssl: false
   });
   await cliente.connect();
-  await cliente.query("DELETE FROM aps.ficha WHERE codigo LIKE 'F-TEST-%' OR codigo LIKE 'F-PRUEBA-%'");
-  await cliente.query("DELETE FROM aps.familia WHERE codigo LIKE 'FM-TEST-%' OR codigo LIKE 'FM-PRUEBA-%'");
-  await cliente.query("DELETE FROM aps.hogar WHERE codigo LIKE 'HG-TEST-%' OR codigo LIKE 'HG-PRUEBA-%'");
+  await borrarFichasDePrueba(cliente);
   await cliente.query("DELETE FROM aps.persona WHERE numero_id IN ('1144099887','1144055099')");
   await asegurarUsuarioDePrueba(cliente);
   await asegurarUsuarioDePrueba(cliente, {
@@ -360,6 +376,10 @@ async function correrPruebas() {
   r = await enviar(fichaDeAuxiliar, auxiliar.cabeceras);
   verificar('La auxiliar registra una ficha => 200', r.estado === 200, 'estado ' + r.estado);
 
+  /* Lo que sigue son correcciones de otros usuarios: el formulario las envía
+     con la marca `esCorreccion`; sin ella, una ficha ajena con el mismo
+     código se rechaza como colisión (RN-015) antes de la autorización. */
+  fichaDeAuxiliar.esCorreccion = true;
   r = await enviar(fichaDeAuxiliar, otroEquipoSesion.cabeceras);
   verificar('Otro equipo intenta corregirla => 403', r.estado === 403, 'estado ' + r.estado);
 
@@ -369,6 +389,7 @@ async function correrPruebas() {
   const fichaDeProfesional = fichaValida(sello + 'l5');
   r = await enviar(fichaDeProfesional, sesion.cabeceras);
   verificar('La profesional registra otra ficha => 200', r.estado === 200, 'estado ' + r.estado);
+  fichaDeProfesional.esCorreccion = true;
   r = await enviar(fichaDeProfesional, auxiliar.cabeceras);
   verificar('La auxiliar intenta corregir la de la profesional => 403 (sólo las propias)',
     r.estado === 403, 'estado ' + r.estado);
@@ -546,6 +567,80 @@ async function correrPruebas() {
     verificar('Extranjera sin estatus migratorio => 400 (A3.10)',
       rSinEstatus.estado === 400 && bloqueoEn(rSinEstatus.cuerpo, 'estatusMigratorio'), 'estado ' + rSinEstatus.estado);
 
+    console.log('\n=== 6a. Códigos automáticos de vivienda y familia, y NUV (08_codigos_vivienda.sql) ===');
+
+    const consecutivoDe = function (codigo) { return Number(String(codigo).slice(-4)); };
+    const numeroNuv = function (nuv) { return Number(String(nuv).replace(/^NUV/, '')); };
+
+    /* Vivienda nueva: el código digitado en el ítem 25 no se toma. */
+    const cod1 = fichaValida(sello + 'c1');
+    cod1.idHogar = 'DIGITADO-1';
+    const rc1 = await enviar(cod1);
+    const c1 = (rc1.cuerpo && rc1.cuerpo.codigos) || {};
+    verificar('Vivienda nueva en T48/MT01 => 200 con NUV y códigos asignados por el servidor',
+      rc1.estado === 200 && /^T48MT01H\d{4}$/.test(c1.idHogar) && /^NUV\d{4,}$/.test(c1.nuv) &&
+      c1.idFamilia === c1.idHogar + 'F0001' && c1.familias && c1.familias[0] === c1.idFamilia,
+      'estado ' + rc1.estado + ' ' + JSON.stringify(c1));
+    verificar('  el código digitado (DIGITADO-1) no se usa', c1.idHogar !== 'DIGITADO-1', c1.idHogar);
+
+    const filaC1 = (await cliente.query(`
+      SELECT h.codigo, h.nuv, h.consecutivo_sispro, f.referencia_familia,
+             (SELECT fa.codigo FROM aps.familia fa WHERE fa.hogar_id = h.id AND fa.consecutivo = 1) AS familia
+        FROM aps.ficha f JOIN aps.hogar h ON h.id = f.hogar_id
+       WHERE f.codigo = $1`, [cod1.codigoFicha])).rows[0] || {};
+    verificar('  la base guarda los mismos códigos (vivienda, NUV, familia, ítem 26)',
+      filaC1.codigo === c1.idHogar && 'NUV' + String(filaC1.nuv).padStart(4, '0') === c1.nuv &&
+      filaC1.familia === c1.idFamilia && filaC1.referencia_familia === c1.idFamilia &&
+      Number(filaC1.consecutivo_sispro) === consecutivoDe(c1.idHogar),
+      JSON.stringify(filaC1));
+
+    /* Siguiente vivienda del mismo microterritorio: H y NUV avanzan en uno. */
+    const cod2 = fichaValida(sello + 'c2');
+    const rc2 = await enviar(cod2);
+    const c2 = (rc2.cuerpo && rc2.cuerpo.codigos) || {};
+    verificar('Siguiente vivienda en T48/MT01 => H y NUV siguen el consecutivo; su familia reinicia en F0001',
+      rc2.estado === 200 && consecutivoDe(c2.idHogar) === consecutivoDe(c1.idHogar) + 1 &&
+      numeroNuv(c2.nuv) === numeroNuv(c1.nuv) + 1 && c2.idFamilia === c2.idHogar + 'F0001',
+      JSON.stringify([c1.idHogar, c2.idHogar, c1.nuv, c2.nuv, c2.idFamilia]));
+
+    /* Otro microterritorio: H sigue su propia serie; el NUV no se reinicia. */
+    const cod3 = fichaValida(sello + 'c3');
+    cod3.territorio = 'T53';
+    cod3.microterritorio = 'MT03';
+    const maxT53 = Number((await cliente.query(`
+      SELECT coalesce(max(consecutivo_sispro), 0) AS n FROM aps.hogar
+       WHERE territorio_codigo = 'T53' AND microterritorio_codigo = 'MT03'`)).rows[0].n);
+    const rc3 = await enviar(cod3);
+    const c3 = (rc3.cuerpo && rc3.cuerpo.codigos) || {};
+    verificar('Vivienda en T53/MT03 => consecutivo de su microterritorio; el NUV continúa el global',
+      rc3.estado === 200 && /^T53MT03H\d{4}$/.test(c3.idHogar) && consecutivoDe(c3.idHogar) === maxT53 + 1 &&
+      numeroNuv(c3.nuv) === numeroNuv(c2.nuv) + 1,
+      'estado ' + rc3.estado + ' ' + JSON.stringify([c3.idHogar, maxT53, c2.nuv, c3.nuv]));
+
+    /* Corregir conserva los códigos; reenviar sin códigos (la respuesta no
+       llegó al dispositivo) tampoco crea otra vivienda. */
+    const corregidaConCodigos = fichaValida(sello + 'c1');
+    corregidaConCodigos.codigoFicha = cod1.codigoFicha;
+    corregidaConCodigos.idHogar = c1.idHogar;
+    corregidaConCodigos.esCorreccion = true;
+    corregidaConCodigos.ubicacionReferencia = 'Frente a la cancha, casa azul';
+    const rCorr = await enviar(corregidaConCodigos);
+    const codigosCorreccion = (rCorr.cuerpo && rCorr.cuerpo.codigos) || {};
+    verificar('Corregir la ficha conserva NUV y códigos', rCorr.estado === 200 &&
+      codigosCorreccion.idHogar === c1.idHogar && codigosCorreccion.nuv === c1.nuv && codigosCorreccion.idFamilia === c1.idFamilia,
+      'estado ' + rCorr.estado + ' ' + JSON.stringify(codigosCorreccion));
+
+    const reenvioSinCodigos = fichaValida(sello + 'c2');
+    reenvioSinCodigos.codigoFicha = cod2.codigoFicha;
+    reenvioSinCodigos.idHogar = null;
+    const rReenvio = await enviar(reenvioSinCodigos);
+    const codigosReenvio = (rReenvio.cuerpo && rReenvio.cuerpo.codigos) || {};
+    const viviendasCod2 = Number((await cliente.query(
+      'SELECT count(DISTINCT hogar_id) AS n FROM aps.ficha WHERE codigo = $1', [cod2.codigoFicha])).rows[0].n);
+    verificar('Reenviar una ficha nueva sin códigos => la misma vivienda, mismos códigos',
+      rReenvio.estado === 200 && codigosReenvio.idHogar === c2.idHogar && codigosReenvio.nuv === c2.nuv && viviendasCod2 === 1,
+      'estado ' + rReenvio.estado + ' ' + JSON.stringify([codigosReenvio.idHogar, c2.idHogar]));
+
     console.log('\n=== 6b. Corregir desde cualquier dispositivo: la ficha vuelve entera ===');
 
     const completa = fichaValida(sello + 'fc');
@@ -590,7 +685,10 @@ async function correrPruebas() {
         e.direccionComponentes && e.direccionComponentes.viaTipo === 'CL' && e.direccionComponentes.viaBis === true &&
         e.direccionComponentes.viaCuadrante === 'SUR' && e.direccionComponentes.complementos.length === 1,
         JSON.stringify(e.direccionComponentes));
-      verificar('  ítem 26 (referencia de la familia) vuelve igual', e.idFamilia === 'REF-FAM-77', e.idFamilia);
+      verificar('  ítems 25 y 26 y NUV vuelven con los códigos que asignó el servidor (el digitado no se toma)',
+        /^T48MT01H\d{4}$/.test(e.idHogar) && e.idFamilia === e.idHogar + 'F0001' &&
+        e.familias[0].idFamilia === e.idFamilia && /^NUV\d{4,}$/.test(e.nuv),
+        JSON.stringify([e.idHogar, e.idFamilia, e.nuv]));
       verificar('  vivienda: conteos, animales y carné', e.personasEnVivienda === 4 && e.perros === 2 &&
         orden(e.animales) === orden(['perros']) && e.carnetAntirrabico === 'si',
         JSON.stringify([e.personasEnVivienda, e.perros, e.animales, e.carnetAntirrabico]));
@@ -630,7 +728,7 @@ async function correrPruebas() {
     /* RN-016: el tope de 30 días es para registrar, no para corregir. */
     await cliente.query(`UPDATE aps.ficha SET fecha_diligenciamiento = CURRENT_DATE - 45 WHERE codigo = $1`, [completa.codigoFicha]);
     const vieja = await leer(completa.codigoFicha, maestro.cabeceras);
-    const rVieja = vieja.estado === 200 ? await enviar(vieja.cuerpo.encuesta, maestro.cabeceras) : { estado: vieja.estado };
+    const rVieja = vieja.estado === 200 ? await enviar(Object.assign({}, vieja.cuerpo.encuesta, { esCorreccion: true }), maestro.cabeceras) : { estado: vieja.estado };
     verificar('Corregir una ficha ya registrada de hace 45 días => 200 (RN-016 no aplica)', rVieja.estado === 200,
       'estado ' + rVieja.estado + ' ' + JSON.stringify(rVieja.cuerpo || {}).slice(0, 300));
     const nuevaVieja = fichaValida(sello + 'fv');
@@ -700,8 +798,10 @@ async function correrPruebas() {
       anx2.familias[0].integrantes[0].numeroId = '1144055099';
       const rAnx2 = await enviar(anx2);
       const consecutivos = (await cliente.query(`
-        SELECT h.codigo, h.consecutivo_sispro FROM aps.hogar h WHERE h.codigo = ANY($1) ORDER BY h.codigo`,
-        [[anx.idHogar, anx2.idHogar]])).rows;
+        SELECT h.codigo, h.consecutivo_sispro
+          FROM aps.ficha f JOIN aps.hogar h ON h.id = f.hogar_id
+         WHERE f.codigo = ANY($1) ORDER BY h.codigo`,
+        [[anx.codigoFicha, anx2.codigoFicha]])).rows;
       verificar('  otro hogar del microterritorio => consecutivo distinto',
         rAnx2.estado === 200 && consecutivos.length === 2 &&
         consecutivos[0].consecutivo_sispro !== consecutivos[1].consecutivo_sispro,
@@ -1146,9 +1246,7 @@ async function correrPruebas() {
     /* Limpieza. El orden importa: `familia` cuelga de `hogar` y la ficha
        arrastra en cascada su vivienda, familia_ficha e integrantes, pero no
        la identidad persistente del hogar ni la de la familia (RN-025/026). */
-    await cliente.query('DELETE FROM aps.ficha WHERE codigo LIKE $1', ['F-TEST-%']);
-    await cliente.query('DELETE FROM aps.familia WHERE codigo LIKE $1', ['FM-TEST-%']);
-    await cliente.query('DELETE FROM aps.hogar WHERE codigo LIKE $1', ['HG-TEST-%']);
+    await borrarFichasDePrueba(cliente);
     await cliente.query('DELETE FROM aps.persona WHERE numero_id = ANY($1)', [['1144099887', 'E1234567']]);
     await cliente.end();
   }

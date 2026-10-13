@@ -233,19 +233,25 @@ Latitud y longitud deben registrarse siempre **como par**: no se admite una sin 
 
 ### RN-025 — Número de identificación del hogar
 
-**Ítem 25.** **Llave alfanumérica única generada por el sistema**, de sólo lectura, que identifica de forma unívoca la unidad de vivienda física caracterizada.
+**Ítem 25.** **Llave alfanumérica única asignada por el sistema**, de sólo lectura, que identifica de forma unívoca la unidad de vivienda física caracterizada. **No se digita**: el servidor la asigna al guardar la ficha.
 
-Se conserva estable entre visitas: si el EBS regresa a la misma dirección georreferenciada, el sistema debe recuperar el hogar existente en lugar de crear uno nuevo. Es la llave que se hereda en los ítems 112, 121 y 131.
+Estructura (anexo técnico SI-APS, variable 123): territorio + microterritorio + **H** + consecutivo de **4 dígitos que reinicia en `0001` en cada microterritorio**. Ejemplo: la quinta vivienda de T53/MT03 es `T53MT03H0005`; la primera de T53/MT04 es `T53MT04H0001`. El archivo plano antepone departamento, subregión y municipio.
 
-Estructura: la letra H seguida de 4 dígitos (`H0001`), igual que el número de la familia, según las observaciones de la E.S.E. Se verifica como **advertencia**.
+El consecutivo se toma del microterritorio en el momento de guardar, bajo bloqueo, para que dos fichas guardadas a la vez no reciban el mismo número ni queden huecos. Por eso lo asigna el servidor y no el dispositivo: una ficha capturada sin conexión recibe sus códigos al sincronizarse.
+
+Una corrección o el reenvío de la misma visita conservan los códigos. Si la corrección cambia el microterritorio, la vivienda recibe el consecutivo siguiente del nuevo microterritorio. Es la llave que se hereda en los ítems 112, 121 y 131: el servidor completa esas llaves con el código asignado.
+
+**NUV — número único de vivienda.** Cada vivienda recibe además un consecutivo global, `NUV0001`, `NUV0002`…, que **no se reinicia nunca** (ni por territorio ni por microterritorio). Es interno: se muestra en la ficha y en el historial, pero no va en el archivo plano.
+
+> Las viviendas registradas antes de este cambio (con el código digitado a mano) se pasaron al formato automático con `bd/08_codigos_vivienda.sql`, que también les asignó su NUV en orden de creación y actualizó las llaves de los planes de cuidado.
 
 ### RN-026 — Número de identificación de la familia
 
-**Ítem 26.** **Llave alfanumérica única generada por el sistema**, de sólo lectura, subordinada al ID del hogar (RN-025). Una vivienda puede contener varias familias; cada una recibe su propio identificador.
+**Ítem 26.** **Llave alfanumérica única asignada por el sistema**, de sólo lectura, subordinada al código de la vivienda (RN-025). Una vivienda puede contener varias familias; cada una recibe su propio identificador.
+
+Estructura (anexo técnico SI-APS, variable 124): código de la vivienda + **F** + consecutivo de **4 dígitos que reinicia en `0001` en cada vivienda**. Ejemplo: `T53MT03H0005F0001`; una segunda familia de esa vivienda es `T53MT03H0005F0002`. La ficha técnica (variable 10) numeraba las familias por microterritorio; se sigue el anexo, que es el que valida el archivo plano.
 
 Es la llave que se hereda en los ítems 122 y 132. La cantidad de identificadores de familia creados bajo un hogar debe coincidir exactamente con el valor del ítem 28.
-
-**Estructura de la ficha técnica APS124CCFP (variable 10):** la letra F seguida de un serial de 4 dígitos por microterritorio (`F0001`, `F0002`…). Se verifica como **advertencia**.
 
 ### RN-027 — Estrato socioeconómico
 

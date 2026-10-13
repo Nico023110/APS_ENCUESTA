@@ -81,16 +81,12 @@ const TALLA_MINIMA_CM = 20;
 const TALLA_MAXIMA_CM = 250;
 const IMC_MAXIMO = 200;
 
-/* Ficha técnica APS124CCFP — estructura de los códigos que digita el equipo.
-   La ficha fija la forma de cada código (variables 10, 15 y 19); el código
-   del hogar no existe en la ficha y sigue la misma forma que el de la
-   familia, como pidió la E.S.E. en sus observaciones. Se verifican como
-   advertencia, no como bloqueo: hay fichas y equipos registrados antes de
-   adoptar la estructura y deben poder corregirse y guardarse. */
+/* Ficha técnica APS124CCFP — estructura del código del equipo (variable 15).
+   Se verifica como advertencia, no como bloqueo: hay equipos registrados
+   antes de adoptar la estructura y sus fichas deben poder guardarse. Los
+   códigos de la ficha, la vivienda y la familia (ítems 15, 25 y 26) no se
+   digitan: los asigna el sistema (captura_local.js y guardar_encuesta.js). */
 const FORMATO_CODIGO_EBS = /^EBS\d{3}$/;      // variable 15 — ítem 10
-const FORMATO_CODIGO_FICHA = /^CF\d{3}$/;     // variable 19 — ítem 15
-const FORMATO_CODIGO_HOGAR = /^H\d{4}$/;      // observaciones — ítem 25
-const FORMATO_CODIGO_FAMILIA = /^F\d{4}$/;    // variable 10 — ítem 26
 
 /* Ficha técnica, variable 9 — el punto de referencia se escribe «de manera
    clara y concreta, usando como máximo 200 caracteres». */
@@ -772,39 +768,10 @@ const REGLAS_BLOQUE_3 = [
     mensaje: 'El punto de referencia admite máximo ' + MAX_PUNTO_REFERENCIA +
       ' caracteres. Escríbalo de manera clara y concreta.'
   },
-  {
-    codigo: 'RN-025',
-    campo: 'idHogar',
-    aplica: function (d) { return d.idHogar !== undefined; },
-    valida: function (d) { return !esVacio(d.idHogar); },
-    mensaje: 'El identificador del hogar lo genera el sistema y no puede quedar vacío.'
-  },
-  {
-    codigo: 'RN-025',
-    campo: 'idHogar',
-    severidad: SEVERIDAD.ADVERTENCIA,
-    aplica: function (d) { return !esVacio(d.idHogar); },
-    valida: function (d) { return FORMATO_CODIGO_HOGAR.test(String(d.idHogar).trim()); },
-    mensaje: 'El código del hogar se estructura como H seguida de 4 dígitos (H0001), igual que el de la familia. ' +
-      'Verifique el código.'
-  },
-  {
-    codigo: 'RN-026',
-    campo: 'idFamilia',
-    aplica: function (d) { return d.idFamilia !== undefined; },
-    valida: function (d) { return !esVacio(d.idFamilia); },
-    mensaje: 'El identificador de la familia lo genera el sistema y no puede quedar vacío.'
-  },
-  {
-    // Ficha técnica, variable 10: F más un serial de 4 dígitos por microterritorio.
-    codigo: 'RN-026',
-    campo: 'idFamilia',
-    severidad: SEVERIDAD.ADVERTENCIA,
-    aplica: function (d) { return !esVacio(d.idFamilia); },
-    valida: function (d) { return FORMATO_CODIGO_FAMILIA.test(String(d.idFamilia).trim()); },
-    mensaje: 'La ficha técnica estructura el número de la familia como F seguida de un serial de 4 dígitos ' +
-      '(F0001, F0002…). Verifique el código.'
-  },
+  /* RN-025 / RN-026 — Los códigos de la vivienda y de la familia (ítems 25 y
+     26) y el NUV no se digitan ni se validan aquí: el servidor los asigna al
+     guardar (guardar_encuesta.js, 08_codigos_vivienda.sql). Una ficha nueva
+     llega sin ellos y una corrección conserva los suyos. */
   {
     codigo: 'RN-027',
     campo: 'estrato',

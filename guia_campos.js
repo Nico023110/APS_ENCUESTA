@@ -163,19 +163,31 @@ const GUIA_CAMPOS = {
       'o nomenclatura.'
   },
 
+  nuv: {
+    variable: null,
+    fuente: 'Código interno de la E.S.E. · no va en el archivo plano',
+    que: 'Número único de vivienda: un consecutivo de toda la base que no se reinicia nunca, sin importar el ' +
+      'territorio ni el microterritorio.',
+    como: 'No se digita: el sistema lo asigna al guardar la ficha (NUV0001, NUV0002…). Una ficha guardada sin ' +
+      'conexión lo recibe al sincronizarse.'
+  },
+
   idHogar: {
     variable: null,
-    fuente: 'Observaciones de la E.S.E. Ladera',
-    que: 'Código de la unidad de vivienda física. Se conserva entre visitas: al regresar a la misma vivienda se usa ' +
-      'el mismo código.',
-    como: 'La letra H seguida de 4 dígitos (H0001, H0002…), con la misma estructura que el número de la familia.'
+    fuente: 'Anexo técnico SI-APS (APS124CCFP) · variable 123',
+    que: 'Código de la vivienda: territorio y microterritorio seguidos de la letra H y un consecutivo de 4 dígitos ' +
+      'que reinicia en H0001 en cada microterritorio.',
+    como: 'No se digita: el sistema lo asigna al guardar con el siguiente consecutivo del microterritorio (por ' +
+      'ejemplo T53MT03H0005). Al corregir la ficha se conserva.'
   },
 
   idFamilia: {
-    variable: '10',
-    que: 'Código que permite identificar a cada una de las familias caracterizadas.',
-    como: 'La letra F seguida de un serial de 4 dígitos, de F0001 hasta el total de familias visitadas en el ' +
-      'microterritorio (F0001, F0002, F0003…).'
+    variable: null,
+    fuente: 'Anexo técnico SI-APS (APS124CCFP) · variable 124',
+    que: 'Código que identifica a cada familia caracterizada: el de la vivienda seguido de la letra F y un ' +
+      'consecutivo de 4 dígitos que reinicia en F0001 en cada vivienda.',
+    como: 'No se digita: el sistema lo asigna al guardar (por ejemplo T53MT03H0005F0001; una segunda familia de la ' +
+      'misma vivienda recibe F0002).'
   },
 
   estrato: {

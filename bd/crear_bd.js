@@ -38,13 +38,16 @@ const SCRIPTS = [
   { archivo: '06_migraciones.sql', descripcion: 'Migraciones sobre bases ya creadas' },
   /* Generado desde anexo.js (node bd/gen_anexo.js): las variables del anexo
      técnico SI-APS. También idempotente. */
-  { archivo: '07_anexo_sispro.sql', descripcion: 'Variables del anexo técnico SI-APS' }
+  { archivo: '07_anexo_sispro.sql', descripcion: 'Variables del anexo técnico SI-APS' },
+  /* Va después del 07: usa el consecutivo por microterritorio que crea.
+     Idempotente. */
+  { archivo: '08_codigos_vivienda.sql', descripcion: 'Códigos automáticos de vivienda y familia, y NUV' }
 ];
 
 /* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
    seed de catálogos (todo ON CONFLICT) y las migraciones. El seed va primero
    porque las migraciones validan contra sus dominios. */
-const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql'];
+const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN
