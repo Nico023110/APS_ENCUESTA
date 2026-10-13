@@ -114,7 +114,9 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 ### RN-007 — Territorio
 
-**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud (identificadores `T01` a `T110`). El **Anexo A** detalla los microterritorios de `T48` a `T84`; los demás territorios entran al catálogo con sus cuatro microterritorios (`MT01`–`MT04`) sin nombre ni comuna hasta que se disponga del detalle, y por tanto no se tratan como rurales.
+**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud. **Sólo se ofrecen los territorios vigentes: `T48` a `T84`**, los que atiende la E.S.E. según su listado de territorios y microterritorios (octubre de 2026), cada uno con sus cuatro microterritorios con nombre y comuna (**Anexo A**).
+
+Los identificadores `T01`…`T47` y `T85`…`T110` permanecen en el catálogo marcados como no vigentes (`cat.territorio.vigente = false`, sin nombre ni comuna): no se eligen en una ficha nueva, pero una ficha antigua que los tenga se sigue leyendo, corrigiendo y aceptando en el servidor.
 
 El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado".
 

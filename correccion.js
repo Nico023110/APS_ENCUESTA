@@ -186,6 +186,13 @@ function cargarEncuestaEnFormulario(encuesta) {
 
   prepararEstructura(encuesta, planes);
 
+  /* Una ficha antigua puede traer un territorio que ya no está vigente: se
+     agrega a la lista sólo para esta corrección, para que se vea y se guarde
+     igual en vez de quedar como dato que no se pudo poner. */
+  if (encuesta.territorio && typeof repintarTerritorios === 'function') {
+    repintarTerritorios(encuesta.territorio);
+  }
+
   /* El consentimiento va primero y solo: mientras esté sin responder, el
      `fieldset` de captura ignora cualquier valor que se le ponga. */
   aplicarValorEnFormulario(formulario, 'consentimiento', encuesta.consentimiento || 'si');

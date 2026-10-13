@@ -722,6 +722,21 @@ const CAT_TERRITORIOS = {
   ]
 };
 
+/* Territorios vigentes: los que la E.S.E. Red de Salud de Ladera atiende,
+   según su listado de territorios y microterritorios (Territorios_
+   Microterritorio.xlsx, octubre de 2026): T48 a T84, los mismos 37 del Anexo
+   A, con 4 microterritorios cada uno. Sólo éstos se ofrecen en el ítem 7.
+   Los demás (T01…T47 y T85…T110) siguen en CAT_TERRITORIOS para leer y
+   corregir fichas antiguas que los tengan, pero ya no se eligen. Con red,
+   la lista se toma de la base (cat.territorio.vigente): ver
+   aplicarCatalogosDinamicos. */
+const TERRITORIOS_VIGENTES = [];
+for (let n = 48; n <= 84; n++) TERRITORIOS_VIGENTES.push('T' + n);
+
+function territorioVigente(codigoTerritorio) {
+  return TERRITORIOS_VIGENTES.indexOf(codigoTerritorio) !== -1;
+}
+
 // La comuna es homogénea dentro de cada territorio: se toma del primer microterritorio.
 function comunaDeTerritorio(codigoTerritorio) {
   const microterritorios = CAT_TERRITORIOS[codigoTerritorio];
@@ -1996,15 +2011,15 @@ function fijarCatalogosDinamicos(data) {
       CAT_UZPE_VIGENTES.push(r);
     });
   }
+  /* La base manda sólo los territorios vigentes. Se actualizan esos y pasan a
+     ser la lista que se ofrece; los que no llegan no se borran del catálogo:
+     una ficha antigua que los tenga debe poder abrirse y corregirse. */
   if (data.territorios) {
-    for (const key in CAT_TERRITORIOS) {
-      if (Object.prototype.hasOwnProperty.call(CAT_TERRITORIOS, key)) {
-        delete CAT_TERRITORIOS[key];
-      }
-    }
+    TERRITORIOS_VIGENTES.length = 0;
     for (const key in data.territorios) {
       if (Object.prototype.hasOwnProperty.call(data.territorios, key)) {
         CAT_TERRITORIOS[key] = data.territorios[key];
+        TERRITORIOS_VIGENTES.push(key);
       }
     }
   }

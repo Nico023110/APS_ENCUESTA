@@ -39,7 +39,7 @@ const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.j
   'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
-window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo };');
+window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo, repintarTerritorios };');
 
 window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
 
@@ -532,6 +532,26 @@ async function cerrarPruebas() {
   await esperarValidacionEnVivo();
   check('Documento con puntos => se registra 1144099887 y no queda error',
     inputNumero.value === '1144099887' && !campoNumero.classList.contains('has-error'), inputNumero.value);
+
+  console.log('\n=== 14a. Territorios vigentes de la E.S.E. (T48 a T84) ===');
+  const opcionesTerritorio = $$('#territorio option').map(function (o) { return o.value; }).filter(Boolean);
+  check('El ítem 7 ofrece sólo los 37 territorios del listado (T48 a T84)',
+    opcionesTerritorio.length === 37 && opcionesTerritorio[0] === 'T48' && opcionesTerritorio[36] === 'T84',
+    opcionesTerritorio.length + ' ' + opcionesTerritorio[0] + '…' + opcionesTerritorio[opcionesTerritorio.length - 1]);
+  check('  sin los no vigentes (T01, T110)',
+    opcionesTerritorio.indexOf('T01') === -1 && opcionesTerritorio.indexOf('T110') === -1);
+  setVal('#territorio', 'T53');
+  check('  y T53 trae sus 4 microterritorios con nombre',
+    $$('#microterritorio option').filter(function (o) { return o.value; }).length === 4 &&
+    /Siloé/.test($('#microterritorio').textContent), $('#microterritorio').textContent);
+  window.__api.repintarTerritorios('T05');
+  check('Una ficha antigua con T05 puede mostrarlo al corregirla',
+    $$('#territorio option').some(function (o) { return o.value === 'T05'; }));
+  window.__api.repintarTerritorios();
+  setVal('#territorio', '');
+  window.__api.repintarTerritorios();
+  check('  y al volver a una ficha nueva T05 deja de ofrecerse',
+    !$$('#territorio option').some(function (o) { return o.value === 'T05'; }));
 
   console.log('\n=== 14b. Ficha técnica APS124CCFP ===');
 

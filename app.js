@@ -421,20 +421,27 @@ function inicializarCatalogosDelFormulario() {
   llenarSelect('ruralPredioTipo', CAT_TIPO_PREDIO_RURAL, { placeholder: '—' });
 }
 
-function catalogoTerritorios() {
+/* Sólo se ofrecen los territorios vigentes (TERRITORIOS_VIGENTES). `incluir`
+   añade uno no vigente cuando ya viene en la ficha —una corrección de una
+   ficha antigua—: sin la opción, el <select> no podría mostrarlo. */
+function catalogoTerritorios(incluir) {
   return Object.keys(CAT_TERRITORIOS).map(function (codigo) {
-    return { valor: codigo, etiqueta: etiquetaTerritorio(codigo) };
+    return {
+      valor: codigo,
+      etiqueta: etiquetaTerritorio(codigo),
+      vigente: territorioVigente(codigo) || codigo === incluir
+    };
   });
 }
 
 /** Vuelve a llenar el ítem 7 con el catálogo vigente sin perder la selección. */
-function repintarTerritorios() {
+function repintarTerritorios(incluir) {
   const select = document.getElementById('territorio');
   if (!select) return;
   const elegido = select.value;
   const micro = document.getElementById('microterritorio');
   const microElegido = micro ? micro.value : '';
-  llenarSelect('territorio', catalogoTerritorios());
+  llenarSelect('territorio', catalogoTerritorios(incluir || elegido));
   if (elegido && CAT_TERRITORIOS[elegido]) {
     select.value = elegido;
     actualizarMicroterritorios();

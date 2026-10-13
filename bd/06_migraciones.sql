@@ -213,4 +213,23 @@ UPDATE cat.eapb SET vigente = false WHERE codigo = 'EPS026';
    ------------------------------------------------------------------------- */
 ALTER TABLE aps.ficha ADD COLUMN IF NOT EXISTS referencia_familia text;
 
+/* -------------------------------------------------------------------------
+   2026-10 — Territorios vigentes de la E.S.E. (ítems 7 y 8, RN-007, RN-008)
+   -------------------------------------------------------------------------
+   El listado de territorios y microterritorios de la E.S.E. Red de Salud de
+   Ladera (Territorios_Microterritorio.xlsx) trae T48 a T84, cada uno con sus
+   4 microterritorios; nombres y comunas ya coincidían con el Anexo A. Sólo
+   ésos quedan vigentes y se ofrecen en el formulario. T01…T47 y T85…T110 no
+   se borran —un hogar ya guardado puede referirlos—: se marcan no vigentes.
+   Idempotente: fija la vigencia, no la alterna.
+   ------------------------------------------------------------------------- */
+UPDATE cat.territorio
+   SET vigente = (substring(codigo FROM 2)::int BETWEEN 48 AND 84)
+ WHERE codigo ~ '^T[0-9]+$';
+
+UPDATE cat.microterritorio m
+   SET vigente = t.vigente
+  FROM cat.territorio t
+ WHERE t.codigo = m.territorio_codigo;
+
 COMMIT;
