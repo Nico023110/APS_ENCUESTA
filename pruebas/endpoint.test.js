@@ -537,6 +537,25 @@ async function correrPruebas() {
     verificar('  Sexo conservado', g.sexo === 'mujer', g.sexo);
     verificar('  Estado cerrada', g.estado === 'cerrada', g.estado);
 
+    /* «Ver» del historial: obtener_ficha trae las familias con lo que
+       identifica a sus integrantes, y nada de los grupos sensibles. */
+    const detalle = await fetch(BASE + '/api/obtener_ficha?codigo=' + encodeURIComponent(buena.codigoFicha),
+      { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+    const familiaDetalle = (detalle.familias || [])[0] || {};
+    const integranteDetalle = (familiaDetalle.integrantes || [])[0] || {};
+    verificar('  el detalle trae la fecha de diligenciamiento sin hora',
+      /^\d{4}-\d{2}-\d{2}$/.test(String(detalle.fechaDiligenciamiento)), String(detalle.fechaDiligenciamiento));
+    verificar('  el detalle trae la familia con el código que le asignó el servidor',
+      (detalle.familias || []).length === 1 && /H\d{4}F0001$/.test(String(familiaDetalle.idFamilia)),
+      String(JSON.stringify(detalle.familias)).slice(0, 200));
+    verificar('  y la identificación de su integrante',
+      integranteDetalle.primerNombre === 'Ana' && integranteDetalle.numeroId === '1144099887' &&
+      integranteDetalle.fechaNacimiento === '1996-05-10' && integranteDetalle.rolFamiliar === 'responsable_economico',
+      JSON.stringify(integranteDetalle));
+    verificar('  sin datos de los grupos sensibles (RN-224)',
+      !('orientacionSexual' in integranteDetalle) && !('pertenenciaEtnica' in integranteDetalle) &&
+      !('enfermedadesNoTransmisibles' in integranteDetalle), Object.keys(integranteDetalle).join(','));
+
     /* Observaciones del equipo (2026-09): territorios T01–T110, líder
        derivado en Hogar (RN-019), familia declarada ausente (RN-028) y ficha
        que igual se guarda. Desde el anexo técnico la nacionalidad es el país

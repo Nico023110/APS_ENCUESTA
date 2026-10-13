@@ -70,6 +70,11 @@ Consecuencias en la interfaz:
   confirma a quien no le corresponde.
 - Cada consulta del detalle de una ficha queda en `aud.acceso_sensible`
   (RN‑224.2).
+- El detalle (**Ver**) muestra cada familia de la vivienda con lo que identifica
+  a sus integrantes —nombre, documento, fecha de nacimiento, sexo y rol—,
+  también a quien puede ver la ficha pero no corregirla. Los grupos sensibles de
+  RN‑224 (salud, etnia, orientación sexual, violencias) sólo llegan con la ficha
+  completa de **Corregir**.
 - **Corregir** funciona desde cualquier dispositivo. Si la ficha no está en el
   equipo, se trae completa de la base (`/api/ficha_completa`) con la misma
   matriz: el maestro y el administrador corrigen cualquiera, el profesional las

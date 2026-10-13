@@ -9,14 +9,12 @@
 
    NO ES LA FICHA COMPLETA
 
-   Deliberadamente no reconstruye familias, integrantes ni planes de
-   cuidado: eso es lo que usa «Corregir» para repoblar el formulario entero,
-   y reunirlo exige recorrer una docena de tablas más y siete pasos de
-   enrutado inverso (el que hace `correccion.js` al revés). Este endpoint
-   sólo cubre lo que el modal de detalle muestra hoy —los datos de la ficha,
-   la vivienda y el entorno—, que es una consulta plana sin esa complejidad.
-   Por eso «Corregir» sigue reservado a las fichas que ya están en el
-   dispositivo: no hay de dónde traer el resto todavía.
+   Sólo cubre lo que el modal de detalle muestra: los datos de la ficha, la
+   vivienda y el entorno, y de cada familia su código, su tipo y lo que
+   identifica a sus integrantes —nombre, documento, nacimiento, sexo y rol—.
+   Ninguno de los grupos sensibles de RN-224 (salud, etnia, orientación,
+   violencias): ésos y los planes de cuidado los trae `ficha_completa.js`
+   para «Corregir», que exige poder corregir la ficha.
    ========================================================================= */
 
 'use strict';
@@ -65,7 +63,8 @@ module.exports = async (req, res) => {
         f.municipio_codigo,
         f.uzpe_codigo,
         f.prestador_codigo,
-        f.fecha_diligenciamiento,
+        -- texto: un Date viajaría como «…T05:00:00.000Z», con hora y zona
+        to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha_diligenciamiento,
         f.entorno_abordaje,
         f.nombre_institucion,
         f.lider_entorno,
@@ -125,6 +124,27 @@ module.exports = async (req, res) => {
       console.warn('No se pudo registrar el acceso en auditoría:', error.message);
     });
 
+    /* Una vivienda puede tener varias familias (RN-028): todas, en su orden
+       de captura, con sus integrantes. */
+    const familias = (await consultar(`
+      SELECT ff.id, fa.codigo, ff.tipo_familia, ff.numero_integrantes
+        FROM aps.familia_ficha ff
+        JOIN aps.familia fa ON fa.id = ff.familia_id
+       WHERE ff.ficha_id = $1
+       ORDER BY fa.consecutivo, ff.id
+    `, [fila.ficha_id])).rows;
+
+    const integrantes = familias.length === 0 ? [] : (await consultar(`
+      SELECT i.familia_ficha_id, i.rol_familiar,
+             p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
+             p.primer_apellido, p.segundo_apellido,
+             to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.sexo
+        FROM aps.integrante i
+        JOIN aps.persona p ON p.id = i.persona_id
+       WHERE i.familia_ficha_id = ANY($1::bigint[])
+       ORDER BY i.familia_ficha_id, i.orden, i.id
+    `, [familias.map(function (f) { return f.id; })])).rows;
+
     res.status(200).json({
       codigoFicha: fila.codigo_ficha,
       consentimiento: aSiNo(fila.consentimiento),
@@ -173,7 +193,30 @@ module.exports = async (req, res) => {
       vectores: fila.vectores,
       riesgosAccidente: fila.riesgos_accidente || [],
       factoresContaminacion: fila.factores_contaminacion || [],
-      planCuidado: resumenPlanDesdeFila(fila)
+      planCuidado: resumenPlanDesdeFila(fila),
+
+      familias: familias.map(function (familia) {
+        return {
+          idFamilia: familia.codigo,
+          tipoFamilia: familia.tipo_familia,
+          numeroIntegrantes: familia.numero_integrantes,
+          integrantes: integrantes
+            .filter(function (i) { return String(i.familia_ficha_id) === String(familia.id); })
+            .map(function (i) {
+              return {
+                primerNombre: i.primer_nombre,
+                segundoNombre: i.segundo_nombre,
+                primerApellido: i.primer_apellido,
+                segundoApellido: i.segundo_apellido,
+                tipoId: i.tipo_id,
+                numeroId: i.numero_id,
+                fechaNacimiento: i.fecha_nacimiento,
+                sexo: i.sexo,
+                rolFamiliar: i.rol_familiar
+              };
+            })
+        };
+      })
     });
   } catch (err) {
     console.error('Error al obtener el detalle de la ficha:', err);

@@ -1781,6 +1781,53 @@ function textoSiNo(valor) {
   return null;
 }
 
+/* «ANA PÉREZ GÓMEZ · CC 1144099887 · 30 años · Mujer · Cónyuge o compañero(a)».
+   La edad es la que tenía el día de la visita, como la calculan las reglas. */
+function describirIntegrante(integrante, fechaReferencia) {
+  const nombre = [integrante.primerNombre, integrante.segundoNombre,
+    integrante.primerApellido, integrante.segundoApellido].filter(Boolean).join(' ');
+  const documento = [integrante.tipoId, integrante.numeroId].filter(Boolean).join(' ');
+  const edad = calcularEdad(integrante.fechaNacimiento, fechaReferencia);
+
+  return [
+    nombre,
+    documento,
+    edad ? describirEdad(edad) : null,
+    etiquetaDeCatalogo(CAT_SEXO, integrante.sexo),
+    etiquetaDeCatalogo(CAT_ROL_FAMILIAR, integrante.rolFamiliar)
+  ].filter(Boolean).join(' · ') || null;
+}
+
+/* Secciones 4 y 5 del instrumento: una por familia, con su código y sus
+   integrantes. Una vivienda puede tener varias familias (RN-028), y el ítem 26
+   de los datos de la vivienda sólo trae el código de la primera. */
+function construirSeccionesFamilias(encuesta) {
+  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+  if (familias.length === 0) {
+    return construirSeccionDetalle('Familias e integrantes', [
+      { etiqueta: 'Familias caracterizadas', valor: 'Ninguna' }
+    ]);
+  }
+
+  return familias.map(function (familia, indice) {
+    const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
+    const filasIntegrantes = integrantes.length > 0
+      ? integrantes.map(function (integrante, i) {
+        return {
+          etiqueta: 'Integrante ' + (i + 1),
+          valor: describirIntegrante(integrante, encuesta.fechaDiligenciamiento)
+        };
+      })
+      : [{ etiqueta: 'Integrantes', valor: null }];
+
+    return construirSeccionDetalle('Familia ' + (indice + 1) + ' de ' + familias.length, [
+      { etiqueta: 'N.° Identificación de la familia', valor: familia.idFamilia },
+      { etiqueta: 'Tipo de familia', valor: etiquetaDeCatalogo(CAT_TIPO_FAMILIA, familia.tipoFamilia) },
+      { etiqueta: 'N.° de integrantes', valor: familia.numeroIntegrantes }
+    ].concat(filasIntegrantes));
+  }).join('');
+}
+
 async function abrirModalDetalle(id) {
   let encuesta = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
   if (!encuesta) {
@@ -1882,6 +1929,7 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Criaderos o reservorios de vectores', valor: textoSiNo(encuesta.vectores) },
       { etiqueta: 'Factores de contaminación', valor: etiquetasDeCatalogo(CAT_FACTORES_CONTAMINACION, encuesta.factoresContaminacion) }
     ]) +
+    construirSeccionesFamilias(encuesta) +
     construirSeccionDetalle('Plan de cuidado (RN-220)', [
       { etiqueta: 'Estado', valor: describirEstadoPlan(encuesta.planCuidado) },
       { etiqueta: 'Acciones registradas', valor: encuesta.planCuidado ? encuesta.planCuidado.accionesRegistradas : null },
