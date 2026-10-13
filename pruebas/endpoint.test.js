@@ -479,6 +479,25 @@ async function correrPruebas() {
   verificar('Cuenta desactivada => no puede entrar (403)', desactiva.estado === 200 && entraDesactivada.status === 403,
     'modificar ' + desactiva.estado + ', entrar ' + entraDesactivada.status);
 
+  /* RN-014: el maestro firma con perfil «Otro». El upsert del responsable
+     omitía la aclaración y func_perfil_otro tumbaba la ficha con un 500. */
+  const fichaDeMaestro = fichaValida(sello + 'm1');
+  r = await enviar(fichaDeMaestro, maestro.cabeceras);
+  verificar('Un responsable con perfil «Otro» guarda una ficha => 200', r.estado === 200,
+    'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
+  if (r.estado === 200) {
+    const perfilDb = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    await perfilDb.connect();
+    const responsable = (await perfilDb.query(`
+      SELECT fu.perfil_profesional, fu.perfil_otro
+        FROM aps.ficha f JOIN aps.funcionario fu ON fu.id = f.responsable_id
+       WHERE f.codigo = $1`, [fichaDeMaestro.codigoFicha])).rows[0] || {};
+    await perfilDb.end();
+    verificar('  el responsable conserva el perfil «Otro» con su aclaración',
+      responsable.perfil_profesional === 'otro' && responsable.perfil_otro === 'Usuario maestro',
+      JSON.stringify(responsable));
+  }
+
   console.log('\n=== 6. Ficha válida: se guarda tal como se envió ===');
 
   const buena = fichaValida(sello + 'z');

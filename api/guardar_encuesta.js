@@ -709,20 +709,26 @@ module.exports = async (req, res) => {
     `, [texto(encuesta.equipoSaludId)]);
     const equipoId = equipoRes.rows[0].id;
 
-    /* --- 2. Funcionario responsable (RN-012 a RN-014) --- */
+    /* --- 2. Funcionario responsable (RN-012 a RN-014) ---
+       La aclaración del perfil «Otro» va también en el INSERT: PostgreSQL
+       revisa los CHECK sobre la fila propuesta antes de detectar el
+       conflicto, así que sin ella func_perfil_otro rechaza la ficha aunque
+       el funcionario ya tenga su aclaración guardada. */
     const funcionarioRes = await cliente.query(`
-      INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, activo)
-      VALUES ($1, $2, $3, $4, true)
+      INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, perfil_otro, activo)
+      VALUES ($1, $2, $3, $4, $5, true)
       ON CONFLICT (tipo_id, numero_id) DO UPDATE
         SET nombre_completo = EXCLUDED.nombre_completo,
             perfil_profesional = EXCLUDED.perfil_profesional,
+            perfil_otro = EXCLUDED.perfil_otro,
             activo = true
       RETURNING id
     `, [
       texto(encuesta.responsableTipoId),
       texto(encuesta.responsableNumeroId),
       texto(encuesta.responsableNombre) || texto(encuesta.cabezaFamilia),
-      texto(encuesta.perfilProfesional)
+      texto(encuesta.perfilProfesional),
+      texto(encuesta.perfilProfesionalOtro)
     ]);
     const responsableId = funcionarioRes.rows[0].id;
 
