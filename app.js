@@ -1781,51 +1781,105 @@ function textoSiNo(valor) {
   return null;
 }
 
-/* «ANA PÉREZ GÓMEZ · CC 1144099887 · 30 años · Mujer · Cónyuge o compañero(a)».
-   La edad es la que tenía el día de la visita, como la calculan las reglas. */
-function describirIntegrante(integrante, fechaReferencia) {
+function textoCantidad(n, singular, plural) {
+  return n + ' ' + (n === 1 ? singular : plural);
+}
+
+/* Un integrante en dos líneas: el nombre, y «Responsable económico de la
+   familia · Mujer · 40 años · CC 1144099887». La edad es la que tenía el día
+   de la visita, como la calculan las reglas. */
+function construirIntegranteDetalle(integrante, fechaReferencia) {
   const nombre = [integrante.primerNombre, integrante.segundoNombre,
     integrante.primerApellido, integrante.segundoApellido].filter(Boolean).join(' ');
   const documento = [integrante.tipoId, integrante.numeroId].filter(Boolean).join(' ');
   const edad = calcularEdad(integrante.fechaNacimiento, fechaReferencia);
 
-  return [
-    nombre,
-    documento,
-    edad ? describirEdad(edad) : null,
+  const datos = [
+    etiquetaDeCatalogo(CAT_ROL_FAMILIAR, integrante.rolFamiliar),
     etiquetaDeCatalogo(CAT_SEXO, integrante.sexo),
-    etiquetaDeCatalogo(CAT_ROL_FAMILIAR, integrante.rolFamiliar)
-  ].filter(Boolean).join(' · ') || null;
+    edad ? describirEdad(edad) : null
+  ].filter(Boolean).map(escaparHtml);
+  if (documento) datos.push('<span class="mono">' + escaparHtml(documento) + '</span>');
+
+  return (
+    '<li class="detalle-integrante">' +
+      '<span class="detalle-integrante__nombre">' + textoSeguro(nombre) + '</span>' +
+      (datos.length > 0 ? '<span class="detalle-integrante__datos">' + datos.join(' · ') + '</span>' : '') +
+    '</li>'
+  );
 }
 
-/* Secciones 4 y 5 del instrumento: una por familia, con su código y sus
-   integrantes. Una vivienda puede tener varias familias (RN-028), y el ítem 26
-   de los datos de la vivienda sólo trae el código de la primera. */
-function construirSeccionesFamilias(encuesta) {
-  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
-  if (familias.length === 0) {
-    return construirSeccionDetalle('Familias e integrantes', [
-      { etiqueta: 'Familias caracterizadas', valor: 'Ninguna' }
-    ]);
+/* Un hogar familiar: su familia, con el código del ítem 26, y sus integrantes.
+   Sin familia es un hogar declarado en el ítem 28 que no estaba en la visita. */
+function construirHogarDetalle(numero, familia, fechaReferencia) {
+  if (!familia) {
+    return (
+      '<li class="detalle-hogar">' +
+        '<div class="detalle-hogar__cabecera">' +
+          '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
+          '<span class="badge badge--warning">Sin caracterizar</span>' +
+        '</div>' +
+        '<p class="detalle-hogar__meta">Declarado en el ítem 28; su familia no estaba en la visita. ' +
+          'Se caracteriza desde Historial → Corregir (RN-028).</p>' +
+      '</li>'
+    );
   }
 
-  return familias.map(function (familia, indice) {
-    const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
-    const filasIntegrantes = integrantes.length > 0
-      ? integrantes.map(function (integrante, i) {
-        return {
-          etiqueta: 'Integrante ' + (i + 1),
-          valor: describirIntegrante(integrante, encuesta.fechaDiligenciamiento)
-        };
-      })
-      : [{ etiqueta: 'Integrantes', valor: null }];
+  const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
+  const declarados = Number(familia.numeroIntegrantes) || 0;
+  const conteo = declarados > integrantes.length
+    ? integrantes.length + ' de ' + declarados + ' integrantes caracterizados'
+    : textoCantidad(integrantes.length, 'integrante', 'integrantes');
+  const meta = [etiquetaDeCatalogo(CAT_TIPO_FAMILIA, familia.tipoFamilia), conteo]
+    .filter(Boolean).map(escaparHtml).join(' · ');
 
-    return construirSeccionDetalle('Familia ' + (indice + 1) + ' de ' + familias.length, [
-      { etiqueta: 'N.° Identificación de la familia', valor: familia.idFamilia },
-      { etiqueta: 'Tipo de familia', valor: etiquetaDeCatalogo(CAT_TIPO_FAMILIA, familia.tipoFamilia) },
-      { etiqueta: 'N.° de integrantes', valor: familia.numeroIntegrantes }
-    ].concat(filasIntegrantes));
-  }).join('');
+  return (
+    '<li class="detalle-hogar">' +
+      '<div class="detalle-hogar__cabecera">' +
+        '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
+        (familia.idFamilia
+          ? '<span class="detalle-hogar__familia">Familia <span class="mono">' + escaparHtml(familia.idFamilia) + '</span></span>'
+          : '') +
+      '</div>' +
+      '<p class="detalle-hogar__meta">' + meta + '</p>' +
+      (integrantes.length > 0
+        ? '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
+          return construirIntegranteDetalle(integrante, fechaReferencia);
+        }).join('') + '</ul>'
+        : '') +
+    '</li>'
+  );
+}
+
+/* Secciones 4 y 5 del instrumento como se ven en terreno: la vivienda alberga
+   uno o varios hogares familiares (ítem 28), cada uno es una familia con su
+   código y sus integrantes, y los hogares declarados que no se caracterizaron
+   quedan a la vista como pendientes (RN-028). */
+function construirSeccionHogares(encuesta) {
+  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+  const declarados = Number(encuesta.hogaresEnVivienda) || 0;
+  const personas = familias.reduce(function (total, familia) {
+    return total + (Array.isArray(familia.integrantes) ? familia.integrantes.length : 0);
+  }, 0);
+
+  const resumen = declarados > familias.length
+    ? [textoCantidad(declarados, 'hogar declarado', 'hogares declarados'),
+      textoCantidad(familias.length, 'caracterizado', 'caracterizados')]
+    : [textoCantidad(familias.length, 'hogar', 'hogares')];
+  resumen.push(textoCantidad(personas, 'persona', 'personas'));
+
+  const hogares = [];
+  for (let i = 0; i < Math.max(declarados, familias.length); i++) {
+    hogares.push(construirHogarDetalle(i + 1, familias[i], encuesta.fechaDiligenciamiento));
+  }
+
+  return (
+    '<div class="detail-section">' +
+      '<h3>Hogares y familias de la vivienda</h3>' +
+      '<p class="detalle-hogares__resumen">' + escaparHtml(resumen.join(' · ')) + '</p>' +
+      (hogares.length > 0 ? '<ol class="detalle-hogares">' + hogares.join('') + '</ol>' : '') +
+    '</div>'
+  );
 }
 
 async function abrirModalDetalle(id) {
@@ -1913,7 +1967,6 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Punto de referencia', valor: encuesta.ubicacionReferencia },
       { etiqueta: 'NUV (número único de vivienda)', valor: encuesta.nuv },
       { etiqueta: 'N.° Identificación del hogar', valor: encuesta.idHogar },
-      { etiqueta: 'N.° Identificación de la familia', valor: encuesta.idFamilia },
       { etiqueta: 'Estrato socioeconómico', valor: etiquetaDeCatalogo(CAT_ESTRATO, encuesta.estrato) },
       { etiqueta: 'N.° hogares en la vivienda', valor: encuesta.hogaresEnVivienda },
       { etiqueta: 'N.° personas en la vivienda', valor: encuesta.personasEnVivienda },
@@ -1929,7 +1982,7 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Criaderos o reservorios de vectores', valor: textoSiNo(encuesta.vectores) },
       { etiqueta: 'Factores de contaminación', valor: etiquetasDeCatalogo(CAT_FACTORES_CONTAMINACION, encuesta.factoresContaminacion) }
     ]) +
-    construirSeccionesFamilias(encuesta) +
+    construirSeccionHogares(encuesta) +
     construirSeccionDetalle('Plan de cuidado (RN-220)', [
       { etiqueta: 'Estado', valor: describirEstadoPlan(encuesta.planCuidado) },
       { etiqueta: 'Acciones registradas', valor: encuesta.planCuidado ? encuesta.planCuidado.accionesRegistradas : null },

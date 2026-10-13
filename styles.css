@@ -1999,6 +1999,90 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--text-primary);
 }
 
+/* Hogares y familias del detalle: la vivienda alberga hogares, cada hogar es
+   una familia y la familia lista a sus integrantes. Un solo nivel de
+   superficie —el hogar sobre lienzo— y los integrantes separados por un pelo:
+   una tarjeta por persona dentro de la del hogar sería caja dentro de caja. */
+.detalle-hogares__resumen {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-label);
+  color: var(--ink-600);
+}
+
+.detalle-hogares {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-3);
+}
+
+.detalle-hogar {
+  padding: var(--s-4);
+  background: var(--ink-50);
+  border-radius: var(--r-core);
+  box-shadow: var(--sh-hair);
+}
+
+.detalle-hogar__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-3);
+}
+
+.detalle-hogar__titulo {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+}
+
+.detalle-hogar__familia {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.detalle-hogar__familia .mono {
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.detalle-hogar__meta {
+  margin: var(--s-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  text-wrap: pretty;
+}
+
+.detalle-integrantes {
+  list-style: none;
+  margin: var(--s-3) 0 0;
+  padding: 0;
+}
+
+.detalle-integrante {
+  padding: var(--s-2) 0;
+  box-shadow: inset 0 1px 0 var(--ink-150);
+}
+
+.detalle-integrante:last-child { padding-bottom: 0; }
+
+.detalle-integrante__nombre {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalle-integrante__datos {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
 /* ================= TOASTS ================= */
 .toast-container {
   position: fixed;
