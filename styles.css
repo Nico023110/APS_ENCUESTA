@@ -1828,6 +1828,85 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   border-top: 1px solid var(--ink-100);
 }
 
+/* Acciones de la ficha: la pendiente (evolucionar el plan) a lo ancho y en
+   tinte azul; las de consulta en una fila de píldoras con ícono; eliminar,
+   un ícono discreto al final. Antes eran cinco botones iguales que se
+   partían en dos filas sin orden y el rojo de eliminar era lo más visible. */
+.acciones-ficha {
+  width: 100%;
+  display: grid;
+  gap: var(--s-2);
+  container-type: inline-size;
+}
+
+/* En una tarjeta angosta (celular) las píldoras dejan el ícono y conservan
+   la palabra: así caben con la papelera en una sola fila. */
+@container (max-width: 320px) {
+  .acciones-ficha__boton i { display: none; }
+  .acciones-ficha__boton { padding: 6px var(--s-3); }
+}
+
+.acciones-ficha__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.acciones-ficha .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-chip);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+
+.acciones-ficha .btn i { font-size: 15px; }
+
+.acciones-ficha__destacada {
+  width: 100%;
+  padding: 9px var(--s-4);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+}
+
+.acciones-ficha__boton {
+  padding: 6px 10px;
+  background: #fff;
+  color: var(--ink-700);
+  box-shadow: var(--sh-hair);
+}
+
+.acciones-ficha__eliminar {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-400);
+}
+
+.acciones-ficha .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.acciones-ficha .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .acciones-ficha__destacada:not(:disabled):hover { background: var(--brand-100); }
+  .acciones-ficha__boton:not(:disabled):hover { color: var(--brand-700); box-shadow: inset 0 0 0 1px var(--brand-300); }
+  .acciones-ficha__eliminar:not(:disabled):hover { background: var(--alert-50); color: var(--alert-700); }
+}
+
 .empty-state {
   text-align: center;
   color: var(--ink-400);
@@ -3393,32 +3472,164 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   opacity: 0.7;
 }
 
-/* Diálogo del maestro para autorizar cambios a un plan registrado. */
-.autorizacion-plan { text-align: left; font-size: var(--fs-label); color: var(--ink-700); }
-.autorizacion-plan__ficha { margin: 0 0 var(--s-3); }
+/* Diálogo del maestro para autorizar cambios a un plan registrado. Alineado
+   a la izquierda como un formulario —se lee y se llena, no es un aviso—, con
+   dos bloques: quién tiene autorización hoy y a quién dársela. */
+.swal-autorizacion .swal2-title {
+  padding: 0;
+  text-align: left;
+  text-wrap: balance;
+}
+.swal-autorizacion .swal2-html-container { margin: var(--s-3) 0 0; padding: 0; text-align: left; }
+.swal-autorizacion .swal2-actions { justify-content: flex-end; width: 100%; margin-top: var(--s-6); }
+.swal-autorizacion .swal2-confirm i { margin-right: 4px; }
+.swal-autorizacion .swal2-validation-message { margin: var(--s-3) 0 0; border-radius: var(--r-control); }
+
+.autorizacion-plan { display: grid; gap: var(--s-5); font-size: var(--fs-label); color: var(--ink-700); }
+
+.autorizacion-plan__intro { margin: 0; color: var(--ink-500); line-height: 1.6; text-wrap: pretty; }
+
+.autorizacion-plan__ficha {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 2px var(--s-2);
+  border-radius: 6px;
+  background: var(--ink-100);
+  color: var(--ink-800);
+  font-weight: 600;
+}
+
+.autorizacion-plan__bloque { display: grid; gap: var(--s-3); }
+
 .autorizacion-plan__titulo {
-  margin: var(--s-4) 0 var(--s-2);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
   font-size: var(--fs-h3);
   font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--ink-900);
 }
-.autorizacion-plan__lista { list-style: none; margin: 0; padding: 0; }
+
+.autorizacion-plan__conteo {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--r-chip);
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-align: center;
+}
+
+.autorizacion-plan__vacio {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+  color: var(--ink-500);
+  font-size: var(--fs-small);
+}
+.autorizacion-plan__vacio i { font-size: 20px; color: var(--ink-400); flex-shrink: 0; }
+
+.autorizacion-plan__lista {
+  list-style: none;
+  margin: 0;
+  padding: var(--s-1) var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+}
+
 .autorizacion-plan__permiso {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--s-3);
-  padding: var(--s-2) 0;
-  box-shadow: inset 0 -1px 0 var(--ink-150);
+  padding: var(--s-3) 0;
 }
-.autorizacion-plan__detalle,
-.autorizacion-plan__vacio,
-.autorizacion-plan__nota { font-size: var(--fs-small); color: var(--ink-500); }
-.autorizacion-plan__vacio { margin: 0; }
-.autorizacion-plan__nota { margin: var(--s-2) 0 0; }
-.autorizacion-plan .field { margin-top: var(--s-3); }
+.autorizacion-plan__permiso + .autorizacion-plan__permiso { box-shadow: inset 0 1px 0 var(--ink-150); }
+
+.autorizacion-plan__avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-100);
+  color: var(--brand-800);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+.autorizacion-plan__persona { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.autorizacion-plan__persona strong { color: var(--ink-900); font-weight: 600; }
+.autorizacion-plan__detalle { font-size: var(--fs-small); color: var(--ink-500); }
+.autorizacion-plan__motivo { font-size: var(--fs-small); color: var(--ink-600); font-style: italic; }
+
+.autorizacion-plan__revocar {
+  padding: 6px var(--s-3);
+  border-radius: var(--r-chip);
+  background: #fff;
+  color: var(--alert-700);
+  box-shadow: inset 0 0 0 1px var(--alert-100);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.autorizacion-plan__campo { display: grid; gap: 6px; }
+.autorizacion-plan__campo label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  font-weight: 500;
+  color: var(--ink-800);
+}
+.autorizacion-plan__opcional { color: var(--ink-400); font-weight: 400; }
+.autorizacion-plan__contador { margin-left: auto; color: var(--ink-400); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
+.autorizacion-plan__ayuda { font-size: var(--fs-small); color: var(--ink-500); }
+
 .autorizacion-plan select,
-.autorizacion-plan textarea { width: 100%; font: inherit; }
+.autorizacion-plan textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+  color: var(--ink-900);
+  font: inherit;
+  font-size: var(--fs-body);
+  resize: vertical;
+}
+.autorizacion-plan select:focus,
+.autorizacion-plan textarea:focus {
+  outline: none;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
+}
+
+.autorizacion-plan__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+  color: var(--brand-800);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+.autorizacion-plan__nota i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .autorizacion-plan__revocar:hover { background: var(--alert-50); }
+}
 
 /* Ficha recuperada del borrador automático. Informa, no alarma: tinte azul
    como los avisos de la sección, con la acción para empezar de cero. */

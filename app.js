@@ -1698,12 +1698,17 @@ function renderizarHistorial() {
     const plan = encuesta.planCuidado || {};
     const sinEvolucionar = remota && !puedeCorregirFichaRemota(encuesta)
       ? ' disabled title="Diligenciada por otra persona: su rol no permite evolucionar su plan."' : '';
+    const id = escaparHtml(encuesta.id);
+    /* La acción pendiente va primero y a lo ancho; las de consulta, en una
+       fila de píldoras; eliminar, como ícono al final: es la menos frecuente
+       y la única destructiva, y en rojo lleno pesaba más que las útiles. */
     const botonEvolucionar = enLaBase && plan.pendiente === true
-      ? '<button type="button" class="btn btn--ghost btn--icon" data-evolucionar="' + escaparHtml(encuesta.id) + '"' +
-        sinEvolucionar + '>Evolucionar plan</button>'
+      ? '<button type="button" class="btn acciones-ficha__destacada" data-evolucionar="' + id + '"' + sinEvolucionar + '>' +
+        '<i class="ph ph-clipboard-text" aria-hidden="true"></i>Evolucionar plan de cuidado</button>'
       : '';
     const botonAutorizar = enLaBase && puedeAutorizarPlan() && Number(plan.accionesRegistradas) > 0
-      ? '<button type="button" class="btn btn--ghost btn--icon" data-autorizar="' + escaparHtml(encuesta.id) + '">Autorizar</button>'
+      ? '<button type="button" class="btn acciones-ficha__boton" data-autorizar="' + id + '">' +
+        '<i class="ph ph-shield-check" aria-hidden="true"></i>Autorizar</button>'
       : '';
 
     return (
@@ -1723,11 +1728,19 @@ function renderizarHistorial() {
         '<td data-label="Hacinamiento">' + badgeHacinamiento(encuesta.hacinamiento) + '</td>' +
         '<td data-label="Situación inminente">' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
-          '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + escaparHtml(encuesta.id) + '">Ver</button>' +
-          '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + escaparHtml(encuesta.id) + '"' + sinCorregir + '>Corregir</button>' +
-          botonEvolucionar +
-          botonAutorizar +
-          '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + escaparHtml(encuesta.id) + '"' + sinEliminar + '>Eliminar</button>' +
+          '<div class="acciones-ficha">' +
+            botonEvolucionar +
+            '<div class="acciones-ficha__fila">' +
+              '<button type="button" class="btn acciones-ficha__boton" data-ver="' + id + '">' +
+                '<i class="ph ph-eye" aria-hidden="true"></i>Ver</button>' +
+              '<button type="button" class="btn acciones-ficha__boton" data-corregir="' + id + '"' + sinCorregir + '>' +
+                '<i class="ph ph-pencil-simple" aria-hidden="true"></i>Corregir</button>' +
+              botonAutorizar +
+              '<button type="button" class="btn acciones-ficha__eliminar" data-eliminar="' + id + '" aria-label="Eliminar"' +
+                (sinEliminar || ' title="Eliminar del dispositivo"') + '>' +
+                '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+            '</div>' +
+          '</div>' +
         '</td>' +
       '</tr>'
     );
@@ -1795,42 +1808,68 @@ function htmlAutorizacionPlan(datos) {
   const etiquetaRol = function (rol) {
     return typeof etiquetaDeRol === 'function' ? etiquetaDeRol(rol) : rol;
   };
+  const iniciales = function (nombre) {
+    return String(nombre || '').trim().split(/\s+/).slice(0, 2)
+      .map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
+  };
 
   const vigentes = datos.permisos.length === 0
-    ? '<p class="autorizacion-plan__vacio">Nadie tiene autorización vigente sobre esta ficha.</p>'
+    ? '<div class="autorizacion-plan__vacio"><i class="ph ph-lock-simple" aria-hidden="true"></i>' +
+        '<span>Nadie tiene autorización vigente: lo registrado en el plan está bloqueado.</span></div>'
     : '<ul class="autorizacion-plan__lista">' + datos.permisos.map(function (permiso) {
       return '<li class="autorizacion-plan__permiso">' +
-        '<span><strong>' + escaparHtml(permiso.usuario.nombre) + '</strong> · ' +
-        '<span class="mono">' + escaparHtml(permiso.usuario.documento) + '</span><br>' +
-        '<span class="autorizacion-plan__detalle">Desde ' + escaparHtml(formatearFecha(permiso.otorgadoEn)) +
-        (permiso.motivo ? ' · ' + escaparHtml(permiso.motivo) : '') + '</span></span>' +
-        '<button type="button" class="btn btn--ghost btn--icon" data-revocar-permiso="' + permiso.id + '">Revocar</button>' +
+        '<span class="autorizacion-plan__avatar" aria-hidden="true">' + escaparHtml(iniciales(permiso.usuario.nombre)) + '</span>' +
+        '<span class="autorizacion-plan__persona">' +
+          '<strong>' + escaparHtml(permiso.usuario.nombre) + '</strong>' +
+          '<span class="autorizacion-plan__detalle"><span class="mono">' + escaparHtml(permiso.usuario.documento) + '</span>' +
+            ' · desde el ' + escaparHtml(formatearFecha(permiso.otorgadoEn)) + '</span>' +
+          (permiso.motivo ? '<span class="autorizacion-plan__motivo">' + escaparHtml(permiso.motivo) + '</span>' : '') +
+        '</span>' +
+        '<button type="button" class="btn autorizacion-plan__revocar" data-revocar-permiso="' + permiso.id + '">Revocar</button>' +
       '</li>';
     }).join('') + '</ul>';
 
-  const opciones = datos.candidatos.map(function (c) {
-    return '<option value="' + c.id + '">' + escaparHtml(c.nombre + ' — ' + c.documento + ' · ' + etiquetaRol(c.rol)) +
-      '</option>';
+  /* Agrupadas por perfil: en un equipo hay varias personas y el rol es lo
+     primero que se busca. */
+  const porRol = {};
+  datos.candidatos.forEach(function (c) {
+    const rol = etiquetaRol(c.rol);
+    (porRol[rol] = porRol[rol] || []).push(c);
+  });
+  const opciones = Object.keys(porRol).sort().map(function (rol) {
+    return '<optgroup label="' + escaparHtml(rol) + '">' + porRol[rol].map(function (c) {
+      return '<option value="' + c.id + '">' + escaparHtml(c.nombre + ' — ' + c.documento) + '</option>';
+    }).join('') + '</optgroup>';
   }).join('');
 
   const nuevo = datos.candidatos.length === 0
-    ? '<p class="autorizacion-plan__vacio">Nadie más puede corregir esta ficha, así que no hay a quién autorizar.</p>'
-    : '<div class="field">' +
-        '<label for="autorizarUsuario">Autorizar a</label>' +
-        '<select id="autorizarUsuario"><option value="">Seleccione…</option>' + opciones + '</select>' +
+    ? '<div class="autorizacion-plan__vacio"><i class="ph ph-user-circle-minus" aria-hidden="true"></i>' +
+        '<span>Nadie más puede corregir esta ficha, así que no hay a quién autorizar.</span></div>'
+    : '<div class="autorizacion-plan__campo">' +
+        '<label for="autorizarUsuario">Persona</label>' +
+        '<select id="autorizarUsuario"><option value="">Seleccione a quién autoriza…</option>' + opciones + '</select>' +
+        '<span class="autorizacion-plan__ayuda">Solo aparecen quienes pueden corregir esta ficha.</span>' +
       '</div>' +
-      '<div class="field">' +
-        '<label for="autorizarMotivo">Motivo</label>' +
+      '<div class="autorizacion-plan__campo">' +
+        '<label for="autorizarMotivo">Motivo <span class="autorizacion-plan__opcional">(opcional)</span>' +
+          '<span class="autorizacion-plan__contador" id="autorizarContador">0/300</span></label>' +
         '<textarea id="autorizarMotivo" maxlength="300" rows="3" ' +
           'placeholder="Ej.: el código de la acción quedó mal registrado"></textarea>' +
       '</div>' +
-      '<p class="autorizacion-plan__nota">Podrá cambiar lo ya registrado en el plan de esta ficha una sola vez: ' +
-        'al guardar, el plan vuelve a quedar bloqueado.</p>';
+      '<div class="autorizacion-plan__nota"><i class="ph ph-info" aria-hidden="true"></i>' +
+        '<span>La autorización sirve para <strong>un solo guardado</strong>: al guardar, el plan vuelve a ' +
+        'quedar bloqueado.</span></div>';
 
   return '<div class="autorizacion-plan">' +
-    '<p class="autorizacion-plan__ficha">Ficha <span class="mono">' + escaparHtml(datos.ficha.codigo) + '</span></p>' +
-    '<h4 class="autorizacion-plan__titulo">Autorizaciones vigentes</h4>' + vigentes +
-    '<h4 class="autorizacion-plan__titulo">Nueva autorización</h4>' + nuevo +
+    '<p class="autorizacion-plan__intro">Permita que una persona cambie lo ya registrado en el plan de cuidado de la ficha ' +
+      '<span class="autorizacion-plan__ficha mono">' + escaparHtml(datos.ficha.codigo) + '</span></p>' +
+    '<section class="autorizacion-plan__bloque">' +
+      '<h4 class="autorizacion-plan__titulo">Autorizaciones vigentes' +
+        '<span class="autorizacion-plan__conteo">' + datos.permisos.length + '</span></h4>' + vigentes +
+    '</section>' +
+    '<section class="autorizacion-plan__bloque">' +
+      '<h4 class="autorizacion-plan__titulo">Nueva autorización</h4>' + nuevo +
+    '</section>' +
   '</div>';
 }
 
@@ -1847,17 +1886,27 @@ async function abrirAutorizacionDePlan(id) {
   }
 
   const resultado = await Swal.fire({
-    title: 'Modificar el plan registrado',
+    title: 'Autorizar cambios al plan de cuidado',
     html: htmlAutorizacionPlan(datos),
+    width: 540,
+    customClass: { popup: 'swal-autorizacion' },
     showCancelButton: true,
     showConfirmButton: datos.candidatos.length > 0,
-    confirmButtonText: 'Autorizar',
+    confirmButtonText: '<i class="ph ph-shield-check" aria-hidden="true"></i> Autorizar',
     cancelButtonText: 'Cerrar',
+    reverseButtons: true,
     confirmButtonColor: '#0060a0',
     background: '#ffffff',
     color: '#0b1220',
     focusConfirm: false,
     didOpen: function (popup) {
+      const motivo = popup.querySelector('#autorizarMotivo');
+      const contador = popup.querySelector('#autorizarContador');
+      if (motivo && contador) {
+        motivo.addEventListener('input', function () {
+          contador.textContent = motivo.value.length + '/300';
+        });
+      }
       popup.querySelectorAll('[data-revocar-permiso]').forEach(function (boton) {
         boton.addEventListener('click', async function () {
           boton.disabled = true;
