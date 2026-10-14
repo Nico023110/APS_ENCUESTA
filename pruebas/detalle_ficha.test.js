@@ -113,9 +113,12 @@ async function abrirDetalle(app, id) {
     resumen: seccionHogares && texto(seccionHogares.querySelector('.detalle-hogares__resumen')),
     hogares: seccionHogares ? Array.from(seccionHogares.querySelectorAll('.detalle-hogar')).map((h) => ({
       titulo: texto(h.querySelector('.detalle-hogar__titulo')),
-      familia: texto(h.querySelector('.detalle-hogar__familia')),
+      familias: h.querySelectorAll('.detalle-familia').length,
+      familia: texto(h.querySelector('.detalle-familia__titulo')),
       pendiente: texto(h.querySelector('.badge--warning')),
-      meta: texto(h.querySelector('.detalle-hogar__meta')),
+      meta: texto(h.querySelector('.detalle-familia__meta') || h.querySelector('.detalle-hogar__nota')),
+      integrantesFueraDeLaFamilia: h.querySelectorAll('.detalle-integrante').length -
+        h.querySelectorAll('.detalle-familia .detalle-integrante').length,
       integrantes: Array.from(h.querySelectorAll('.detalle-integrante')).map((i) => ({
         nombre: texto(i.querySelector('.detalle-integrante__nombre')),
         datos: texto(i.querySelector('.detalle-integrante__datos'))
@@ -138,6 +141,9 @@ async function abrirDetalle(app, id) {
   check('El resumen cuenta hogares y personas', d.resumen === '2 hogares · 3 personas', d.resumen);
   check('Un bloque por hogar, numerado', d.hogares && d.hogares.map((h) => h.titulo).join('|') === 'Hogar 1|Hogar 2',
     JSON.stringify(d.hogares && d.hogares.map((h) => h.titulo)));
+  check('Cada hogar contiene una familia, y los integrantes están dentro de ella',
+    d.hogares.every((h) => h.familias === 1 && h.integrantesFueraDeLaFamilia === 0),
+    JSON.stringify(d.hogares.map((h) => [h.familias, h.integrantesFueraDeLaFamilia])));
   check('Cada hogar muestra el código de su familia (ítem 26)',
     d.hogares[0].familia === 'Familia T49MT01H0001F0001' && d.hogares[1].familia === 'Familia T49MT01H0001F0002',
     d.hogares.map((h) => h.familia).join(' | '));
@@ -160,7 +166,7 @@ async function abrirDetalle(app, id) {
   d = await abrirDetalle(app, 'det-2');
   check('Sin familias, el resumen lo dice', d.resumen === '2 hogares declarados · 0 caracterizados · 0 personas', d.resumen);
   check('Los hogares declarados aparecen como pendientes',
-    d.hogares.length === 2 && d.hogares.every((h) => h.pendiente === 'Sin caracterizar' && h.familia === null),
+    d.hogares.length === 2 && d.hogares.every((h) => h.pendiente === 'Sin caracterizar' && h.familias === 0),
     JSON.stringify(d.hogares));
   check('  y dicen dónde se completan', /Historial → Corregir \(RN-028\)/.test(d.hogares[0].meta), d.hogares[0].meta);
 

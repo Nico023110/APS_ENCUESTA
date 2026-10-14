@@ -1999,10 +1999,11 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--text-primary);
 }
 
-/* Hogares y familias del detalle: la vivienda alberga hogares, cada hogar es
-   una familia y la familia lista a sus integrantes. Un solo nivel de
-   superficie —el hogar sobre lienzo— y los integrantes separados por un pelo:
-   una tarjeta por persona dentro de la del hogar sería caja dentro de caja. */
+/* Hogares y familias del detalle: un hogar contiene una familia y la familia
+   contiene a sus integrantes. El hogar es la carcasa sobre lienzo y la familia
+   el núcleo blanco dentro de ella —radio 12 = 20 de la carcasa menos 8 de
+   relleno—; los integrantes, dentro del núcleo, se separan con un pelo: una
+   tarjeta por persona sería caja dentro de caja dentro de caja. */
 .detalle-hogares__resumen {
   margin: 0 0 var(--s-3);
   font-size: var(--fs-label);
@@ -2018,9 +2019,9 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 }
 
 .detalle-hogar {
-  padding: var(--s-4);
+  padding: var(--s-2);
   background: var(--ink-50);
-  border-radius: var(--r-core);
+  border-radius: var(--r-shell);
   box-shadow: var(--sh-hair);
 }
 
@@ -2030,6 +2031,7 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   align-items: center;
   justify-content: space-between;
   gap: var(--s-1) var(--s-3);
+  padding: var(--s-1) var(--s-2) var(--s-2);
 }
 
 .detalle-hogar__titulo {
@@ -2040,26 +2042,49 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--ink-900);
 }
 
-.detalle-hogar__familia {
-  font-size: var(--fs-small);
-  color: var(--ink-500);
-}
-
-.detalle-hogar__familia .mono {
-  font-weight: 600;
-  color: var(--ink-800);
-}
-
-.detalle-hogar__meta {
-  margin: var(--s-1) 0 0;
+.detalle-hogar__nota {
+  margin: 0;
+  padding: 0 var(--s-2) var(--s-1);
   font-size: var(--fs-small);
   color: var(--ink-500);
   text-wrap: pretty;
 }
 
+.detalle-familia {
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  background: #fff;
+  border-radius: var(--radius-md);
+  box-shadow: var(--sh-hair);
+}
+
+.detalle-familia__titulo {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.detalle-familia__titulo .mono {
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalle-familia__meta {
+  margin: var(--s-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.detalle-familia__etiqueta {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
 .detalle-integrantes {
   list-style: none;
-  margin: var(--s-3) 0 0;
+  margin: var(--s-1) 0 0;
   padding: 0;
 }
 

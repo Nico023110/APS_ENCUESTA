@@ -1809,8 +1809,10 @@ function construirIntegranteDetalle(integrante, fechaReferencia) {
   );
 }
 
-/* Un hogar familiar: su familia, con el código del ítem 26, y sus integrantes.
-   Sin familia es un hogar declarado en el ítem 28 que no estaba en la visita. */
+/* Un hogar contiene una familia y la familia contiene a sus integrantes: tres
+   niveles a la vista, el hogar como carcasa y la familia como núcleo dentro
+   de él. Sin familia es un hogar declarado en el ítem 28 que no estaba en la
+   visita. */
 function construirHogarDetalle(numero, familia, fechaReferencia) {
   if (!familia) {
     return (
@@ -1819,7 +1821,7 @@ function construirHogarDetalle(numero, familia, fechaReferencia) {
           '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
           '<span class="badge badge--warning">Sin caracterizar</span>' +
         '</div>' +
-        '<p class="detalle-hogar__meta">Declarado en el ítem 28; su familia no estaba en la visita. ' +
+        '<p class="detalle-hogar__nota">Declarado en el ítem 28; su familia no estaba en la visita. ' +
           'Se caracteriza desde Historial → Corregir (RN-028).</p>' +
       '</li>'
     );
@@ -1837,23 +1839,26 @@ function construirHogarDetalle(numero, familia, fechaReferencia) {
     '<li class="detalle-hogar">' +
       '<div class="detalle-hogar__cabecera">' +
         '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
-        (familia.idFamilia
-          ? '<span class="detalle-hogar__familia">Familia <span class="mono">' + escaparHtml(familia.idFamilia) + '</span></span>'
+      '</div>' +
+      '<div class="detalle-familia">' +
+        '<h5 class="detalle-familia__titulo">Familia' +
+          (familia.idFamilia ? ' <span class="mono">' + escaparHtml(familia.idFamilia) + '</span>' : '') +
+        '</h5>' +
+        '<p class="detalle-familia__meta">' + meta + '</p>' +
+        (integrantes.length > 0
+          ? '<p class="detalle-familia__etiqueta">Integrantes</p>' +
+            '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
+              return construirIntegranteDetalle(integrante, fechaReferencia);
+            }).join('') + '</ul>'
           : '') +
       '</div>' +
-      '<p class="detalle-hogar__meta">' + meta + '</p>' +
-      (integrantes.length > 0
-        ? '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
-          return construirIntegranteDetalle(integrante, fechaReferencia);
-        }).join('') + '</ul>'
-        : '') +
     '</li>'
   );
 }
 
 /* Secciones 4 y 5 del instrumento como se ven en terreno: la vivienda alberga
-   uno o varios hogares familiares (ítem 28), cada uno es una familia con su
-   código y sus integrantes, y los hogares declarados que no se caracterizaron
+   uno o varios hogares familiares (ítem 28), cada hogar contiene una familia
+   y la familia a sus integrantes; los hogares declarados que no se caracterizaron
    quedan a la vista como pendientes (RN-028). */
 function construirSeccionHogares(encuesta) {
   const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
