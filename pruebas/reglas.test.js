@@ -220,6 +220,34 @@ verificar('Declara 2 hogares y caracteriza 1 familia => advertencia RN-028, no b
   validarCierre(dosHogaresUnaFamilia).puedeCerrar === true,
   JSON.stringify(validarCierre(dosHogaresUnaFamilia).impedimentos.map(i => i.codigo)));
 
+/* RN-028 — Un hogar puede reunir varias familias: cada familia dice a qué
+   hogar pertenece, y la advertencia cuenta hogares, no familias. */
+const familiaEnHogar = (n) => Object.assign(familiaValida([adultaValida()]), { hogarNumero: n });
+const dosFamiliasUnHogar = Object.assign(fichaBase(), { hogaresEnVivienda: 1, familias: [familiaEnHogar(1), familiaEnHogar(1)] });
+verificar('Dos familias en el único hogar declarado => sin bloqueo ni advertencia RN-028',
+  validarReglas(dosFamiliasUnHogar).filter(e => e.codigo === 'RN-028').length === 0 &&
+  !evaluarAdvertencias(dosFamiliasUnHogar).some(e => e.codigo === 'RN-028'),
+  JSON.stringify(validarReglas(dosFamiliasUnHogar).concat(evaluarAdvertencias(dosFamiliasUnHogar))
+    .filter(e => e.codigo === 'RN-028').map(e => e.mensaje)));
+
+const dosHogaresUnoCaracterizado = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaEnHogar(1), familiaEnHogar(1)] });
+verificar('Dos familias en el hogar 1 de 2 declarados => advertencia RN-028 por el hogar 2',
+  evaluarAdvertencias(dosHogaresUnoCaracterizado).some(e => e.codigo === 'RN-028' && /caracterizadas en 1/.test(e.mensaje)) &&
+  validarReglas(dosHogaresUnoCaracterizado).filter(e => e.codigo === 'RN-028').length === 0);
+
+const sinHogar = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaEnHogar(null)] });
+verificar('Familia sin hogar elegido => bloqueo RN-028 sobre su campo',
+  validarReglas(sinHogar).some(e => e.codigo === 'RN-028' && e.ruta === 'familias[0].hogarNumero'),
+  JSON.stringify(validarReglas(sinHogar).filter(e => e.codigo === 'RN-028')));
+
+const hogarInexistente = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaEnHogar(3)] });
+verificar('Familia en el hogar 3 con 2 declarados => bloqueo RN-028',
+  validarReglas(hogarInexistente).some(e => e.codigo === 'RN-028' && e.campo === 'hogarNumero' && /del 1 al 2/.test(e.mensaje)));
+
+verificar('Ficha anterior al campo (sin hogarNumero) => no se bloquea',
+  validarReglas(Object.assign(fichaBase(), { familias: [familiaValida([adultaValida()])] }))
+    .filter(e => e.codigo === 'RN-028').length === 0);
+
 /* RN-051 (rol): el aviso dice qué falta y cae sobre el integrante a cambiar. */
 const sinResponsable = familiaValida([Object.assign(adultaValida(), { rolFamiliar: 'hijo' })]);
 const errSinResp = validarReglas(Object.assign(fichaBase(), { familias: [sinResponsable] }))

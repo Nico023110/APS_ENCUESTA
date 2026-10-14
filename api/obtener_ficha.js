@@ -124,10 +124,11 @@ module.exports = async (req, res) => {
       console.warn('No se pudo registrar el acceso en auditoría:', error.message);
     });
 
-    /* Una vivienda puede tener varias familias (RN-028): todas, en su orden
-       de captura, con sus integrantes. */
+    /* Una vivienda tiene uno o varios hogares y un hogar, una o varias
+       familias (RN-028): todas, en su orden de captura, con el hogar al que
+       pertenecen y sus integrantes. */
     const familias = (await consultar(`
-      SELECT ff.id, fa.codigo, ff.tipo_familia, ff.numero_integrantes
+      SELECT ff.id, fa.codigo, ff.hogar_numero, ff.tipo_familia, ff.numero_integrantes
         FROM aps.familia_ficha ff
         JOIN aps.familia fa ON fa.id = ff.familia_id
        WHERE ff.ficha_id = $1
@@ -198,6 +199,7 @@ module.exports = async (req, res) => {
       familias: familias.map(function (familia) {
         return {
           idFamilia: familia.codigo,
+          hogarNumero: familia.hogar_numero,
           tipoFamilia: familia.tipo_familia,
           numeroIntegrantes: familia.numero_integrantes,
           integrantes: integrantes

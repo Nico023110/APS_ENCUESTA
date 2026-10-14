@@ -41,13 +41,16 @@ const SCRIPTS = [
   { archivo: '07_anexo_sispro.sql', descripcion: 'Variables del anexo técnico SI-APS' },
   /* Va después del 07: usa el consecutivo por microterritorio que crea.
      Idempotente. */
-  { archivo: '08_codigos_vivienda.sql', descripcion: 'Códigos automáticos de vivienda y familia, y NUV' }
+  { archivo: '08_codigos_vivienda.sql', descripcion: 'Códigos automáticos de vivienda y familia, y NUV' },
+  /* Idempotente. */
+  { archivo: '09_hogar_de_familia.sql', descripcion: 'Hogar al que pertenece cada familia' }
 ];
 
 /* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
    seed de catálogos (todo ON CONFLICT) y las migraciones. El seed va primero
    porque las migraciones validan contra sus dominios. */
-const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql'];
+const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql',
+  '09_hogar_de_familia.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN

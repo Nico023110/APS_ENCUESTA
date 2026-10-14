@@ -1020,8 +1020,8 @@ module.exports = async (req, res) => {
       const familiaFichaRes = await cliente.query(`
         INSERT INTO aps.familia_ficha (
           ficha_id, familia_id, tipo_familia, numero_integrantes,
-          cuidador_principal, zarit, redes_apoyo, sin_contacto_telefonico
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          cuidador_principal, zarit, redes_apoyo, sin_contacto_telefonico, hogar_numero
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         /* Igual que la vivienda: la caracterización de la familia se corrige,
            no se congela en la primera versión enviada. */
         ON CONFLICT (ficha_id, familia_id) DO UPDATE SET
@@ -1030,7 +1030,8 @@ module.exports = async (req, res) => {
           cuidador_principal      = EXCLUDED.cuidador_principal,
           zarit                   = EXCLUDED.zarit,
           redes_apoyo             = EXCLUDED.redes_apoyo,
-          sin_contacto_telefonico = EXCLUDED.sin_contacto_telefonico
+          sin_contacto_telefonico = EXCLUDED.sin_contacto_telefonico,
+          hogar_numero            = EXCLUDED.hogar_numero
         RETURNING id
       `, [
         fichaId,
@@ -1042,7 +1043,11 @@ module.exports = async (req, res) => {
         booleano(familia.cuidadorPrincipal) === true ? texto(familia.zarit) : null,
         texto(familia.redesApoyo),
         /* RN-070: la novedad "sin medio de contacto telefónico". */
-        familia.sinContactoTelefonico === true || familia.sinContactoTelefonico === 'si'
+        familia.sinContactoTelefonico === true || familia.sinContactoTelefonico === 'si',
+        /* RN-028: el hogar de la vivienda al que pertenece; varias familias
+           pueden compartirlo. Una ficha capturada antes de este campo no lo
+           trae y se lee como un hogar por familia. */
+        entero(familia.hogarNumero) || fi + 1
       ]);
 
       const familiaFichaId = familiaFichaRes.rows[0].id;

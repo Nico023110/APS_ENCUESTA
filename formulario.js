@@ -195,8 +195,44 @@ function crearDesdePrototipo(clave) {
    2. ENCABEZADOS DE LOS BLOQUES
    ========================================================= */
 
+/* RN-028 — Un hogar puede reunir varias familias: el selector de cada familia
+   ofrece los hogares que declara el ítem 28. Mientras nadie lo toque, la
+   familia N queda en el hogar N, el caso común de un hogar por familia; el
+   encuestador lo cambia cuando dos familias comparten hogar. Un hogar elegido
+   que deja de existir porque bajó el ítem 28 queda vacío, y la regla lo pide. */
+const MAXIMO_HOGARES = 20;
+
+function actualizarHogaresDeFamilias(familias) {
+  const campo = document.getElementById('hogaresEnVivienda');
+  const declarados = campo ? parseInt(campo.value, 10) : NaN;
+  const total = isFinite(declarados) && declarados > 0 ? Math.min(declarados, MAXIMO_HOGARES) : 1;
+
+  Array.prototype.forEach.call(familias, function (familia, i) {
+    const selector = familia.querySelector('[data-rol="hogarDeFamilia"]');
+    if (!selector) return;
+
+    if (selector.options.length !== total + 1) {
+      const anterior = selector.value;
+      const partes = ['<option value="">Seleccione…</option>'];
+      for (let n = 1; n <= total; n++) partes.push('<option value="' + n + '">Hogar ' + n + '</option>');
+      selector.innerHTML = partes.join('');
+      if (anterior && Number(anterior) <= total) selector.value = anterior;
+    }
+
+    const autoasignado = selector.dataset.autoasignado === 'si';
+    if ((selector.value === '' || autoasignado) && i < total) {
+      selector.value = String(i + 1);
+      selector.dataset.autoasignado = 'si';
+    } else if (autoasignado && i >= total) {
+      selector.value = '';
+    }
+  });
+}
+
 function actualizarEncabezadosDeBloques() {
   const familias = document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]');
+
+  actualizarHogaresDeFamilias(familias);
 
   Array.prototype.forEach.call(familias, function (familia, i) {
     const titulo = familia.querySelector('[data-rol="tituloFamilia"]');
@@ -1264,7 +1300,7 @@ function asignarEnRuta(objeto, ruta, valor, esLista) {
 
 const CAMPOS_ENTEROS = [
   'hogaresEnVivienda', 'personasEnVivienda', 'habitacionesVivienda', 'elementosParaDormir',
-  'perros', 'perrosVacunados', 'gatos', 'gatosVacunados', 'numeroIntegrantes',
+  'perros', 'perrosVacunados', 'gatos', 'gatosVacunados', 'numeroIntegrantes', 'hogarNumero',
   'tensionSistolica', 'tensionDiastolica', 'puntajeAssist', 'puntajeAudit', 'puntajeCrafft'
 ].concat(PREGUNTAS_ANEXO
   .filter(function (pregunta) { return pregunta.tipo === 'entero'; })

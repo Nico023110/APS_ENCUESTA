@@ -66,6 +66,27 @@ const FICHAS = [
       integrantes: [persona('LUZ', '900000105', '1990-06-01', 'mujer', 'responsable_economico')]
     }
   ]),
+  /* Un hogar con dos familias y otro con una. */
+  ficha('det-5', 2, [
+    {
+      idFamilia: 'T49MT01H0004F0001', hogarNumero: 1, tipoFamilia: 'nuclear_biparental', numeroIntegrantes: 2,
+      integrantes: [
+        persona('MARTA', '900000111', '1980-02-02', 'mujer', 'responsable_economico'),
+        persona('OMAR', '900000112', '1978-05-05', 'hombre', 'conyuge')
+      ]
+    },
+    {
+      idFamilia: 'T49MT01H0004F0002', hogarNumero: 2, tipoFamilia: 'unipersonal', numeroIntegrantes: 1,
+      integrantes: [persona('ELSA', '900000113', '1950-09-09', 'mujer', 'responsable_economico')]
+    },
+    {
+      idFamilia: 'T49MT01H0004F0003', hogarNumero: 1, tipoFamilia: 'nuclear_monoparental', numeroIntegrantes: 2,
+      integrantes: [
+        persona('LINA', '900000114', '2001-03-03', 'mujer', 'responsable_economico'),
+        persona('TOMÁS', '900000115', '2022-07-07', 'hombre', 'hijo')
+      ]
+    }
+  ]),
   ficha('det-4', 1, [
     {
       idFamilia: 'T49MT01H0003F0001', tipoFamilia: 'unipersonal', numeroIntegrantes: 1,
@@ -115,6 +136,8 @@ async function abrirDetalle(app, id) {
       titulo: texto(h.querySelector('.detalle-hogar__titulo')),
       familias: h.querySelectorAll('.detalle-familia').length,
       familia: texto(h.querySelector('.detalle-familia__titulo')),
+      codigosFamilia: Array.from(h.querySelectorAll('.detalle-familia__titulo')).map(texto),
+      conteo: texto(h.querySelector('.detalle-hogar__conteo')),
       pendiente: texto(h.querySelector('.badge--warning')),
       meta: texto(h.querySelector('.detalle-familia__meta') || h.querySelector('.detalle-hogar__nota')),
       integrantesFueraDeLaFamilia: h.querySelectorAll('.detalle-integrante').length -
@@ -138,7 +161,7 @@ async function abrirDetalle(app, id) {
   check('Va entre el entorno y el plan de cuidado, como en el instrumento',
     d.titulos[iHogares - 1] === 'Caracterización del entorno' && d.titulos[iHogares + 1] === 'Plan de cuidado (RN-220)',
     d.titulos.join(' | '));
-  check('El resumen cuenta hogares y personas', d.resumen === '2 hogares · 3 personas', d.resumen);
+  check('El resumen cuenta hogares y personas', d.resumen === '2 hogares · 2 familias · 3 personas', d.resumen);
   check('Un bloque por hogar, numerado', d.hogares && d.hogares.map((h) => h.titulo).join('|') === 'Hogar 1|Hogar 2',
     JSON.stringify(d.hogares && d.hogares.map((h) => h.titulo)));
   check('Cada hogar contiene una familia, y los integrantes están dentro de ella',
@@ -164,7 +187,7 @@ async function abrirDetalle(app, id) {
 
   console.log('\n=== 2. Hogares declarados sin caracterizar (RN-028) ===');
   d = await abrirDetalle(app, 'det-2');
-  check('Sin familias, el resumen lo dice', d.resumen === '2 hogares declarados · 0 caracterizados · 0 personas', d.resumen);
+  check('Sin familias, el resumen lo dice', d.resumen === '2 hogares declarados · 0 caracterizados · 0 familias · 0 personas', d.resumen);
   check('Los hogares declarados aparecen como pendientes',
     d.hogares.length === 2 && d.hogares.every((h) => h.pendiente === 'Sin caracterizar' && h.familias === 0),
     JSON.stringify(d.hogares));
@@ -172,13 +195,29 @@ async function abrirDetalle(app, id) {
 
   d = await abrirDetalle(app, 'det-3');
   check('Un hogar caracterizado y dos pendientes',
-    d.resumen === '3 hogares declarados · 1 caracterizado · 1 persona' &&
+    d.resumen === '3 hogares declarados · 1 caracterizado · 1 familia · 1 persona' &&
     d.hogares.map((h) => (h.pendiente ? 'pendiente' : 'familia')).join('|') === 'familia|pendiente|pendiente',
     d.resumen + ' / ' + JSON.stringify(d.hogares.map((h) => h.pendiente)));
   check('Una familia con integrantes por caracterizar lo cuenta',
     d.hogares[0].meta === 'Nuclear monoparental · 1 de 3 integrantes caracterizados', d.hogares[0].meta);
 
-  console.log('\n=== 3. Los nombres se escapan ===');
+  console.log('\n=== 3. Un hogar con varias familias ===');
+  d = await abrirDetalle(app, 'det-5');
+  check('El resumen cuenta hogares, familias y personas', d.resumen === '2 hogares · 3 familias · 5 personas', d.resumen);
+  check('Las familias se agrupan por el hogar que declaran',
+    d.hogares.length === 2 &&
+    d.hogares[0].codigosFamilia.join('|') === 'Familia T49MT01H0004F0001|Familia T49MT01H0004F0003' &&
+    d.hogares[1].codigosFamilia.join('|') === 'Familia T49MT01H0004F0002',
+    JSON.stringify(d.hogares.map((h) => h.codigosFamilia)));
+  check('La cabecera del hogar dice cuántas familias reúne',
+    d.hogares[0].conteo === '2 familias' && d.hogares[1].conteo === null, d.hogares.map((h) => h.conteo).join(' | '));
+  check('Cada familia conserva a sus integrantes dentro de su núcleo',
+    d.hogares[0].integrantes.map((i) => i.nombre).join('|') === 'MARTA PRUEBA|OMAR PRUEBA|LINA PRUEBA|TOMÁS PRUEBA' &&
+    d.hogares[0].integrantesFueraDeLaFamilia === 0,
+    JSON.stringify(d.hogares[0].integrantes.map((i) => i.nombre)));
+
+  console.log('');
+  console.log('=== 4. Los nombres se escapan ===');
   d = await abrirDetalle(app, 'det-4');
   check('Un nombre con HTML no crea elementos en el modal',
     app.doc.querySelectorAll('#modalDetalleBody img').length === 0 && app.window.__xss === undefined);

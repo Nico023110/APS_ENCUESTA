@@ -1999,11 +1999,12 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--text-primary);
 }
 
-/* Hogares y familias del detalle: un hogar contiene una familia y la familia
-   contiene a sus integrantes. El hogar es la carcasa sobre lienzo y la familia
+/* Hogares y familias del detalle: un hogar contiene una o varias familias y
+   cada familia contiene a sus integrantes. El hogar es la carcasa sobre lienzo y la familia
    el núcleo blanco dentro de ella —radio 12 = 20 de la carcasa menos 8 de
    relleno—; los integrantes, dentro del núcleo, se separan con un pelo: una
-   tarjeta por persona sería caja dentro de caja dentro de caja. */
+   tarjeta por persona sería caja dentro de caja dentro de caja. Un hogar puede
+   tener varias familias, cada una en su núcleo. */
 .detalle-hogares__resumen {
   margin: 0 0 var(--s-3);
   font-size: var(--fs-label);
@@ -2049,6 +2050,14 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--ink-500);
   text-wrap: pretty;
 }
+
+.detalle-hogar__conteo {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* Varias familias en un mismo hogar: núcleos apilados dentro de la carcasa. */
+.detalle-familia + .detalle-familia { margin-top: var(--s-2); }
 
 .detalle-familia {
   padding: var(--s-3) var(--s-4) var(--s-4);

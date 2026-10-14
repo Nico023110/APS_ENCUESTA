@@ -251,7 +251,7 @@ Una corrección o el reenvío de la misma visita conservan los códigos. Si la c
 
 Estructura (anexo técnico SI-APS, variable 124): código de la vivienda + **F** + consecutivo de **4 dígitos que reinicia en `0001` en cada vivienda**. Ejemplo: `T53MT03H0005F0001`; una segunda familia de esa vivienda es `T53MT03H0005F0002`. La ficha técnica (variable 10) numeraba las familias por microterritorio; se sigue el anexo, que es el que valida el archivo plano.
 
-Es la llave que se hereda en los ítems 122 y 132. La cantidad de identificadores de familia creados bajo un hogar debe coincidir exactamente con el valor del ítem 28.
+Es la llave que se hereda en los ítems 122 y 132. El consecutivo es por vivienda aunque varias familias compartan hogar (RN-028): el anexo no tiene un nivel de hogar.
 
 ### RN-027 — Estrato socioeconómico
 
@@ -259,9 +259,13 @@ Es la llave que se hereda en los ítems 122 y 132. La cantidad de identificadore
 
 ### RN-028 — Número de hogares familiares en la vivienda
 
-**Ítem 28.** Campo numérico entero obligatorio, **mayor o igual a 1**. Determina cuántos núcleos familiares independientes comparten la vivienda y, por tanto, cuántas fichas familiares (ítems 50–57) deben diligenciarse bajo el mismo ID de hogar.
+**Ítem 28.** Campo numérico entero obligatorio, **mayor o igual a 1**. Determina cuántos hogares comparten la vivienda.
 
-Cuando el número de familias caracterizadas (sección 4) no coincide con el declarado, el sistema **advierte, no bloquea**: la otra familia puede no encontrarse en la vivienda durante la visita, y la ficha de la familia presente se guarda con lo capturado. La familia faltante se caracteriza en una visita posterior desde *Historial → Corregir*.
+**Un hogar puede reunir varias familias.** La estructura es vivienda → hogares → familias → integrantes. Cada familia de la sección 4 indica **a qué hogar pertenece** (campo «Hogar al que pertenece», del 1 al valor del ítem 28); mientras el encuestador no lo cambie, la familia N queda en el hogar N. Es obligatorio y no admite un hogar mayor que el ítem 28. Se guarda en `aps.familia_ficha.hogar_numero` (`bd/09_hogar_de_familia.sql`) y es interno: el anexo técnico no tiene un nivel de hogar, así que el archivo plano no lo lleva y el código de la familia (RN-026) sigue numerándose por vivienda.
+
+Cuando algún hogar declarado no tiene ninguna familia caracterizada, el sistema **advierte, no bloquea**: el hogar puede no encontrarse en la vivienda durante la visita, y la ficha de los presentes se guarda con lo capturado. Se cuentan hogares distintos, no familias: dos familias en el único hogar declarado no generan advertencia. El hogar faltante se caracteriza en una visita posterior desde *Historial → Corregir*.
+
+Las fichas capturadas antes de este campo no lo traen y se leen como un hogar por familia, en su orden de captura.
 
 ### RN-029 — Número de personas en la vivienda
 

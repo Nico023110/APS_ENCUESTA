@@ -1010,6 +1010,22 @@ const REGLAS_BLOQUE_4 = [
 
 const REGLAS_FAMILIA = [
   {
+    /* RN-028 — Un hogar puede reunir varias familias: cada familia dice a qué
+       hogar de la vivienda pertenece, entre 1 y lo que declara el ítem 28.
+       Una ficha capturada antes de este campo no lo trae (undefined; vacío en
+       el formulario es null) y se guarda como un hogar por familia. */
+    codigo: 'RN-028',
+    campo: 'hogarNumero',
+    aplica: function (f, d) { return f.hogarNumero !== undefined && esEnteroPositivo(d.hogaresEnVivienda); },
+    valida: function (f, d) {
+      return esEnteroPositivo(f.hogarNumero) && f.hogarNumero <= d.hogaresEnVivienda;
+    },
+    mensaje: function (f, d) {
+      return 'Indique a qué hogar de la vivienda pertenece la familia (del 1 al ' +
+        d.hogaresEnVivienda + ', según el ítem 28).';
+    }
+  },
+  {
     codigo: 'RN-050',
     campo: 'tipoFamilia',
     valida: function (f) { return perteneceA(CAT_TIPO_FAMILIA, f.tipoFamilia); },
@@ -2239,18 +2255,23 @@ function evaluarTodo(datos) {
   evaluarConjunto(REGLAS_ANEXO_VIVIENDA, [datos], { ambito: AMBITO.VIVIENDA }, salida);
 
   if (secciones.familia) {
-    /* RN-028 — Tantas familias caracterizadas como declara el ítem 28.
-       Advierte, no bloquea: la otra familia puede no estar en la visita, y la
-       ficha de la que sí está no debe quedar sin guardar por eso. El ítem 28
-       registra cuántas familias hay; la sección 4, cuántas se caracterizaron. */
-    if (esEnteroPositivo(datos.hogaresEnVivienda) && datos.familias.length !== datos.hogaresEnVivienda) {
+    /* RN-028 — Cada hogar que declara el ítem 28 tiene al menos una familia
+       caracterizada. Un hogar puede reunir varias familias, así que se
+       cuentan los hogares distintos, no las familias; una familia sin hogar
+       (fichas anteriores) cuenta como un hogar propio. Advierte, no bloquea:
+       el hogar puede no estar en la visita, y la ficha de los que sí están no
+       debe quedar sin guardar por eso. */
+    const hogaresConFamilia = new Set(datos.familias.map(function (familia, i) {
+      return esEnteroPositivo(familia.hogarNumero) ? familia.hogarNumero : 'familia' + i;
+    })).size;
+    if (esEnteroPositivo(datos.hogaresEnVivienda) && hogaresConFamilia < datos.hogaresEnVivienda) {
       salida.push({
         codigo: 'RN-028',
         campo: 'hogaresEnVivienda',
         ruta: 'hogaresEnVivienda',
-        mensaje: 'Declaró ' + datos.hogaresEnVivienda + ' hogares y hay ' + datos.familias.length +
-                 ' familia(s) caracterizada(s). Si la otra familia no estaba, puede guardar así y ' +
-                 'completarla después desde Historial → Corregir.',
+        mensaje: 'Declaró ' + datos.hogaresEnVivienda + ' hogares y hay familias caracterizadas en ' +
+                 hogaresConFamilia + '. Si un hogar no estaba, puede guardar así y ' +
+                 'caracterizarlo después desde Historial → Corregir.',
         severidad: SEVERIDAD.ADVERTENCIA,
         ambito: AMBITO.VIVIENDA,
         referencia: null

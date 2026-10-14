@@ -301,7 +301,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
   /* --- Familias, en su orden de captura --- */
   const familias = (await cliente.query(`
     SELECT ff.id, ff.ficha_id, fa.codigo, fa.consecutivo, ff.tipo_familia, ff.numero_integrantes,
-           ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico
+           ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico, ff.hogar_numero
       FROM aps.familia_ficha ff
       JOIN aps.familia fa ON fa.id = ff.familia_id
      WHERE ff.ficha_id = ANY($1::bigint[])
@@ -426,6 +426,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
     (familiasPorFicha.get(String(f.id)) || []).forEach(function (fila) {
       const familia = {
         idFamilia: fila.codigo,
+        hogarNumero: fila.hogar_numero,
         tipoFamilia: fila.tipo_familia,
         numeroIntegrantes: fila.numero_integrantes,
         cuidadorPrincipal: siNo(fila.cuidador_principal),

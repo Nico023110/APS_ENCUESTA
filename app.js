@@ -1809,24 +1809,9 @@ function construirIntegranteDetalle(integrante, fechaReferencia) {
   );
 }
 
-/* Un hogar contiene una familia y la familia contiene a sus integrantes: tres
-   niveles a la vista, el hogar como carcasa y la familia como núcleo dentro
-   de él. Sin familia es un hogar declarado en el ítem 28 que no estaba en la
-   visita. */
-function construirHogarDetalle(numero, familia, fechaReferencia) {
-  if (!familia) {
-    return (
-      '<li class="detalle-hogar">' +
-        '<div class="detalle-hogar__cabecera">' +
-          '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
-          '<span class="badge badge--warning">Sin caracterizar</span>' +
-        '</div>' +
-        '<p class="detalle-hogar__nota">Declarado en el ítem 28; su familia no estaba en la visita. ' +
-          'Se caracteriza desde Historial → Corregir (RN-028).</p>' +
-      '</li>'
-    );
-  }
-
+/* Una familia dentro de su hogar: el núcleo con su código, su tipo y la lista
+   de sus integrantes. */
+function construirFamiliaDetalle(familia, fechaReferencia) {
   const integrantes = Array.isArray(familia.integrantes) ? familia.integrantes : [];
   const declarados = Number(familia.numeroIntegrantes) || 0;
   const conteo = declarados > integrantes.length
@@ -1836,30 +1821,59 @@ function construirHogarDetalle(numero, familia, fechaReferencia) {
     .filter(Boolean).map(escaparHtml).join(' · ');
 
   return (
+    '<div class="detalle-familia">' +
+      '<h5 class="detalle-familia__titulo">Familia' +
+        (familia.idFamilia ? ' <span class="mono">' + escaparHtml(familia.idFamilia) + '</span>' : '') +
+      '</h5>' +
+      '<p class="detalle-familia__meta">' + meta + '</p>' +
+      (integrantes.length > 0
+        ? '<p class="detalle-familia__etiqueta">Integrantes</p>' +
+          '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
+            return construirIntegranteDetalle(integrante, fechaReferencia);
+          }).join('') + '</ul>'
+        : '') +
+    '</div>'
+  );
+}
+
+/* Un hogar contiene una o varias familias y cada familia a sus integrantes:
+   el hogar es la carcasa y cada familia un núcleo dentro de él. Sin familias
+   es un hogar declarado en el ítem 28 que no estaba en la visita. */
+function construirHogarDetalle(numero, familias, fechaReferencia) {
+  if (familias.length === 0) {
+    return (
+      '<li class="detalle-hogar">' +
+        '<div class="detalle-hogar__cabecera">' +
+          '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
+          '<span class="badge badge--warning">Sin caracterizar</span>' +
+        '</div>' +
+        '<p class="detalle-hogar__nota">Declarado en el ítem 28; no estaba en la visita. ' +
+          'Se caracteriza desde Historial → Corregir (RN-028).</p>' +
+      '</li>'
+    );
+  }
+
+  return (
     '<li class="detalle-hogar">' +
       '<div class="detalle-hogar__cabecera">' +
         '<h4 class="detalle-hogar__titulo">Hogar ' + numero + '</h4>' +
-      '</div>' +
-      '<div class="detalle-familia">' +
-        '<h5 class="detalle-familia__titulo">Familia' +
-          (familia.idFamilia ? ' <span class="mono">' + escaparHtml(familia.idFamilia) + '</span>' : '') +
-        '</h5>' +
-        '<p class="detalle-familia__meta">' + meta + '</p>' +
-        (integrantes.length > 0
-          ? '<p class="detalle-familia__etiqueta">Integrantes</p>' +
-            '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
-              return construirIntegranteDetalle(integrante, fechaReferencia);
-            }).join('') + '</ul>'
+        (familias.length > 1
+          ? '<span class="detalle-hogar__conteo">' + textoCantidad(familias.length, 'familia', 'familias') + '</span>'
           : '') +
       '</div>' +
+      familias.map(function (familia) {
+        return construirFamiliaDetalle(familia, fechaReferencia);
+      }).join('') +
     '</li>'
   );
 }
 
 /* Secciones 4 y 5 del instrumento como se ven en terreno: la vivienda alberga
-   uno o varios hogares familiares (ítem 28), cada hogar contiene una familia
-   y la familia a sus integrantes; los hogares declarados que no se caracterizaron
-   quedan a la vista como pendientes (RN-028). */
+   uno o varios hogares (ítem 28), cada hogar una o varias familias y cada
+   familia a sus integrantes. Las familias se agrupan por el hogar que
+   declaran; una sin hogar (fichas anteriores al campo) es un hogar propio.
+   Los hogares declarados sin familias quedan a la vista como pendientes
+   (RN-028). */
 function construirSeccionHogares(encuesta) {
   const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
   const declarados = Number(encuesta.hogaresEnVivienda) || 0;
@@ -1867,15 +1881,24 @@ function construirSeccionHogares(encuesta) {
     return total + (Array.isArray(familia.integrantes) ? familia.integrantes.length : 0);
   }, 0);
 
-  const resumen = declarados > familias.length
+  const porHogar = new Map();
+  familias.forEach(function (familia, i) {
+    const numero = Number(familia.hogarNumero) >= 1 ? Number(familia.hogarNumero) : i + 1;
+    if (!porHogar.has(numero)) porHogar.set(numero, []);
+    porHogar.get(numero).push(familia);
+  });
+  const ultimo = Math.max.apply(null, [declarados].concat(Array.from(porHogar.keys())));
+
+  const resumen = declarados > porHogar.size
     ? [textoCantidad(declarados, 'hogar declarado', 'hogares declarados'),
-      textoCantidad(familias.length, 'caracterizado', 'caracterizados')]
-    : [textoCantidad(familias.length, 'hogar', 'hogares')];
+      textoCantidad(porHogar.size, 'caracterizado', 'caracterizados')]
+    : [textoCantidad(porHogar.size, 'hogar', 'hogares')];
+  resumen.push(textoCantidad(familias.length, 'familia', 'familias'));
   resumen.push(textoCantidad(personas, 'persona', 'personas'));
 
   const hogares = [];
-  for (let i = 0; i < Math.max(declarados, familias.length); i++) {
-    hogares.push(construirHogarDetalle(i + 1, familias[i], encuesta.fechaDiligenciamiento));
+  for (let numero = 1; numero <= ultimo; numero++) {
+    hogares.push(construirHogarDetalle(numero, porHogar.get(numero) || [], encuesta.fechaDiligenciamiento));
   }
 
   return (

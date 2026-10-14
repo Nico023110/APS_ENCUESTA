@@ -555,6 +555,40 @@ async function correrPruebas() {
     verificar('  sin datos de los grupos sensibles (RN-224)',
       !('orientacionSexual' in integranteDetalle) && !('pertenenciaEtnica' in integranteDetalle) &&
       !('enfermedadesNoTransmisibles' in integranteDetalle), Object.keys(integranteDetalle).join(','));
+    verificar('  una ficha sin el hogar de la familia queda como un hogar por familia (RN-028)',
+      familiaDetalle.hogarNumero === 1, String(familiaDetalle.hogarNumero));
+
+    /* RN-028 — Un hogar puede reunir varias familias: dos familias en el único
+       hogar declarado se guardan, se leen en «Ver» y vuelven a «Corregir». */
+    const compartido = fichaValida(sello + 'hg');
+    compartido.hogaresEnVivienda = 1;
+    const segunda = JSON.parse(JSON.stringify(compartido.familias[0]));
+    segunda.integrantes[0].numeroId = '1144055099';
+    compartido.familias[0].hogarNumero = 1;
+    segunda.hogarNumero = 1;
+    compartido.familias.push(segunda);
+    const rCompartido = await enviar(compartido);
+    verificar('Dos familias en el mismo hogar => 200', rCompartido.estado === 200,
+      'estado ' + rCompartido.estado + ' ' + JSON.stringify(rCompartido.cuerpo).slice(0, 300));
+    if (rCompartido.estado === 200) {
+      const hogaresDb = (await cliente.query(`
+        SELECT ff.hogar_numero FROM aps.familia_ficha ff JOIN aps.ficha f ON f.id = ff.ficha_id
+          JOIN aps.familia fa ON fa.id = ff.familia_id
+         WHERE f.codigo = $1 ORDER BY fa.consecutivo`, [compartido.codigoFicha])).rows.map(function (x) { return x.hogar_numero; });
+      verificar('  las dos familias quedan en el hogar 1', hogaresDb.join(',') === '1,1', hogaresDb.join(','));
+
+      const verCompartido = await fetch(BASE + '/api/obtener_ficha?codigo=' + encodeURIComponent(compartido.codigoFicha),
+        { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+      verificar('  «Ver» trae el hogar de cada familia',
+        (verCompartido.familias || []).map(function (f) { return f.hogarNumero; }).join(',') === '1,1',
+        String(JSON.stringify(verCompartido.familias)).slice(0, 200));
+
+      const corregirCompartido = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(compartido.codigoFicha),
+        { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+      verificar('  «Corregir» también lo trae',
+        ((corregirCompartido.encuesta || {}).familias || []).map(function (f) { return f.hogarNumero; }).join(',') === '1,1',
+        String(JSON.stringify(corregirCompartido)).slice(0, 200));
+    }
 
     /* Observaciones del equipo (2026-09): territorios T01–T110, líder
        derivado en Hogar (RN-019), familia declarada ausente (RN-028) y ficha
