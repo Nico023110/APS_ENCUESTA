@@ -1321,6 +1321,16 @@ Los seguimientos de los ítems **118, 119, 128, 129, 139 y 140** se rigen por:
 5. Un estado **NC sobre una acción derivada de alerta INMEDIATA o PRIORITARIA** eleva la clasificación de riesgo familiar de RN-221 y **reactiva la alerta original**: el incumplimiento de una atención urgente no puede darse por cerrado.
 6. El sistema debe generar **notificación automática al EBS** cuando un seguimiento programado esté próximo a vencer o vencido.
 
+### RN-228 — Evolución del plan de cuidado y bloqueo de lo registrado
+
+El plan de cuidado se diligencia en la visita o después (RN-222, plan diferido). Lo que se registra en él **no se modifica: sólo se completa**.
+
+1. **Evolucionar plan.** En el historial, una ficha de la base cuyo plan está **pendiente** ofrece «Evolucionar plan» a quien puede corregirla. Abre la ficha tal como está en la base con todo lo de la visita —secciones 1 a 5 y el cierre— intocable, y deja trabajar sólo la sección 6. Al guardar, el servidor escribe **únicamente los planes**, sobre las familias e integrantes ya registrados: lo demás que llegue en la petición se ignora, y sólo bloquean las reglas del propio plan. Necesita conexión, porque parte de lo registrado en la base.
+2. **Qué se puede completar.** Acciones nuevas; seguimientos nuevos; y, en un seguimiento registrado, el primero o el segundo seguimiento que aún estén vacíos (por ejemplo, el segundo cuando llega su fecha).
+3. **Qué queda bloqueado.** Toda acción registrada (ejecutor, código, procedimiento, tipo de respuesta, destino y cita); en cada seguimiento registrado, su responsable y la acción concertada, y el primero o el segundo seguimiento una vez registrados; y el plan de una familia o una persona que ya tenga algo registrado, que no se quita ni cambia de dueño. La regla vale para **toda** forma de volver a guardar una ficha existente —Evolucionar plan, Corregir o reenviarla al sincronizar—, y la decide el servidor comparando con la base (`api/_plan_bloqueo.js`). Un intento de cambiar lo registrado se rechaza con el campo exacto señalado.
+4. **Autorización de un rol superior.** Para cambiar lo registrado, el **usuario maestro** —por ahora el único rol que autoriza— le da permiso a una persona determinada sobre una ficha determinada, con un motivo. Sólo puede recibirlo quien puede corregir esa ficha. El permiso **sirve para un guardado**: al usarlo, el plan vuelve a quedar bloqueado. El maestro puede revocarlo antes de que se use, y también puede cambiar lo registrado él mismo.
+5. **Trazabilidad (RN-225).** Cada permiso queda en `aps.permiso_plan` (quién lo dio, a quién, cuándo, por qué, y cuándo se usó o se revocó), y cada cambio del plan en `aud.evento`, distinguiendo si sólo se completó, si se usó una autorización o si lo hizo el maestro.
+
 ---
 
 ## 15. Bloque 13: Anexo técnico SI-APS (fuente APS124CCFP)
@@ -1639,11 +1649,11 @@ Catálogo parametrizado que soporta las reglas **RN-007** (Territorio, ítem 7) 
 | 100 – 104 | Morbilidad y adherencia | RN-100 a RN-104, RN-208, RN-210 |
 | 105 – 110 | Salud mental y consumo de SPA | RN-105 a RN-110, RN-202, RN-207 |
 | 111 – 119 | Plan de cuidado — Vivienda | RN-111 a RN-119, RN-220, RN-226 |
-| 120 – 129 | Plan de cuidado — Familia | RN-120 a RN-129, RN-220, RN-226 |
-| 130 – 140 | Plan de cuidado — Persona | RN-130 a RN-140, RN-220, RN-226 |
+| 120 – 129 | Plan de cuidado — Familia | RN-120 a RN-129, RN-220, RN-226, RN-228 |
+| 130 – 140 | Plan de cuidado — Persona | RN-130 a RN-140, RN-220, RN-226, RN-228 |
 | — | Cardinalidad y estructura | RN-000, RN-051 |
 | — | Decisión clínica y canalización | RN-200 a RN-212 |
-| — | Cierre, integridad y seguridad | RN-220 a RN-226 |
+| — | Cierre, integridad y seguridad | RN-220 a RN-226, RN-228 |
 
 ---
 
@@ -1666,6 +1676,7 @@ Durante la elaboración de estas reglas se identificaron tres inconsistencias en
 | 1.0 | — | Documento inicial con 105 reglas de captura (RN-001 a RN-140, con vacíos). |
 | **2.0** | **12/08/2026** | Cobertura completa de los 140 ítems del instrumento. Se agregan 32 reglas de captura faltantes; se corrigen 12 reglas existentes; se incorporan las familias nuevas **RN-200 a RN-212** (decisión clínica y canalización) y **RN-220 a RN-226** (cierre, integridad, seguridad y seguimiento); se agrega **RN-000** (modelo de cardinalidad). El catálogo de territorios se traslada al **Anexo A**. Se incorporan los anexos B y C. |
 | **2.1** | **23/09/2026** | Aplicación del **anexo técnico SI-APS APS124CCFP v7**: códigos del anexo en todos los catálogos y opciones retiradas; ítems 2 y 46 a 49 pasan a selección múltiple; ítem 102 a respuesta única; ítem 105 para todas las edades; Zarit por puntaje; país, ocupación y EAPB desde las tablas de SISPRO; estatus migratorio; NV y Técnica Laboral retirados. Nuevo **Bloque 13** con las 129 variables del anexo, sus reglas A{registro}.{variable}, los identificadores de vivienda, familia e integrante, y **RN-227** (archivo plano para PISIS). |
+| **2.2** | **14/10/2026** | **RN-028**: un hogar puede reunir varias familias; cada familia indica a qué hogar de la vivienda pertenece. **RN-228**: «Evolucionar plan» desde el historial y bloqueo de lo registrado en el plan de cuidado, que sólo se completa; cambiarlo exige autorización del usuario maestro. |
 
 ### Resumen de la versión 2.0
 

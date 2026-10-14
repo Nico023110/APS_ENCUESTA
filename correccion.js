@@ -40,6 +40,27 @@ let encuestaEnCorreccion = null;
    conservar su historial de modificaciones al volver a guardarla. */
 let correccionDesdeServidor = null;
 
+/* RN-228 — «Evolucionar plan» desde el historial: sólo se completa el plan de
+   cuidado. Lo registrado en la visita (secciones 1 a 5) queda intocable y al
+   guardar el servidor escribe únicamente los planes. */
+let modoEvolucionPlan = false;
+
+/* Los bloqueos que se aplicaron al abrir la ficha, para reponerlos si se
+   restaura su borrador: { evolucionPlan, registrado, autorizado }. */
+let bloqueoPlanActivo = null;
+
+function enEvolucionDePlan() {
+  return modoEvolucionPlan === true;
+}
+
+/* Las rutas del plan dentro de la ficha enrutada (mismo criterio que
+   api/_plan_bloqueo.js): al evolucionar el plan sólo cuentan sus pendientes. */
+const RUTA_DEL_PLAN = /^planVivienda\b|\.planFamilia\b|\.planPersona\b/;
+
+function esRutaDelPlan(ruta) {
+  return RUTA_DEL_PLAN.test(String(ruta || ''));
+}
+
 /* =========================================================
    1. ENTRADA Y SALIDA DEL MODO CORRECCIÓN
    ========================================================= */
@@ -52,7 +73,12 @@ async function abrirCorreccionDeEncuesta(id) {
   const local = obtenerEncuestas().find(function (e) { return e.id === id; });
 
   if (local) {
-    entrarEnCorreccion(id, local, null);
+    /* Una copia ya sincronizada tiene su plan registrado en la base (RN-228);
+       una que aún no sube, no: se corrige entera. */
+    entrarEnCorreccion(id, local, null, {
+      bloquearPlanRegistrado: local.sincronizada === true,
+      planRegistradoEditable: planRegistradoEditablePara(local.codigoFicha)
+    });
     return;
   }
 
@@ -80,11 +106,67 @@ async function abrirCorreccionDeEncuesta(id) {
     return;
   }
 
-  entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta);
+  entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta, {
+    bloquearPlanRegistrado: true,
+    planRegistradoEditable: cuerpo.planRegistradoEditable === true
+  });
 }
 
-function entrarEnCorreccion(id, encuesta, desdeServidor) {
+/* RN-228 — «Evolucionar plan»: siempre parte de lo que está en la base, no de
+   la copia del dispositivo, porque lo bloqueado es lo registrado allí. Por
+   eso necesita red. */
+async function abrirEvolucionDePlan(id) {
+  if (!confirmarAntesDeReemplazarBorrador(id, function () { abrirEvolucionDePlan(id); })) return;
+
+  const fila = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
+  if (!fila || !fila.codigoFicha) {
+    mostrarNotificacion('No se encontró la ficha cuyo plan de cuidado se quiere evolucionar.', 'error');
+    return;
+  }
+
+  let respuesta;
+  let cuerpo;
+  try {
+    respuesta = await fetch('/api/ficha_completa?codigo=' + encodeURIComponent(fila.codigoFicha));
+    cuerpo = await respuesta.json().catch(function () { return {}; });
+  } catch (error) {
+    mostrarNotificacion('Sin conexión: para evolucionar el plan de cuidado hace falta red, porque se parte ' +
+      'de lo que está registrado en la base.', 'warning');
+    return;
+  }
+
+  if (!respuesta.ok || !cuerpo.encuesta) {
+    mostrarNotificacion(cuerpo.error || 'No fue posible traer la ficha para evolucionar su plan.', 'error');
+    return;
+  }
+
+  entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta, {
+    evolucionPlan: true,
+    bloquearPlanRegistrado: true,
+    planRegistradoEditable: cuerpo.planRegistradoEditable === true
+  });
+}
+
+/* El maestro modifica lo registrado; los demás, sólo con su autorización
+   vigente sobre la ficha, que llega en la fila del historial. */
+function planRegistradoEditablePara(codigoFicha) {
+  const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
+  if (usuario && typeof puede === 'function' && puede(usuario.rol, 'plan.modificar_registrado')) return true;
+  const fila = (typeof cacheFichasDelServidor !== 'undefined' && cacheFichasDelServidor || [])
+    .find(function (e) { return e.codigoFicha === codigoFicha; });
+  return Boolean(fila && fila.permisoPlan === true);
+}
+
+/**
+ * @param opciones.evolucionPlan          sólo se completa el plan (RN-228)
+ * @param opciones.bloquearPlanRegistrado la ficha está en la base: lo
+ *                                        registrado de su plan no se cambia
+ * @param opciones.planRegistradoEditable el usuario tiene con qué cambiarlo
+ */
+function entrarEnCorreccion(id, encuesta, desdeServidor, opciones) {
+  const o = opciones || {};
   cambiarVista('nueva');
+  quitarBloqueosDePlan();
   cargarEncuestaEnFormulario(encuesta);
   /* Lo recién cargado es el punto de partida: sólo lo que se cambie después
      va al borrador automático. */
@@ -92,16 +174,51 @@ function entrarEnCorreccion(id, encuesta, desdeServidor) {
 
   encuestaEnCorreccion = id;
   correccionDesdeServidor = desdeServidor;
-  mostrarAvisoDeCorreccion(encuesta);
+  modoEvolucionPlan = o.evolucionPlan === true;
+  bloqueoPlanActivo = {
+    evolucionPlan: modoEvolucionPlan,
+    registrado: o.bloquearPlanRegistrado === true && o.planRegistradoEditable !== true,
+    autorizado: o.bloquearPlanRegistrado === true && o.planRegistradoEditable === true
+  };
+
+  reponerBloqueosDePlan(encuesta, encuesta);
+
+  if (modoEvolucionPlan) {
+    mostrarNotificacion(
+      'Plan de cuidado de la ficha ' + (encuesta.codigoFicha || '') + ' listo para evolucionar. ' +
+      'Complete lo que falta y guarde.', 'info');
+    const seccion = document.getElementById('seccion-6');
+    if (seccion) seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
 
   mostrarNotificacion(
     'Ficha ' + (encuesta.codigoFicha || '') + ' cargada para corregir. ' +
     'Ajuste lo necesario y vuelva a guardar.', 'info');
 }
 
+/* Aplica los bloqueos de `bloqueoPlanActivo` sobre el formulario. `original`
+   es la ficha tal como está registrada —de ella sale qué filas del plan ya
+   existían—; `datos`, lo que está en pantalla, sólo para el aviso. */
+function reponerBloqueosDePlan(original, datos) {
+  const b = bloqueoPlanActivo || {};
+  quitarBloqueosDePlan();
+  const bloqueados = original
+    ? aplicarBloqueosDePlan(original, { secciones: b.evolucionPlan === true, registrado: b.registrado === true })
+    : 0;
+  mostrarAvisoDeCorreccion(datos || original || {}, {
+    evolucionPlan: b.evolucionPlan === true,
+    registradosBloqueados: bloqueados,
+    autorizado: b.autorizado === true
+  });
+}
+
 function salirDeCorreccion() {
   encuestaEnCorreccion = null;
   correccionDesdeServidor = null;
+  modoEvolucionPlan = false;
+  bloqueoPlanActivo = null;
+  quitarBloqueosDePlan();
   const aviso = document.getElementById('avisoCorreccion');
   if (aviso) aviso.hidden = true;
 }
@@ -125,7 +242,8 @@ function fechasDeModificacionDeLaCorreccion() {
 }
 
 /** Cinta superior que recuerda que no se está capturando una visita nueva. */
-function mostrarAvisoDeCorreccion(encuesta) {
+function mostrarAvisoDeCorreccion(encuesta, opciones) {
+  const o = opciones || {};
   let aviso = document.getElementById('avisoCorreccion');
 
   if (!aviso) {
@@ -155,25 +273,209 @@ function mostrarAvisoDeCorreccion(encuesta) {
     formulario.parentNode.insertBefore(aviso, formulario);
   }
 
-  let texto = 'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +
-    '. Al guardar se reemplaza el registro existente, no se crea uno nuevo.';
+  let texto;
 
-  /* Las fichas guardadas antes de que la base conservara la dirección por
-     partes la traen sólo como texto: hay que recomponerla en el ítem 21. */
-  if (correccionDesdeServidor && !encuesta.direccionComponentes && encuesta.direccion) {
-    texto += ' La dirección registrada es «' + encuesta.direccion +
-      '»: vuelva a componerla en el ítem 21 antes de guardar.';
+  if (o.evolucionPlan) {
+    texto = 'Evolucionando el plan de cuidado de la ficha ' + (encuesta.codigoFicha || encuesta.id) +
+      '. Sólo se completa lo que falta: lo registrado en la visita no se modifica.';
+  } else {
+    texto = 'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +
+      '. Al guardar se reemplaza el registro existente, no se crea uno nuevo.';
+
+    /* Las fichas guardadas antes de que la base conservara la dirección por
+       partes la traen sólo como texto: hay que recomponerla en el ítem 21. */
+    if (correccionDesdeServidor && !encuesta.direccionComponentes && encuesta.direccion) {
+      texto += ' La dirección registrada es «' + encuesta.direccion +
+        '»: vuelva a componerla en el ítem 21 antes de guardar.';
+    }
+  }
+
+  /* RN-228: se dice qué está bloqueado y por qué, o que hay autorización. */
+  if (o.registradosBloqueados > 0) {
+    texto += ' Lo ya registrado en el plan de cuidado aparece sombreado y no se puede cambiar sin ' +
+      'autorización del usuario maestro.';
+  } else if (o.autorizado) {
+    texto += ' Tiene autorización para modificar lo ya registrado en el plan de cuidado: sirve para ' +
+      'un guardado.';
   }
 
   document.getElementById('avisoCorreccionTexto').textContent = texto;
+  const cancelar = aviso.querySelector('button');
+  if (cancelar) cancelar.textContent = o.evolucionPlan ? 'Cancelar evolución' : 'Cancelar corrección';
   aviso.hidden = false;
+}
+
+/* =========================================================
+   1b. BLOQUEOS DEL PLAN DE CUIDADO (RN-228)
+   ---------------------------------------------------------
+   Con `inert` y no con `disabled`: un control deshabilitado no viaja en el
+   FormData, y lo bloqueado tiene que seguir llegando al servidor tal cual
+   para que la comparación con la base (api/_plan_bloqueo.js) lo encuentre
+   igual. `inert` impide tocarlo, enfocarlo y leerlo como editable, y no
+   cambia su valor. Cada elemento bloqueado lleva su marca para soltarlo al
+   salir sin tocar lo que estuviera inerte por otra razón.
+   ========================================================= */
+
+const MARCA_BLOQUEO_PLAN = 'data-bloqueo-plan';
+
+function bloquearElemento(elemento, motivo) {
+  if (!elemento || elemento.hasAttribute('inert')) return false;
+  elemento.setAttribute('inert', '');
+  elemento.setAttribute(MARCA_BLOQUEO_PLAN, motivo);
+  return true;
+}
+
+function quitarBloqueosDePlan() {
+  document.querySelectorAll('[' + MARCA_BLOQUEO_PLAN + ']').forEach(function (elemento) {
+    elemento.removeAttribute('inert');
+    elemento.removeAttribute(MARCA_BLOQUEO_PLAN);
+  });
+  document.querySelectorAll('.plan-registrado').forEach(function (fila) {
+    fila.classList.remove('plan-registrado');
+  });
+}
+
+function hayValor() {
+  return Array.prototype.every.call(arguments, function (v) {
+    return v !== null && v !== undefined && String(v).trim() !== '';
+  });
+}
+
+/* Lo que la base guarda de un plan, con el mismo criterio que el servidor. */
+function accionRegistrada(accion) {
+  return Boolean(accion) && hayValor(accion.codigoAccion, accion.ejecutorTipoId, accion.ejecutorNumeroId);
+}
+
+function seguimientoRegistrado(seguimiento) {
+  return Boolean(seguimiento) &&
+    hayValor(seguimiento.accionConcertada, seguimiento.seguimientoTipoId, seguimiento.seguimientoNumeroId);
+}
+
+function filaDe(nombreBase) {
+  const control = document.querySelector('[name^="' + nombreBase + '."]');
+  return control ? control.closest('tr') : null;
+}
+
+function bloquearCelda(fila, nombre) {
+  const control = fila.querySelector('[name="' + nombre + '"]');
+  return bloquearElemento(control ? control.closest('td') : null, 'registrado');
+}
+
+/* Las filas y celdas ya registradas de un plan; devuelve cuántas filas. */
+function bloquearPlanRegistrado(prefijo, plan) {
+  let filas = 0;
+  if (!plan) return filas;
+
+  (Array.isArray(plan.acciones) ? plan.acciones : []).forEach(function (accion, i) {
+    if (!accionRegistrada(accion)) return;
+    const fila = filaDe(prefijo + '.acciones[' + i + ']');
+    if (!fila) return;
+    fila.classList.add('plan-registrado');
+    bloquearElemento(fila, 'registrado');
+    filas++;
+  });
+
+  (Array.isArray(plan.seguimientos) ? plan.seguimientos : []).forEach(function (seguimiento, j) {
+    if (!seguimientoRegistrado(seguimiento)) return;
+    const base = prefijo + '.seguimientos[' + j + ']';
+    const fila = filaDe(base);
+    if (!fila) return;
+    fila.classList.add('plan-registrado');
+    ['seguimientoTipoId', 'seguimientoNumeroId', 'accionConcertada'].forEach(function (campo) {
+      bloquearCelda(fila, base + '.' + campo);
+    });
+    /* Un seguimiento vacío es lo que falta: se deja abierto para completarlo. */
+    if (hayValor(seguimiento.seg1Fecha)) {
+      ['seg1Fecha', 'seg1Estado', 'seg1MotivoNc'].forEach(function (campo) { bloquearCelda(fila, base + '.' + campo); });
+    }
+    if (hayValor(seguimiento.seg2Fecha)) {
+      ['seg2Fecha', 'seg2Estado', 'seg2MotivoNc'].forEach(function (campo) { bloquearCelda(fila, base + '.' + campo); });
+    }
+    const quitar = fila.querySelector('[data-accion="quitarFila"]');
+    bloquearElemento(quitar ? quitar.closest('td') : null, 'registrado');
+    filas++;
+  });
+
+  /* Un plan de familia o de persona con algo registrado no cambia de dueño
+     ni se elimina. */
+  if (filas > 0) {
+    const muestra = document.querySelector('[name^="' + prefijo + '."]');
+    const bloque = muestra && muestra.closest('[data-bloque="planFamilia"], [data-bloque="planPersona"]');
+    if (bloque) {
+      const selector = bloque.querySelector('[data-rol="selectorFamilia"], [data-rol="selectorIntegrante"]');
+      bloquearElemento(selector ? (selector.closest('.field') || selector) : null, 'registrado');
+      bloquearElemento(bloque.querySelector('[data-accion="quitarPlanFamilia"], [data-accion="quitarPlanPersona"]'),
+        'registrado');
+    }
+  }
+
+  return filas;
+}
+
+/**
+ * @param opciones.secciones  evolución del plan: todo lo que no es la sección
+ *                            6 queda intocable
+ * @param opciones.registrado lo registrado del plan queda intocable
+ * @returns cuántas filas registradas del plan quedaron bloqueadas
+ */
+function aplicarBloqueosDePlan(encuesta, opciones) {
+  const o = opciones || {};
+  const formulario = document.getElementById('encuestaForm');
+  const capturas = document.getElementById('bloquesCaptura');
+  const seccionPlan = document.getElementById('seccion-6');
+
+  if (o.secciones && formulario && capturas && seccionPlan) {
+    let antesDelFieldset = true;
+    Array.prototype.forEach.call(formulario.children, function (hijo) {
+      if (hijo === capturas) antesDelFieldset = false;
+      else if (antesDelFieldset) bloquearElemento(hijo, 'ficha');
+    });
+
+    let antesDelPlan = true;
+    Array.prototype.forEach.call(capturas.children, function (hijo) {
+      if (hijo === seccionPlan) antesDelPlan = false;
+      if (antesDelPlan) bloquearElemento(hijo, 'ficha');
+    });
+
+    /* El cierre por causa externa también es de la visita, no del plan. */
+    const cierre = formulario.querySelector('[data-campo="visitaIncompleta"]');
+    bloquearElemento(cierre ? cierre.closest('.card') : null, 'ficha');
+  }
+
+  if (!o.registrado) return 0;
+
+  const planes = desenrutarPlanes(encuesta);
+  let filas = bloquearPlanRegistrado('planVivienda', encuesta.planVivienda);
+  planes.planesFamilia.forEach(function (plan, k) {
+    filas += bloquearPlanRegistrado('planesFamilia[' + k + ']', plan);
+  });
+  planes.planesPersona.forEach(function (plan, k) {
+    filas += bloquearPlanRegistrado('planesPersona[' + k + ']', plan);
+  });
+  return filas;
 }
 
 /* =========================================================
    2. CARGA DE LA FICHA EN EL FORMULARIO
    ========================================================= */
 
+/* Mientras se carga una ficha, cada control recibe su `input` como si se
+   hubiera tecleado. El buscador de CUPS (cups.js) lo ignora: si no, abría su
+   lista sobre cada código cargado, y como nadie había entrado al campo, nada
+   la cerraba —en una fila del plan ya registrado, bloqueada, no había forma
+   (RN-228)—. Los nombres los pone resolverCombosCups al final de la carga. */
+let cargandoFichaEnFormulario = false;
+
 function cargarEncuestaEnFormulario(encuesta) {
+  cargandoFichaEnFormulario = true;
+  try {
+    cargarEncuestaEnFormularioAhora(encuesta);
+  } finally {
+    cargandoFichaEnFormulario = false;
+  }
+}
+
+function cargarEncuestaEnFormularioAhora(encuesta) {
   const formulario = document.getElementById('encuestaForm');
 
   formulario.reset();

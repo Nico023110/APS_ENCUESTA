@@ -1131,7 +1131,10 @@ async function correrPruebas() {
 
     console.log('\n=== 11. Restricciones del plan que se rechazan con 400 ===');
 
-    const derivadaSinDestino = fichaValida(sello + 'z');
+    /* Fichas nuevas, cada una con su código: reenviar la de la sección 6
+       cambiaría la acción que ya tiene registrada, y eso se rechaza antes
+       por el bloqueo del plan (RN-228, sección 14), no por estas reglas. */
+    const derivadaSinDestino = fichaValida(sello + 'r1');
     derivadaSinDestino.planVivienda = {
       codigoEbs: derivadaSinDestino.equipoSaludId,
       codigoVivienda: derivadaSinDestino.idHogar,
@@ -1146,7 +1149,7 @@ async function correrPruebas() {
       'estado ' + rp.estado);
     verificar('  señala institucionDestino', bloqueoEn(rp.cuerpo, 'institucionDestino'));
 
-    const cupsInexistente = fichaValida(sello + 'z');
+    const cupsInexistente = fichaValida(sello + 'r2');
     cupsInexistente.planVivienda = {
       codigoEbs: cupsInexistente.equipoSaludId,
       codigoVivienda: cupsInexistente.idHogar,
@@ -1166,7 +1169,7 @@ async function correrPruebas() {
        llegaba a la transacción y la reventaba con un 500: el encuestador veía
        «no hubo respuesta del servidor» sobre un campo que nadie le señaló, y
        la ficha se quedaba sin subir para siempre. */
-    const ejecutorConDocumentoMalo = fichaValida(sello + 'z');
+    const ejecutorConDocumentoMalo = fichaValida(sello + 'r3');
     ejecutorConDocumentoMalo.planVivienda = {
       codigoEbs: ejecutorConDocumentoMalo.equipoSaludId,
       codigoVivienda: ejecutorConDocumentoMalo.idHogar,
@@ -1181,7 +1184,7 @@ async function correrPruebas() {
       'estado ' + rp.estado + ' ' + JSON.stringify(rp.cuerpo).slice(0, 200));
     verificar('  señala ejecutorNumeroId', bloqueoEn(rp.cuerpo, 'ejecutorNumeroId'));
 
-    const seguimientoConDocumentoMalo = fichaValida(sello + 'z');
+    const seguimientoConDocumentoMalo = fichaValida(sello + 'r4');
     seguimientoConDocumentoMalo.planVivienda = {
       codigoEbs: seguimientoConDocumentoMalo.equipoSaludId,
       codigoVivienda: seguimientoConDocumentoMalo.idHogar,
@@ -1314,6 +1317,165 @@ async function correrPruebas() {
        WHERE e.entidad = 'reporte_sispro' AND u.documento = ANY($1) AND e.ocurrido_en > now() - interval '10 minutes'
     `, [['1144099010', '1144099011']])).rows[0].n;
     verificar('  cada generación quedó en aud.evento', auditoriaReporte >= 2, String(auditoriaReporte));
+
+    console.log('\n=== 14. Plan registrado: sólo se completa; cambiarlo exige autorización (RN-228) ===');
+
+    const enDias = function (dias) {
+      const f = new Date();
+      f.setDate(f.getDate() + dias);
+      return f.toISOString().split('T')[0];
+    };
+    const accionRegistrada = { ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: 'NC-FAM-01', tipoRespuesta: 'en_sitio' };
+    const accionNueva = { ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: 'NC-FAM-02', tipoRespuesta: 'en_sitio' };
+    const seguimientoRegistrado = {
+      seguimientoTipoId: 'CC', seguimientoNumeroId: '1144012345',
+      accionConcertada: 'Visita de control acordada con la familia', seg1Fecha: hoyIso(), seg1Estado: 'C'
+    };
+    /* La misma ficha, con el plan que se le indique; las copias evitan que
+       un caso arrastre los cambios del anterior. */
+    const fichaConPlan = function (acciones, seguimientos) {
+      const f = fichaValida(sello + 'bq');
+      f.planVivienda = {
+        codigoEbs: f.equipoSaludId, codigoVivienda: f.idHogar,
+        acciones: JSON.parse(JSON.stringify(acciones)), seguimientos: JSON.parse(JSON.stringify(seguimientos))
+      };
+      return f;
+    };
+    const comoCorreccion = function (f) { f.esCorreccion = true; return f; };
+    const codigoBloqueo = fichaValida(sello + 'bq').codigoFicha;
+    const planEnBase = async function () {
+      return (await cliente.query(`
+        SELECT (SELECT array_agg(pa.codigo_accion ORDER BY pa.id) FROM aps.plan_accion pa WHERE pa.plan_id = pc.id) AS acciones,
+               (SELECT to_char(ps.seg2_fecha, 'YYYY-MM-DD') FROM aps.plan_seguimiento ps WHERE ps.plan_id = pc.id LIMIT 1) AS seg2
+          FROM aps.plan_cuidado pc JOIN aps.ficha f ON f.id = pc.ficha_id
+         WHERE f.codigo = $1 AND pc.ambito = 'vivienda'`, [codigoBloqueo])).rows[0] || {};
+    };
+
+    let rb = await enviar(fichaConPlan([accionRegistrada], [seguimientoRegistrado]));
+    verificar('Ficha con plan de vivienda registrado => 200', rb.estado === 200,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+
+    const cambiada = comoCorreccion(fichaConPlan([Object.assign({}, accionRegistrada, { codigoAccion: 'NC-FAM-02' })],
+      [seguimientoRegistrado]));
+    rb = await enviar(cambiada);
+    verificar('Corregir cambiando una acción registrada => 409 plan_registrado',
+      rb.estado === 409 && rb.cuerpo.codigo === 'plan_registrado', 'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 160));
+    verificar('  señala el campo cambiado', bloqueoEn(rb.cuerpo, 'planVivienda.acciones[0].codigoAccion'),
+      JSON.stringify(rb.cuerpo.bloqueos || []).slice(0, 200));
+
+    rb = await enviar(comoCorreccion(fichaConPlan([], [seguimientoRegistrado])));
+    verificar('Quitar una acción registrada => 409', rb.estado === 409, 'estado ' + rb.estado);
+
+    rb = await enviar(comoCorreccion(fichaConPlan([accionRegistrada],
+      [Object.assign({}, seguimientoRegistrado, { seg1Fecha: enDias(-1) })])));
+    verificar('Cambiar el 1.er seguimiento registrado => 409', rb.estado === 409, 'estado ' + rb.estado);
+
+    const seguimientoCompleto = Object.assign({}, seguimientoRegistrado, { seg2Fecha: enDias(30), seg2Estado: 'C' });
+    rb = await enviar(comoCorreccion(fichaConPlan([accionRegistrada, accionNueva], [seguimientoCompleto])));
+    verificar('Agregar una acción y completar el 2.º seguimiento => 200', rb.estado === 200,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+    let enBase = await planEnBase();
+    verificar('  quedan las dos acciones y el 2.º seguimiento',
+      String(enBase.acciones) === 'NC-FAM-01,NC-FAM-02' && enBase.seg2 === enDias(30), JSON.stringify(enBase));
+
+    /* «Evolucionar plan»: el servidor escribe sólo los planes. */
+    const evolucion = comoCorreccion(fichaConPlan([accionRegistrada, accionNueva,
+      Object.assign({}, accionNueva, { codigoAccion: 'NC-FAM-01' })], [seguimientoCompleto]));
+    evolucion.soloPlan = true;
+    evolucion.estrato = 'medio';   // fuera del plan: no se escribe
+    rb = await enviar(evolucion);
+    verificar('Evolucionar el plan => 200, sólo plan', rb.estado === 200 && rb.cuerpo.soloPlan === true,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+    enBase = await planEnBase();
+    const estratoEnBase = (await cliente.query(`
+      SELECT v.estrato FROM aps.vivienda v JOIN aps.ficha f ON f.id = v.ficha_id WHERE f.codigo = $1`,
+    [codigoBloqueo])).rows[0] || {};
+    verificar('  agregó la tercera acción', String(enBase.acciones) === 'NC-FAM-01,NC-FAM-02,NC-FAM-01', JSON.stringify(enBase));
+    verificar('  y no tocó lo registrado en la visita (estrato)', estratoEnBase.estrato === 'bajo', String(estratoEnBase.estrato));
+    const eventosPlan = (await cliente.query(`
+      SELECT e.valor_nuevo FROM aud.evento e JOIN aps.ficha f ON f.id = e.ficha_id
+       WHERE f.codigo = $1 AND e.campo = 'plan_cuidado' ORDER BY e.id`, [codigoBloqueo])).rows.map(function (x) { return x.valor_nuevo; });
+    verificar('  quedó en auditoría como plan completado', eventosPlan.indexOf('completado') !== -1, eventosPlan.join(' | '));
+
+    const nuevaSoloPlan = fichaValida(sello + 'bn');
+    nuevaSoloPlan.soloPlan = true;
+    rb = await enviar(nuevaSoloPlan);
+    verificar('Evolucionar el plan de una ficha que no está en la base => 400', rb.estado === 400, 'estado ' + rb.estado);
+
+    /* La autorización del maestro (api/permisos_plan.js). */
+    const permisosPlan = async function (cabeceras, metodo, cuerpo) {
+      const x = metodo === 'GET'
+        ? await fetch(BASE + '/api/permisos_plan?codigo=' + encodeURIComponent(codigoBloqueo), { headers: cabeceras })
+        : await fetch(BASE + '/api/permisos_plan', {
+          method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, cabeceras), body: JSON.stringify(cuerpo)
+        });
+      return { estado: x.status, cuerpo: await x.json().catch(function () { return {}; }) };
+    };
+    const planTres = [accionRegistrada, accionNueva, Object.assign({}, accionNueva, { codigoAccion: 'NC-FAM-01' })];
+
+    let rpp = await permisosPlan(sesion.cabeceras, 'GET');
+    verificar('Una profesional no consulta ni da autorizaciones => 403', rpp.estado === 403, 'estado ' + rpp.estado);
+
+    rpp = await permisosPlan(maestro.cabeceras, 'GET');
+    const candidatoProfesional = (rpp.cuerpo.candidatos || []).find(function (c) { return c.documento === USUARIO_PRUEBA.documento; });
+    verificar('El maestro ve a quién puede autorizar (quien puede corregir la ficha)',
+      rpp.estado === 200 && Boolean(candidatoProfesional), 'estado ' + rpp.estado + ' ' + JSON.stringify(rpp.cuerpo).slice(0, 200));
+    verificar('  la auxiliar, que no puede corregir una ficha ajena, no está entre ellos',
+      !(rpp.cuerpo.candidatos || []).some(function (c) { return c.documento === '1144099002'; }));
+
+    const idAuxiliar = auxiliar.usuario && auxiliar.usuario.id;
+    rpp = await permisosPlan(maestro.cabeceras, 'POST', { accion: 'otorgar', codigo: codigoBloqueo, usuarioId: idAuxiliar });
+    verificar('Autorizar a quien no puede corregir la ficha => 400', rpp.estado === 400, 'estado ' + rpp.estado);
+
+    rpp = await permisosPlan(maestro.cabeceras, 'POST', {
+      accion: 'otorgar', codigo: codigoBloqueo, usuarioId: candidatoProfesional && candidatoProfesional.id,
+      motivo: 'El código de la segunda acción quedó mal'
+    });
+    verificar('El maestro autoriza a la profesional => 200 con la autorización vigente',
+      rpp.estado === 200 && (rpp.cuerpo.permisos || []).length === 1, 'estado ' + rpp.estado);
+
+    const filaListada = (await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras })
+      .then(function (x) { return x.json(); })).find(function (f) { return f.codigoFicha === codigoBloqueo; }) || {};
+    verificar('  el historial de la profesional marca la ficha como autorizada', filaListada.permisoPlan === true);
+    const completaAutorizada = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(codigoBloqueo),
+      { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+    verificar('  y Corregir le deja editable lo registrado', completaAutorizada.planRegistradoEditable === true);
+
+    const conCambioAutorizado = planTres.slice();
+    conCambioAutorizado[1] = Object.assign({}, accionNueva, { codigoAccion: 'NC-AMB-07' });
+    rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])));
+    verificar('Con la autorización, cambiar lo registrado => 200', rb.estado === 200,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+    enBase = await planEnBase();
+    verificar('  el cambio quedó escrito', String(enBase.acciones) === 'NC-FAM-01,NC-AMB-07,NC-FAM-01', JSON.stringify(enBase));
+    const usado = (await cliente.query(`
+      SELECT pp.usado_en IS NOT NULL AS usado FROM aps.permiso_plan pp JOIN aps.ficha f ON f.id = pp.ficha_id
+       WHERE f.codigo = $1 ORDER BY pp.id DESC LIMIT 1`, [codigoBloqueo])).rows[0] || {};
+    verificar('  y la autorización quedó gastada', usado.usado === true);
+
+    conCambioAutorizado[1] = Object.assign({}, accionNueva, { codigoAccion: 'NC-FAM-02' });
+    rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])));
+    verificar('Un segundo cambio ya no tiene autorización => 409', rb.estado === 409, 'estado ' + rb.estado);
+
+    rpp = await permisosPlan(maestro.cabeceras, 'POST', {
+      accion: 'otorgar', codigo: codigoBloqueo, usuarioId: candidatoProfesional && candidatoProfesional.id
+    });
+    const idPermiso = ((rpp.cuerpo.permisos || [])[0] || {}).id;
+    rpp = await permisosPlan(maestro.cabeceras, 'POST', { accion: 'revocar', permisoId: idPermiso });
+    verificar('El maestro revoca una autorización => 200 sin vigentes',
+      rpp.estado === 200 && (rpp.cuerpo.permisos || []).length === 0, 'estado ' + rpp.estado);
+    rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])));
+    verificar('  revocada, el cambio vuelve a rechazarse => 409', rb.estado === 409, 'estado ' + rb.estado);
+
+    rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])), maestro.cabeceras);
+    verificar('El maestro cambia lo registrado él mismo => 200', rb.estado === 200,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+    const eventosFinales = (await cliente.query(`
+      SELECT e.valor_nuevo FROM aud.evento e JOIN aps.ficha f ON f.id = e.ficha_id
+       WHERE f.codigo = $1 AND e.campo = 'plan_cuidado' ORDER BY e.id`, [codigoBloqueo])).rows.map(function (x) { return x.valor_nuevo; });
+    verificar('  la auditoría distingue la autorización usada y el cambio del maestro',
+      eventosFinales.some(function (v) { return /con la autorización \d+/.test(v); }) &&
+      eventosFinales.indexOf('registrado modificado por el maestro') !== -1, eventosFinales.join(' | '));
 
     /* Limpieza. El orden importa: `familia` cuelga de `hogar` y la ficha
        arrastra en cascada su vivienda, familia_ficha e integrantes, pero no

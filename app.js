@@ -1691,6 +1691,21 @@ function renderizarHistorial() {
       ? ' disabled title="Diligenciada por otra persona: su rol no permite corregirla."' : '';
     const sinEliminar = remota ? ' disabled title="Ya está en la base: una ficha registrada no se elimina (RN-225)."' : '';
 
+    /* RN-228: el plan pendiente de una ficha que ya está en la base se
+       completa con «Evolucionar plan», que sólo deja tocar el plan. El
+       maestro, además, autoriza a otra persona a cambiar lo ya registrado. */
+    const enLaBase = remota || encuesta.sincronizada === true;
+    const plan = encuesta.planCuidado || {};
+    const sinEvolucionar = remota && !puedeCorregirFichaRemota(encuesta)
+      ? ' disabled title="Diligenciada por otra persona: su rol no permite evolucionar su plan."' : '';
+    const botonEvolucionar = enLaBase && plan.pendiente === true
+      ? '<button type="button" class="btn btn--ghost btn--icon" data-evolucionar="' + escaparHtml(encuesta.id) + '"' +
+        sinEvolucionar + '>Evolucionar plan</button>'
+      : '';
+    const botonAutorizar = enLaBase && puedeAutorizarPlan() && Number(plan.accionesRegistradas) > 0
+      ? '<button type="button" class="btn btn--ghost btn--icon" data-autorizar="' + escaparHtml(encuesta.id) + '">Autorizar</button>'
+      : '';
+
     return (
       '<tr>' +
         /* El código y el estado hacen falta para poder actuar sobre la fila:
@@ -1698,7 +1713,7 @@ function renderizarHistorial() {
            aquí no había manera de saber cuál de todas hay que corregir. */
         '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
         '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
-        '<td data-label="Plan de cuidado">' + badgePlanCuidado(encuesta) + '</td>' +
+        '<td data-label="Plan de cuidado">' + badgePlanCuidado(encuesta) + badgeAutorizacionPlan(encuesta) + '</td>' +
         '<td data-label="Fecha">' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
         '<td data-label="Modificación">' + textoModificacion(encuesta) + '</td>' +
         '<td data-label="Territorio">' + textoTerritorio(encuesta) + '</td>' +
@@ -1710,6 +1725,8 @@ function renderizarHistorial() {
         '<td class="actions-cell">' +
           '<button type="button" class="btn btn--ghost btn--icon" data-ver="' + escaparHtml(encuesta.id) + '">Ver</button>' +
           '<button type="button" class="btn btn--ghost btn--icon" data-corregir="' + escaparHtml(encuesta.id) + '"' + sinCorregir + '>Corregir</button>' +
+          botonEvolucionar +
+          botonAutorizar +
           '<button type="button" class="btn btn--danger btn--icon" data-eliminar="' + escaparHtml(encuesta.id) + '"' + sinEliminar + '>Eliminar</button>' +
         '</td>' +
       '</tr>'
@@ -1725,6 +1742,166 @@ function renderizarHistorial() {
   cuerpoTabla.querySelectorAll('[data-eliminar]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirModalConfirmarEliminacion(boton.dataset.eliminar); });
   });
+  cuerpoTabla.querySelectorAll('[data-evolucionar]').forEach(function (boton) {
+    boton.addEventListener('click', function () { abrirEvolucionDePlan(boton.dataset.evolucionar); });
+  });
+  cuerpoTabla.querySelectorAll('[data-autorizar]').forEach(function (boton) {
+    boton.addEventListener('click', function () { abrirAutorizacionDePlan(boton.dataset.autorizar); });
+  });
+}
+
+/* ---------------------------------------------------------
+   15b. AUTORIZACIÓN PARA MODIFICAR UN PLAN REGISTRADO (RN-228)
+   ---------------------------------------------------------
+   Lo registrado en el plan de cuidado sólo se completa. Para cambiarlo, el
+   usuario maestro autoriza a una persona sobre una ficha; la autorización
+   sirve para un guardado (api/permisos_plan.js, guardar_encuesta.js).
+   --------------------------------------------------------- */
+
+function puedeAutorizarPlan() {
+  if (typeof SESION === 'undefined' || typeof puede !== 'function') return false;
+  const usuario = SESION.usuario();
+  return Boolean(usuario) && puede(usuario.rol, 'plan.autorizar');
+}
+
+/* La fila de la base de una ficha, también cuando el historial muestra la
+   copia del dispositivo: la autorización vigente viaja en la de la base. */
+function filaDelServidor(codigoFicha) {
+  return (cacheFichasDelServidor || []).find(function (e) { return e.codigoFicha === codigoFicha; }) || null;
+}
+
+function badgeAutorizacionPlan(encuesta) {
+  const fila = encuesta.permisoPlan === true ? encuesta : filaDelServidor(encuesta.codigoFicha);
+  if (!fila || fila.permisoPlan !== true) return '';
+  return ' <span class="badge badge--info" title="El usuario maestro le autorizó modificar lo ya registrado en ' +
+    'el plan de cuidado de esta ficha. Sirve para un guardado: ábrala con Corregir o Evolucionar plan.">' +
+    'Modificación autorizada</span>';
+}
+
+async function pedirPermisosPlan(metodo, cuerpo, codigo) {
+  const respuesta = metodo === 'GET'
+    ? await fetch('/api/permisos_plan?codigo=' + encodeURIComponent(codigo))
+    : await fetch('/api/permisos_plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    });
+  const datos = await respuesta.json().catch(function () { return {}; });
+  if (!respuesta.ok) throw new Error(datos.error || 'HTTP ' + respuesta.status);
+  return datos;
+}
+
+function htmlAutorizacionPlan(datos) {
+  const etiquetaRol = function (rol) {
+    return typeof etiquetaDeRol === 'function' ? etiquetaDeRol(rol) : rol;
+  };
+
+  const vigentes = datos.permisos.length === 0
+    ? '<p class="autorizacion-plan__vacio">Nadie tiene autorización vigente sobre esta ficha.</p>'
+    : '<ul class="autorizacion-plan__lista">' + datos.permisos.map(function (permiso) {
+      return '<li class="autorizacion-plan__permiso">' +
+        '<span><strong>' + escaparHtml(permiso.usuario.nombre) + '</strong> · ' +
+        '<span class="mono">' + escaparHtml(permiso.usuario.documento) + '</span><br>' +
+        '<span class="autorizacion-plan__detalle">Desde ' + escaparHtml(formatearFecha(permiso.otorgadoEn)) +
+        (permiso.motivo ? ' · ' + escaparHtml(permiso.motivo) : '') + '</span></span>' +
+        '<button type="button" class="btn btn--ghost btn--icon" data-revocar-permiso="' + permiso.id + '">Revocar</button>' +
+      '</li>';
+    }).join('') + '</ul>';
+
+  const opciones = datos.candidatos.map(function (c) {
+    return '<option value="' + c.id + '">' + escaparHtml(c.nombre + ' — ' + c.documento + ' · ' + etiquetaRol(c.rol)) +
+      '</option>';
+  }).join('');
+
+  const nuevo = datos.candidatos.length === 0
+    ? '<p class="autorizacion-plan__vacio">Nadie más puede corregir esta ficha, así que no hay a quién autorizar.</p>'
+    : '<div class="field">' +
+        '<label for="autorizarUsuario">Autorizar a</label>' +
+        '<select id="autorizarUsuario"><option value="">Seleccione…</option>' + opciones + '</select>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label for="autorizarMotivo">Motivo</label>' +
+        '<textarea id="autorizarMotivo" maxlength="300" rows="3" ' +
+          'placeholder="Ej.: el código de la acción quedó mal registrado"></textarea>' +
+      '</div>' +
+      '<p class="autorizacion-plan__nota">Podrá cambiar lo ya registrado en el plan de esta ficha una sola vez: ' +
+        'al guardar, el plan vuelve a quedar bloqueado.</p>';
+
+  return '<div class="autorizacion-plan">' +
+    '<p class="autorizacion-plan__ficha">Ficha <span class="mono">' + escaparHtml(datos.ficha.codigo) + '</span></p>' +
+    '<h4 class="autorizacion-plan__titulo">Autorizaciones vigentes</h4>' + vigentes +
+    '<h4 class="autorizacion-plan__titulo">Nueva autorización</h4>' + nuevo +
+  '</div>';
+}
+
+async function abrirAutorizacionDePlan(id) {
+  const encuesta = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
+  if (!encuesta || typeof Swal === 'undefined') return;
+
+  let datos;
+  try {
+    datos = await pedirPermisosPlan('GET', null, encuesta.codigoFicha);
+  } catch (error) {
+    mostrarNotificacion('No fue posible consultar las autorizaciones de la ficha: ' + error.message, 'error');
+    return;
+  }
+
+  const resultado = await Swal.fire({
+    title: 'Modificar el plan registrado',
+    html: htmlAutorizacionPlan(datos),
+    showCancelButton: true,
+    showConfirmButton: datos.candidatos.length > 0,
+    confirmButtonText: 'Autorizar',
+    cancelButtonText: 'Cerrar',
+    confirmButtonColor: '#0060a0',
+    background: '#ffffff',
+    color: '#0b1220',
+    focusConfirm: false,
+    didOpen: function (popup) {
+      popup.querySelectorAll('[data-revocar-permiso]').forEach(function (boton) {
+        boton.addEventListener('click', async function () {
+          boton.disabled = true;
+          try {
+            await pedirPermisosPlan('POST', { accion: 'revocar', permisoId: Number(boton.dataset.revocarPermiso) });
+            Swal.close();
+            mostrarNotificacion('Se revocó la autorización sobre la ficha ' + encuesta.codigoFicha + '.', 'success',
+              function () { abrirAutorizacionDePlan(id); });
+          } catch (error) {
+            boton.disabled = false;
+            Swal.showValidationMessage('No fue posible revocarla: ' + error.message);
+          }
+        });
+      });
+    },
+    preConfirm: function () {
+      const usuarioId = Number((document.getElementById('autorizarUsuario') || {}).value);
+      if (!usuarioId) {
+        Swal.showValidationMessage('Seleccione a quién autoriza.');
+        return false;
+      }
+      return {
+        usuarioId: usuarioId,
+        motivo: ((document.getElementById('autorizarMotivo') || {}).value || '').trim()
+      };
+    }
+  });
+
+  if (!resultado.isConfirmed || !resultado.value) return;
+
+  const elegido = datos.candidatos.find(function (c) { return c.id === resultado.value.usuarioId; });
+  try {
+    await pedirPermisosPlan('POST', {
+      accion: 'otorgar', codigo: encuesta.codigoFicha,
+      usuarioId: resultado.value.usuarioId, motivo: resultado.value.motivo
+    });
+  } catch (error) {
+    mostrarNotificacion('No fue posible dar la autorización: ' + error.message, 'error');
+    return;
+  }
+
+  mostrarNotificacion('Se autorizó a ' + (elegido ? elegido.nombre : 'la persona elegida') +
+    ' a modificar lo registrado en el plan de cuidado de la ficha ' + encuesta.codigoFicha +
+    '. La autorización sirve para un guardado.', 'success');
 }
 
 function inicializarFiltrosHistorial() {
@@ -3088,9 +3265,16 @@ async function manejarEnvioFormulario(evento) {
   const datos = recolectarDatosFormulario(formulario);
   actualizarTableroDeRiesgo(datos);
 
+  /* RN-228: evolucionando el plan sólo cuenta el plan. El resto de la ficha
+     ya está registrado, no se vuelve a escribir y no se puede tocar: sus
+     pendientes —por ejemplo, reglas que cambiaron después de la visita— no
+     detienen el plan. */
+  const enPlan = typeof enEvolucionDePlan === 'function' && enEvolucionDePlan();
+  const delPlan = function (item) { return !enPlan || esRutaDelPlan(item && item.ruta); };
+
   // RN-222: cierre por causa externa. Se admite la ficha incompleta siempre
   // que quede registrado el motivo, y no entra al denominador de cobertura.
-  if (datos.visitaIncompleta) {
+  if (datos.visitaIncompleta && !enPlan) {
     if (esVacioTexto(datos.motivoVisitaIncompleta)) {
       mostrarNotificacion('Registre el motivo del cierre por causa externa.', 'error', function () {
         enfocarElemento(document.getElementById('campoMotivoIncompleta'), document.getElementById('motivoVisitaIncompleta'));
@@ -3102,7 +3286,11 @@ async function manejarEnvioFormulario(evento) {
   }
 
   const resultadoCierre = validarCierre(datos);
-  const incumplimientos = validarReglas(datos);
+  const incumplimientos = validarReglas(datos).filter(delPlan);
+  if (enPlan) {
+    resultadoCierre.impedimentos = resultadoCierre.impedimentos.filter(delPlan);
+    resultadoCierre.puedeCerrar = resultadoCierre.impedimentos.length === 0;
+  }
 
   renderizarImpedimentos(resultadoCierre.impedimentos);
 
@@ -3111,7 +3299,7 @@ async function manejarEnvioFormulario(evento) {
   });
   /* Las advertencias se pintan en ámbar junto al campo; no impiden guardar.
      Van después de los errores: donde ya hay uno, el error manda. */
-  const advertencias = evaluarAdvertencias(datos);
+  const advertencias = evaluarAdvertencias(datos).filter(delPlan);
   advertencias.forEach(function (advertencia) {
     marcarAdvertencia(formulario, advertencia);
   });
@@ -3184,26 +3372,35 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      el registro, la segunda no puede pisarlo (ver guardar_encuesta.js). */
   encuesta.esCorreccion = !!encuestaEnCorreccion;
 
+  /* RN-228: evolucionando el plan, el servidor escribe sólo los planes. */
+  const enPlan = typeof enEvolucionDePlan === 'function' && enEvolucionDePlan();
+  if (enPlan) {
+    encuesta.soloPlan = true;
+    mensaje = 'El plan de cuidado se guardó.';
+  }
+
   const resultado = await enviarFichaAlServidor(encuesta, boton);
 
   /* Rechazo por reglas de negocio: la ficha NO se guarda ni se limpia el
      formulario. El encuestador tiene que poder corregir lo que el servidor
      señala, y para eso necesita sus respuestas en pantalla. */
   if (resultado.estado === 'rechazada') {
-    mostrarBloqueosDelServidor(formulario, resultado.bloqueos);
+    mostrarBloqueosDelServidor(formulario, resultado.bloqueos, resultado.mensaje);
     return false;
   }
 
   encuesta.sincronizada = resultado.estado === 'guardada';
   aplicarCodigosAsignados(encuesta, resultado.codigos);
-  if (encuesta.nuv && encuesta.idHogar) {
+  if (encuesta.nuv && encuesta.idHogar && !enPlan) {
     mensaje += ' Vivienda ' + encuesta.nuv + ' · código ' + encuesta.idHogar + '.';
   }
 
   /* El plan diferido no es error: se avisa una vez, al guardar, dónde se
      completa después. */
   if (encuesta.planCuidado && encuesta.planCuidado.pendiente) {
-    mensaje += ' El plan de cuidado quedó pendiente: puede completarlo desde Historial → Corregir.';
+    mensaje += enPlan
+      ? ' Sigue pendiente: puede volver a evolucionarlo desde el historial.'
+      : ' El plan de cuidado quedó pendiente: puede completarlo desde Historial → Evolucionar plan.';
   }
 
   /* Corrigiendo se reemplaza la ficha existente; capturando se agrega una
@@ -3217,7 +3414,11 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      no perder la corrección. */
   const eraCorreccion = Boolean(encuestaEnCorreccion);
   if (encuestaEnCorreccion) {
-    if (!(correccionDesdeServidor && encuesta.sincronizada)) {
+    /* El plan se evoluciona desde la base; si además hay una copia en el
+       dispositivo, se pone al día para que el historial no muestre el plan
+       de antes. */
+    const hayCopiaLocal = obtenerEncuestas().some(function (e) { return e.id === encuestaEnCorreccion; });
+    if (!(correccionDesdeServidor && encuesta.sincronizada) || (enPlan && hayCopiaLocal)) {
       reemplazarEncuesta(encuestaEnCorreccion, encuesta);
     }
     salirDeCorreccion();
@@ -3225,7 +3426,10 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
     agregarEncuesta(encuesta);
   }
 
-  if (encuesta.sincronizada) {
+  if (encuesta.sincronizada && enPlan) {
+    mostrarNotificacion(mensaje + ' Lo registrado ya no se puede cambiar sin autorización del usuario maestro.',
+      'success');
+  } else if (encuesta.sincronizada) {
     mostrarNotificacion(mensaje + ' Quedó registrada en la base de datos.', 'success');
   } else if (resultado.estado === 'error_servidor') {
     /* La ficha se conserva igual —el trabajo del encuestador no se pierde—,
@@ -3315,9 +3519,16 @@ async function enviarFichaAlServidor(encuesta, boton) {
       return { estado: 'guardada', codigos: cuerpo.codigos || null };
     }
 
-    if (respuesta.status === 400) {
+    /* 409: lo ya registrado en el plan de cuidado no se cambia sin
+       autorización (RN-228). Es un rechazo de la ficha, no un fallo del
+       servidor: se corrige en pantalla, no se deja en cola. */
+    if (respuesta.status === 400 || respuesta.status === 409) {
       const cuerpo = await respuesta.json().catch(function () { return {}; });
-      return { estado: 'rechazada', bloqueos: cuerpo.bloqueos || [] };
+      return {
+        estado: 'rechazada',
+        bloqueos: cuerpo.bloqueos || [],
+        mensaje: respuesta.status === 409 ? (cuerpo.error || null) : null
+      };
     }
 
     /* 500 y demás: el problema es del servidor, no de la ficha. No se pierde
@@ -3348,7 +3559,7 @@ async function enviarFichaAlServidor(encuesta, boton) {
  * para señalar el control exacto; el `campo` a secas marcaría los tres planes
  * a la vez y no diría cuál corregir.
  */
-function mostrarBloqueosDelServidor(formulario, bloqueos) {
+function mostrarBloqueosDelServidor(formulario, bloqueos, encabezado) {
   const lista = bloqueos || [];
 
   renderizarImpedimentos(lista.map(function (b) {
@@ -3386,7 +3597,7 @@ function mostrarBloqueosDelServidor(formulario, bloqueos) {
   }), 'servidor');
 
   mostrarNotificacion(
-    'El servidor no aceptó la ficha: ' + lista.length + ' campo(s) por corregir. ' +
+    (encabezado ? encabezado + ' ' : 'El servidor no aceptó la ficha: ' + lista.length + ' campo(s) por corregir. ') +
     'Use la barra inferior para ir a cada uno.', 'error',
     function () {
       if (navegadorPendientes.items.length > 0) {

@@ -55,6 +55,8 @@ Usuario maestro»).
 | `equipos.gestionar` — equipos y su composición | — | — | Sí | Sí |
 | `auditoria.ver` — `aud.evento`, `aud.acceso_sensible`, `aps.intento_acceso` | — | — | Sí | Sí |
 | `reporte.generar` — archivo plano APS124CCFP para PISIS (RN‑227) | — | — | Sí | Sí |
+| `plan.autorizar` — autorizar a un usuario a cambiar lo registrado en el plan de cuidado de una ficha (RN‑228) | — | — | — | Sí |
+| `plan.modificar_registrado` — cambiar lo registrado en un plan de cuidado sin autorización (RN‑228) | — | — | — | Sí |
 
 Consecuencias en la interfaz:
 
@@ -85,6 +87,16 @@ Consecuencias en la interfaz:
   tenga más de 30 días (RN‑016).
 - **Eliminar** sólo aplica a fichas que siguen en el dispositivo: una ficha de
   la base no se borra, se corrige (RN‑225).
+- **Evolucionar plan** aparece en el historial cuando el plan de cuidado de una
+  ficha de la base está pendiente, para quien puede corregirla. Sólo deja
+  completar el plan: la visita queda intocable y el servidor escribe únicamente
+  los planes (RN‑228).
+- **Lo registrado en el plan de cuidado** sólo se completa, por cualquier vía
+  (Evolucionar plan, Corregir o sincronizar). Para cambiarlo, el maestro usa
+  **Autorizar** en el historial: elige a la persona —entre quienes pueden
+  corregir la ficha— y un motivo. La autorización sirve para un guardado y se
+  puede revocar antes de usarla; el maestro también puede cambiarlo él mismo.
+  Todo queda en `aps.permiso_plan` y en `aud.evento` (RN‑228).
 
 La gestión de cuentas (`usuarios.gestionar`) se hace desde la aplicación: el
 chip del usuario en la cabecera despliega un menú con **Modificar usuarios**

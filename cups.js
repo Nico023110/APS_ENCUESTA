@@ -537,6 +537,8 @@ function inicializarBuscadorCups() {
   formulario.addEventListener('input', function (evento) {
     if (!evento.target.classList.contains('combo-cups__entrada')) return;
     if (elegidosDeLaLista.has(evento.target)) return;
+    /* Cargar una ficha no es teclear: ver cargarEncuestaEnFormulario. */
+    if (typeof cargandoFichaEnFormulario !== 'undefined' && cargandoFichaEnFormulario) return;
 
     const combo = comboDe(evento.target);
     /* El nombre de debajo deja de corresponder en cuanto se toca el código. */

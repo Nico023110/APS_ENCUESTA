@@ -23,6 +23,10 @@
    datos de todas las fichas del período, sensibles incluidos, así que sólo
    lo generan los perfiles institucionales (administrador y maestro).
 
+   «plan.autorizar» y «plan.modificar_registrado» (RN-228): lo registrado en
+   un plan de cuidado sólo se completa; cambiarlo exige que el maestro lo
+   autorice para un usuario y una ficha, o que lo haga él mismo.
+
    Los permisos son cadenas «recurso.accion[.alcance]». Ver
    ROLES_Y_PERMISOS.md para la matriz completa y su justificación.
    ========================================================= */
@@ -80,7 +84,12 @@ const PERMISOS_POR_NIVEL = {
     'usuarios.gestionar',
     'equipos.gestionar',
     'auditoria.ver',
-    'reporte.generar'
+    'reporte.generar',
+    /* RN-228: el plan de cuidado registrado no se modifica sin autorización.
+       Por ahora sólo el maestro la da —a un usuario, para una ficha— y él
+       mismo puede modificarlo. */
+    'plan.autorizar',
+    'plan.modificar_registrado'
   ]
 };
 

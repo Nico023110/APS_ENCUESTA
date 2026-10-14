@@ -25,7 +25,7 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 - **Inicio de sesión** (`login.html`): acceso por número de documento y contraseña; en el primer ingreso se exige crear una contraseña propia. El rol es el perfil asistencial del ítem 14 o administrador; los ítems 10 y 12‑14 se firman desde la sesión. Tras 15 minutos sin actividad la aplicación se bloquea y pide la contraseña de nuevo (RN‑223.6). Ver `ROLES_Y_PERMISOS.md`.
 - Vista **Inicio**: indicadores del territorio (fichas, hacinamiento, situaciones inminentes, territorios, planes pendientes) y accesos rápidos.
 - Vista **Nueva Encuesta**: el instrumento completo en una sola página larga, en el orden impreso (secciones 1 a 6 y cierre), con bloques repetibles por familia e integrante, índice de secciones, navegador de pendientes al intentar guardar y validación en vivo campo a campo.
-- Vista **Historial**: fichas locales y de la base, con estado de sincronización, estado del plan de cuidado, filtros, detalle y corrección.
+- Vista **Historial**: fichas locales y de la base, con estado de sincronización, estado del plan de cuidado, filtros, detalle, corrección y evolución del plan de cuidado: lo registrado en el plan sólo se completa, y cambiarlo exige autorización del usuario maestro (RN-228).
 - Flujo de trabajo real: consentimiento → situación inminente → vivienda → familias → integrantes → plan de cuidado (puede diferirse) → cierre → guardar. Una visita puede cerrarse como incompleta por causa externa.
 - Sin conexión la ficha queda en el dispositivo y se sincroniza después («Sincronizar a la nube»).
 - Corregir una ficha reusa el mismo formulario y reemplaza el registro, desde cualquier dispositivo: si la ficha no está en el equipo se trae de la base, según los permisos del rol.
@@ -54,7 +54,7 @@ La única herramienta que valida el instrumento SI-APS completo mientras se dili
 - `logo ladera.jpg` (750×415, JPG con fondo blanco).
 - `SI-APS - Poblacional instrumento identificación v2-imprimible 2025.pdf`: el instrumento oficial que la ficha reproduce.
 - `lineamiento-equipos-basicos-territorios-atencion-primaria-salud-2026.pdf`: lineamiento de los EBS.
-- `REGLAS_DE_NEGOCIO.md`: las reglas RN-001 a RN-227 con su justificación, y el bloque 13 del anexo técnico.
+- `REGLAS_DE_NEGOCIO.md`: las reglas RN-001 a RN-228 con su justificación, y el bloque 13 del anexo técnico.
 - `bd/sispro/anexo_APS124CCFP_v7.md`: el anexo técnico de reporte SI-APS (fuente APS124CCFP) y `bd/sispro/tablas/`: las tablas de referencia de SISPRO que usan los catálogos.
 - No hay fotografías, testimonios, cifras de cobertura ni material de comunicación de la entidad: no se inventan.
 

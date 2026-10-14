@@ -52,6 +52,10 @@ module.exports = async (req, res) => {
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
   const filtro = alcance === 'todas' ? '' : 'WHERE f.equipo_salud_id = $1';
   const parametros = alcance === 'todas' ? [] : [usuario.equipoSaludId || -1];
+  /* RN-228: si el maestro le autorizó a este usuario modificar el plan
+     registrado de la ficha, la fila lo dice para que el formulario lo abra. */
+  parametros.push(usuario.id || -1);
+  const parametroUsuario = '$' + parametros.length;
 
   try {
     const resultado = await consultar(`
@@ -73,6 +77,9 @@ module.exports = async (req, res) => {
         h.direccion_normalizada   AS direccion,
         v.personas_por_habitacion,
         v.hacinamiento,
+        EXISTS (SELECT 1 FROM aps.permiso_plan pp
+                 WHERE pp.ficha_id = f.id AND pp.usuario_id = ${parametroUsuario}
+                   AND pp.usado_en IS NULL AND pp.revocado_en IS NULL) AS permiso_plan,
         ${COLUMNAS_PLAN}
       FROM aps.ficha f
       JOIN aps.hogar h        ON h.id = f.hogar_id
@@ -116,7 +123,8 @@ module.exports = async (req, res) => {
         hacinamiento: fila.hacinamiento === null ? null : (fila.hacinamiento ? 'si' : 'no'),
         /* RN-220 (plan diferido): el historial distingue las fichas cuyo plan
            de cuidado sigue pendiente. */
-        planCuidado: resumenPlanDesdeFila(fila)
+        planCuidado: resumenPlanDesdeFila(fila),
+        permisoPlan: fila.permiso_plan === true
       };
     });
 

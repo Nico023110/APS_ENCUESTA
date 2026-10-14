@@ -39,6 +39,8 @@ const { obtenerPool } = require('./_db');
 const { validar, obtenerMotor } = require('./_validacion');
 const anexoBd = require('./_anexo_bd');
 const { requerirSesion } = require('./_auth');
+const { leerFichaCompleta } = require('./_ficha_completa');
+const { cambiosEnPlanRegistrado, esDelPlan } = require('./_plan_bloqueo');
 const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
@@ -484,6 +486,102 @@ async function fichaExistente(cliente, codigo) {
   return r.rows[0] || null;
 }
 
+/* RN-228 — La autorización vigente que el maestro le dio a este usuario para
+   modificar el plan registrado de esta ficha, o null. */
+async function permisoDePlanVigente(cliente, fichaId, usuarioId) {
+  const r = await cliente.query(`
+    SELECT id FROM aps.permiso_plan
+     WHERE ficha_id = $1 AND usuario_id = $2 AND usado_en IS NULL AND revocado_en IS NULL
+     LIMIT 1
+  `, [fichaId, usuarioId]);
+  return r.rows[0] || null;
+}
+
+/* RN-225 / RN-228 — Queda en auditoría quién tocó el plan y cómo: si sólo
+   completó lo que faltaba, o si cambió lo registrado —con qué autorización, o
+   por ser el maestro—. La autorización se gasta aquí, en la misma transacción
+   que el cambio: si el guardado falla, sigue vigente. */
+async function registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, permisoPlan, modificaRegistrado) {
+  if (permisoPlan) {
+    await cliente.query('UPDATE aps.permiso_plan SET usado_en = now() WHERE id = $1', [permisoPlan.id]);
+  }
+  const detalle = !modificaRegistrado ? 'completado'
+    : permisoPlan ? 'registrado modificado con la autorización ' + permisoPlan.id
+      : 'registrado modificado por el maestro';
+  await cliente.query(`
+    INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_nuevo, funcionario_id, dispositivo_id)
+    VALUES ($1, 'plan_cuidado', $1, 'modificacion', 'plan_cuidado', $2, $3, $4)
+  `, [fichaId, detalle, usuario.funcionarioId, texto(encuesta.dispositivoId)]);
+}
+
+/* RN-228 — «Evolucionar el plan de cuidado» desde el historial: sólo se
+   escriben los planes, sobre las familias e integrantes que ya están en la
+   base. Lo registrado en la visita no se toca, llegue como llegue en el
+   cuerpo; las llaves heredadas de cada plan salen de la base, no del cuerpo.
+   Un plan de una familia o un integrante que no está registrado no tiene
+   dónde colgar y se omite. */
+async function guardarSoloPlanes(cliente, fichaId, encuesta) {
+  const ficha = (await cliente.query(`
+    SELECT to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha, eq.codigo AS ebs, h.codigo AS vivienda
+      FROM aps.ficha f
+      JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
+      JOIN aps.hogar h         ON h.id = f.hogar_id
+     WHERE f.id = $1
+  `, [fichaId])).rows[0];
+
+  const familiasDb = (await cliente.query(`
+    SELECT ff.id, fa.consecutivo, fa.codigo
+      FROM aps.familia_ficha ff
+      JOIN aps.familia fa ON fa.id = ff.familia_id
+     WHERE ff.ficha_id = $1
+  `, [fichaId])).rows;
+
+  const integrantesDb = familiasDb.length === 0 ? [] : (await cliente.query(`
+    SELECT i.id, i.familia_ficha_id, p.tipo_id, p.numero_id
+      FROM aps.integrante i
+      JOIN aps.persona p ON p.id = i.persona_id
+     WHERE i.familia_ficha_id = ANY($1::bigint[])
+  `, [familiasDb.map(function (f) { return f.id; })])).rows;
+
+  function conLlaves(plan, extra) {
+    return Object.assign({}, plan, { codigoEbs: ficha.ebs, codigoVivienda: ficha.vivienda }, extra || {});
+  }
+
+  let filas = 0;
+  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+
+  for (let fi = 0; fi < familias.length; fi++) {
+    const familia = familias[fi] || {};
+    const registrada = familiasDb.find(function (f) { return Number(f.consecutivo) === fi + 1; });
+    if (!registrada) continue;
+
+    for (const integrante of (Array.isArray(familia.integrantes) ? familia.integrantes : [])) {
+      if (!integrante || !integrante.planPersona) continue;
+      const persona = integrantesDb.find(function (i) {
+        return String(i.familia_ficha_id) === String(registrada.id) &&
+          i.tipo_id === texto(integrante.tipoId) && i.numero_id === texto(integrante.numeroId);
+      });
+      if (!persona) continue;
+      filas += await guardarPlan(cliente, fichaId, 'persona', conLlaves(integrante.planPersona, {
+        codigoFamilia: registrada.codigo, tipoIdIntegrante: persona.tipo_id, numeroIdIntegrante: persona.numero_id
+      }), { familiaFichaId: registrada.id, integranteId: persona.id, fechaConcertacion: ficha.fecha });
+    }
+
+    if (familia.planFamilia) {
+      filas += await guardarPlan(cliente, fichaId, 'familia',
+        conLlaves(familia.planFamilia, { codigoFamilia: registrada.codigo }),
+        { familiaFichaId: registrada.id, fechaConcertacion: ficha.fecha });
+    }
+  }
+
+  if (encuesta.planVivienda) {
+    filas += await guardarPlan(cliente, fichaId, 'vivienda', conLlaves(encuesta.planVivienda),
+      { fechaConcertacion: ficha.fecha });
+  }
+
+  return filas;
+}
+
 /* Una visita nueva no puede pisar la ficha de otra persona.
 
    `aps.ficha.codigo` es la llave de la visita en toda la base. El código que
@@ -665,6 +763,42 @@ module.exports = async (req, res) => {
       tipoEvento = 'creacion';
     }
 
+    /* RN-228 — «Evolucionar el plan» sólo existe para una ficha ya guardada. */
+    const soloPlan = req.body.soloPlan === true;
+    if (soloPlan && !existente) {
+      return res.status(400).json({ error: 'Sólo se puede evolucionar el plan de cuidado de una ficha ya guardada.',
+        codigo: 'sin_ficha' });
+    }
+
+    /* RN-228 — Lo registrado en el plan de cuidado sólo se completa. Cambiarlo
+       o quitarlo exige que el maestro lo haya autorizado para este usuario y
+       esta ficha —la autorización se gasta al guardar— o ser el maestro. Vale
+       para toda forma de volver a guardar una ficha existente: corregirla,
+       evolucionar el plan o reenviarla al sincronizar. */
+    let permisoPlan = null;
+    let modificaPlanRegistrado = false;
+    if (existente) {
+      const cambios = cambiosEnPlanRegistrado(await leerFichaCompleta(cliente, existente.id), req.body);
+      if (cambios.length > 0) {
+        if (!roles.puede(usuario.rol, 'plan.modificar_registrado')) {
+          permisoPlan = await permisoDePlanVigente(cliente, existente.id, usuario.id);
+          if (!permisoPlan) {
+            console.error('  Plan registrado protegido: ' + texto(req.body.codigoFicha) +
+              ' — ' + cambios.length + ' cambio(s) sin autorización');
+            return res.status(409).json({
+              error: 'Lo ya registrado en el plan de cuidado no se puede cambiar sin autorización del usuario ' +
+                'maestro. Sólo puede completar lo que falta.',
+              codigo: 'plan_registrado',
+              total: cambios.length,
+              bloqueos: cambios,
+              advertencias: []
+            });
+          }
+        }
+        modificaPlanRegistrado = true;
+      }
+    }
+
     /* RN-016 limita a 30 días la antigüedad de una ficha que se registra; no
        impide corregir una que ya quedó registrada a tiempo. Lo decide la base
        —si el código ya existe—, nunca el cuerpo de la petición. */
@@ -674,7 +808,12 @@ module.exports = async (req, res) => {
        Se hace con una conexión del pool pero fuera de la transacción: si la
        ficha no pasa, no se abre transacción alguna. */
     const validacion = await validar(cliente, req.body);
-    const { bloqueos, advertencias, alertas, planCuidado } = validacion;
+    const { advertencias, alertas, planCuidado } = validacion;
+    /* Al evolucionar el plan sólo cuentan sus propios bloqueos: el resto de
+       la ficha ya está registrado y no se vuelve a escribir. */
+    const bloqueos = soloPlan
+      ? validacion.bloqueos.filter(function (b) { return esDelPlan(b.ruta); })
+      : validacion.bloqueos;
 
     if (bloqueos.length > 0) {
       /* El detalle viaja en la respuesta, pero el rechazo sólo se veía
@@ -699,6 +838,26 @@ module.exports = async (req, res) => {
        recompuesta desde sus componentes. */
     const encuesta = validacion.ficha;
     await cliente.query('BEGIN');
+
+    if (soloPlan) {
+      const filasSoloPlan = await guardarSoloPlanes(cliente, existente.id, encuesta);
+      await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, permisoPlan, modificaPlanRegistrado);
+      await cliente.query('COMMIT');
+
+      console.log('  Plan de cuidado evolucionado: ' + texto(encuesta.codigoFicha) + ' (id ' + existente.id +
+        ') — ' + filasSoloPlan + ' fila(s) del plan' +
+        (planCuidado && planCuidado.pendiente ? ' — sigue pendiente' : ''));
+
+      return res.status(200).json({
+        mensaje: 'Plan de cuidado guardado',
+        fichaId: existente.id,
+        codigo: texto(encuesta.codigoFicha),
+        soloPlan: true,
+        filasPlanCuidado: filasSoloPlan,
+        advertencias: advertencias.filter(function (a) { return esDelPlan(a.ruta); }),
+        planCuidado: planCuidado
+      });
+    }
 
     /* --- 1. Equipo de salud (RN-010) --- */
     const equipoRes = await cliente.query(`
@@ -1254,6 +1413,11 @@ module.exports = async (req, res) => {
 
     /* --- 8. Alertas (RN-200 a RN-212) --- */
     const filasAlerta = await guardarAlertas(cliente, fichaId, alertas, indices);
+
+    /* RN-228: el cambio a lo registrado del plan gasta la autorización. */
+    if (modificaPlanRegistrado) {
+      await registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, permisoPlan, true);
+    }
 
     await cliente.query('COMMIT');
 

@@ -3380,6 +3380,46 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .aviso-correccion[hidden] { display: none; }
 
+/* RN-228 — Lo registrado se ve pero no se toca. Los controles bloqueados son
+   `inert` (correccion.js): aquí sólo se dice con la vista. Evolucionando el
+   plan, la visita entera queda atenuada; dentro del plan, la fila ya
+   registrada va sobre lienzo y sus controles apagados, como los de sólo
+   lectura, mientras lo que falta sigue en blanco y se puede completar. */
+[data-bloqueo-plan="ficha"] { opacity: 0.55; }
+
+.plan-table tr.plan-registrado > td { background: var(--ink-50); }
+
+[data-bloqueo-plan="registrado"] :is(input, select, textarea, .radio-group, .combo-cups) {
+  opacity: 0.7;
+}
+
+/* Diálogo del maestro para autorizar cambios a un plan registrado. */
+.autorizacion-plan { text-align: left; font-size: var(--fs-label); color: var(--ink-700); }
+.autorizacion-plan__ficha { margin: 0 0 var(--s-3); }
+.autorizacion-plan__titulo {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+.autorizacion-plan__lista { list-style: none; margin: 0; padding: 0; }
+.autorizacion-plan__permiso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  box-shadow: inset 0 -1px 0 var(--ink-150);
+}
+.autorizacion-plan__detalle,
+.autorizacion-plan__vacio,
+.autorizacion-plan__nota { font-size: var(--fs-small); color: var(--ink-500); }
+.autorizacion-plan__vacio { margin: 0; }
+.autorizacion-plan__nota { margin: var(--s-2) 0 0; }
+.autorizacion-plan .field { margin-top: var(--s-3); }
+.autorizacion-plan select,
+.autorizacion-plan textarea { width: 100%; font: inherit; }
+
 /* Ficha recuperada del borrador automático. Informa, no alarma: tinte azul
    como los avisos de la sección, con la acción para empezar de cero. */
 .aviso-borrador {

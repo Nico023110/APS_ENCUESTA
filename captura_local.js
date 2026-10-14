@@ -275,7 +275,12 @@ function guardarBorradorAhora() {
     guardadoEn: new Date().toISOString(),
     codigoFicha: datos.codigoFicha || null,
     correccion: encuestaEnCorreccion
-      ? { id: encuestaEnCorreccion, desdeServidor: correccionDesdeServidor || null }
+      ? {
+        id: encuestaEnCorreccion,
+        desdeServidor: correccionDesdeServidor || null,
+        /* RN-228: el modo y los bloqueos del plan vuelven con el borrador. */
+        bloqueoPlan: typeof bloqueoPlanActivo !== 'undefined' ? bloqueoPlanActivo : null
+      }
       : null,
     datos: datos
   };
@@ -316,7 +321,20 @@ function restaurarBorrador(borrador) {
   if (borrador.correccion && borrador.correccion.id) {
     encuestaEnCorreccion = borrador.correccion.id;
     correccionDesdeServidor = borrador.correccion.desdeServidor || null;
-    mostrarAvisoDeCorreccion(datos);
+
+    /* RN-228: qué filas del plan ya estaban registradas lo dice la ficha
+       original —la traída de la base o la copia del dispositivo—, no el
+       borrador, que mezcla lo registrado con lo que se estaba agregando. */
+    const bloqueo = borrador.correccion.bloqueoPlan || null;
+    if (bloqueo && typeof reponerBloqueosDePlan === 'function') {
+      bloqueoPlanActivo = bloqueo;
+      modoEvolucionPlan = bloqueo.evolucionPlan === true;
+      const original = correccionDesdeServidor ||
+        obtenerEncuestas().find(function (e) { return e.id === encuestaEnCorreccion; }) || null;
+      reponerBloqueosDePlan(original, datos);
+    } else {
+      mostrarAvisoDeCorreccion(datos);
+    }
   }
 
   mostrarAvisoBorrador(borrador);

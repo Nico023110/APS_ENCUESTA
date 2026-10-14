@@ -64,7 +64,17 @@ module.exports = async (req, res) => {
       VALUES ($1, $2, 'ficha_completa')
     `, [fila.id, usuario.funcionarioId]);
 
-    return res.status(200).json({ encuesta: encuesta });
+    /* RN-228: lo registrado en el plan sólo se completa, salvo para el maestro
+       o para quien tenga su autorización vigente sobre esta ficha. El
+       formulario lo usa para dejar o no editables esas filas; quien decide al
+       guardar es guardar_encuesta.js. */
+    const planRegistradoEditable = roles.puede(usuario.rol, 'plan.modificar_registrado') ||
+      (await cliente.query(`
+        SELECT 1 FROM aps.permiso_plan
+         WHERE ficha_id = $1 AND usuario_id = $2 AND usado_en IS NULL AND revocado_en IS NULL
+      `, [fila.id, usuario.id])).rows.length > 0;
+
+    return res.status(200).json({ encuesta: encuesta, planRegistradoEditable: planRegistradoEditable });
   } catch (error) {
     console.error('Error al leer la ficha completa:', error.message);
     return res.status(500).json({ error: 'No fue posible leer la ficha.' });
