@@ -236,7 +236,17 @@ function variablesTipo2(m, c) {
     13: { valor: function (ctx) { return R(coordenada(e(ctx).latitud, 10)); } },
     14: { valor: function (ctx) { return R(e(ctx).direccion); } },
     16: { valor: function (ctx) { return c.codigoDe('CAT_ESTRATO', e(ctx).estrato); } },
-    17: { valor: function (ctx) { return R(entero(e(ctx).hogaresEnVivienda)); } },
+    /* «No. Familias vivienda». El ítem 28 cuenta hogares y un hogar puede
+       reunir varias familias (RN-028), así que no es este dato. Cada hogar
+       declarado tiene al menos una familia: el mayor entre los hogares
+       declarados y las familias caracterizadas es lo que se sabe con certeza. */
+    17: {
+      valor: function (ctx) {
+        const caracterizadas = (e(ctx).familias || []).length;
+        const hogares = entero(e(ctx).hogaresEnVivienda);
+        return R(hogares === null || hogares === undefined ? (caracterizadas || null) : Math.max(hogares, caracterizadas));
+      }
+    },
     18: { valor: function (ctx) { return R(entero(e(ctx).personasEnVivienda)); } },
     19: { valor: function (ctx) { return R(entero(e(ctx).habitacionesVivienda)); } },
     20: {

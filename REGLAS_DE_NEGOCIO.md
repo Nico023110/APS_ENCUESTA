@@ -1369,6 +1369,7 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 - **Familia (A2.124):** identificador de la vivienda + `F` + consecutivo de la familia dentro del hogar.
 - **Integrante (A3.118):** identificador de la familia + tipo + número de documento.
 - **Territorio (A2.6):** tres caracteres. El anexo reserva `T99` y continúa con `U01`, `U02`…, así que los territorios `T99` a `T110` se reportan como `U01` a `U12`.
+- **No. Familias de la vivienda (A2.17):** cuenta familias, no hogares. El ítem 28 cuenta hogares y un hogar puede reunir varias familias (RN-028); como cada hogar declarado tiene al menos una familia, se reporta el mayor entre los hogares declarados y las familias caracterizadas.
 - **Subregión (A2.4):** es el código de 3 dígitos parametrizado para Cali en la gestión técnica del SI-APS. Se configura en `cat.parametro` (`subregion_sispro`); mientras no esté, el reporte deja vacías las variables 4, 123 y 124 y lo advierte.
 
 ### RN-227 — Archivo plano APS124CCFP para PISIS

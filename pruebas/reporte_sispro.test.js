@@ -228,6 +228,25 @@ verificar('una ficha completa no deja incidencias', r.resumen.incidencias.total 
     return x.tipoRegistro + '.' + x.variable + ' ' + x.problema;
   })));
 
+console.log('\n=== 6b. No. Familias de la vivienda (variable 17) ===');
+
+/* El ítem 28 cuenta hogares y un hogar puede reunir varias familias (RN-028):
+   la variable cuenta familias. */
+const lineaT2 = (r) => r.contenido.split('\r\n')[1];
+const dosFamiliasUnHogar = ficha();
+dosFamiliasUnHogar.hogaresEnVivienda = 1;
+dosFamiliasUnHogar.familias = [dosFamiliasUnHogar.familias[0], JSON.parse(JSON.stringify(dosFamiliasUnHogar.familias[0]))];
+const rFamilias = generar([{ encuesta: dosFamiliasUnHogar, meta: { consecutivoVivienda: 7, familias: [{ consecutivo: 1 }, { consecutivo: 2 }] } }]);
+verificar('1 hogar con 2 familias => 2 familias, no 1 hogar', campo(lineaT2(rFamilias), 17) === '2', campo(lineaT2(rFamilias), 17));
+
+const hogarAusente = ficha();
+hogarAusente.hogaresEnVivienda = 3;                              // sólo una familia caracterizada
+const rAusente = generar([{ encuesta: hogarAusente, meta: meta() }]);
+verificar('3 hogares declarados y 1 familia caracterizada => 3 (cada hogar tiene al menos una)',
+  campo(lineaT2(rAusente), 17) === '3', campo(lineaT2(rAusente), 17));
+
+verificar('1 hogar, 1 familia => 1', campo(lineaT2(generar([{ encuesta: ficha(), meta: meta() }])), 17) === '1');
+
 console.log('\n=== 7. Lo que falta se informa, no se inventa ===');
 
 const sinSubregion = generar([{ encuesta: ficha(), meta: meta() }], null);
