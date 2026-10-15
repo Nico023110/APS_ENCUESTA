@@ -1,11 +1,14 @@
 /* =========================================================
    Encuesta_APS — Gestión de usuarios (vista «Usuarios»)
    ---------------------------------------------------------
-   Sólo la ven quienes tienen usuarios.gestionar (administrador y maestro);
-   se abre desde el menú del chip de usuario (sesion.js). Habla con
-   /api/usuarios, que aplica todas las reglas: aquí sólo se pinta y se
-   recoge el formulario. Depende de app.js (cambiarVista,
-   mostrarNotificacion) y de roles.js (ROLES) para las listas.
+   La ven quienes tienen usuarios.ver: administrador, maestro y la
+   coordinación del EBS. Modificar y restablecer la clave sólo se ofrecen con
+   su permiso (usuarios.modificar, usuarios.restablecer): la coordinación
+   crea cuentas del personal asistencial pero no las cambia. Se abre desde el
+   menú del chip de usuario (sesion.js). Habla con /api/usuarios, que aplica
+   todas las reglas: aquí sólo se pinta y se recoge el formulario. Depende de
+   app.js (cambiarVista, mostrarNotificacion) y de roles.js (ROLES,
+   rolesQuePuedeCrear, requiereEquipo, eligePerfil) para las listas.
    ========================================================= */
 
 (function () {
@@ -44,11 +47,11 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  /* Un administrador no crea ni asigna el rol maestro; el servidor lo
-     impone, aquí sólo se retira de la lista. */
+  /* Cada rol asigna sólo los roles que roles.js le deja (el administrador no
+     da el de maestro; la coordinación, sólo los del personal asistencial).
+     El servidor lo impone; aquí sólo se retiran de la lista. */
   function rolesAsignables() {
-    const actor = SESION.usuario();
-    return Object.keys(ROLES).filter(function (rol) { return rol !== 'maestro' || actor.rol === 'maestro'; });
+    return rolesQuePuedeCrear(SESION.usuario().rol);
   }
 
   function llenarSelect(select, opciones, conVacio) {
@@ -95,36 +98,52 @@
       if (estado === 'activo' && !u.activo) return false;
       if (estado === 'inactivo' && u.activo) return false;
       if (!texto) return true;
-      return [u.nombre, u.documento, u.equipo, u.rolEtiqueta].some(function (v) {
+      return [u.nombre, u.documento, u.equipo, u.rolEtiqueta, u.cargo, u.correo].some(function (v) {
         return String(v || '').toLowerCase().indexOf(texto) !== -1;
       });
     });
+  }
+
+  /* El cargo dice más que el «Otro: …» del ítem 14; sin cargo, se muestra
+     esa aclaración como antes. */
+  function detalleDeRol(u) {
+    const detalle = u.cargo || (u.perfil === 'otro' ? u.perfilOtro : '');
+    return detalle && detalle !== u.rolEtiqueta ? ' <span class="usuarios__detalle">· ' + textoSeguro(detalle) + '</span>' : '';
+  }
+
+  function contacto(u) {
+    const partes = [];
+    if (u.correo) partes.push('<span class="usuarios__contacto">' + textoSeguro(u.correo) + '</span>');
+    if (u.telefono) partes.push('<span class="usuarios__contacto mono">' + textoSeguro(u.telefono) + '</span>');
+    return partes.length ? partes.join('') : '—';
   }
 
   function pintarLista() {
     const cuerpo = $('usuariosTableBody');
     const lista = filtrados();
     const actor = SESION.usuario();
+    const modifica = SESION.puede('usuarios.modificar');
+    const restablece = SESION.puede('usuarios.restablecer');
 
     cuerpo.innerHTML = lista.map(function (u) {
       const esYo = u.id === actor.id;
       const protegida = u.rol === 'maestro' && actor.rol !== 'maestro';
       const titulo = protegida ? ' title="Sólo un usuario maestro puede modificar esta cuenta"' : '';
+      const acciones =
+        (modifica ? '<button type="button" class="btn btn--ghost btn--icon" data-modificar="' + u.id + '"' +
+          (protegida ? ' disabled' + titulo : '') + '>Modificar</button>' : '') +
+        (restablece ? '<button type="button" class="btn btn--ghost btn--icon" data-restablecer="' + u.id + '"' +
+          (protegida ? ' disabled' + titulo : '') + '>Restablecer clave</button>' : '');
       return (
         '<tr' + (u.activo ? '' : ' class="is-inactiva"') + '>' +
           '<td data-label="Nombre">' + textoSeguro(u.nombre) + (esYo ? ' <span class="usuarios__yo">(usted)</span>' : '') + '</td>' +
           '<td data-label="Documento"><span class="mono">' + textoSeguro(u.tipoId) + ' ' + textoSeguro(u.documento) + '</span></td>' +
-          '<td data-label="Rol">' + textoSeguro(u.rolEtiqueta) +
-            (u.perfil === 'otro' && u.perfilOtro ? ' <span class="usuarios__detalle">· ' + textoSeguro(u.perfilOtro) + '</span>' : '') + '</td>' +
+          '<td data-label="Rol">' + textoSeguro(u.rolEtiqueta) + detalleDeRol(u) + '</td>' +
           '<td data-label="Equipo">' + (u.equipo ? '<span class="mono">' + textoSeguro(u.equipo) + '</span>' : '—') + '</td>' +
+          '<td data-label="Contacto">' + contacto(u) + '</td>' +
           '<td data-label="Estado">' + badgeEstado(u) + '</td>' +
           '<td data-label="Último acceso">' + textoSeguro(formatearFechaHora(u.ultimoAccesoEn)) + '</td>' +
-          '<td class="actions-cell">' +
-            '<button type="button" class="btn btn--ghost btn--icon" data-modificar="' + u.id + '"' +
-              (protegida ? ' disabled' + titulo : '') + '>Modificar</button>' +
-            '<button type="button" class="btn btn--ghost btn--icon" data-restablecer="' + u.id + '"' +
-              (protegida ? ' disabled' + titulo : '') + '>Restablecer clave</button>' +
-          '</td>' +
+          '<td class="actions-cell">' + (acciones || '<span class="usuarios__detalle">Sólo consulta</span>') + '</td>' +
         '</tr>'
       );
     }).join('');
@@ -161,7 +180,7 @@
   }
 
   function abrirVista() {
-    if (!SESION.puede('usuarios.gestionar')) return;
+    if (!SESION.puede('usuarios.ver')) return;
     cambiarVista('usuarios');
     cargar();
   }
@@ -191,15 +210,19 @@
     $('usuarioClaveTemporal').hidden = !clave;
   }
 
+  /* El maestro y la coordinación eligen el perfil del ítem 14 con que firman;
+     para la coordinación, «Otro» toma el cargo como aclaración si se deja
+     vacía. El equipo es obligatorio sólo para quien lo necesita para firmar. */
   function ajustarCamposSegunRol() {
     const rol = $('usuarioRol').value;
-    const esMaestro = rol === 'maestro';
-    const perfil = esMaestro ? $('usuarioPerfil').value : rol;
-    $('usuarioCampoPerfil').hidden = !esMaestro;
+    const elige = eligePerfil(rol);
+    const perfil = elige ? $('usuarioPerfil').value : rol;
+    $('usuarioCampoPerfil').hidden = !elige;
     $('usuarioCampoPerfilOtro').hidden = perfil !== 'otro';
-    const equipoObligatorio = typeof esAsistencial === 'function' ? esAsistencial(rol) : rol !== 'administrador';
+    $('usuarioCampoPerfilOtro').querySelector('label').textContent =
+      '¿Cuál?' + (elige ? '' : ' *');
     $('usuarioEquipo').closest('.field').querySelector('label').textContent =
-      'Equipo Básico de Salud' + (equipoObligatorio ? ' *' : '');
+      'Equipo Básico de Salud' + (requiereEquipo(rol) ? ' *' : '');
   }
 
   function abrirFormulario(u) {
@@ -228,9 +251,12 @@
       $('usuarioTipoId').value = u.tipoId;
       $('usuarioDocumento').value = u.documento;
       $('usuarioNombre').value = u.nombre;
+      $('usuarioCargo').value = u.cargo || '';
+      $('usuarioCorreo').value = u.correo || '';
+      $('usuarioTelefono').value = u.telefono || '';
       $('usuarioRol').value = u.rol;
       $('usuarioEquipo').value = u.equipo || '';
-      $('usuarioPerfil').value = u.perfil && u.perfil !== u.rol ? u.perfil : (u.rol === 'maestro' ? (u.perfil || 'otro') : 'otro');
+      $('usuarioPerfil').value = u.perfil && u.perfil !== u.rol ? u.perfil : (eligePerfil(u.rol) ? (u.perfil || 'otro') : 'otro');
       $('usuarioPerfilOtro').value = u.perfilOtro || '';
       $('usuarioActivo').checked = !!u.activo;
       const esYo = u.id === SESION.usuario().id;
@@ -239,7 +265,8 @@
     } else {
       formulario.id.value = '';
       $('usuarioTipoId').value = 'CC';
-      $('usuarioRol').value = 'auxiliar_enfermeria';
+      $('usuarioRol').value = rolesAsignables().indexOf('auxiliar_enfermeria') !== -1
+        ? 'auxiliar_enfermeria' : rolesAsignables()[0];
       $('usuarioPerfil').value = 'otro';
       $('usuarioActivo').checked = true;
       $('usuarioActivo').disabled = false;
@@ -263,9 +290,12 @@
       tipoId: $('usuarioTipoId').value,
       documento: $('usuarioDocumento').value.trim(),
       nombre: $('usuarioNombre').value.trim(),
+      cargo: $('usuarioCargo').value.trim() || null,
+      correo: $('usuarioCorreo').value.trim() || null,
+      telefono: $('usuarioTelefono').value.trim() || null,
       rol: $('usuarioRol').value,
       equipo: $('usuarioEquipo').value.trim().toUpperCase() || null,
-      perfil: $('usuarioRol').value === 'maestro' ? $('usuarioPerfil').value : undefined,
+      perfil: eligePerfil($('usuarioRol').value) ? $('usuarioPerfil').value : undefined,
       perfilOtro: $('usuarioPerfilOtro').value.trim() || null,
       activo: editando ? $('usuarioActivo').checked : true
     };
@@ -307,7 +337,15 @@
           '(EBS seguido de 3 dígitos, por ejemplo EBS001).'
         : '';
 
-      if (cuerpo.claveTemporal) {
+      if (cuerpo.claveTemporal && !SESION.puede('usuarios.modificar')) {
+        /* Quien crea pero no modifica (la coordinación) no se queda en un
+           formulario de edición que no podría guardar: la clave se muestra
+           aparte, una sola vez. */
+        cerrarFormulario();
+        mostrarModalClave(guardado.nombre, cuerpo.claveTemporal);
+        avisar('Usuario ' + guardado.nombre + ' creado. Entréguele la contraseña temporal en persona.' + avisoEquipo,
+          avisoEquipo ? 'warning' : 'success');
+      } else if (cuerpo.claveTemporal) {
         /* La cuenta nueva se queda abierta para poder copiar la clave; desde
            aquí ya se edita como una existente. */
         editando = guardado;
@@ -400,7 +438,7 @@
      --------------------------------------------------------- */
 
   document.addEventListener('DOMContentLoaded', function () {
-    if (!SESION.puede('usuarios.gestionar')) return;
+    if (!SESION.puede('usuarios.ver')) return;
 
     llenarSelect($('usuariosFiltroRol'), Object.keys(ROLES).map(function (rol) {
       return { valor: rol, etiqueta: ROLES[rol].etiqueta };

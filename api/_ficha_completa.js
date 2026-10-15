@@ -265,6 +265,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
            f.entorno_abordaje, f.nombre_institucion, f.lider_entorno, f.jovenes_en_paz,
            f.estado, f.motivo_cierre_incompleto, f.referencia_familia,
            f.fechas_modificacion, f.capturada_en,
+           COALESCE(f.diligenciada_en, f.capturada_en) AS diligenciada_en,
            eq.codigo AS equipo_codigo,
            r.tipo_id AS responsable_tipo_id, r.numero_id AS responsable_numero_id,
            r.perfil_profesional, r.perfil_otro,
@@ -336,7 +337,8 @@ async function leerFichasCompletas(cliente, fichaIds) {
     const encuesta = {
       id: f.codigo,
       codigoFicha: f.codigo,
-      fechaRegistro: f.capturada_en ? new Date(f.capturada_en).toISOString() : null,
+      fechaRegistro: f.diligenciada_en ? new Date(f.diligenciada_en).toISOString() : null,
+      recibidaEn: f.capturada_en ? new Date(f.capturada_en).toISOString() : null,
       fechasModificacion: Array.isArray(f.fechas_modificacion) ? f.fechas_modificacion : [],
 
       consentimiento: siNo(f.consentimiento),

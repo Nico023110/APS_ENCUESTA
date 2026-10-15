@@ -140,6 +140,22 @@ function asignarCodigoFicha() {
 
   codigoEnCurso = { codigo: codigo, consecutivo: consecutivo, fecha: fecha };
   campo.value = codigo;
+  ponerFechaDeDiligenciamiento();
+}
+
+/**
+ * Ítem 16: una ficha nueva nace fechada con el día de hoy, sin que quien
+ * diligencia la escriba. Sigue siendo editable —RN-016 admite fechar hasta 30
+ * días atrás una visita que se pasa tarde—, pero nunca arranca vacía. La hora
+ * exacta no es parte del ítem (que es sólo fecha): se toma al guardar y queda
+ * en el historial como control.
+ */
+function ponerFechaDeDiligenciamiento() {
+  const campo = document.getElementById('fechaDiligenciamiento');
+  if (!campo || campo.value || typeof fechaDeHoyIso !== 'function') return;
+
+  campo.value = fechaDeHoyIso();
+  campo.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 /**

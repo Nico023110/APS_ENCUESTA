@@ -185,10 +185,12 @@ ALTER TABLE aud.evento DROP CONSTRAINT IF EXISTS evento_ficha_id_fkey;
 ALTER TABLE aud.acceso_sensible DROP CONSTRAINT IF EXISTS acceso_sensible_ficha_id_fkey;
 ALTER TABLE aud.acceso_sensible DROP CONSTRAINT IF EXISTS acceso_sensible_integrante_id_fkey;
 
-/* Rol «maestro»: todos los permisos (captura + administración). */
+/* Rol «maestro»: todos los permisos (captura + administración). Los de la
+   coordinación del EBS llegaron en 12_coordinacion_ebs.sql; van también aquí
+   porque esta migración se repite en cada pasada y corre antes que la 12. */
 ALTER TABLE aps.usuario DROP CONSTRAINT IF EXISTS usuario_rol_valido;
 ALTER TABLE aps.usuario ADD CONSTRAINT usuario_rol_valido
-  CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol));
+  CHECK (rol IN ('administrador', 'maestro', 'coordinador_ebs', 'lider_ebs') OR cat.es_opcion('PERFIL_PROFESIONAL', rol));
 
 /* -------------------------------------------------------------------------
    2026-09 — EAPB: Coosalud y Mallamas (ítem 76, RN-076)

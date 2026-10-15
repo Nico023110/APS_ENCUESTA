@@ -24,8 +24,17 @@ const { completarAnexo } = require('./_anexo_datos');
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
 const RAIZ = path.join(__dirname, '..');
 
-/* Cabeceras de la sesión de prueba (cookie + anti-CSRF); las llena limpiar(). */
+/* Cabeceras de la sesión de prueba (cookie + anti-CSRF); las llena limpiar().
+   `sesion` es la profesional de enfermería del EBS12; `coordinacion`, una
+   líder de zona, que corrige cualquier ficha sin pedir autorización. */
 let sesion = { cabeceras: {} };
+let coordinacion = { cabeceras: {} };
+
+/* El dispositivo fecha cada ficha al diligenciarla (fechaRegistro) y la
+   reenvía con ese mismo instante en cada sincronización: así reconoce el
+   servidor el reenvío de la captura original (RN-228). Se fija uno por
+   ficha de prueba. */
+const instantesDeCaptura = {};
 
 let pasadas = 0;
 let fallidas = 0;
@@ -98,6 +107,7 @@ function fichaValida(sufijo) {
     responsableNombre: 'María Pérez',
     perfilProfesional: 'enfermeria',
     codigoFicha: 'F-TEST-' + sufijo,
+    fechaRegistro: instantesDeCaptura[sufijo] || (instantesDeCaptura[sufijo] = new Date().toISOString()),
     fechaDiligenciamiento: hoyIso(),
     entornoAbordaje: 'hogar',
     cabezaFamilia: 'María Pérez',
@@ -201,8 +211,12 @@ async function limpiar() {
   await asegurarUsuarioDePrueba(cliente, {
     documento: '1144099003', nombre: 'Prueba Otro Equipo', rol: 'enfermeria', equipo: 'EBS99'
   });
+  await asegurarUsuarioDePrueba(cliente, {
+    documento: '1144099004', nombre: 'Prueba Líder EBS', rol: 'lider_ebs', equipo: 'EBS12'
+  });
   await cliente.end();
   sesion = await iniciarSesionDePrueba(BASE);
+  coordinacion = await iniciarSesionDePrueba(BASE, { documento: '1144099004', clave: USUARIO_PRUEBA.clave });
 }
 
 async function correrPruebas() {
@@ -384,7 +398,12 @@ async function correrPruebas() {
   verificar('Otro equipo intenta corregirla => 403', r.estado === 403, 'estado ' + r.estado);
 
   r = await enviar(fichaDeAuxiliar, sesion.cabeceras);
-  verificar('La profesional del mismo equipo la corrige => 200', r.estado === 200, 'estado ' + r.estado);
+  verificar('La profesional del mismo equipo la corrige sin autorización => 403 requiere_autorizacion (RN-228)',
+    r.estado === 403 && r.cuerpo.codigo === 'requiere_autorizacion', 'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo));
+
+  r = await enviar(fichaDeAuxiliar, coordinacion.cabeceras);
+  verificar('La coordinación la corrige sin pedir autorización => 200', r.estado === 200,
+    'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
 
   const fichaDeProfesional = fichaValida(sello + 'l5');
   r = await enviar(fichaDeProfesional, sesion.cabeceras);
@@ -405,6 +424,39 @@ async function correrPruebas() {
   verificar('El detalle de una ficha ajena => 404 (no se confirma que exista)',
     detalleAjeno.status === 404, 'estado ' + detalleAjeno.status);
 
+  console.log('\n=== 5e. Una ficha guardada sólo se completa; corregirla exige autorización (RN-228) ===');
+
+  /* El dispositivo reenvía la captura original cuando no alcanzó a recibir la
+     respuesta: mismo autor, mismo instante de diligenciamiento, sin la marca
+     de corrección. */
+  const reenvioPropio = Object.assign({}, fichaDeProfesional, { esCorreccion: false });
+  r = await enviar(reenvioPropio, sesion.cabeceras);
+  verificar('La profesional reenvía su propia captura (mismo instante) => 200', r.estado === 200,
+    'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
+
+  r = await enviar(Object.assign({}, fichaDeProfesional, { esCorreccion: true }), sesion.cabeceras);
+  verificar('La profesional corrige su propia ficha sin autorización => 403 requiere_autorizacion',
+    r.estado === 403 && r.cuerpo.codigo === 'requiere_autorizacion', 'estado ' + r.estado);
+  verificar('  el mensaje dice a quién pedirla', /coordinación del EBS o del usuario maestro/.test(r.cuerpo.error || ''),
+    r.cuerpo.error);
+
+  r = await enviar(Object.assign({}, fichaDeProfesional, { esCorreccion: false, fechaRegistro: new Date().toISOString() }),
+    sesion.cabeceras);
+  verificar('Un «reenvío» con otro instante no es la captura original => 403', r.estado === 403, 'estado ' + r.estado);
+
+  const completaDe = async function (codigo, cabeceras) {
+    const x = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(codigo), { headers: cabeceras });
+    return { estado: x.status, cuerpo: await x.json().catch(function () { return {}; }) };
+  };
+  let completa = await completaDe(fichaDeAuxiliar.codigoFicha, sesion.cabeceras);
+  verificar('La profesional trae una ficha de su equipo para evolucionar su plan, pero no para corregirla',
+    completa.estado === 200 && completa.cuerpo.corregible === false, 'estado ' + completa.estado + ' ' + completa.cuerpo.corregible);
+  completa = await completaDe(fichaDeProfesional.codigoFicha, auxiliar.cabeceras);
+  verificar('La auxiliar no trae la ficha de otra persona => 403', completa.estado === 403, 'estado ' + completa.estado);
+  completa = await completaDe(fichaDeAuxiliar.codigoFicha, coordinacion.cabeceras);
+  verificar('La coordinación la trae para corregirla', completa.estado === 200 && completa.cuerpo.corregible === true,
+    'estado ' + completa.estado);
+
   console.log('\n=== 5d. /api/usuarios — gestión de cuentas por rol ===');
 
   async function usuariosApi(cabeceras, cuerpo) {
@@ -421,8 +473,8 @@ async function correrPruebas() {
   await limpiarCuentas.connect();
   await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099010', nombre: 'Prueba Admin', rol: 'administrador', equipo: null });
   await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099011', nombre: 'Prueba Maestro Api', rol: 'maestro', equipo: 'EBS12' });
-  await limpiarCuentas.query("DELETE FROM aps.usuario WHERE documento IN ('1144099012','1144099013')");
-  await limpiarCuentas.query("DELETE FROM aps.funcionario WHERE numero_id IN ('1144099012','1144099013')");
+  await limpiarCuentas.query("DELETE FROM aps.usuario WHERE documento IN ('1144099012','1144099013','1144099014','1144099015')");
+  await limpiarCuentas.query("DELETE FROM aps.funcionario WHERE numero_id IN ('1144099012','1144099013','1144099014','1144099015')");
   await limpiarCuentas.end();
 
   const admin = await iniciarSesionDePrueba(BASE, { documento: '1144099010', clave: USUARIO_PRUEBA.clave });
@@ -432,6 +484,56 @@ async function correrPruebas() {
   verificar('El administrador lista usuarios => 200 con la lista', listadoAdmin.estado === 200 && Array.isArray(listadoAdmin.cuerpo.usuarios),
     'estado ' + listadoAdmin.estado);
   verificar('  la lista no expone hashes de clave', JSON.stringify(listadoAdmin.cuerpo).indexOf('scrypt$') === -1);
+
+  /* Coordinación del EBS: lista y crea cuentas del personal asistencial;
+     no crea otros niveles, no modifica cuentas ni restablece claves. */
+  const listadoLider = await usuariosApi(coordinacion.cabeceras);
+  verificar('La coordinación lista usuarios => 200', listadoLider.estado === 200 && Array.isArray(listadoLider.cuerpo.usuarios),
+    'estado ' + listadoLider.estado);
+  const liderCrea = await usuariosApi(coordinacion.cabeceras, {
+    accion: 'crear', documento: '1144099014', nombre: 'Creada Por Lider', rol: 'enfermeria', equipo: 'EBS12',
+    correo: 'Creada.Lider@Ejemplo.com', telefono: '300 000 1234'
+  });
+  verificar('La coordinación crea una enfermera => 200 con clave temporal',
+    liderCrea.estado === 200 && typeof liderCrea.cuerpo.claveTemporal === 'string',
+    'estado ' + liderCrea.estado + ' ' + JSON.stringify(liderCrea.cuerpo).slice(0, 160));
+  verificar('  con correo en minúsculas y teléfono sólo con dígitos',
+    liderCrea.cuerpo.usuario && liderCrea.cuerpo.usuario.correo === 'creada.lider@ejemplo.com' &&
+    liderCrea.cuerpo.usuario.telefono === '3000001234', JSON.stringify(liderCrea.cuerpo.usuario || {}).slice(0, 200));
+  const liderCreaLider = await usuariosApi(coordinacion.cabeceras, {
+    accion: 'crear', documento: '1144099015', nombre: 'Otro Lider', rol: 'lider_ebs'
+  });
+  verificar('La coordinación no crea otra cuenta de coordinación => 403', liderCreaLider.estado === 403,
+    'estado ' + liderCreaLider.estado);
+  const idCreadaPorLider = liderCrea.cuerpo.usuario && liderCrea.cuerpo.usuario.id;
+  const liderModifica = await usuariosApi(coordinacion.cabeceras, {
+    accion: 'modificar', id: idCreadaPorLider, nombre: 'Cambiada', rol: 'enfermeria', equipo: 'EBS12', activo: true
+  });
+  verificar('La coordinación no modifica cuentas => 403', liderModifica.estado === 403, 'estado ' + liderModifica.estado);
+  const liderRestablece = await usuariosApi(coordinacion.cabeceras, { accion: 'restablecer', id: idCreadaPorLider });
+  verificar('La coordinación no restablece claves => 403', liderRestablece.estado === 403, 'estado ' + liderRestablece.estado);
+
+  const adminCreaLider = await usuariosApi(admin.cabeceras, {
+    accion: 'crear', documento: '1144099015', nombre: 'Lider Zona Prueba', rol: 'lider_ebs',
+    cargo: 'Líder Zona Prueba', correo: 'lider.zona@ejemplo.com', telefono: '+57 300 000 5678'
+  });
+  verificar('El administrador crea una líder de zona sin equipo => 200',
+    adminCreaLider.estado === 200 && adminCreaLider.cuerpo.usuario && adminCreaLider.cuerpo.usuario.rol === 'lider_ebs',
+    'estado ' + adminCreaLider.estado + ' ' + JSON.stringify(adminCreaLider.cuerpo).slice(0, 200));
+  verificar('  con su cargo, que también aclara el perfil «Otro» del ítem 14',
+    adminCreaLider.cuerpo.usuario && adminCreaLider.cuerpo.usuario.cargo === 'Líder Zona Prueba' &&
+    adminCreaLider.cuerpo.usuario.perfil === 'otro' && adminCreaLider.cuerpo.usuario.perfilOtro === 'Líder Zona Prueba' &&
+    adminCreaLider.cuerpo.usuario.telefono === '3000005678', JSON.stringify(adminCreaLider.cuerpo.usuario || {}).slice(0, 240));
+  const correoMalo = await usuariosApi(admin.cabeceras, {
+    accion: 'crear', documento: '1144099013', nombre: 'Correo Malo', rol: 'enfermeria', equipo: 'EBS12', correo: 'sin-arroba'
+  });
+  verificar('Correo inválido => 400 señalando correo', correoMalo.estado === 400 && correoMalo.cuerpo.campo === 'correo',
+    'estado ' + correoMalo.estado + ' ' + JSON.stringify(correoMalo.cuerpo));
+  const telefonoMalo = await usuariosApi(admin.cabeceras, {
+    accion: 'crear', documento: '1144099013', nombre: 'Telefono Malo', rol: 'enfermeria', equipo: 'EBS12', telefono: '123'
+  });
+  verificar('Teléfono de 3 dígitos => 400 señalando teléfono', telefonoMalo.estado === 400 && telefonoMalo.cuerpo.campo === 'telefono',
+    'estado ' + telefonoMalo.estado + ' ' + JSON.stringify(telefonoMalo.cuerpo));
 
   const creaMaestro = await usuariosApi(admin.cabeceras, { accion: 'crear', documento: '1144099012', nombre: 'Intento Maestro', rol: 'maestro', equipo: 'EBS12' });
   verificar('El administrador no puede crear un maestro => 403', creaMaestro.estado === 403, 'estado ' + creaMaestro.estado);
@@ -696,7 +798,7 @@ async function correrPruebas() {
     corregidaConCodigos.idHogar = c1.idHogar;
     corregidaConCodigos.esCorreccion = true;
     corregidaConCodigos.ubicacionReferencia = 'Frente a la cancha, casa azul';
-    const rCorr = await enviar(corregidaConCodigos);
+    const rCorr = await enviar(corregidaConCodigos, coordinacion.cabeceras);
     const codigosCorreccion = (rCorr.cuerpo && rCorr.cuerpo.codigos) || {};
     verificar('Corregir la ficha conserva NUV y códigos', rCorr.estado === 200 &&
       codigosCorreccion.idHogar === c1.idHogar && codigosCorreccion.nuv === c1.nuv && codigosCorreccion.idFamilia === c1.idFamilia,
@@ -1342,6 +1444,10 @@ async function correrPruebas() {
       return f;
     };
     const comoCorreccion = function (f) { f.esCorreccion = true; return f; };
+    /* «Evolucionar plan» desde el historial: la profesional completa el plan
+       de las fichas de su equipo sin autorización, pero no cambia lo
+       registrado. */
+    const comoEvolucion = function (f) { f.esCorreccion = true; f.soloPlan = true; return f; };
     const codigoBloqueo = fichaValida(sello + 'bq').codigoFicha;
     const planEnBase = async function () {
       return (await cliente.query(`
@@ -1355,24 +1461,28 @@ async function correrPruebas() {
     verificar('Ficha con plan de vivienda registrado => 200', rb.estado === 200,
       'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
 
-    const cambiada = comoCorreccion(fichaConPlan([Object.assign({}, accionRegistrada, { codigoAccion: 'NC-FAM-02' })],
+    rb = await enviar(comoCorreccion(fichaConPlan([accionRegistrada], [seguimientoRegistrado])));
+    verificar('La profesional no la corrige sin autorización => 403', rb.estado === 403 &&
+      rb.cuerpo.codigo === 'requiere_autorizacion', 'estado ' + rb.estado);
+
+    const cambiada = comoEvolucion(fichaConPlan([Object.assign({}, accionRegistrada, { codigoAccion: 'NC-FAM-02' })],
       [seguimientoRegistrado]));
     rb = await enviar(cambiada);
-    verificar('Corregir cambiando una acción registrada => 409 plan_registrado',
+    verificar('Evolucionar cambiando una acción registrada => 409 plan_registrado',
       rb.estado === 409 && rb.cuerpo.codigo === 'plan_registrado', 'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 160));
     verificar('  señala el campo cambiado', bloqueoEn(rb.cuerpo, 'planVivienda.acciones[0].codigoAccion'),
       JSON.stringify(rb.cuerpo.bloqueos || []).slice(0, 200));
 
-    rb = await enviar(comoCorreccion(fichaConPlan([], [seguimientoRegistrado])));
+    rb = await enviar(comoEvolucion(fichaConPlan([], [seguimientoRegistrado])));
     verificar('Quitar una acción registrada => 409', rb.estado === 409, 'estado ' + rb.estado);
 
-    rb = await enviar(comoCorreccion(fichaConPlan([accionRegistrada],
+    rb = await enviar(comoEvolucion(fichaConPlan([accionRegistrada],
       [Object.assign({}, seguimientoRegistrado, { seg1Fecha: enDias(-1) })])));
     verificar('Cambiar el 1.er seguimiento registrado => 409', rb.estado === 409, 'estado ' + rb.estado);
 
     const seguimientoCompleto = Object.assign({}, seguimientoRegistrado, { seg2Fecha: enDias(30), seg2Estado: 'C' });
-    rb = await enviar(comoCorreccion(fichaConPlan([accionRegistrada, accionNueva], [seguimientoCompleto])));
-    verificar('Agregar una acción y completar el 2.º seguimiento => 200', rb.estado === 200,
+    rb = await enviar(comoEvolucion(fichaConPlan([accionRegistrada, accionNueva], [seguimientoCompleto])));
+    verificar('Evolucionar: agregar una acción y completar el 2.º seguimiento => 200', rb.estado === 200,
       'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
     let enBase = await planEnBase();
     verificar('  quedan las dos acciones y el 2.º seguimiento',
@@ -1418,28 +1528,34 @@ async function correrPruebas() {
 
     rpp = await permisosPlan(maestro.cabeceras, 'GET');
     const candidatoProfesional = (rpp.cuerpo.candidatos || []).find(function (c) { return c.documento === USUARIO_PRUEBA.documento; });
-    verificar('El maestro ve a quién puede autorizar (quien puede corregir la ficha)',
+    verificar('El maestro ve a quién puede autorizar (quien ve la ficha y no la corrige por sí mismo)',
       rpp.estado === 200 && Boolean(candidatoProfesional), 'estado ' + rpp.estado + ' ' + JSON.stringify(rpp.cuerpo).slice(0, 200));
-    verificar('  la auxiliar, que no puede corregir una ficha ajena, no está entre ellos',
-      !(rpp.cuerpo.candidatos || []).some(function (c) { return c.documento === '1144099002'; }));
+    verificar('  la auxiliar del mismo equipo también está entre ellos',
+      (rpp.cuerpo.candidatos || []).some(function (c) { return c.documento === '1144099002'; }));
+    verificar('  la coordinación no: ya la corrige sin autorización',
+      !(rpp.cuerpo.candidatos || []).some(function (c) { return c.documento === '1144099004'; }));
 
-    const idAuxiliar = auxiliar.usuario && auxiliar.usuario.id;
-    rpp = await permisosPlan(maestro.cabeceras, 'POST', { accion: 'otorgar', codigo: codigoBloqueo, usuarioId: idAuxiliar });
-    verificar('Autorizar a quien no puede corregir la ficha => 400', rpp.estado === 400, 'estado ' + rpp.estado);
+    rpp = await permisosPlan(coordinacion.cabeceras, 'GET');
+    verificar('La coordinación también consulta y da autorizaciones => 200', rpp.estado === 200, 'estado ' + rpp.estado);
 
-    rpp = await permisosPlan(maestro.cabeceras, 'POST', {
+    const idOtroEquipo = otroEquipoSesion.usuario && otroEquipoSesion.usuario.id;
+    rpp = await permisosPlan(maestro.cabeceras, 'POST', { accion: 'otorgar', codigo: codigoBloqueo, usuarioId: idOtroEquipo });
+    verificar('Autorizar a alguien de otro equipo, que no ve la ficha => 400', rpp.estado === 400, 'estado ' + rpp.estado);
+
+    rpp = await permisosPlan(coordinacion.cabeceras, 'POST', {
       accion: 'otorgar', codigo: codigoBloqueo, usuarioId: candidatoProfesional && candidatoProfesional.id,
       motivo: 'El código de la segunda acción quedó mal'
     });
-    verificar('El maestro autoriza a la profesional => 200 con la autorización vigente',
-      rpp.estado === 200 && (rpp.cuerpo.permisos || []).length === 1, 'estado ' + rpp.estado);
+    verificar('La coordinación autoriza a la profesional => 200 con la autorización vigente',
+      rpp.estado === 200 && (rpp.cuerpo.permisos || []).length === 1, 'estado ' + rpp.estado + ' ' + JSON.stringify(rpp.cuerpo).slice(0, 200));
 
     const filaListada = (await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras })
       .then(function (x) { return x.json(); })).find(function (f) { return f.codigoFicha === codigoBloqueo; }) || {};
     verificar('  el historial de la profesional marca la ficha como autorizada', filaListada.permisoPlan === true);
     const completaAutorizada = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(codigoBloqueo),
       { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
-    verificar('  y Corregir le deja editable lo registrado', completaAutorizada.planRegistradoEditable === true);
+    verificar('  y Corregir le trae la ficha corregible, con lo registrado editable',
+      completaAutorizada.corregible === true && completaAutorizada.planRegistradoEditable === true);
 
     const conCambioAutorizado = planTres.slice();
     conCambioAutorizado[1] = Object.assign({}, accionNueva, { codigoAccion: 'NC-AMB-07' });
@@ -1455,7 +1571,12 @@ async function correrPruebas() {
 
     conCambioAutorizado[1] = Object.assign({}, accionNueva, { codigoAccion: 'NC-FAM-02' });
     rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])));
-    verificar('Un segundo cambio ya no tiene autorización => 409', rb.estado === 409, 'estado ' + rb.estado);
+    verificar('Una segunda corrección ya no tiene autorización => 403', rb.estado === 403, 'estado ' + rb.estado);
+    const eventoAutorizacion = (await cliente.query(`
+      SELECT e.valor_nuevo FROM aud.evento e JOIN aps.ficha f ON f.id = e.ficha_id
+       WHERE f.codigo = $1 AND e.campo = 'autorizacion' ORDER BY e.id DESC LIMIT 1`, [codigoBloqueo])).rows[0] || {};
+    verificar('  la auditoría registra el guardado hecho con la autorización',
+      /^guardado con la autorización \d+$/.test(eventoAutorizacion.valor_nuevo || ''), String(eventoAutorizacion.valor_nuevo));
 
     rpp = await permisosPlan(maestro.cabeceras, 'POST', {
       accion: 'otorgar', codigo: codigoBloqueo, usuarioId: candidatoProfesional && candidatoProfesional.id
@@ -1465,7 +1586,7 @@ async function correrPruebas() {
     verificar('El maestro revoca una autorización => 200 sin vigentes',
       rpp.estado === 200 && (rpp.cuerpo.permisos || []).length === 0, 'estado ' + rpp.estado);
     rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])));
-    verificar('  revocada, el cambio vuelve a rechazarse => 409', rb.estado === 409, 'estado ' + rb.estado);
+    verificar('  revocada, la corrección vuelve a rechazarse => 403', rb.estado === 403, 'estado ' + rb.estado);
 
     rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])), maestro.cabeceras);
     verificar('El maestro cambia lo registrado él mismo => 200', rb.estado === 200,
@@ -1476,6 +1597,112 @@ async function correrPruebas() {
     verificar('  la auditoría distingue la autorización usada y el cambio del maestro',
       eventosFinales.some(function (v) { return /con la autorización \d+/.test(v); }) &&
       eventosFinales.indexOf('registrado modificado por el maestro') !== -1, eventosFinales.join(' | '));
+
+    conCambioAutorizado[1] = Object.assign({}, accionNueva, { codigoAccion: 'NC-AMB-07' });
+    rb = await enviar(comoCorreccion(fichaConPlan(conCambioAutorizado, [seguimientoCompleto])), coordinacion.cabeceras);
+    verificar('La coordinación cambia lo registrado ella misma => 200', rb.estado === 200,
+      'estado ' + rb.estado + ' ' + JSON.stringify(rb.cuerpo).slice(0, 200));
+
+    console.log('\n=== 15. Eliminar una ficha de la base: sólo el maestro, con motivo (RN-225) ===');
+    const eliminarFicha = async function (cabeceras, cuerpo) {
+      const x = await fetch(BASE + '/api/ficha_completa', {
+        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, cabeceras),
+        body: JSON.stringify(Object.assign({ accion: 'eliminar' }, cuerpo))
+      });
+      return { estado: x.status, cuerpo: await x.json().catch(function () { return {}; }) };
+    };
+    const antesDeEliminar = (await cliente.query(
+      'SELECT id, hogar_id FROM aps.ficha WHERE codigo = $1', [codigoBloqueo])).rows[0] || {};
+    const motivoPrueba = 'Ficha de prueba registrada por error';
+
+    let re = await eliminarFicha(sesion.cabeceras, { codigo: codigoBloqueo, motivo: motivoPrueba });
+    verificar('La profesional no elimina fichas => 403', re.estado === 403, 'estado ' + re.estado);
+    re = await eliminarFicha(coordinacion.cabeceras, { codigo: codigoBloqueo, motivo: motivoPrueba });
+    verificar('La coordinación tampoco => 403', re.estado === 403, 'estado ' + re.estado);
+    re = await eliminarFicha(maestro.cabeceras, { codigo: codigoBloqueo, motivo: 'corto' });
+    verificar('El maestro sin un motivo suficiente => 400 señalando motivo',
+      re.estado === 400 && re.cuerpo.campo === 'motivo', 'estado ' + re.estado);
+    re = await eliminarFicha(maestro.cabeceras, { codigo: codigoBloqueo, motivo: motivoPrueba });
+    verificar('El maestro elimina la ficha con su plan, autorizaciones y alertas => 200',
+      re.estado === 200 && re.cuerpo.eliminada === codigoBloqueo, 'estado ' + re.estado + ' ' + JSON.stringify(re.cuerpo));
+    const yaNoEsta = (await cliente.query('SELECT count(*)::int AS n FROM aps.ficha WHERE codigo = $1', [codigoBloqueo])).rows[0].n;
+    verificar('  ya no está en la base', yaNoEsta === 0, String(yaNoEsta));
+    const eventoEliminacion = (await cliente.query(`
+      SELECT tipo::text AS tipo, valor_nuevo, valor_anterior FROM aud.evento
+       WHERE ficha_id = $1 AND tipo::text = 'eliminacion'`, [antesDeEliminar.id])).rows[0] || {};
+    verificar('  la auditoría conserva quién, por qué y qué ficha era',
+      eventoEliminacion.valor_nuevo === motivoPrueba && String(eventoEliminacion.valor_anterior).indexOf(codigoBloqueo) !== -1,
+      JSON.stringify(eventoEliminacion));
+    const viviendaSigue = (await cliente.query('SELECT count(*)::int AS n FROM aps.hogar WHERE id = $1',
+      [antesDeEliminar.hogar_id])).rows[0].n;
+    verificar('  la vivienda se conserva: su código y su NUV no se reutilizan', viviendaSigue === 1, String(viviendaSigue));
+    const listadoTrasEliminar = await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+    verificar('  y desaparece del historial',
+      !(Array.isArray(listadoTrasEliminar) ? listadoTrasEliminar : []).some(function (f) { return f.codigoFicha === codigoBloqueo; }));
+    re = await eliminarFicha(maestro.cabeceras, { codigo: codigoBloqueo, motivo: motivoPrueba });
+    verificar('Eliminarla otra vez => 404', re.estado === 404, 'estado ' + re.estado);
+
+    /* Fecha y hora de diligenciamiento: el ítem 16 sigue siendo sólo fecha y
+       la hora exacta se guarda aparte, la del dispositivo y no la del
+       servidor (una visita sin señal llega después). */
+    console.log('\n=== Fecha y hora de diligenciamiento ===');
+    const horaDe = async function (codigo) {
+      return (await cliente.query(`
+        SELECT to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha,
+               f.diligenciada_en, f.capturada_en
+          FROM aps.ficha f WHERE f.codigo = $1`, [codigo])).rows[0] || {};
+    };
+
+    const dispositivo = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+    const conHora = fichaValida(sello + 'h1');
+    conHora.fechaRegistro = dispositivo;
+    let rh = await enviar(conHora);
+    verificar('Ficha con la hora del dispositivo => 200', rh.estado === 200,
+      'estado ' + rh.estado + ' ' + String(JSON.stringify(rh.cuerpo)).slice(0, 160));
+    let filaHora = await horaDe(conHora.codigoFicha);
+    verificar('  guarda la hora del dispositivo, no la de recepción',
+      filaHora.diligenciada_en && filaHora.diligenciada_en.toISOString() === dispositivo, String(filaHora.diligenciada_en));
+    verificar('  y la recepción en el servidor queda aparte, posterior',
+      filaHora.capturada_en && filaHora.capturada_en > filaHora.diligenciada_en, String(filaHora.capturada_en));
+    verificar('  el ítem 16 sigue siendo sólo la fecha', /^\d{4}-\d{2}-\d{2}$/.test(filaHora.fecha), String(filaHora.fecha));
+
+    const otraHora = Object.assign({}, conHora, { fechaRegistro: new Date(Date.now() - 60 * 1000).toISOString(),
+      esCorreccion: true });
+    rh = await enviar(otraHora, coordinacion.cabeceras);
+    filaHora = await horaDe(conHora.codigoFicha);
+    verificar('Corregir la ficha no mueve la hora de diligenciamiento',
+      rh.estado === 200 && filaHora.diligenciada_en.toISOString() === dispositivo, String(filaHora.diligenciada_en));
+
+    const relojAdelantado = fichaValida(sello + 'h2');
+    relojAdelantado.fechaRegistro = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    rh = await enviar(relojAdelantado);
+    filaHora = await horaDe(relojAdelantado.codigoFicha);
+    verificar('Un reloj adelantado no fecha la ficha en el futuro',
+      rh.estado === 200 && filaHora.diligenciada_en <= new Date(Date.now() + 60 * 1000), String(filaHora.diligenciada_en));
+
+    const sinHora = fichaValida(sello + 'h3');
+    delete sinHora.fechaRegistro;
+    rh = await enviar(sinHora);
+    filaHora = await horaDe(sinHora.codigoFicha);
+    verificar('Sin hora del dispositivo usa la del servidor',
+      rh.estado === 200 && filaHora.diligenciada_en && Math.abs(filaHora.diligenciada_en - filaHora.capturada_en) < 60 * 1000,
+      String(filaHora.diligenciada_en));
+
+    const listadoHora = await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+    const filaListadaHora = (Array.isArray(listadoHora) ? listadoHora : []).find(function (x) {
+      return x.codigoFicha === conHora.codigoFicha;
+    });
+    verificar('El historial entrega la hora del dispositivo como fecha de registro',
+      filaListadaHora && filaListadaHora.fechaRegistro && new Date(filaListadaHora.fechaRegistro).toISOString() === dispositivo,
+      JSON.stringify(filaListadaHora && filaListadaHora.fechaRegistro));
+    verificar('  y aparte la recepción en el servidor', filaListadaHora && !!filaListadaHora.recibidaEn);
+
+    const completaHora = await fetch(BASE + '/api/ficha_completa?codigo=' + encodeURIComponent(conHora.codigoFicha),
+      { headers: sesion.cabeceras }).then(function (x) { return x.json(); });
+    const encuestaHora = completaHora.encuesta || {};
+    verificar('El detalle completo entrega la misma hora',
+      encuestaHora.fechaRegistro === dispositivo && !!encuestaHora.recibidaEn,
+      String(encuestaHora.fechaRegistro));
 
     /* Limpieza. El orden importa: `familia` cuelga de `hogar` y la ficha
        arrastra en cascada su vivienda, familia_ficha e integrantes, pero no

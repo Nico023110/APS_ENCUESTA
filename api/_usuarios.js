@@ -60,18 +60,38 @@ function validarDatos(datos, paraCrear) {
   if (!roles.esRolValido(salida.rol)) throw new ErrorDeCuenta('Elija un rol de la lista.', 'rol');
 
   salida.equipo = d.equipo ? String(d.equipo).trim() : null;
-  if (roles.esAsistencial(salida.rol) && !salida.equipo) {
+  if (roles.requiereEquipo(salida.rol) && !salida.equipo) {
     throw new ErrorDeCuenta('Un rol que captura fichas necesita su Equipo Básico de Salud.', 'equipo');
   }
   if (salida.equipo && !/^[A-Za-z0-9]{3,20}$/.test(salida.equipo)) {
     throw new ErrorDeCuenta('El código del equipo lleva entre 3 y 20 letras o números (RN-010).', 'equipo');
   }
 
+  /* Cargo y contacto: opcionales, para ubicar a la persona. El teléfono se
+     guarda sólo con sus dígitos; un indicativo +57 delante se retira. */
+  salida.cargo = d.cargo ? String(d.cargo).trim().replace(/\s+/g, ' ').slice(0, 80) : null;
+
+  salida.correo = d.correo ? String(d.correo).trim().toLowerCase() : null;
+  if (salida.correo && (salida.correo.length > 120 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(salida.correo))) {
+    throw new ErrorDeCuenta('Escriba un correo válido, como nombre@dominio.com.', 'correo');
+  }
+
+  salida.telefono = d.telefono ? String(d.telefono).replace(/\D/g, '') : null;
+  if (salida.telefono && salida.telefono.length === 12 && salida.telefono.indexOf('57') === 0) {
+    salida.telefono = salida.telefono.slice(2);
+  }
+  if (salida.telefono === '') salida.telefono = null;
+  if (salida.telefono && !/^[0-9]{7,10}$/.test(salida.telefono)) {
+    throw new ErrorDeCuenta('El teléfono lleva entre 7 y 10 dígitos.', 'telefono');
+  }
+
   /* Perfil del ítem 14 con el que firma las fichas. Para los roles
-     asistenciales es el propio rol; el maestro lo elige (u «otro»). */
-  if (salida.rol === 'maestro') {
+     asistenciales es el propio rol; el maestro y la coordinación lo eligen
+     entre los del ítem 14 (u «Otro», con su cargo como aclaración). */
+  if (roles.eligePerfil(salida.rol)) {
     salida.perfil = d.perfil ? String(d.perfil) : 'otro';
-    if (!roles.esRolValido(salida.perfil) || !roles.esAsistencial(salida.perfil) || salida.perfil === 'maestro') {
+    const nivelPerfil = roles.nivelDe(salida.perfil);
+    if (nivelPerfil !== 'profesional' && nivelPerfil !== 'tecnico') {
       throw new ErrorDeCuenta('El perfil profesional debe ser uno del ítem 14.', 'perfil');
     }
   } else if (roles.esAsistencial(salida.rol)) {
@@ -83,6 +103,7 @@ function validarDatos(datos, paraCrear) {
   salida.perfilOtro = d.perfilOtro ? String(d.perfilOtro).trim().slice(0, 80) : null;
   if (salida.perfil === 'otro' && !salida.perfilOtro) {
     if (salida.rol === 'maestro') salida.perfilOtro = 'Usuario maestro';
+    else if (roles.nivelDe(salida.rol) === 'coordinacion') salida.perfilOtro = salida.cargo || roles.etiquetaDeRol(salida.rol);
     else throw new ErrorDeCuenta('Con el perfil «Otro» hay que indicar cuál (RN-014).', 'perfilOtro');
   }
   if (salida.perfil !== 'otro') salida.perfilOtro = null;
@@ -118,16 +139,20 @@ async function crearCuenta(cliente, datos, opciones) {
   let funcionarioId;
   try {
     funcionarioId = (await cliente.query(`
-      INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, perfil_otro, equipo_salud_id, activo)
-      VALUES ($1, $2, $3, $4, $5, $6, true)
+      INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, perfil_otro, equipo_salud_id,
+                                   cargo, correo, telefono, activo)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
       ON CONFLICT (tipo_id, numero_id) DO UPDATE
         SET nombre_completo = EXCLUDED.nombre_completo,
             perfil_profesional = COALESCE(EXCLUDED.perfil_profesional, aps.funcionario.perfil_profesional),
             perfil_otro = COALESCE(EXCLUDED.perfil_otro, aps.funcionario.perfil_otro),
             equipo_salud_id = COALESCE(EXCLUDED.equipo_salud_id, aps.funcionario.equipo_salud_id),
+            cargo = COALESCE(EXCLUDED.cargo, aps.funcionario.cargo),
+            correo = COALESCE(EXCLUDED.correo, aps.funcionario.correo),
+            telefono = COALESCE(EXCLUDED.telefono, aps.funcionario.telefono),
             activo = true
       RETURNING id
-    `, [d.tipoId, d.documento, d.nombre, d.perfil, d.perfilOtro, equipoId])).rows[0].id;
+    `, [d.tipoId, d.documento, d.nombre, d.perfil, d.perfilOtro, equipoId, d.cargo, d.correo, d.telefono])).rows[0].id;
   } catch (error) {
     if (error.code === '23514') throw new ErrorDeCuenta('El documento no tiene el formato de ese tipo (RN-013).', 'documento');
     throw error;
@@ -159,9 +184,12 @@ async function modificarCuenta(cliente, usuarioId, datos) {
            perfil_profesional = $3,
            perfil_otro = $4,
            equipo_salud_id = $5,
-           activo = $6
+           activo = $6,
+           cargo = $7,
+           correo = $8,
+           telefono = $9
      WHERE id = $1
-  `, [fila.funcionario_id, d.nombre, d.perfil, d.perfilOtro, equipoId, d.activo]);
+  `, [fila.funcionario_id, d.nombre, d.perfil, d.perfilOtro, equipoId, d.activo, d.cargo, d.correo, d.telefono]);
 
   await cliente.query(`
     UPDATE aps.usuario SET rol = $2, activo = $3 WHERE id = $1
@@ -200,6 +228,7 @@ const CONSULTA_LISTADO = `
   SELECT u.id, u.documento, u.rol, u.activo, u.debe_cambiar_clave, u.bloqueado_hasta,
          u.creado_en, u.ultimo_acceso_en,
          f.tipo_id, f.nombre_completo, f.perfil_profesional, f.perfil_otro,
+         f.cargo, f.correo, f.telefono,
          e.codigo AS equipo_codigo
     FROM aps.usuario u
     JOIN aps.funcionario f ON f.id = u.funcionario_id
@@ -217,6 +246,9 @@ function filaPublica(fila) {
     nivel: roles.nivelDe(fila.rol),
     perfil: fila.perfil_profesional,
     perfilOtro: fila.perfil_otro,
+    cargo: fila.cargo,
+    correo: fila.correo,
+    telefono: fila.telefono,
     equipo: fila.equipo_codigo,
     activo: fila.activo,
     debeCambiarClave: fila.debe_cambiar_clave,

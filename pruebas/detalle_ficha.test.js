@@ -31,6 +31,9 @@ function ficha(id, hogaresEnVivienda, familias) {
     id: id,
     codigoFicha: '76001-EBS12-TEST-000' + id.slice(-1) + '-20261013',
     fechaRegistro: '2026-10-13T15:00:00.000Z',
+    /* det-1 se sincronizó cinco horas después de diligenciarse (sin señal);
+       det-2 llegó al minuto, que no cuenta como desfase. */
+    recibidaEn: id === 'det-1' ? '2026-10-13T20:00:00.000Z' : id === 'det-2' ? '2026-10-13T15:01:00.000Z' : undefined,
     fechaDiligenciamiento: '2026-10-13',
     territorio: 'T49',
     microterritorio: 'MT01',
@@ -128,7 +131,12 @@ async function abrirDetalle(app, id) {
   const secciones = Array.from(cuerpo.querySelectorAll('.detail-section'));
   const seccionHogares = secciones.find((s) => texto(s.querySelector('h3')) === 'Hogares y familias de la vivienda');
   const vivienda = secciones.find((s) => texto(s.querySelector('h3')) === 'Datos generales de la vivienda');
+  const filas = {};
+  cuerpo.querySelectorAll('.detail-item').forEach((i) => {
+    filas[texto(i.querySelector('.detail-label'))] = texto(i.querySelector('.detail-value'));
+  });
   return {
+    filas: filas,
     titulos: secciones.map((s) => texto(s.querySelector('h3'))),
     etiquetasVivienda: vivienda ? Array.from(vivienda.querySelectorAll('.detail-label')).map(texto) : [],
     resumen: seccionHogares && texto(seccionHogares.querySelector('.detalle-hogares__resumen')),
@@ -184,6 +192,24 @@ async function abrirDetalle(app, id) {
   check('Los datos de la vivienda ya no repiten el código de una sola familia',
     d.etiquetasVivienda.indexOf('N.° Identificación de la familia') === -1 &&
     d.etiquetasVivienda.indexOf('N.° Identificación del hogar') !== -1, d.etiquetasVivienda.join(' | '));
+
+  console.log('\n=== 1b. Fecha y hora de diligenciamiento ===');
+  check('El ítem 16 sigue siendo sólo la fecha', d.filas['Fecha diligenciamiento'] === '2026-10-13', d.filas['Fecha diligenciamiento']);
+  check('Aparte se ve la fecha y la hora exacta, con segundos',
+    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Fecha y hora de diligenciamiento'] || ''),
+    d.filas['Fecha y hora de diligenciamiento']);
+  check('Una ficha sincronizada horas después muestra cuándo la recibió el servidor',
+    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Recibida en el servidor'] || ''), d.filas['Recibida en el servidor']);
+  check('  y las dos horas no son la misma',
+    d.filas['Recibida en el servidor'] !== d.filas['Fecha y hora de diligenciamiento']);
+  const d2 = await abrirDetalle(app, 'det-2');
+  check('Si el servidor la recibió al instante, no repite una recepción sin desfase',
+    d2.filas['Recibida en el servidor'] === undefined, d2.filas['Recibida en el servidor']);
+  const d3 = await abrirDetalle(app, 'det-3');
+  check('Una ficha sólo local (sin recepción) tampoco la muestra', d3.filas['Recibida en el servidor'] === undefined);
+  check('Su fecha y hora se ven igual', /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d3.filas['Fecha y hora de diligenciamiento'] || ''));
+
+  d = await abrirDetalle(app, 'det-1');
 
   console.log('\n=== 2. Hogares declarados sin caracterizar (RN-028) ===');
   d = await abrirDetalle(app, 'det-2');

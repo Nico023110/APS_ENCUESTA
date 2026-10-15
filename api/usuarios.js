@@ -4,8 +4,13 @@
    GET            lista las cuentas.
    POST {accion}  crear | modificar | restablecer.
 
-   Exige el permiso usuarios.gestionar (administrador y maestro). Reglas
-   que el permiso solo no cubre:
+   Cada acción exige su permiso (roles.js): listar, usuarios.ver; crear,
+   usuarios.crear; modificar, usuarios.modificar; restablecer,
+   usuarios.restablecer. La coordinación del EBS lista y crea, pero no
+   modifica ni restablece. Reglas que los permisos solos no cubren:
+     - Cada rol crea sólo los roles que roles.rolesQuePuedeCrear le deja:
+       la coordinación, cuentas del personal asistencial; nadie da un nivel
+       que no tiene.
      - Nadie se desactiva ni se cambia el rol a sí mismo: la sesión que lo
        hiciera quedaría inválida a mitad de camino.
      - Sólo un maestro toca cuentas de maestro (crear, modificar o
@@ -19,6 +24,7 @@
 const { obtenerPool } = require('./_db');
 const { requerirSesion } = require('./_auth');
 const cuentas = require('./_usuarios');
+const roles = require('../roles.js');
 
 async function auditar(cliente, actor, tipo, usuarioId, campo, anterior, nuevo) {
   await cliente.query(`
@@ -35,7 +41,7 @@ function tocaUnMaestro(actor, rolObjetivo, rolNuevo) {
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
-  const actor = await requerirSesion(req, res, { permiso: 'usuarios.gestionar' });
+  const actor = await requerirSesion(req, res, { permiso: 'usuarios.ver' });
   if (!actor) return;
 
   let cliente;
@@ -53,12 +59,27 @@ module.exports = async (req, res) => {
     const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
     const accion = String(cuerpo.accion || '');
 
+    const permisoDeAccion = { crear: 'usuarios.crear', modificar: 'usuarios.modificar', restablecer: 'usuarios.restablecer' }[accion];
+    if (permisoDeAccion && !roles.puede(actor.rol, permisoDeAccion)) {
+      return res.status(403).json({
+        error: accion === 'crear' ? 'Su rol no permite crear cuentas.'
+          : accion === 'modificar' ? 'Su rol no permite modificar cuentas.'
+            : 'Su rol no permite restablecer contraseñas.',
+        codigo: 'sin_permiso'
+      });
+    }
+
     await cliente.query('BEGIN');
 
     if (accion === 'crear') {
       if (tocaUnMaestro(actor, null, cuerpo.rol)) {
         await cliente.query('ROLLBACK');
         return res.status(403).json({ error: 'Sólo un usuario maestro puede crear otro maestro.', codigo: 'sin_permiso' });
+      }
+      if (roles.esRolValido(String(cuerpo.rol || '')) && roles.rolesQuePuedeCrear(actor.rol).indexOf(String(cuerpo.rol)) === -1) {
+        await cliente.query('ROLLBACK');
+        return res.status(403).json({ error: 'Su rol sólo crea cuentas del personal asistencial del EBS.',
+          codigo: 'sin_permiso', campo: 'rol' });
       }
       const creada = await cuentas.crearCuenta(cliente, cuerpo, { creadoPor: actor.id });
       await auditar(cliente, actor, 'creacion', creada.id, 'rol', null, creada.datos.rol);

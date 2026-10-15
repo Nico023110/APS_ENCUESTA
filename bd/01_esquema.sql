@@ -314,7 +314,8 @@ CREATE TABLE aps.usuario (
   creado_por          bigint REFERENCES aps.usuario(id),
   clave_cambiada_en   timestamptz,
   ultimo_acceso_en    timestamptz,
-  CONSTRAINT usuario_rol_valido CHECK (rol IN ('administrador', 'maestro') OR cat.es_opcion('PERFIL_PROFESIONAL', rol)),
+  CONSTRAINT usuario_rol_valido CHECK (rol IN ('administrador', 'maestro', 'coordinador_ebs', 'lider_ebs')
+    OR cat.es_opcion('PERFIL_PROFESIONAL', rol)),
   CONSTRAINT usuario_documento_formato CHECK (documento ~ '^[A-Za-z0-9]{5,16}$')
 );
 COMMENT ON TABLE aps.usuario IS

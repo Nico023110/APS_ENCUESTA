@@ -11,6 +11,8 @@
          --rol enfermeria --equipo EBS001 [--tipo CC] [--perfil-otro "..."]
      npm run usuario:crear -- --documento 1144000000 --nombre "Admin" --rol administrador
      npm run usuario:crear -- --documento 1144000001 --nombre "Maestro" --rol maestro --equipo EBS001 [--perfil enfermeria]
+     npm run usuario:crear -- --documento 1144000002 --nombre "Líder" --rol lider_ebs --cargo "Líder Zona Norte" \
+         [--correo nombre@dominio.com] [--telefono 3001234567] [--equipo EBS001] [--perfil enfermeria]
      npm run usuario:crear -- --documento 1144012345 --restablecer      (nueva clave temporal)
 
    La clave temporal se genera aquí y se imprime UNA sola vez; el usuario
@@ -87,7 +89,10 @@ async function principal() {
       rol: args.rol,
       equipo: args.equipo,
       perfil: args.perfil,
-      perfilOtro: args['perfil-otro']
+      perfilOtro: args['perfil-otro'],
+      cargo: args.cargo,
+      correo: args.correo,
+      telefono: args.telefono
     }, { clave: process.env.CLAVE_INICIAL });
 
     await cliente.query('COMMIT');

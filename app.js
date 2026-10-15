@@ -48,6 +48,26 @@ function formatearFecha(fechaIso) {
   return fecha.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
+/**
+ * Hora (24 h, la misma de la captura local) de un instante ISO. El ítem 16 del
+ * instrumento es sólo fecha: la hora sale del momento exacto en que se
+ * diligenció la ficha y sirve de control, no de dato del reporte.
+ */
+function formatearHora(fechaIso, conSegundos) {
+  if (!fechaIso) return '';
+  const fecha = new Date(fechaIso);
+  if (isNaN(fecha.getTime())) return '';
+  const opciones = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+  if (conSegundos) opciones.second = '2-digit';
+  return fecha.toLocaleTimeString('es-CO', opciones);
+}
+
+function formatearFechaHora(fechaIso, conSegundos) {
+  if (!fechaIso) return '—';
+  const hora = formatearHora(fechaIso, conSegundos);
+  return formatearFecha(fechaIso) + (hora ? ', ' + hora : '');
+}
+
 function textoOguion(valor) {
   return valor === null || valor === undefined || valor === '' ? '—' : valor;
 }
@@ -1643,20 +1663,6 @@ function obtenerEncuestasFiltradas() {
   });
 }
 
-/* La misma regla que aplica el servidor (roles.puedeCorregir), con los
-   códigos que trae el listado: el equipo viene como código y la sesión lo
-   tiene igual. Sólo decide si el botón se ofrece; el servidor vuelve a
-   comprobarlo al traer la ficha y al guardarla. */
-function puedeCorregirFichaRemota(fila) {
-  if (typeof SESION === 'undefined' || typeof puedeCorregir !== 'function') return false;
-  const usuario = SESION.usuario();
-  if (!usuario) return false;
-  return puedeCorregir(
-    { rol: usuario.rol, equipoSaludId: usuario.equipoCodigo, funcionarioId: usuario.funcionarioId },
-    { equipoSaludId: fila.equipoSaludId, responsableId: fila.responsableId }
-  );
-}
-
 function renderizarHistorial() {
   const encuestas = obtenerEncuestasFiltradas();
   const cuerpoTabla = document.getElementById('historialTableBody');
@@ -1680,23 +1686,19 @@ function renderizarHistorial() {
     const personasPorHabitacion = encuesta.personasPorHabitacion === null || encuesta.personasPorHabitacion === undefined
       ? '—' : encuesta.personasPorHabitacion;
 
-    /* Una fila que sólo existe en la base —diligenciada en otro dispositivo—
-       se corrige trayéndola entera de /api/ficha_completa, si el rol lo
-       permite (roles.js: el maestro y el administrador, cualquiera; la
-       profesional, las de su equipo; la auxiliar, las suyas). Eliminar sigue
-       deshabilitado: borraría sólo de este navegador, y RN-225 no permite
-       borrar de la base una ficha registrada. */
+    /* RN-228: una ficha que ya está en la base sólo se completa —«Evolucionar
+       plan», si el plan quedó pendiente—. Corregirla es de la coordinación,
+       el administrador y el maestro; el personal asistencial la corrige con
+       una autorización vigente. Una ficha que todavía no sube se corrige
+       libremente: aún no está registrada. Una fila que sólo existe en la base
+       se trae entera de /api/ficha_completa. */
     const remota = encuesta.soloEnServidor === true;
-    const sinCorregir = remota && !puedeCorregirFichaRemota(encuesta)
-      ? ' disabled title="Diligenciada por otra persona: su rol no permite corregirla."' : '';
-    const sinEliminar = remota ? ' disabled title="Ya está en la base: una ficha registrada no se elimina (RN-225)."' : '';
-
-    /* RN-228: el plan pendiente de una ficha que ya está en la base se
-       completa con «Evolucionar plan», que sólo deja tocar el plan. El
-       maestro, además, autoriza a otra persona a cambiar lo ya registrado. */
     const enLaBase = remota || encuesta.sincronizada === true;
+    const sinCorregir = enLaBase && !puedeCorregirEnLaBase(encuesta)
+      ? ' disabled title="Ya está guardada: para corregirla necesita la autorización de la coordinación del EBS o del ' +
+        'usuario maestro."' : '';
     const plan = encuesta.planCuidado || {};
-    const sinEvolucionar = remota && !puedeCorregirFichaRemota(encuesta)
+    const sinEvolucionar = enLaBase && !puedeEvolucionarEnLaBase(encuesta)
       ? ' disabled title="Diligenciada por otra persona: su rol no permite evolucionar su plan."' : '';
     const id = escaparHtml(encuesta.id);
     /* La acción pendiente va primero y a lo ancho; las de consulta, en una
@@ -1706,9 +1708,16 @@ function renderizarHistorial() {
       ? '<button type="button" class="btn acciones-ficha__destacada" data-evolucionar="' + id + '"' + sinEvolucionar + '>' +
         '<i class="ph ph-clipboard-text" aria-hidden="true"></i>Evolucionar plan de cuidado</button>'
       : '';
-    const botonAutorizar = enLaBase && puedeAutorizarPlan() && Number(plan.accionesRegistradas) > 0
-      ? '<button type="button" class="btn acciones-ficha__boton" data-autorizar="' + id + '">' +
+    const botonAutorizar = enLaBase && puedeAutorizarPlan()
+      ? '<button type="button" class="btn acciones-ficha__boton" data-autorizar="' + id + '"' +
+        ' title="Autorizar a una persona a corregir esta ficha">' +
         '<i class="ph ph-shield-check" aria-hidden="true"></i>Autorizar</button>'
+      : '';
+    /* Eliminar es sólo del maestro: de la base, con motivo, si ya subió. */
+    const botonEliminar = puedeEliminarFichas()
+      ? '<button type="button" class="btn acciones-ficha__eliminar" data-eliminar="' + id + '" aria-label="Eliminar"' +
+        ' title="' + (enLaBase ? 'Eliminar de la base' : 'Eliminar del dispositivo') + '">' +
+        '<i class="ph ph-trash" aria-hidden="true"></i></button>'
       : '';
 
     return (
@@ -1719,7 +1728,10 @@ function renderizarHistorial() {
         '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
         '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
         '<td data-label="Plan de cuidado">' + badgePlanCuidado(encuesta) + badgeAutorizacionPlan(encuesta) + '</td>' +
-        '<td data-label="Fecha">' + formatearFecha(encuesta.fechaRegistro) + '</td>' +
+        '<td data-label="Fecha y hora">' + formatearFecha(encuesta.fechaRegistro) +
+          (formatearHora(encuesta.fechaRegistro)
+            ? '<span class="celda-hora">' + formatearHora(encuesta.fechaRegistro) + '</span>'
+            : '') + '</td>' +
         '<td data-label="Modificación">' + textoModificacion(encuesta) + '</td>' +
         '<td data-label="Territorio">' + textoTerritorio(encuesta) + '</td>' +
         '<td data-label="Microterritorio">' + textoMicroterritorio(encuesta) + '</td>' +
@@ -1736,9 +1748,7 @@ function renderizarHistorial() {
               '<button type="button" class="btn acciones-ficha__boton" data-corregir="' + id + '"' + sinCorregir + '>' +
                 '<i class="ph ph-pencil-simple" aria-hidden="true"></i>Corregir</button>' +
               botonAutorizar +
-              '<button type="button" class="btn acciones-ficha__eliminar" data-eliminar="' + id + '" aria-label="Eliminar"' +
-                (sinEliminar || ' title="Eliminar del dispositivo"') + '>' +
-                '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+              botonEliminar +
             '</div>' +
           '</div>' +
         '</td>' +
@@ -1764,17 +1774,18 @@ function renderizarHistorial() {
 }
 
 /* ---------------------------------------------------------
-   15b. AUTORIZACIÓN PARA MODIFICAR UN PLAN REGISTRADO (RN-228)
+   15b. AUTORIZACIÓN PARA CORREGIR UNA FICHA GUARDADA (RN-228)
    ---------------------------------------------------------
-   Lo registrado en el plan de cuidado sólo se completa. Para cambiarlo, el
-   usuario maestro autoriza a una persona sobre una ficha; la autorización
-   sirve para un guardado (api/permisos_plan.js, guardar_encuesta.js).
+   Una ficha guardada sólo se completa. Para corregirla —incluido lo
+   registrado en su plan de cuidado—, la coordinación del EBS o el usuario
+   maestro autorizan a una persona sobre esa ficha; la autorización sirve
+   para un guardado (api/permisos_plan.js, guardar_encuesta.js).
    --------------------------------------------------------- */
 
 function puedeAutorizarPlan() {
   if (typeof SESION === 'undefined' || typeof puede !== 'function') return false;
   const usuario = SESION.usuario();
-  return Boolean(usuario) && puede(usuario.rol, 'plan.autorizar');
+  return Boolean(usuario) && puede(usuario.rol, 'ficha.autorizar');
 }
 
 /* La fila de la base de una ficha, también cuando el historial muestra la
@@ -1783,12 +1794,77 @@ function filaDelServidor(codigoFicha) {
   return (cacheFichasDelServidor || []).find(function (e) { return e.codigoFicha === codigoFicha; }) || null;
 }
 
+/* Elimina de la base una ficha registrada (sólo el maestro). Si además hay
+   copia en este dispositivo, se borra también, para que no vuelva a subir. */
+async function eliminarFichaDeLaBase(ficha, copiaLocal, motivo) {
+  let respuesta;
+  let cuerpo;
+  try {
+    respuesta = await fetch('/api/ficha_completa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: 'eliminar', codigo: ficha.codigoFicha, motivo: motivo })
+    });
+    cuerpo = await respuesta.json().catch(function () { return {}; });
+  } catch (error) {
+    mostrarNotificacion('Sin conexión: para eliminar una ficha de la base hace falta red.', 'warning');
+    return;
+  }
+
+  if (!respuesta.ok) {
+    mostrarNotificacion(cuerpo.error || 'No fue posible eliminar la ficha.', 'error');
+    return;
+  }
+
+  if (copiaLocal) eliminarEncuestaPorId(copiaLocal.id);
+  cacheFichasDelServidor = (cacheFichasDelServidor || []).filter(function (e) {
+    return e.codigoFicha !== ficha.codigoFicha;
+  });
+  renderizarHistorial();
+  mostrarNotificacion('La ficha ' + ficha.codigoFicha + ' se eliminó de la base. El motivo quedó en la auditoría.',
+    'success');
+}
+
+/* El usuario de la sesión en la forma que esperan las reglas de roles.js
+   (el equipo va como código, igual que en las filas del historial). */
+function usuarioParaReglas() {
+  if (typeof SESION === 'undefined' || !SESION.usuario) return null;
+  const usuario = SESION.usuario();
+  return usuario ? { rol: usuario.rol, equipoSaludId: usuario.equipoCodigo, funcionarioId: usuario.funcionarioId } : null;
+}
+
+/* RN-228 — Corregir una ficha que ya está en la base: por el rol
+   (coordinación, administrador, maestro) o con una autorización vigente,
+   que llega en la fila del historial. La misma regla que aplica el servidor;
+   aquí sólo decide si el botón se ofrece. */
+function puedeCorregirEnLaBase(encuesta) {
+  const usuario = usuarioParaReglas();
+  if (!usuario || typeof puedeCorregir !== 'function') return encuesta.soloEnServidor !== true;
+  const fila = encuesta.soloEnServidor === true ? encuesta : filaDelServidor(encuesta.codigoFicha);
+  if (fila && fila.permisoPlan === true) return true;
+  if (!fila) return puede(usuario.rol, 'ficha.corregir.todas');
+  return puedeCorregir(usuario, { equipoSaludId: fila.equipoSaludId, responsableId: fila.responsableId });
+}
+
+/* «Evolucionar plan»: completar el plan pendiente, dentro del alcance del rol
+   (las fichas del equipo, o las propias para el personal técnico). Sin la
+   fila del servidor no se puede saber de quién es; evolucionar necesita red
+   de todos modos y el servidor decide. */
+function puedeEvolucionarEnLaBase(encuesta) {
+  const usuario = usuarioParaReglas();
+  if (!usuario || typeof puedeEvolucionar !== 'function') return encuesta.soloEnServidor !== true;
+  const fila = encuesta.soloEnServidor === true ? encuesta : filaDelServidor(encuesta.codigoFicha);
+  if (!fila) return true;
+  return fila.permisoPlan === true ||
+    puedeEvolucionar(usuario, { equipoSaludId: fila.equipoSaludId, responsableId: fila.responsableId });
+}
+
 function badgeAutorizacionPlan(encuesta) {
   const fila = encuesta.permisoPlan === true ? encuesta : filaDelServidor(encuesta.codigoFicha);
   if (!fila || fila.permisoPlan !== true) return '';
-  return ' <span class="badge badge--info" title="El usuario maestro le autorizó modificar lo ya registrado en ' +
-    'el plan de cuidado de esta ficha. Sirve para un guardado: ábrala con Corregir o Evolucionar plan.">' +
-    'Modificación autorizada</span>';
+  return ' <span class="badge badge--info" title="La coordinación del EBS o el usuario maestro le autorizó ' +
+    'corregir esta ficha, incluido lo ya registrado en su plan de cuidado. Sirve para un guardado: ábrala con ' +
+    'Corregir.">Corrección autorizada</span>';
 }
 
 async function pedirPermisosPlan(metodo, cuerpo, codigo) {
@@ -1815,7 +1891,7 @@ function htmlAutorizacionPlan(datos) {
 
   const vigentes = datos.permisos.length === 0
     ? '<div class="autorizacion-plan__vacio"><i class="ph ph-lock-simple" aria-hidden="true"></i>' +
-        '<span>Nadie tiene autorización vigente: lo registrado en el plan está bloqueado.</span></div>'
+        '<span>Nadie tiene autorización vigente: la ficha sólo se completa con «Evolucionar plan».</span></div>'
     : '<ul class="autorizacion-plan__lista">' + datos.permisos.map(function (permiso) {
       return '<li class="autorizacion-plan__permiso">' +
         '<span class="autorizacion-plan__avatar" aria-hidden="true">' + escaparHtml(iniciales(permiso.usuario.nombre)) + '</span>' +
@@ -1844,11 +1920,12 @@ function htmlAutorizacionPlan(datos) {
 
   const nuevo = datos.candidatos.length === 0
     ? '<div class="autorizacion-plan__vacio"><i class="ph ph-user-circle-minus" aria-hidden="true"></i>' +
-        '<span>Nadie más puede corregir esta ficha, así que no hay a quién autorizar.</span></div>'
+        '<span>No hay a quién autorizar: quienes ven esta ficha ya pueden corregirla.</span></div>'
     : '<div class="autorizacion-plan__campo">' +
         '<label for="autorizarUsuario">Persona</label>' +
         '<select id="autorizarUsuario"><option value="">Seleccione a quién autoriza…</option>' + opciones + '</select>' +
-        '<span class="autorizacion-plan__ayuda">Solo aparecen quienes pueden corregir esta ficha.</span>' +
+        '<span class="autorizacion-plan__ayuda">Solo aparecen quienes ven esta ficha en su historial y no pueden ' +
+          'corregirla por sí mismos.</span>' +
       '</div>' +
       '<div class="autorizacion-plan__campo">' +
         '<label for="autorizarMotivo">Motivo <span class="autorizacion-plan__opcional">(opcional)</span>' +
@@ -1857,11 +1934,12 @@ function htmlAutorizacionPlan(datos) {
           'placeholder="Ej.: el código de la acción quedó mal registrado"></textarea>' +
       '</div>' +
       '<div class="autorizacion-plan__nota"><i class="ph ph-info" aria-hidden="true"></i>' +
-        '<span>La autorización sirve para <strong>un solo guardado</strong>: al guardar, el plan vuelve a ' +
-        'quedar bloqueado.</span></div>';
+        '<span>La autorización sirve para <strong>un solo guardado</strong>: al guardar, la ficha vuelve a ' +
+        'quedar bloqueada.</span></div>';
 
   return '<div class="autorizacion-plan">' +
-    '<p class="autorizacion-plan__intro">Permita que una persona cambie lo ya registrado en el plan de cuidado de la ficha ' +
+    '<p class="autorizacion-plan__intro">Permita que una persona corrija la ficha —incluido lo ya registrado en su ' +
+      'plan de cuidado— ' +
       '<span class="autorizacion-plan__ficha mono">' + escaparHtml(datos.ficha.codigo) + '</span></p>' +
     '<section class="autorizacion-plan__bloque">' +
       '<h4 class="autorizacion-plan__titulo">Autorizaciones vigentes' +
@@ -1886,7 +1964,7 @@ async function abrirAutorizacionDePlan(id) {
   }
 
   const resultado = await Swal.fire({
-    title: 'Autorizar cambios al plan de cuidado',
+    title: 'Autorizar corrección de la ficha',
     html: htmlAutorizacionPlan(datos),
     width: 540,
     customClass: { popup: 'swal-autorizacion' },
@@ -1968,6 +2046,17 @@ function inicializarFiltrosHistorial() {
 /* ---------------------------------------------------------
    16. MODAL DE DETALLE
    --------------------------------------------------------- */
+
+/**
+ * Cuándo recibió el servidor la ficha, sólo si difiere de cuándo se
+ * diligenció: una visita tomada sin señal se sincroniza después, y ese desfase
+ * es lo que el control quiere ver. Con menos de dos minutos son lo mismo.
+ */
+function recepcionSiDifiere(encuesta) {
+  if (!encuesta.recibidaEn || !encuesta.fechaRegistro) return null;
+  const desfase = Math.abs(new Date(encuesta.recibidaEn) - new Date(encuesta.fechaRegistro));
+  return desfase > 2 * 60 * 1000 ? formatearFechaHora(encuesta.recibidaEn, true) : null;
+}
 
 function construirSeccionDetalle(titulo, items) {
   const filas = items.map(function (item) {
@@ -2201,6 +2290,10 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Perfil profesional', valor: perfil },
       { etiqueta: 'Código de la ficha', valor: encuesta.codigoFicha },
       { etiqueta: 'Fecha diligenciamiento', valor: encuesta.fechaDiligenciamiento },
+      { etiqueta: 'Fecha y hora de diligenciamiento', valor: formatearFechaHora(encuesta.fechaRegistro, true) },
+      ...(recepcionSiDifiere(encuesta)
+        ? [{ etiqueta: 'Recibida en el servidor', valor: recepcionSiDifiere(encuesta) }]
+        : []),
       { etiqueta: 'Entorno de abordaje', valor: etiquetaDeCatalogo(CAT_ENTORNO, encuesta.entornoAbordaje) },
       { etiqueta: 'Institución / entidad', valor: encuesta.nombreInstitucion },
       { etiqueta: 'Cabeza de familia / Líder', valor: encuesta.cabezaFamilia },
@@ -2274,43 +2367,99 @@ let confirmacionPendiente = null;
  * @param {{titulo:string, mensaje:string, textoConfirmar?:string,
  *          alConfirmar:Function, alCancelar?:Function}} opciones
  */
+const LARGO_MINIMO_MOTIVO = 10;
+
 function pedirConfirmacion(opciones) {
   confirmacionPendiente = opciones;
+  confirmacionPendiente.focoPrevio = document.activeElement;
+
+  /* El mismo modal confirma eliminar (rojo) y guardar (azul): el tono del
+     botón dice si la acción destruye algo o no. */
+  const confirmar = document.getElementById('btnConfirmarEliminar');
+  const primario = opciones.tono === 'primario';
+  confirmar.classList.toggle('btn--primary', primario);
+  confirmar.classList.toggle('btn--danger', !primario);
+
+  /* Con `pedirMotivo`, la acción no se confirma sin decir por qué: el motivo
+     va a la auditoría (eliminar una ficha de la base). */
+  const campoMotivo = document.getElementById('modalConfirmarMotivoCampo');
+  const motivo = document.getElementById('modalConfirmarMotivo');
+  campoMotivo.hidden = opciones.pedirMotivo !== true;
+  motivo.value = '';
+  confirmar.disabled = opciones.pedirMotivo === true;
 
   document.getElementById('modalConfirmarTitulo').textContent = opciones.titulo;
   document.getElementById('modalConfirmarMensaje').textContent = opciones.mensaje;
-  document.getElementById('btnConfirmarEliminar').textContent = opciones.textoConfirmar || 'Eliminar';
+  confirmar.textContent = opciones.textoConfirmar || 'Eliminar';
+  document.getElementById('btnCancelarEliminar').textContent = opciones.textoCancelar || 'Cancelar';
   document.getElementById('modalConfirmar').hidden = false;
+  if (opciones.pedirMotivo === true) motivo.focus();
+  else if (primario) confirmar.focus();
+}
+
+function motivoDeConfirmacion() {
+  return document.getElementById('modalConfirmarMotivo').value.trim();
 }
 
 function resolverConfirmacion(aceptada) {
   const pendiente = confirmacionPendiente;
+  if (aceptada && pendiente && pendiente.pedirMotivo === true &&
+      motivoDeConfirmacion().length < LARGO_MINIMO_MOTIVO) return;
   confirmacionPendiente = null;
   document.getElementById('modalConfirmar').hidden = true;
 
   if (!pendiente) return;
-  if (aceptada) pendiente.alConfirmar();
+  /* Al cancelar, el foco vuelve a donde estaba (el botón Guardar), no al
+     principio de la página. */
+  if (!aceptada && pendiente.focoPrevio && pendiente.focoPrevio.focus) pendiente.focoPrevio.focus();
+  if (aceptada) pendiente.alConfirmar(motivoDeConfirmacion());
   else if (pendiente.alCancelar) pendiente.alCancelar();
 }
 
+/* Sólo el usuario maestro elimina fichas (ficha.eliminar): las que siguen sólo
+   en el dispositivo, de aquí; las que ya están en la base, de la base, con
+   motivo y en la auditoría (RN-225). Sin sesión cargada (pruebas) se
+   conserva el borrado local de siempre. */
+function puedeEliminarFichas() {
+  if (typeof SESION === 'undefined' || typeof puede !== 'function') return true;
+  const usuario = SESION.usuario();
+  return Boolean(usuario) && puede(usuario.rol, 'ficha.eliminar');
+}
+
 function abrirModalConfirmarEliminacion(id) {
-  /* El botón que llama a esto está deshabilitado para las filas que sólo
-     existen en la base (ver renderizarHistorial), pero se comprueba también
-     aquí: eliminar algo que no está en este dispositivo no borraría nada
-     real y, peor, diría «eliminada correctamente» sobre una ficha que va a
-     seguir apareciendo en el próximo refresco. */
+  if (!puedeEliminarFichas()) {
+    mostrarNotificacion('Sólo el usuario maestro puede eliminar fichas.', 'warning');
+    return;
+  }
+
   const encuesta = obtenerEncuestas().find(function (e) { return e.id === id; });
-  if (!encuesta) {
-    mostrarNotificacion(
-      'Esta ficha se diligenció desde otro dispositivo: no se puede eliminar desde aquí.',
-      'warning');
+  const remota = encuesta ? null
+    : (cacheFichasDelServidor || []).find(function (e) { return e.id === id; }) || null;
+  if (!encuesta && !remota) {
+    mostrarNotificacion('No se encontró la ficha que se quiere eliminar.', 'error');
+    return;
+  }
+
+  /* Una ficha que ya llegó a la base se elimina de la base: borrarla sólo de
+     este navegador diría «eliminada» sobre una ficha que sigue registrada. */
+  if (remota || encuesta.sincronizada === true) {
+    const ficha = remota || encuesta;
+    pedirConfirmacion({
+      titulo: 'Eliminar ficha de la base',
+      mensaje: 'Se eliminará definitivamente la ficha ' + ficha.codigoFicha + ' con sus familias, integrantes ' +
+        'y plan de cuidado, para todos los usuarios. Esta acción no se puede deshacer.',
+      textoConfirmar: 'Eliminar definitivamente',
+      pedirMotivo: true,
+      alConfirmar: function (motivo) { eliminarFichaDeLaBase(ficha, encuesta, motivo); }
+    });
     return;
   }
 
   encuestaSeleccionadaId = id;
   pedirConfirmacion({
     titulo: 'Eliminar registro',
-    mensaje: '¿Está seguro de que desea eliminar esta encuesta? Esta acción no se puede deshacer.',
+    mensaje: '¿Está seguro de que desea eliminar esta encuesta? Aún no se ha sincronizado: se borra de este ' +
+      'dispositivo y no se puede deshacer.',
     textoConfirmar: 'Eliminar',
     alConfirmar: function () {
       eliminarEncuestaPorId(encuestaSeleccionadaId);
@@ -3305,9 +3454,81 @@ function actualizarTableroDeRiesgo(datos) {
   return { alertas: alertas, sinAccion: sinAccion };
 }
 
+/**
+ * Confirmación antes de guardar la ficha, como promesa: true si quien
+ * diligencia confirma. Usa el modal propio de la página y no SweetAlert,
+ * que se carga desde internet: guardar tiene que funcionar sin señal.
+ */
+function confirmarGuardado(opciones) {
+  return new Promise(function (resolver) {
+    pedirConfirmacion(Object.assign({}, opciones, {
+      tono: 'primario',
+      textoCancelar: 'Seguir revisando',
+      alConfirmar: function () { resolver(true); },
+      alCancelar: function () { resolver(false); }
+    }));
+  });
+}
+
+function textoCantidad(n, singular, plural) {
+  return n + ' ' + (n === 1 ? singular : plural);
+}
+
+/**
+ * Qué se va a guardar, dicho antes de guardarlo. El texto cambia según el
+ * caso: una ficha nueva, una corrección, una visita incompleta (RN-222) o la
+ * evolución del plan, que deja lo registrado bloqueado (RN-228).
+ */
+function opcionesDeConfirmacionDeGuardado(datos, caso, advertencias) {
+  const codigo = datos.codigoFicha ? ' ' + datos.codigoFicha : '';
+  const familias = Array.isArray(datos.familias) ? datos.familias : [];
+  const personas = familias.reduce(function (total, familia) {
+    return total + (Array.isArray(familia.integrantes) ? familia.integrantes.length : 0);
+  }, 0);
+  const contenido = familias.length > 0
+    ? ' con ' + textoCantidad(familias.length, 'familia', 'familias') + ' y ' +
+      textoCantidad(personas, 'integrante', 'integrantes')
+    : '';
+  const avisos = advertencias > 0
+    ? ' Tiene ' + textoCantidad(advertencias, 'advertencia', 'advertencias') + ' que no impiden guardar.'
+    : '';
+
+  if (caso === 'plan') {
+    return {
+      titulo: 'Guardar el plan de cuidado',
+      mensaje: '¿Está seguro de que desea guardar el plan de cuidado de la ficha' + codigo + '? ' +
+        'Lo que registre quedará bloqueado: después sólo podrá cambiarse con autorización.',
+      textoConfirmar: 'Sí, guardar el plan'
+    };
+  }
+  if (caso === 'incompleta') {
+    return {
+      titulo: 'Guardar visita incompleta',
+      mensaje: '¿Está seguro de que desea guardar la ficha' + codigo + ' como visita incompleta por causa externa? ' +
+        'No entra en la cobertura y queda en cola para una nueva visita.',
+      textoConfirmar: 'Sí, guardar como incompleta'
+    };
+  }
+  if (caso === 'correccion') {
+    return {
+      titulo: 'Guardar cambios',
+      mensaje: '¿Está seguro de que desea guardar los cambios de la ficha' + codigo + '?' + avisos,
+      textoConfirmar: 'Sí, guardar cambios'
+    };
+  }
+  return {
+    titulo: 'Guardar encuesta',
+    mensaje: '¿Está seguro de que desea guardar la encuesta? Se registrará la ficha' + codigo + contenido + '.' + avisos,
+    textoConfirmar: 'Sí, guardar'
+  };
+}
+
 async function manejarEnvioFormulario(evento) {
   evento.preventDefault();
   const formulario = evento.target;
+
+  /* Con la confirmación abierta, otro envío (doble clic) no abre una segunda. */
+  if (confirmacionPendiente) return;
 
   limpiarErroresFormulario(formulario);
 
@@ -3330,6 +3551,7 @@ async function manejarEnvioFormulario(evento) {
       });
       return;
     }
+    if (!await confirmarGuardado(opcionesDeConfirmacionDeGuardado(datos, 'incompleta', 0))) return;
     await guardarYReiniciar(datos, formulario, 'La visita se guardó como incompleta por causa externa.');
     return;
   }
@@ -3379,6 +3601,11 @@ async function manejarEnvioFormulario(evento) {
   }
 
   apagarNavegadorPendientes();
+
+  /* Sólo se pregunta cuando de verdad se puede guardar: con pendientes, lo
+     que corresponde es corregirlos, y eso ya lo dicen el aviso y la barra. */
+  const caso = enPlan ? 'plan' : (encuestaEnCorreccion ? 'correccion' : 'nueva');
+  if (!await confirmarGuardado(opcionesDeConfirmacionDeGuardado(datos, caso, advertencias.length))) return;
 
   if (advertencias.length > 0) {
     mostrarNotificacion(
@@ -3476,7 +3703,8 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
   }
 
   if (encuesta.sincronizada && enPlan) {
-    mostrarNotificacion(mensaje + ' Lo registrado ya no se puede cambiar sin autorización del usuario maestro.',
+    mostrarNotificacion(mensaje + ' Lo registrado ya no se puede cambiar sin autorización de la coordinación del ' +
+      'EBS o del usuario maestro.',
       'success');
   } else if (encuesta.sincronizada) {
     mostrarNotificacion(mensaje + ' Quedó registrada en la base de datos.', 'success');
@@ -3759,9 +3987,27 @@ function normalizarCampoCapturado(evento) {
   if (limpio !== campo.value) campo.value = limpio;
 }
 
+/**
+ * Enter dentro de un campo no envía la ficha. El navegador envía el
+ * formulario con Enter desde cualquier casilla (en el celular, con la tecla
+ * «Ir» del teclado): la ficha a medio diligenciar se validaba entera, la
+ * página saltaba al final y todos los campos aún vacíos quedaban en rojo.
+ * Guardar es sólo el botón. En un área de texto Enter sigue siendo un salto
+ * de línea, en un botón sigue activándolo, y la lista de CUPS sigue usando
+ * Enter para elegir (cups.js lo atiende en el mismo evento).
+ */
+function evitarEnvioConEnter(evento) {
+  if (evento.key !== 'Enter' || evento.isComposing) return;
+  const campo = evento.target;
+  if (!campo || campo.tagName !== 'INPUT') return;
+  if (['submit', 'button', 'reset', 'image'].indexOf(campo.type) !== -1) return;
+  evento.preventDefault();
+}
+
 function inicializarFormulario() {
   const formulario = document.getElementById('encuestaForm');
   formulario.addEventListener('submit', manejarEnvioFormulario);
+  formulario.addEventListener('keydown', evitarEnvioConEnter);
 
   /* En fase de captura: la validación en vivo escucha el mismo `change` en
      burbuja y tiene que recibir ya el valor limpio. */
@@ -3850,6 +4096,12 @@ function inicializarModales() {
   });
 
   const cancelar = function () { resolverConfirmacion(false); };
+
+  /* Con motivo obligatorio, confirmar se habilita cuando el motivo alcanza. */
+  document.getElementById('modalConfirmarMotivo').addEventListener('input', function () {
+    if (!confirmacionPendiente || confirmacionPendiente.pedirMotivo !== true) return;
+    document.getElementById('btnConfirmarEliminar').disabled = motivoDeConfirmacion().length < LARGO_MINIMO_MOTIVO;
+  });
 
   document.getElementById('cerrarModalConfirmar').addEventListener('click', cancelar);
   document.getElementById('btnCancelarEliminar').addEventListener('click', cancelar);

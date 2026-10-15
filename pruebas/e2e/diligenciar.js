@@ -582,6 +582,12 @@ async function cerrarYGuardar(page, diario, ficha) {
 
   await page.locator('#btnGuardar').click();
 
+  /* Con la ficha lista, Guardar pide confirmación. Con pendientes no la pide
+     y el diagnóstico sigue por los impedimentos. */
+  const confirmar = page.locator('#modalConfirmar:not([hidden]) #btnConfirmarEliminar');
+  await confirmar.waitFor({ state: 'visible', timeout: 3000 }).then(function () { return confirmar.click(); })
+    .catch(function () {});
+
   /* Si la ficha no pasa la validación del navegador, nunca sale la petición:
      la espera se resuelve en nulo y el diagnóstico lo dan los impedimentos. */
   const respuesta = await esperaApi.catch(function () { return null; });

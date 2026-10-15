@@ -144,6 +144,11 @@ const bloqueado = (el) => Boolean(el && el.closest('[inert]'));
   estado2.dispatchEvent(new app.window.Event('change', { bubbles: true }));
 
   $('#encuestaForm').dispatchEvent(new app.window.Event('submit', { bubbles: true, cancelable: true }));
+  check('Guardar el plan pide confirmación y avisa que queda bloqueado',
+    $('#modalConfirmar').hidden === false && /plan de cuidado .*quedará bloqueado/.test($('#modalConfirmarMensaje').textContent),
+    $('#modalConfirmarMensaje').textContent);
+  check('  sin confirmar no se envía nada', app.enviados.length === 0, String(app.enviados.length));
+  $('#btnConfirmarEliminar').click();
   await esperar(200);
 
   const cuerpo = app.enviados[0] || {};

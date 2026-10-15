@@ -34,6 +34,9 @@ const cliente = {
   query: async function (sql) {
     consultas.push(sql);
     if (/FROM aps\.ficha f/.test(sql)) return { rows: fichaEnBase ? [fichaEnBase] : [] };
+    /* RN-228: quien no corrige por su rol busca una autorización vigente; aquí
+       no la tiene. */
+    if (/FROM aps\.permiso_plan/.test(sql)) return { rows: [] };
     if (/^\s*ROLLBACK/.test(sql)) return { rows: [] };
     throw new Error('consulta fuera de la prueba');
   },

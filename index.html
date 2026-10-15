@@ -1792,7 +1792,7 @@
               <th>Ficha</th>
               <th>Estado</th>
               <th>Plan de cuidado</th>
-              <th>Fecha</th>
+              <th>Fecha y hora</th>
               <th>Modificación</th>
               <th>Territorio</th>
               <th>Microterritorio</th>
@@ -1810,7 +1810,7 @@
     </div>
   </section>
 
-  <!-- ===================== VISTA: USUARIOS (usuarios.gestionar) ===================== -->
+  <!-- ===================== VISTA: USUARIOS (usuarios.ver; crear, modificar y restablecer con su permiso) ===================== -->
   <section class="view" id="view-usuarios">
     <div class="card">
       <div class="card__header usuarios__cabecera">
@@ -1824,7 +1824,7 @@
         </button>
       </div>
       <div class="filters-bar">
-        <input type="text" id="usuariosFiltroTexto" placeholder="Buscar por nombre, documento o equipo...">
+        <input type="text" id="usuariosFiltroTexto" placeholder="Buscar por nombre, documento, cargo o equipo...">
         <select id="usuariosFiltroRol">
           <option value="">Rol: todos</option>
         </select>
@@ -1842,6 +1842,7 @@
               <th>Documento</th>
               <th>Rol</th>
               <th>Equipo</th>
+              <th>Contacto</th>
               <th>Estado</th>
               <th>Último acceso</th>
               <th>Acciones</th>
@@ -1946,6 +1947,18 @@
             <label for="usuarioNombre">Nombre completo *</label>
             <input type="text" id="usuarioNombre" name="nombre" maxlength="120" placeholder="Nombres y apellidos">
           </div>
+          <div class="field field--full" data-campo="cargo">
+            <label for="usuarioCargo">Cargo o zona a cargo</label>
+            <input type="text" id="usuarioCargo" name="cargo" maxlength="80" placeholder="Ej. Líder Zona Norte">
+          </div>
+          <div class="field" data-campo="correo">
+            <label for="usuarioCorreo">Correo</label>
+            <input type="email" id="usuarioCorreo" name="correo" maxlength="120" autocapitalize="off" spellcheck="false" placeholder="nombre@dominio.com">
+          </div>
+          <div class="field" data-campo="telefono">
+            <label for="usuarioTelefono">Teléfono</label>
+            <input type="tel" id="usuarioTelefono" name="telefono" inputmode="tel" maxlength="16" placeholder="Ej. 3001234567">
+          </div>
           <div class="field" data-campo="rol">
             <label for="usuarioRol">Rol *</label>
             <select id="usuarioRol" name="rol"></select>
@@ -1954,7 +1967,7 @@
             <label for="usuarioEquipo">Equipo Básico de Salud</label>
             <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
           </div>
-          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para quien captura fichas: firma el ítem 10 de cada ficha. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
+          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para el personal asistencial: firma el ítem 10 de cada ficha. La coordinación puede no tenerlo, pero sin él no registra fichas nuevas. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
           <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
             <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
             <select id="usuarioPerfil" name="perfil"></select>
@@ -2031,6 +2044,11 @@
     </div>
     <div class="modal__body">
       <p id="modalConfirmarMensaje">¿Está seguro de que desea eliminar esta encuesta? Esta acción no se puede deshacer.</p>
+      <div class="field modal-confirmar__motivo" id="modalConfirmarMotivoCampo" hidden>
+        <label for="modalConfirmarMotivo">Motivo *</label>
+        <textarea id="modalConfirmarMotivo" rows="3" maxlength="300" placeholder="Ej. Ficha de prueba registrada por error"></textarea>
+        <span class="field-hint">Queda en la auditoría. Al menos 10 caracteres.</span>
+      </div>
       <div class="form-actions">
         <button class="btn btn--ghost" id="btnCancelarEliminar">Cancelar</button>
         <button class="btn btn--danger" id="btnConfirmarEliminar">Eliminar</button>

@@ -250,6 +250,9 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   }, { timeout: 30000 });
 
   await page.locator('#btnGuardar').click();
+  const confirmar = page.locator('#modalConfirmar:not([hidden]) #btnConfirmarEliminar');
+  await confirmar.waitFor({ state: 'visible', timeout: 3000 }).then(function () { return confirmar.click(); })
+    .catch(function () {});
 
   const respuesta = await esperaApi.catch(function () { return null; });
   await page.waitForTimeout(1200);

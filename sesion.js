@@ -209,9 +209,9 @@
   }
 
   /* El chip es un botón que despliega el menú del usuario: las acciones
-     dependen de los permisos (Modificar usuarios sólo con usuarios.gestionar,
-     Reporte SI-APS sólo con reporte.generar) y Cerrar sesión va siempre al
-     final. */
+     dependen de los permisos (la vista de usuarios con usuarios.ver —«Crear
+     usuarios» para la coordinación, que crea pero no modifica—, Reporte
+     SI-APS sólo con reporte.generar) y Cerrar sesión va siempre al final. */
   function pintarCabecera() {
     const contenedor = document.getElementById('appUsuario');
     if (!contenedor) return;
@@ -265,8 +265,8 @@
     menu.appendChild(cabecera);
 
     const opciones = [];
-    if (puede('usuarios.gestionar')) {
-      opciones.push({ icono: 'ph-users-three', texto: 'Modificar usuarios', accion: function () {
+    if (puede('usuarios.ver')) {
+      opciones.push({ icono: 'ph-users-three', texto: puede('usuarios.modificar') ? 'Modificar usuarios' : 'Crear usuarios', accion: function () {
         if (window.USUARIOS) window.USUARIOS.abrir();
       } });
     }

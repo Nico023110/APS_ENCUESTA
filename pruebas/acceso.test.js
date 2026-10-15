@@ -47,25 +47,69 @@ async function principal() {
   verificar('el administrador no crea fichas', !roles.puede('administrador', 'ficha.crear'));
   verificar('el administrador ve todas las fichas', roles.alcanceDeLectura('administrador') === 'todas');
   verificar('la auxiliar ve las de su equipo', roles.alcanceDeLectura('auxiliar_enfermeria') === 'equipo');
-  verificar('el administrador gestiona usuarios', roles.puede('administrador', 'usuarios.gestionar'));
+  verificar('el administrador crea, modifica y restablece cuentas',
+    ['usuarios.ver', 'usuarios.crear', 'usuarios.modificar', 'usuarios.restablecer']
+      .every(function (p) { return roles.puede('administrador', p); }));
   verificar('el maestro captura, ve todo y administra',
     roles.puede('maestro', 'ficha.crear') && roles.alcanceDeLectura('maestro') === 'todas' &&
-    roles.puede('maestro', 'usuarios.gestionar') && roles.puede('maestro', 'auditoria.ver'));
+    roles.puede('maestro', 'usuarios.modificar') && roles.puede('maestro', 'auditoria.ver'));
   verificar('el maestro cuenta como asistencial (firma los ítems 10 y 12-14)', roles.esAsistencial('maestro'));
-  verificar('la profesional no gestiona usuarios', !roles.puede('medicina', 'usuarios.gestionar'));
+  verificar('la profesional no ve ni gestiona usuarios',
+    !roles.puede('medicina', 'usuarios.ver') && !roles.puede('medicina', 'usuarios.crear'));
+  verificar('sólo el maestro elimina fichas',
+    roles.puede('maestro', 'ficha.eliminar') &&
+    ['coordinador_ebs', 'lider_ebs', 'administrador', 'enfermeria', 'auxiliar_enfermeria']
+      .every(function (rol) { return !roles.puede(rol, 'ficha.eliminar'); }));
+
+  console.log('\n=== 3b. Coordinación del EBS (coordinadora y líderes de zona) ===');
+  verificar('coordinación y líder son el mismo nivel',
+    roles.nivelDe('coordinador_ebs') === 'coordinacion' && roles.nivelDe('lider_ebs') === 'coordinacion');
+  verificar('la coordinación captura y ve todas las fichas',
+    roles.puede('lider_ebs', 'ficha.crear') && roles.alcanceDeLectura('lider_ebs') === 'todas');
+  verificar('la coordinación autoriza correcciones, modifica lo registrado del plan y genera el reporte',
+    roles.puede('lider_ebs', 'ficha.autorizar') && roles.puede('lider_ebs', 'plan.modificar_registrado') &&
+    roles.puede('lider_ebs', 'reporte.generar'));
+  verificar('la coordinación ve y crea cuentas',
+    roles.puede('coordinador_ebs', 'usuarios.ver') && roles.puede('coordinador_ebs', 'usuarios.crear'));
+  verificar('pero no modifica cuentas ni restablece claves',
+    !roles.puede('coordinador_ebs', 'usuarios.modificar') && !roles.puede('coordinador_ebs', 'usuarios.restablecer'));
+  verificar('la coordinación sólo crea cuentas del personal asistencial',
+    roles.rolesQuePuedeCrear('lider_ebs').indexOf('enfermeria') !== -1 &&
+    roles.rolesQuePuedeCrear('lider_ebs').indexOf('auxiliar_enfermeria') !== -1 &&
+    ['lider_ebs', 'coordinador_ebs', 'administrador', 'maestro'].every(function (rol) {
+      return roles.rolesQuePuedeCrear('lider_ebs').indexOf(rol) === -1;
+    }));
+  verificar('el administrador no crea maestros; el maestro crea cualquiera',
+    roles.rolesQuePuedeCrear('administrador').indexOf('maestro') === -1 &&
+    roles.rolesQuePuedeCrear('maestro').indexOf('maestro') !== -1);
+  verificar('la coordinación no necesita equipo; el personal asistencial sí',
+    !roles.requiereEquipo('lider_ebs') && roles.requiereEquipo('enfermeria') && roles.requiereEquipo('maestro'));
+  verificar('la coordinación elige su perfil del ítem 14', roles.eligePerfil('lider_ebs') && !roles.eligePerfil('enfermeria'));
 
   const profesional = { rol: 'enfermeria', equipoSaludId: 7, funcionarioId: 100 };
   const auxiliar = { rol: 'auxiliar_enfermeria', equipoSaludId: 7, funcionarioId: 101 };
   const otroEquipo = { rol: 'medicina', equipoSaludId: 8, funcionarioId: 102 };
   const admin = { rol: 'administrador', equipoSaludId: null, funcionarioId: 1 };
+  const lider = { rol: 'lider_ebs', equipoSaludId: null, funcionarioId: 3 };
+  const maestro = { rol: 'maestro', equipoSaludId: 7, funcionarioId: 2 };
   const fichaDeAuxiliar = { equipoSaludId: 7, responsableId: 101 };
   const fichaDeProfesional = { equipoSaludId: 7, responsableId: 100 };
 
-  verificar('la profesional corrige la ficha de la auxiliar de su equipo', roles.puedeCorregir(profesional, fichaDeAuxiliar));
-  verificar('la auxiliar corrige su propia ficha', roles.puedeCorregir(auxiliar, fichaDeAuxiliar));
-  verificar('la auxiliar no corrige la de la profesional', !roles.puedeCorregir(auxiliar, fichaDeProfesional));
-  verificar('otro equipo no corrige nada de este', !roles.puedeCorregir(otroEquipo, fichaDeAuxiliar));
+  console.log('\n=== 3c. Corregir y evolucionar una ficha guardada (RN-228) ===');
+  verificar('la profesional no corrige sin autorización, ni la suya', !roles.puedeCorregir(profesional, fichaDeProfesional));
+  verificar('la auxiliar tampoco', !roles.puedeCorregir(auxiliar, fichaDeAuxiliar));
+  verificar('la coordinación corrige cualquiera, de cualquier equipo', roles.puedeCorregir(lider, fichaDeAuxiliar));
   verificar('el administrador corrige cualquiera', roles.puedeCorregir(admin, fichaDeAuxiliar));
+  verificar('la profesional evoluciona el plan de las fichas de su equipo', roles.puedeEvolucionar(profesional, fichaDeAuxiliar));
+  verificar('la auxiliar evoluciona el plan de las suyas', roles.puedeEvolucionar(auxiliar, fichaDeAuxiliar));
+  verificar('  pero no el de las de otra persona', !roles.puedeEvolucionar(auxiliar, fichaDeProfesional));
+  verificar('otro equipo no evoluciona nada de este', !roles.puedeEvolucionar(otroEquipo, fichaDeAuxiliar));
+  verificar('a la profesional y la auxiliar del equipo se les puede autorizar',
+    roles.puedeRecibirAutorizacion(profesional, fichaDeAuxiliar) && roles.puedeRecibirAutorizacion(auxiliar, fichaDeProfesional));
+  verificar('a otro equipo no: no ve la ficha', !roles.puedeRecibirAutorizacion(otroEquipo, fichaDeAuxiliar));
+  verificar('a la coordinación y al maestro no: ya pueden todo',
+    !roles.puedeRecibirAutorizacion(lider, fichaDeAuxiliar) && !roles.puedeRecibirAutorizacion(maestro, fichaDeAuxiliar));
+  verificar('al administrador sí, para cambiar lo registrado del plan', roles.puedeRecibirAutorizacion(admin, fichaDeAuxiliar));
 
   console.log('\n=== 4. Cookies ===');
 

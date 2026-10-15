@@ -52,8 +52,9 @@ module.exports = async (req, res) => {
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
   const filtro = alcance === 'todas' ? '' : 'WHERE f.equipo_salud_id = $1';
   const parametros = alcance === 'todas' ? [] : [usuario.equipoSaludId || -1];
-  /* RN-228: si el maestro le autorizó a este usuario modificar el plan
-     registrado de la ficha, la fila lo dice para que el formulario lo abra. */
+  /* RN-228: si la coordinación o el maestro le autorizaron a este usuario
+     corregir la ficha (incluido lo registrado en su plan), la fila lo dice
+     (permisoPlan) para que el historial habilite Corregir. */
   parametros.push(usuario.id || -1);
   const parametroUsuario = '$' + parametros.length;
 
@@ -62,6 +63,9 @@ module.exports = async (req, res) => {
       SELECT
         f.codigo                  AS codigo_ficha,
         f.capturada_en,
+        /* Fecha y hora en que se diligenció (la del dispositivo); una ficha
+           anterior a la columna usa la hora en que el servidor la recibió. */
+        COALESCE(f.diligenciada_en, f.capturada_en) AS diligenciada_en,
         f.fechas_modificacion,
         f.situacion_inminente,
         (SELECT array_agg(s.codigo ORDER BY s.codigo) FROM aps.ficha_situacion_inminente s
@@ -87,7 +91,7 @@ module.exports = async (req, res) => {
       JOIN aps.funcionario r   ON r.id = f.responsable_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
       ${filtro}
-      ORDER BY f.capturada_en DESC
+      ORDER BY COALESCE(f.diligenciada_en, f.capturada_en) DESC
       LIMIT ${LIMITE}
     `, parametros);
 
@@ -99,7 +103,8 @@ module.exports = async (req, res) => {
     const filas = resultado.rows.map(function (fila) {
       return {
         codigoFicha: fila.codigo_ficha,
-        fechaRegistro: fila.capturada_en,
+        fechaRegistro: fila.diligenciada_en,
+        recibidaEn: fila.capturada_en,
         fechasModificacion: Array.isArray(fila.fechas_modificacion) ? fila.fechas_modificacion : [],
         /* Ítem 2 es selección múltiple desde el anexo técnico: la lista vive
            en su puente y la columna guarda sólo la opción principal. */

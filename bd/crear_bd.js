@@ -45,14 +45,16 @@ const SCRIPTS = [
   /* Idempotente. */
   { archivo: '09_hogar_de_familia.sql', descripcion: 'Hogar al que pertenece cada familia' },
   /* Idempotente. */
-  { archivo: '10_permiso_plan.sql', descripcion: 'Permisos para modificar un plan de cuidado registrado' }
+  { archivo: '10_permiso_plan.sql', descripcion: 'Permisos para modificar un plan de cuidado registrado' },
+  { archivo: '11_hora_diligenciamiento.sql', descripcion: 'Fecha y hora exactas de diligenciamiento de la ficha' },
+  { archivo: '12_coordinacion_ebs.sql', descripcion: 'Coordinación del EBS, autorización de correcciones y eliminación de fichas' }
 ];
 
 /* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
    seed de catálogos (todo ON CONFLICT) y las migraciones. El seed va primero
    porque las migraciones validan contra sus dominios. */
 const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql',
-  '09_hogar_de_familia.sql', '10_permiso_plan.sql'];
+  '09_hogar_de_familia.sql', '10_permiso_plan.sql', '11_hora_diligenciamiento.sql', '12_coordinacion_ebs.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN

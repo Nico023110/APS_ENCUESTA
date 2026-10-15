@@ -1,18 +1,20 @@
 /* =========================================================================
-   Encuesta_APS — /api/permisos_plan: autorizar cambios a un plan registrado
+   Encuesta_APS — /api/permisos_plan: autorizar la corrección de una ficha
    -------------------------------------------------------------------------
-   RN-228: lo registrado en el plan de cuidado de una ficha sólo se completa.
-   Para cambiarlo, un rol superior —por ahora, el usuario maestro— autoriza a
-   un usuario determinado sobre una ficha determinada. La autorización sirve
-   para un guardado: guardar_encuesta.js la gasta al usarla.
+   RN-228: una ficha guardada sólo se completa (Evolucionar plan). Para
+   corregirla —incluido lo registrado en su plan de cuidado— quien no puede
+   hacerlo por su rol necesita que la coordinación del EBS o el usuario
+   maestro lo autoricen, a esa persona y para esa ficha. La autorización
+   sirve para un guardado: guardar_encuesta.js la gasta al usarla.
 
    GET  ?codigo=…   las autorizaciones vigentes de la ficha y los usuarios a
-                    quienes se les puede dar: los que pueden corregirla
-                    (roles.puedeCorregir) y no la necesitan.
+                    quienes se les puede dar: quienes ven la ficha en su
+                    historial y no pueden ya hacer lo que la autorización da
+                    (roles.puedeRecibirAutorizacion).
    POST {accion: 'otorgar', codigo, usuarioId, motivo?}
    POST {accion: 'revocar', permisoId}
 
-   Exige el permiso plan.autorizar. Cada otorgamiento y revocación queda en
+   Exige el permiso ficha.autorizar. Cada otorgamiento y revocación queda en
    la propia tabla (quién, cuándo, por qué) y en aud.evento (RN-225).
    ========================================================================= */
 
@@ -55,8 +57,8 @@ async function vigentes(cliente, fichaId) {
   });
 }
 
-/* Quien puede recibir la autorización: una cuenta activa que puede corregir
-   la ficha y que no puede ya modificar lo registrado por sí misma. */
+/* Quien puede recibir la autorización: una cuenta activa que ve la ficha y
+   no puede ya corregirla, o cambiar lo registrado en su plan, por sí misma. */
 async function candidatos(cliente, ficha) {
   const filas = (await cliente.query(`
     SELECT u.id, u.documento, u.rol, fu.id AS funcionario_id, fu.nombre_completo, fu.equipo_salud_id
@@ -67,8 +69,7 @@ async function candidatos(cliente, ficha) {
   `)).rows;
 
   return filas.filter(function (fila) {
-    if (roles.puede(fila.rol, 'plan.modificar_registrado')) return false;
-    return roles.puedeCorregir(
+    return roles.puedeRecibirAutorizacion(
       { rol: fila.rol, equipoSaludId: fila.equipo_salud_id === null ? null : Number(fila.equipo_salud_id),
         funcionarioId: Number(fila.funcionario_id) },
       { equipoSaludId: Number(ficha.equipo_salud_id), responsableId: Number(ficha.responsable_id) });
@@ -87,7 +88,7 @@ async function auditar(cliente, actor, fichaId, campo, detalle) {
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
-  const actor = await requerirSesion(req, res, { permiso: 'plan.autorizar' });
+  const actor = await requerirSesion(req, res, { permiso: 'ficha.autorizar' });
   if (!actor) return;
 
   let cliente;
@@ -118,8 +119,8 @@ module.exports = async (req, res) => {
       const usuarioId = parseInt(cuerpo.usuarioId, 10);
       const elegible = (await candidatos(cliente, ficha)).find(function (c) { return c.id === usuarioId; });
       if (!elegible) {
-        return res.status(400).json({ error: 'Ese usuario no puede recibir la autorización: no puede corregir ' +
-          'esta ficha, su cuenta no está activa o ya puede modificar el plan por sí mismo.', campo: 'usuarioId' });
+        return res.status(400).json({ error: 'Ese usuario no puede recibir la autorización: la ficha no está ' +
+          'en su historial, su cuenta no está activa o ya puede corregirla por sí mismo.', campo: 'usuarioId' });
       }
 
       const motivo = String(cuerpo.motivo || '').trim().slice(0, LARGO_MAXIMO_MOTIVO) || null;
@@ -166,7 +167,7 @@ module.exports = async (req, res) => {
     if (cliente) {
       try { await cliente.query('ROLLBACK'); } catch (e) { /* sin transacción abierta */ }
     }
-    console.error('Error en permisos del plan:', error.message);
+    console.error('Error en las autorizaciones de corrección:', error.message);
     return res.status(500).json({ error: 'No fue posible procesar la autorización.' });
   } finally {
     if (cliente) cliente.release();

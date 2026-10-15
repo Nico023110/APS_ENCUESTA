@@ -57,6 +57,21 @@ function decimal(valor) {
   return Number.isNaN(n) ? null : n;
 }
 
+/**
+ * Instante en que se diligenció la ficha, con hora. Lo fija el dispositivo al
+ * guardar (fechaRegistro): una visita tomada sin señal llega al servidor horas
+ * o días después y esa demora no puede pasar por la hora de la visita. Un
+ * valor ilegible, o de un reloj adelantado, no sirve de fecha de diligenciar:
+ * se usa la hora del servidor. Cinco minutos de margen cubren la deriva entre
+ * relojes.
+ */
+function momentoDeDiligenciamiento(valor) {
+  const ahora = Date.now();
+  const instante = typeof valor === 'string' ? Date.parse(valor) : NaN;
+  if (!Number.isFinite(instante) || instante > ahora + 5 * 60 * 1000) return new Date(ahora);
+  return new Date(instante);
+}
+
 function texto(valor) {
   if (valor === null || valor === undefined) return null;
   const t = String(valor).trim();
@@ -476,7 +491,7 @@ async function fichaExistente(cliente, codigo) {
   const r = await cliente.query(`
     SELECT f.id, f.equipo_salud_id, f.responsable_id, eq.codigo AS equipo_codigo,
            r.tipo_id, r.numero_id, r.nombre_completo, r.perfil_profesional, r.perfil_otro,
-           f.hogar_id, h.codigo AS hogar_codigo
+           f.hogar_id, h.codigo AS hogar_codigo, f.diligenciada_en
       FROM aps.ficha f
       JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
       JOIN aps.funcionario r   ON r.id = f.responsable_id
@@ -486,9 +501,10 @@ async function fichaExistente(cliente, codigo) {
   return r.rows[0] || null;
 }
 
-/* RN-228 — La autorización vigente que el maestro le dio a este usuario para
-   modificar el plan registrado de esta ficha, o null. */
-async function permisoDePlanVigente(cliente, fichaId, usuarioId) {
+/* RN-228 — La autorización vigente que la coordinación o el maestro le dieron
+   a este usuario para corregir esta ficha —incluido lo registrado en su plan
+   de cuidado—, o null. */
+async function autorizacionVigente(cliente, fichaId, usuarioId) {
   const r = await cliente.query(`
     SELECT id FROM aps.permiso_plan
      WHERE ficha_id = $1 AND usuario_id = $2 AND usado_en IS NULL AND revocado_en IS NULL
@@ -497,17 +513,38 @@ async function permisoDePlanVigente(cliente, fichaId, usuarioId) {
   return r.rows[0] || null;
 }
 
+/* RN-228 — Un dispositivo reenvía la ficha que capturó cuando no alcanzó a
+   recibir la respuesta del primer envío (se cortó la red): para el servidor
+   ya existe. No es una corrección —el formulario las marca con
+   `esCorreccion`—: la envía su mismo autor y trae el mismo instante de
+   diligenciamiento que quedó guardado. Se acepta sin autorización, como
+   antes; lo registrado en el plan sigue protegido igual. */
+function esReenvioDeLaCaptura(existente, cuerpo, usuario) {
+  if (!existente || cuerpo.esCorreccion === true || cuerpo.soloPlan === true) return false;
+  if (Number(existente.responsable_id) !== Number(usuario.funcionarioId)) return false;
+  const enviado = typeof cuerpo.fechaRegistro === 'string' ? Date.parse(cuerpo.fechaRegistro) : NaN;
+  return Number.isFinite(enviado) && existente.diligenciada_en instanceof Date &&
+    existente.diligenciada_en.getTime() === enviado;
+}
+
+/* RN-225 / RN-228 — La autorización se gasta en la misma transacción que el
+   guardado que la usó: si el guardado falla, sigue vigente. */
+async function gastarAutorizacion(cliente, fichaId, usuario, encuesta, autorizacion) {
+  await cliente.query('UPDATE aps.permiso_plan SET usado_en = now() WHERE id = $1', [autorizacion.id]);
+  await cliente.query(`
+    INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_nuevo, funcionario_id, dispositivo_id)
+    VALUES ($1, 'ficha', $1, 'modificacion', 'autorizacion', $2, $3, $4)
+  `, [fichaId, 'guardado con la autorización ' + autorizacion.id, usuario.funcionarioId, texto(encuesta.dispositivoId)]);
+}
+
 /* RN-225 / RN-228 — Queda en auditoría quién tocó el plan y cómo: si sólo
    completó lo que faltaba, o si cambió lo registrado —con qué autorización, o
-   por ser el maestro—. La autorización se gasta aquí, en la misma transacción
-   que el cambio: si el guardado falla, sigue vigente. */
-async function registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, permisoPlan, modificaRegistrado) {
-  if (permisoPlan) {
-    await cliente.query('UPDATE aps.permiso_plan SET usado_en = now() WHERE id = $1', [permisoPlan.id]);
-  }
+   por su rol (maestro o coordinación del EBS)—. */
+async function registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, autorizacion, modificaRegistrado) {
   const detalle = !modificaRegistrado ? 'completado'
-    : permisoPlan ? 'registrado modificado con la autorización ' + permisoPlan.id
-      : 'registrado modificado por el maestro';
+    : autorizacion ? 'registrado modificado con la autorización ' + autorizacion.id
+      : usuario.rol === 'maestro' ? 'registrado modificado por el maestro'
+        : 'registrado modificado por ' + roles.etiquetaDeRol(usuario.rol);
   await cliente.query(`
     INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_nuevo, funcionario_id, dispositivo_id)
     VALUES ($1, 'plan_cuidado', $1, 'modificacion', 'plan_cuidado', $2, $3, $4)
@@ -720,6 +757,10 @@ module.exports = async (req, res) => {
     /* --- Autorización sobre la ficha concreta ------------------------------ */
     const existente = await fichaExistente(cliente, texto(req.body.codigoFicha));
     let tipoEvento;
+    const soloPlan = req.body.soloPlan === true;
+    /* RN-228: la autorización vigente con que este usuario vuelve a guardar
+       la ficha, cuando su rol no le alcanza. Se gasta al guardar. */
+    let autorizacion = null;
 
     const colision = colisionDeCodigoDeFicha(existente, req.body, usuario);
     if (colision) {
@@ -733,15 +774,27 @@ module.exports = async (req, res) => {
     }
 
     if (existente) {
-      const permitido = roles.puedeCorregir(usuario, {
-        equipoSaludId: Number(existente.equipo_salud_id),
-        responsableId: Number(existente.responsable_id)
-      });
-      if (!permitido) {
-        console.error('  Corrección rechazada: ' + texto(req.body.codigoFicha) +
-          ' fuera del alcance de ' + usuario.documento + ' (' + usuario.rol + ')');
-        return res.status(403).json({ error: 'No puede corregir esta ficha: pertenece a otro equipo o a otro responsable.',
-          codigo: 'sin_permiso' });
+      /* Una ficha guardada se vuelve a guardar sin pedir autorización sólo
+         si el rol la corrige (coordinación, administrador, maestro), si se
+         está evolucionando su plan dentro del alcance del rol, o si es el
+         reenvío de la captura original. Si no, con una autorización vigente
+         de la coordinación o del maestro (RN-228). */
+      const fichaRef = { equipoSaludId: Number(existente.equipo_salud_id), responsableId: Number(existente.responsable_id) };
+      const sinAutorizacion = roles.puedeCorregir(usuario, fichaRef) ||
+        (soloPlan && roles.puedeEvolucionar(usuario, fichaRef)) ||
+        esReenvioDeLaCaptura(existente, req.body, usuario);
+      if (!sinAutorizacion) autorizacion = await autorizacionVigente(cliente, existente.id, usuario.id);
+      if (!sinAutorizacion && !autorizacion) {
+        const laVe = roles.puedeVerFicha(usuario, fichaRef);
+        console.error('  ' + (soloPlan ? 'Evolución' : 'Corrección') + ' rechazada: ' + texto(req.body.codigoFicha) +
+          (laVe ? ' sin autorización de ' : ' fuera del alcance de ') + usuario.documento + ' (' + usuario.rol + ')');
+        return res.status(403).json({
+          error: !laVe ? 'No puede corregir esta ficha: pertenece a otro equipo.'
+            : soloPlan ? 'Su rol no permite evolucionar el plan de esta ficha: la diligenció otra persona.'
+              : 'Esta ficha ya está guardada: para corregirla necesita la autorización de la coordinación del EBS ' +
+                'o del usuario maestro.',
+          codigo: laVe ? 'requiere_autorizacion' : 'sin_permiso'
+        });
       }
       fijarFirma(req.body, {
         equipoCodigo: existente.equipo_codigo, tipoId: existente.tipo_id, numeroId: existente.numero_id,
@@ -764,30 +817,29 @@ module.exports = async (req, res) => {
     }
 
     /* RN-228 — «Evolucionar el plan» sólo existe para una ficha ya guardada. */
-    const soloPlan = req.body.soloPlan === true;
     if (soloPlan && !existente) {
       return res.status(400).json({ error: 'Sólo se puede evolucionar el plan de cuidado de una ficha ya guardada.',
         codigo: 'sin_ficha' });
     }
 
     /* RN-228 — Lo registrado en el plan de cuidado sólo se completa. Cambiarlo
-       o quitarlo exige que el maestro lo haya autorizado para este usuario y
-       esta ficha —la autorización se gasta al guardar— o ser el maestro. Vale
-       para toda forma de volver a guardar una ficha existente: corregirla,
-       evolucionar el plan o reenviarla al sincronizar. */
-    let permisoPlan = null;
+       o quitarlo exige una autorización vigente de la coordinación o del
+       maestro para este usuario y esta ficha —se gasta al guardar— o un rol
+       que lo modifique (coordinación y maestro). Vale para toda forma de
+       volver a guardar una ficha existente: corregirla, evolucionar el plan o
+       reenviarla al sincronizar. */
     let modificaPlanRegistrado = false;
     if (existente) {
       const cambios = cambiosEnPlanRegistrado(await leerFichaCompleta(cliente, existente.id), req.body);
       if (cambios.length > 0) {
         if (!roles.puede(usuario.rol, 'plan.modificar_registrado')) {
-          permisoPlan = await permisoDePlanVigente(cliente, existente.id, usuario.id);
-          if (!permisoPlan) {
+          autorizacion = autorizacion || await autorizacionVigente(cliente, existente.id, usuario.id);
+          if (!autorizacion) {
             console.error('  Plan registrado protegido: ' + texto(req.body.codigoFicha) +
               ' — ' + cambios.length + ' cambio(s) sin autorización');
             return res.status(409).json({
-              error: 'Lo ya registrado en el plan de cuidado no se puede cambiar sin autorización del usuario ' +
-                'maestro. Sólo puede completar lo que falta.',
+              error: 'Lo ya registrado en el plan de cuidado no se puede cambiar sin autorización de la ' +
+                'coordinación del EBS o del usuario maestro. Sólo puede completar lo que falta.',
               codigo: 'plan_registrado',
               total: cambios.length,
               bloqueos: cambios,
@@ -841,7 +893,8 @@ module.exports = async (req, res) => {
 
     if (soloPlan) {
       const filasSoloPlan = await guardarSoloPlanes(cliente, existente.id, encuesta);
-      await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, permisoPlan, modificaPlanRegistrado);
+      await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, autorizacion, modificaPlanRegistrado);
+      if (autorizacion) await gastarAutorizacion(cliente, existente.id, usuario, encuesta, autorizacion);
       await cliente.query('COMMIT');
 
       console.log('  Plan de cuidado evolucionado: ' + texto(encuesta.codigoFicha) + ' (id ' + existente.id +
@@ -996,8 +1049,8 @@ module.exports = async (req, res) => {
         uzpe_codigo, prestador_codigo, hogar_id, equipo_salud_id, responsable_id,
         fecha_diligenciamiento, entorno_abordaje, nombre_institucion, lider_entorno,
         jovenes_en_paz, estado, cerrada_en, fechas_modificacion,
-        motivo_cierre_incompleto, referencia_familia
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        motivo_cierre_incompleto, referencia_familia, diligenciada_en
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
       /* Reenviar la ficha tiene que actualizarla, no sólo sellarle la fecha.
          Antes aquí se actualizaba únicamente fechas_modificacion: corregir
          el entorno de abordaje, el responsable o la fecha de la visita
@@ -1022,7 +1075,11 @@ module.exports = async (req, res) => {
         cerrada_en             = EXCLUDED.cerrada_en,
         fechas_modificacion    = EXCLUDED.fechas_modificacion,
         motivo_cierre_incompleto = EXCLUDED.motivo_cierre_incompleto,
-        referencia_familia     = EXCLUDED.referencia_familia
+        referencia_familia     = EXCLUDED.referencia_familia,
+        /* El momento de diligenciamiento se fija una vez: reenviar o corregir la
+           ficha no lo mueve. Una fila anterior a la columna lo trae vacío y lo
+           toma de esta primera vez. */
+        diligenciada_en        = COALESCE(aps.ficha.diligenciada_en, EXCLUDED.diligenciada_en)
       RETURNING id
     `, [
       texto(encuesta.codigoFicha),
@@ -1054,7 +1111,8 @@ module.exports = async (req, res) => {
          la visita se cierra incompleta. No se escribía, y ese cierre fallaba
          con un 500 en la base aunque el formulario lo hubiera pedido. */
       encuesta.visitaIncompleta ? texto(encuesta.motivoVisitaIncompleta) : null,
-      texto(encuesta.idFamilia)
+      texto(encuesta.idFamilia),
+      momentoDeDiligenciamiento(encuesta.fechaRegistro)
     ]);
 
     /* `DO UPDATE` siempre devuelve la fila, exista o no: el id sirve tanto
@@ -1414,10 +1472,12 @@ module.exports = async (req, res) => {
     /* --- 8. Alertas (RN-200 a RN-212) --- */
     const filasAlerta = await guardarAlertas(cliente, fichaId, alertas, indices);
 
-    /* RN-228: el cambio a lo registrado del plan gasta la autorización. */
+    /* RN-228: el cambio a lo registrado del plan queda en la auditoría, y la
+       corrección hecha con autorización la gasta. */
     if (modificaPlanRegistrado) {
-      await registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, permisoPlan, true);
+      await registrarCambioDelPlan(cliente, fichaId, usuario, encuesta, autorizacion, true);
     }
+    if (autorizacion) await gastarAutorizacion(cliente, fichaId, usuario, encuesta, autorizacion);
 
     await cliente.query('COMMIT');
 

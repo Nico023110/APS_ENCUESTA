@@ -32,10 +32,11 @@ async function asegurarUsuarioDePrueba(cliente, datos) {
     ON CONFLICT (codigo) DO UPDATE SET activo = true RETURNING id
   `, [u.equipo])).rows[0].id : null;
 
-  /* Perfil del ítem 14: el rol asistencial, «otro» para el maestro, nada
-     para el administrador (igual que api/_usuarios.js). */
-  const perfil = u.rol === 'maestro' ? 'otro' : (u.rol === 'administrador' ? null : u.rol);
-  const perfilOtro = u.rol === 'maestro' ? 'Usuario maestro' : null;
+  /* Perfil del ítem 14: el rol asistencial, «otro» para el maestro y la
+     coordinación, nada para el administrador (igual que api/_usuarios.js). */
+  const coordinacion = u.rol === 'coordinador_ebs' || u.rol === 'lider_ebs';
+  const perfil = u.rol === 'maestro' || coordinacion ? 'otro' : (u.rol === 'administrador' ? null : u.rol);
+  const perfilOtro = u.rol === 'maestro' ? 'Usuario maestro' : (coordinacion ? 'Coordinación EBS' : null);
 
   const funcionarioId = (await cliente.query(`
     INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, perfil_profesional, perfil_otro, equipo_salud_id, activo)

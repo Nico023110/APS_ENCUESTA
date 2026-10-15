@@ -72,6 +72,14 @@ async function abrirCorreccionDeEncuesta(id) {
 
   const local = obtenerEncuestas().find(function (e) { return e.id === id; });
 
+  /* RN-228: una ficha que ya subió a la base sólo la corrige quien puede por
+     su rol o con una autorización vigente (app.js, puedeCorregirEnLaBase). */
+  if (local && local.sincronizada === true && typeof puedeCorregirEnLaBase === 'function' &&
+      !puedeCorregirEnLaBase(local)) {
+    avisarQueRequiereAutorizacion(local.codigoFicha);
+    return;
+  }
+
   if (local) {
     /* Una copia ya sincronizada tiene su plan registrado en la base (RN-228);
        una que aún no sube, no: se corrige entera. */
@@ -106,10 +114,22 @@ async function abrirCorreccionDeEncuesta(id) {
     return;
   }
 
+  /* Quien sólo evoluciona el plan recibe la ficha, pero no para corregirla. */
+  if (cuerpo.corregible === false) {
+    avisarQueRequiereAutorizacion(remota.codigoFicha);
+    return;
+  }
+
   entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta, {
     bloquearPlanRegistrado: true,
     planRegistradoEditable: cuerpo.planRegistradoEditable === true
   });
+}
+
+function avisarQueRequiereAutorizacion(codigoFicha) {
+  mostrarNotificacion('La ficha ' + (codigoFicha || '') + ' ya está guardada: para corregirla necesita la ' +
+    'autorización de la coordinación del EBS o del usuario maestro. Si sólo falta el plan de cuidado, use ' +
+    '«Evolucionar plan».', 'warning');
 }
 
 /* RN-228 — «Evolucionar plan»: siempre parte de lo que está en la base, no de
@@ -147,8 +167,8 @@ async function abrirEvolucionDePlan(id) {
   });
 }
 
-/* El maestro modifica lo registrado; los demás, sólo con su autorización
-   vigente sobre la ficha, que llega en la fila del historial. */
+/* La coordinación y el maestro modifican lo registrado; los demás, sólo con
+   su autorización vigente sobre la ficha, que llega en la fila del historial. */
 function planRegistradoEditablePara(codigoFicha) {
   const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
   if (usuario && typeof puede === 'function' && puede(usuario.rol, 'plan.modificar_registrado')) return true;

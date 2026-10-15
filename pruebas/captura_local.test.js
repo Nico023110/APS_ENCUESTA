@@ -83,6 +83,10 @@ const CLAVE_BORRADOR = 'aps_borrador_local';
   const fechaHoy = String(hoy.getFullYear()) + String(hoy.getMonth() + 1).padStart(2, '0') + String(hoy.getDate()).padStart(2, '0');
   check('La fecha del código es la de hoy', partes && partes[4] === fechaHoy, campo.value);
 
+  const hoyIso = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+  check('El ítem 16 nace con la fecha de hoy, sin digitarla', app.$('#fechaDiligenciamiento').value === hoyIso,
+    app.$('#fechaDiligenciamiento').value);
+
   app.escribir('#equipoSaludId', 'ebs-12');
   check('El código sigue al equipo mientras la ficha no se ha guardado',
     FORMATO.exec(campo.value) && FORMATO.exec(campo.value)[1] === 'EBS12', campo.value);
@@ -96,6 +100,16 @@ const CLAVE_BORRADOR = 'aps_borrador_local';
   check('Sin red, la ficha queda en el dispositivo con su código',
     guardadas.length === 1 && guardadas[0].codigoFicha === codigoPrimera, JSON.stringify(guardadas.map((e) => e.codigoFicha)));
   check('El consecutivo usado queda registrado', almacen.aps_consecutivo_ficha === '1', almacen.aps_consecutivo_ficha);
+
+  const registro = guardadas[0].fechaRegistro;
+  check('La ficha guardada lleva el instante exacto en que se diligenció',
+    typeof registro === 'string' && !isNaN(Date.parse(registro)) && Math.abs(Date.now() - Date.parse(registro)) < 60000, registro);
+  check('  y el ítem 16 sigue siendo sólo la fecha', guardadas[0].fechaDiligenciamiento === hoyIso, guardadas[0].fechaDiligenciamiento);
+  const celdaFecha = app.doc.querySelector('#historialBody td[data-label="Fecha y hora"], td[data-label="Fecha y hora"]');
+  check('El historial muestra la hora bajo la fecha', Boolean(celdaFecha) && /^\d{2}:\d{2}$/.test((celdaFecha.querySelector('.celda-hora') || {}).textContent || ''),
+    celdaFecha && celdaFecha.textContent);
+  check('La ficha siguiente también nace con la fecha de hoy', app.$('#fechaDiligenciamiento').value === hoyIso,
+    app.$('#fechaDiligenciamiento').value);
   const siguiente = FORMATO.exec(app.$('#codigoFicha').value);
   check('La ficha siguiente toma el consecutivo 0002', siguiente && siguiente[3] === '0002', app.$('#codigoFicha').value);
   check('El mismo dispositivo conserva su identificador', siguiente && siguiente[2] === partes[2]);

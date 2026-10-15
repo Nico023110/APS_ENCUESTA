@@ -2127,6 +2127,16 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 .badge--success { background: var(--ok-50); color: var(--ok-700); box-shadow: inset 0 0 0 1px var(--ok-100); }
 .badge--warning { background: var(--warn-50); color: var(--warn-700); box-shadow: inset 0 0 0 1px var(--warn-100); }
 .badge--neutral { background: var(--ink-100); color: var(--ink-500); box-shadow: inset 0 0 0 1px var(--ink-150); }
+/* Hora de diligenciamiento bajo la fecha en el historial: dato de control,
+   por eso va tenue y en cifras alineadas. */
+.celda-hora {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-500);
+}
+
 .badge--info { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1px var(--brand-100); }
 
 /* ================= FILTERS ================= */
@@ -5013,6 +5023,15 @@ html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
 .usuarios__nuevo { margin-top: 0; }
 .usuarios__yo { font-size: var(--fs-micro); font-weight: 600; color: var(--brand-700); }
 .usuarios__detalle { color: var(--ink-500); font-size: var(--fs-small); }
+
+/* Correo y teléfono uno bajo otro; un correo largo se parte antes que
+   ensanchar la tabla. */
+.usuarios__contacto {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--ink-600);
+  overflow-wrap: anywhere;
+}
 #usuariosTable tr.is-inactiva td:not(.actions-cell) { color: var(--ink-400); }
 
 .modal--usuario { max-width: 720px; }

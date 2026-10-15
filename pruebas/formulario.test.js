@@ -39,7 +39,7 @@ const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.j
   'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
-window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo, repintarTerritorios };');
+window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo, repintarTerritorios, opcionesDeConfirmacionDeGuardado };');
 
 window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
 
@@ -429,6 +429,46 @@ check('Ficha incompleta => no se guardó',
 check('Se marcaron campos con error en pantalla', $$('.field.has-error').length > 0);
 check('Se listaron impedimentos de cierre (RN-222)',
   $$('#listaImpedimentos .alerta-item').length > 0);
+check('Con pendientes no se pide confirmación de guardado', $('#modalConfirmar').hidden === true);
+
+console.log('\n=== 11b. Enter en un campo no envía la ficha ===');
+function teclaEnter(elemento) {
+  const evento = new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+  elemento.dispatchEvent(evento);
+  return evento.defaultPrevented;
+}
+{
+  const antesEnter = $$('.field.has-error').length;
+  check('Enter en un campo de texto no envía (se anula el envío implícito)', teclaEnter($('#divisionTerritorial')) === true);
+  check('Enter en un campo de fecha tampoco', teclaEnter($('#fechaDiligenciamiento')) === true);
+  check('Enter en una opción (radio) tampoco', teclaEnter($('input[name="consentimiento"]')) === true);
+  check('En un área de texto Enter sigue siendo salto de línea',
+    !$('textarea') || teclaEnter($('textarea')) === false);
+  check('En un botón Enter lo sigue activando', teclaEnter($('#btnGuardar')) === false);
+  check('Enter no abrió la confirmación ni cambió los errores en pantalla',
+    $('#modalConfirmar').hidden === true && $$('.field.has-error').length === antesEnter);
+}
+
+console.log('\n=== 11c. Texto de la confirmación de guardado ===');
+{
+  const textoDe = window.__api.opcionesDeConfirmacionDeGuardado;
+  const ficha = {
+    codigoFicha: '76001-EBS12-AB12-0007-20261015',
+    familias: [{ integrantes: [{}, {}] }, { integrantes: [{}] }]
+  };
+  const nueva = textoDe(ficha, 'nueva', 0);
+  check('Ficha nueva: pregunta si está seguro y nombra la ficha con lo que lleva',
+    nueva.mensaje === '¿Está seguro de que desea guardar la encuesta? Se registrará la ficha ' +
+      '76001-EBS12-AB12-0007-20261015 con 2 familias y 3 integrantes.', nueva.mensaje);
+  check('  el título y el botón dicen guardar', nueva.titulo === 'Guardar encuesta' && nueva.textoConfirmar === 'Sí, guardar');
+  const una = textoDe({ codigoFicha: 'X', familias: [{ integrantes: [{}] }] }, 'nueva', 1);
+  check('Singulares y advertencias que no impiden guardar',
+    /con 1 familia y 1 integrante\. Tiene 1 advertencia que no impiden guardar\./.test(una.mensaje), una.mensaje);
+  const correccion = textoDe(ficha, 'correccion', 2);
+  check('Corrección: pregunta por los cambios de esa ficha',
+    correccion.mensaje === '¿Está seguro de que desea guardar los cambios de la ficha 76001-EBS12-AB12-0007-20261015? ' +
+      'Tiene 2 advertencias que no impiden guardar.' && correccion.textoConfirmar === 'Sí, guardar cambios', correccion.mensaje);
+}
 
 console.log('\n=== 12. Tablero de riesgo (RN-200 / RN-221) ===');
 marcar('.ideacionSuicida', 'ha_pensado', integrante);
@@ -460,6 +500,24 @@ async function cerrarPruebas() {
     $('#campoMotivoIncompleta').hidden === false);
   setVal('#motivoVisitaIncompleta', 'Informante rechazó continuar');
   $('#encuestaForm').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+
+  check('Guardar pide confirmación antes de guardar', $('#modalConfirmar').hidden === false);
+  check('  la pregunta dice que es una visita incompleta',
+    /¿Está seguro de que desea guardar la ficha .* como visita incompleta/.test($('#modalConfirmarMensaje').textContent),
+    $('#modalConfirmarMensaje').textContent);
+  check('  el botón de confirmar es azul, no el rojo de eliminar',
+    $('#btnConfirmarEliminar').classList.contains('btn--primary') && !$('#btnConfirmarEliminar').classList.contains('btn--danger'));
+  check('  y el de cancelar invita a seguir revisando', $('#btnCancelarEliminar').textContent === 'Seguir revisando');
+
+  $('#btnCancelarEliminar').click();
+  await esperarUnTurno();
+  check('Cancelar no guarda nada', JSON.parse(almacen['aps_encuestas'] || '[]').length === antesDeGuardar);
+  check('  cierra la confirmación', $('#modalConfirmar').hidden === true);
+
+  $('#encuestaForm').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  $('#encuestaForm').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  check('Un segundo envío con la confirmación abierta no abre otra', $('#modalConfirmar').hidden === false);
+  $('#btnConfirmarEliminar').click();
   
   /* Guardar dejó de ser instantáneo: ahora el formulario intenta escribir en la
      base y sólo cae a `localStorage` cuando no hay servidor —que es el caso en
