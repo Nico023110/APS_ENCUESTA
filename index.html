@@ -196,8 +196,10 @@
             <h2>2.2 Datos generales del escenario del entorno</h2>
             <span class="rule-tag">RN-005 · RN-006 · RN-009</span>
           </div>
+          <div class="campos-grupo" role="group" aria-labelledby="grupoUbicAdmin">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoUbicAdmin">Ubicación administrativa</h3>
           <div class="form-grid">
-            <div class="field field--md" data-campo="departamento">
+            <div class="field field--md field--fijo" data-campo="departamento">
               <label for="departamento"><span class="item-num">3.</span> Departamento: *</label>
               <span class="field-hint field-hint--inline">Entidad territorial fija del proyecto.</span>
               <select id="departamento" name="departamento" class="is-fijo"></select>
@@ -207,11 +209,17 @@
               <span class="field-hint field-hint--inline">Catálogo parametrizable de SSPM.</span>
               <select id="uzpe" name="uzpe"></select>
             </div>
-            <div class="field field--md" data-campo="municipio">
+            <div class="field field--md field--fijo" data-campo="municipio">
               <label for="municipio"><span class="item-num">5.</span> Municipio / Área no municipalizada: *</label>
               <span class="field-hint field-hint--inline">Entidad territorial fija del proyecto.</span>
               <select id="municipio" name="municipio" class="is-fijo"></select>
             </div>
+          </div>
+          </div>
+
+          <div class="campos-grupo" role="group" aria-labelledby="grupoUbicTerritorio">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoUbicTerritorio">Ubicación en el territorio</h3>
+          <div class="form-grid">
             <div class="field field--sm" data-campo="areaUbicacion">
               <label for="areaUbicacion"><span class="item-num">6.</span> Área de ubicación de la vivienda: *</label>
               <select id="areaUbicacion" name="areaUbicacion"></select>
@@ -220,19 +228,26 @@
               <label for="territorio"><span class="item-num">7.</span> Territorio: *</label>
               <select id="territorio" name="territorio"></select>
             </div>
-            <div class="field field--md" data-campo="microterritorio">
+            <div class="field field--sm" data-campo="microterritorio">
               <label for="microterritorio"><span class="item-num">8.</span> Microterritorio: *</label>
               <select id="microterritorio" name="microterritorio" disabled></select>
             </div>
-            <div class="field field--sm" data-campo="comuna">
+            <div class="field field--sm field--derivado" data-campo="comuna">
               <label for="comuna">Comuna <span class="field-auto">(derivada del territorio)</span></label>
               <input type="text" id="comuna" name="comuna" readonly>
             </div>
+          </div>
+          </div>
+
+          <div class="campos-grupo" role="group" aria-labelledby="grupoVivienda">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoVivienda">Identificación de la vivienda</h3>
+          <div class="form-grid">
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="ubicacion"></div>
-            <div class="field field--lg" data-campo="divisionTerritorial">
+            <div class="field field--xl" data-campo="divisionTerritorial">
               <label for="divisionTerritorial"><span class="item-num">9.</span> Nombre del corregimiento, centro poblado, vereda, localidad, barrio o resguardo indígena: *</label>
               <input type="text" id="divisionTerritorial" name="divisionTerritorial" placeholder="Ej. Barrio El Caney">
             </div>
+          </div>
           </div>
         </div>
 
@@ -479,58 +494,81 @@
             <p class="direccion-resultado__aviso" id="geoAviso" hidden></p>
           </div>
 
+          <div class="campos-grupo" role="group" aria-labelledby="grupoViviendaContacto">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoViviendaContacto">Ubicación y contacto</h3>
           <div class="form-grid">
-            <div class="field field--full" data-campo="ubicacionReferencia">
+            <div class="field field--xl" data-campo="ubicacionReferencia">
               <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): *</label>
               <span class="field-hint field-hint--inline">Clara y concreta, máximo 200 caracteres.</span>
               <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" maxlength="200" placeholder="Ej. Al lado derecho de la iglesia, casa verde con rejas negras">
             </div>
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="vivienda-contacto"></div>
-            <!-- Ítems 25 y 26 y NUV: los asigna el servidor al guardar
-                 (08_codigos_vivienda.sql). No se digitan. -->
-            <div class="field field--sm" data-campo="nuv">
+          </div>
+          </div>
+
+          <!-- Ítems 25 y 26 y NUV: los asigna el servidor al guardar
+               (08_codigos_vivienda.sql). No se digitan. -->
+          <div class="campos-grupo" role="group" aria-labelledby="grupoViviendaCodigos">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoViviendaCodigos">Identificación de la vivienda <span class="campos-grupo__nota">Los asigna el sistema al guardar</span></h3>
+          <div class="form-grid">
+            <div class="field field--md field--fijo" data-campo="nuv">
               <label for="nuv">NUV <span class="field-auto">(número único de vivienda)</span></label>
               <input type="text" id="nuv" name="nuv" class="mono" readonly placeholder="Se asigna al guardar">
             </div>
-            <div class="field field--sm" data-campo="idHogar">
+            <div class="field field--md field--fijo" data-campo="idHogar">
               <label for="idHogar"><span class="item-num">25.</span> N.° de Identificación del hogar: <span class="field-auto">(automático)</span></label>
               <input type="text" id="idHogar" name="idHogar" class="mono" readonly placeholder="Se asigna al guardar">
             </div>
-            <div class="field field--md" data-campo="idFamilia">
+            <div class="field field--md field--fijo" data-campo="idFamilia">
               <label for="idFamilia"><span class="item-num">26.</span> N.° de Identificación de la familia: <span class="field-auto">(automático)</span></label>
               <input type="text" id="idFamilia" name="idFamilia" class="mono" readonly placeholder="Se asigna al guardar">
             </div>
-            <div class="field field--sm" data-campo="estrato">
+          </div>
+          </div>
+
+          <div class="campos-grupo" role="group" aria-labelledby="grupoViviendaCaract">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoViviendaCaract">Características</h3>
+          <div class="form-grid">
+            <div class="field field--md" data-campo="estrato">
               <label for="estrato"><span class="item-num">27.</span> Estrato socioeconómico de la vivienda: *</label>
               <select id="estrato" name="estrato"></select>
             </div>
-            <div class="field field--sm" data-campo="hogaresEnVivienda">
+            <div class="field field--md" data-campo="hogaresEnVivienda">
               <label for="hogaresEnVivienda"><span class="item-num">28.</span> N.° de hogares familiares en la vivienda:</label>
               <input type="number" id="hogaresEnVivienda" name="hogaresEnVivienda" min="0" step="1" placeholder="Ej. 1">
             </div>
-            <div class="field field--sm" data-campo="personasEnVivienda">
+          </div>
+          </div>
+
+          <div class="campos-grupo" role="group" aria-labelledby="grupoViviendaOcupacion">
+          <h3 class="eyebrow campos-grupo__titulo" id="grupoViviendaOcupacion">Ocupación y hacinamiento</h3>
+          <div class="form-grid form-grid--alineado">
+            <div class="field field--md" data-campo="personasEnVivienda">
               <label for="personasEnVivienda"><span class="item-num">29.</span> N.° de personas en la vivienda: *</label>
               <input type="number" id="personasEnVivienda" name="personasEnVivienda" min="1" step="1" placeholder="Ej. 4">
             </div>
-            <div class="field field--sm" data-campo="habitacionesVivienda">
+            <div class="field field--md" data-campo="habitacionesVivienda">
               <label for="habitacionesVivienda"><span class="item-num">30.</span> N.° de habitaciones por vivienda: *</label>
               <input type="number" id="habitacionesVivienda" name="habitacionesVivienda" min="1" step="1" placeholder="Ej. 2">
             </div>
-            <div class="field field--sm" data-campo="elementosParaDormir">
+            <div class="field field--md" data-campo="elementosParaDormir">
               <label for="elementosParaDormir"><span class="item-num">31.</span> ¿Cuántos elementos para dormir hay actualmente en su hogar?</label>
               <span class="field-hint field-hint--inline">Camas, colchones, colchonetas, hamacas, camarotes o sofacamas.</span>
               <input type="number" id="elementosParaDormir" name="elementosParaDormir" min="0" step="1" placeholder="Ej. 3">
             </div>
-            <div class="field field--sm" data-campo="personasPorHabitacion">
+          </div>
+          <div class="form-grid campos-calculados" role="group" aria-label="Resultados calculados por el sistema">
+            <div class="field field--md field--derivado" data-campo="personasPorHabitacion">
               <label for="personasPorHabitacion"><span class="item-num">32.</span> N.° personas por habitación: <span class="field-auto">(cálculo auto)</span></label>
               <input type="text" id="personasPorHabitacion" name="personasPorHabitacion" readonly>
             </div>
-            <div class="field field--sm" data-campo="hacinamiento">
+            <div class="field field--md field--derivado" data-campo="hacinamiento">
               <label for="hacinamiento"><span class="item-num">33.</span> Hacinamiento <span class="field-auto">(cálculo auto)</span></label>
               <div class="calc-badge-wrapper">
                 <span class="badge badge--neutral" id="hacinamientoBadge">Sin calcular</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
 

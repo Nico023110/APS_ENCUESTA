@@ -683,6 +683,83 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   max-width: calc(var(--ancho) * (100% + var(--s-5)) / 12 - var(--s-5));
 }
 
+/* ---- Subbloques de una tarjeta -------------------------------------------
+   Agrupan campos afines bajo un rótulo discreto (versalita de la tarjeta, no
+   un ítem del instrumento). Cada subbloque lleva su propia rejilla. */
+.campos-grupo + .campos-grupo,
+:is(.card, .subpanel) > .field + .campos-grupo { margin-top: var(--s-8); }
+
+.campos-grupo__titulo {
+  display: flex;
+  margin: 0 0 var(--s-3);
+  padding-bottom: var(--s-2);
+  border-bottom: 1px solid var(--ink-100);
+}
+
+/* La ayuda de un campo va debajo del control, como línea tenue: así los
+   controles de una misma fila arrancan a la misma altura aunque unos
+   campos traigan ayuda y otros no. */
+.campos-grupo .field > label { order: 0; }
+.campos-grupo .field > .guia-campo { order: 1; }
+.campos-grupo .field > :is(input, select) { order: 2; }
+.campos-grupo .field > .field-hint--inline { order: 3; margin-top: 0; }
+
+/* Dato derivado (comuna): se lee como resultado, no como casilla vacía. */
+.field--derivado input[readonly] {
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+  color: var(--brand-800);
+  font-weight: 600;
+}
+.field--derivado .field-auto { display: block; }
+
+/* Dato asignado por el sistema (NUV, hogar, familia): se lee como dato fijo,
+   no como casilla por llenar. Mismo tratamiento que los selects is-fijo. */
+.field--fijo input[readonly] {
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--ink-150);
+  color: var(--ink-800);
+  font-weight: 600;
+  cursor: default;
+}
+.field--fijo input[readonly]::placeholder { color: var(--ink-500); font-weight: 400; }
+.field--fijo .field-auto { display: block; }
+
+/* Nota discreta junto al subtítulo de un subbloque. */
+.campos-grupo__nota {
+  margin-left: var(--s-3);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* Franja de resultados calculados: agrupa los datos derivados y los separa
+   de los que se digitan. Sobre ella los controles se leen en blanco. */
+.campos-calculados {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+}
+.campos-calculados .field--derivado input[readonly] {
+  background: var(--bg-card);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+}
+.campos-calculados .calc-badge-wrapper {
+  background: var(--bg-card);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+}
+
+/* El cuadro de calculados es una rejilla con fondo y relleno propios: no debe
+   heredar el margen negativo con que las demás devuelven el margen del último
+   renglón (se pegaba al borde de la tarjeta). Ese margen del último campo ya
+   hace de relleno inferior, así que el relleno propio de abajo se quita. */
+@supports (grid-template-rows: subgrid) {
+  .form-grid.campos-calculados { margin-bottom: 0; padding-bottom: 0; }
+}
+
 /* Tablet vertical: la tercera parte pasa a mitad y la mitad a fila entera
    sólo en lo largo; las cifras quedan en tercios. */
 @container campos (max-width: 820px) {
@@ -700,6 +777,13 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   .field--sm:has(> input[type="date"]) { --ancho: 12; }
 }
 
+/* Rejilla muy angosta (bloque del integrante en celular): a media fila un
+   campo corto con botón de guía deja la etiqueta en tres o cuatro renglones.
+   Ese campo va entero; las cifras cortas sin guía siguen de a dos. */
+@container campos (max-width: 360px) {
+  .field--sm.tiene-guia { --ancho: 12; }
+}
+
 @media (max-width: 900px) {
   .field:is(.field--sm, .field--md, .field--lg, .field--xl):not(.form-grid .field) { max-width: none; }
 }
@@ -714,6 +798,18 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   color: var(--ink-700);
 }
 
+/* El enunciado de la pregunta se distingue de sus opciones: las píldoras
+   comparten tamaño y gris (13 px, peso 500), así que antes todo el campo se
+   leía como una sola masa de texto. La pregunta sube a 14 px, peso 600 y el
+   tono más oscuro de la paleta; las opciones quedan como están. Sólo la
+   etiqueta hija directa del campo: las píldoras también son <label>. */
+.field > label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+.field > label .item-num { font-weight: 500; }
+
 .field-auto {
   font-weight: 400;
   color: var(--text-secondary);
@@ -726,6 +822,77 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 .field > .check-group,
 .field > textarea {
   margin-top: auto;
+}
+
+/* ---- Anatomía común de un campo en la rejilla ---------------------------
+   Cada campo tiene las mismas piezas: etiqueta, ayuda de la guía (panel que
+   se abre con «?»), control, ayuda tenue y mensaje de la regla. Antes cada
+   campo las apilaba por su cuenta y el control se empujaba al fondo
+   (margin-top: auto): una ayuda o un aviso debajo de un solo campo subía su
+   control y descuadraba toda la fila. Con subgrid los campos de una misma
+   fila comparten cinco pistas —etiqueta · guía · control · ayuda · mensaje—,
+   así que los controles arrancan a la misma altura aunque las etiquetas
+   ocupen uno o dos renglones, y las ayudas quedan alineadas debajo. La ayuda
+   tenue va debajo del control en todo el formulario. Sin subgrid (navegador
+   antiguo) queda el apilado de siempre. */
+@supports (grid-template-rows: subgrid) {
+  /* La separación entre filas no puede ser el row-gap de la rejilla: con
+     subgrid se repetiría entre las cinco pistas de cada campo, vacías
+     incluidas. La pone cada elemento como margen inferior, y la rejilla
+     devuelve el del último renglón. */
+  .form-grid { row-gap: 0; margin-bottom: calc(-1 * var(--s-5)); }
+  .form-grid > *,
+  .form-grid > .anexo-grupo--en-linea > * { margin-bottom: var(--s-5); }
+
+  .form-grid > .field,
+  .form-grid > .anexo-grupo--en-linea > .field {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 5;
+    row-gap: 0;
+    align-content: start;
+  }
+
+  .form-grid > .field > *,
+  .form-grid > .anexo-grupo--en-linea > .field > * { grid-row: 5; min-width: 0; }
+
+  .form-grid > .field > label,
+  .form-grid > .anexo-grupo--en-linea > .field > label { grid-row: 1; margin-bottom: 6px; }
+
+  /* El «?» va fuera del flujo, en la esquina de la etiqueta; en una rejilla
+     su posición absoluta se mide desde la pista que ocupa: la de la etiqueta. */
+  .form-grid > .field > .guia-boton,
+  .form-grid > .anexo-grupo--en-linea > .field > .guia-boton { grid-row: 1; }
+
+  .form-grid > .field > .guia-campo,
+  .form-grid > .anexo-grupo--en-linea > .field > .guia-campo { grid-row: 2; margin-bottom: var(--s-2); }
+
+  .form-grid > .field > :is(input, select, textarea, .radio-group, .check-group, .calc-badge-wrapper, .combo-cups),
+  .form-grid > .anexo-grupo--en-linea > .field > :is(input, select, textarea, .radio-group, .check-group, .calc-badge-wrapper, .combo-cups) {
+    grid-row: 3;
+    margin-top: 0;
+    align-self: start;
+  }
+
+  .form-grid > .field > .field-hint,
+  .form-grid > .anexo-grupo--en-linea > .field > .field-hint { grid-row: 4; margin: var(--s-1) 0 0; }
+
+  .form-grid > .field > :is(.field-error-msg, .field-warning-msg),
+  .form-grid > .anexo-grupo--en-linea > .field > :is(.field-error-msg, .field-warning-msg) { grid-row: 5; margin-top: var(--s-1); }
+
+  /* Las preguntas Sí / No lado a lado ya no necesitan el relleno que
+     emparejaba sus píldoras: las alinea la pista del control. */
+  .form-grid .field--block:not(.field--full) > .radio-group { padding-top: 0; }
+}
+
+/* Campos compuestos: la dirección y las coordenadas llevan dentro su propia
+   estructura (modos, paneles, otra rejilla). Se quedan en flujo normal: con
+   las cinco pistas compartidas sus piezas se apilaban unas sobre otras. */
+@supports (grid-template-rows: subgrid) {
+  .form-grid > .field:is([data-campo="direccion"], [data-campo="coordenadas"]) {
+    display: block;
+    grid-row: auto;
+  }
 }
 
 /* ---- Controles ---------------------------------------------------------
@@ -983,7 +1150,7 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .radio-group--grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 8px 14px;
 }
 
@@ -1029,9 +1196,16 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 .radio-pill--negativa input { accent-color: var(--alert-600); }
 
 
-/* Opciones apiladas cuando el texto es largo (ítem 2) */
-.radio-group--columna { flex-direction: column; align-items: flex-start; }
-.radio-group--columna .radio-pill { width: 100%; height: auto; border-radius: var(--r-control); }
+/* Opciones largas o numerosas (ítem 2 y preguntas del anexo): cuadrícula de
+   columnas iguales en vez de una opción por renglón a todo el ancho. Las
+   columnas compartidas alinean las opciones entre sí, lo que ayuda a leer
+   una lista de selección única; en pantallas angostas queda una columna. */
+.radio-group--columna {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--s-2) var(--s-3);
+}
+.radio-group--columna .radio-pill { height: auto; min-height: 42px; border-radius: var(--r-control); line-height: 1.35; }
 
 /* En celular las opciones largas del ítem 96 ocupan dos o tres renglones: una
    píldora redonda de varios renglones se deforma, así que van apiladas. */
@@ -1107,12 +1281,18 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .check-pill--excluyente input { accent-color: var(--ink-500); }
 
-/* Campos de valor fijo por regla de negocio (RN-005) */
+/* Campos de valor fijo por regla de negocio (RN-005): se leen como dato, no
+   como control. Sin flecha, sin cursor de mano y sin reacción al hover: el
+   proyecto los fija y nadie los edita. Siguen siendo <select> para que el
+   contrato con formulario.js y la sesión no cambie. */
 .field select.is-fijo {
-  background: var(--color-primary-light);
-  border-color: var(--color-primary);
+  appearance: none;
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--ink-150);
   font-weight: 600;
-  color: var(--color-primary-dark);
+  color: var(--ink-800);
+  cursor: default;
+  pointer-events: none;
 }
 
 /* Etiqueta de trazabilidad con la regla de negocio */
@@ -1129,9 +1309,16 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   font-weight: 500;
   letter-spacing: 0;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .card__subtitle .rule-tag { margin-left: 8px; vertical-align: middle; }
+
+/* En celular una etiqueta larga (p. ej. la de la 5.5) no cabe en un renglón:
+   se parte en vez de empujar la página hacia los lados. */
+@media (max-width: 520px) {
+  .rule-tag { white-space: normal; }
+}
 
 /* Bloqueo de captura por falta de consentimiento (RN-001) */
 .capture-fieldset {
@@ -1488,8 +1675,17 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .geo-acciones .btn { flex: 1; min-height: 42px; }
 
+/* Con las cajas de latitud y longitud en subgrid (cinco pistas), los botones
+   se colocan en la pista del control: a la altura de las cajas, no de las
+   etiquetas. Bajo 821 px van en su propia fila (regla de abajo). */
+@supports (grid-template-rows: subgrid) {
+  @container campos (min-width: 821px) {
+    .coordenadas > .geo-acciones { grid-column: 7 / -1; grid-row: 3; align-self: start; }
+  }
+}
+
 @container campos (max-width: 820px) {
-  .geo-acciones { grid-column: span 4; flex-direction: column; }
+  .geo-acciones { grid-column: span 12; flex-direction: row; }
 }
 
 @container campos (max-width: 520px) {
@@ -4708,6 +4904,21 @@ html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
 .app-header__usuario { display: flex; align-items: center; }
 
 .app-header__usuario { position: relative; }
+
+/* En celular la cabecera apilaba marca, pestañas y usuario en tres renglones
+   (unos 180 px pegados arriba mientras se diligencia). El chip de usuario
+   sube al renglón del logo y las pestañas quedan debajo a todo el ancho. */
+@media (max-width: 720px) {
+  .app-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "marca usuario" "pestanas pestanas";
+    align-items: center;
+  }
+  .app-header__brand { grid-area: marca; }
+  .app-tabs { grid-area: pestanas; }
+  .app-header__usuario { grid-area: usuario; justify-content: flex-end; }
+}
 
 .app-usuario {
   display: flex;
