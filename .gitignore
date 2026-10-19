@@ -2,6 +2,9 @@
 .env*
 node_modules/
 
+# Datos personales para crear cuentas en lote (npm run usuarios:lote)
+bd/*.local.json
+
 # Salidas de las pruebas de navegador (vídeos, trazas, capturas, informe HTML)
 pruebas/e2e/informe/
 pruebas/e2e/resultados/

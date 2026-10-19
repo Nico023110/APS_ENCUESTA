@@ -147,12 +147,18 @@ function esAsistencial(rol) {
   return nivel === 'profesional' || nivel === 'tecnico' || nivel === 'maestro' || nivel === 'coordinacion';
 }
 
-/* La cuenta nace con su Equipo Básico de Salud. La coordinación acompaña a
-   varios equipos: el suyo es opcional, y sin él no registra fichas nuevas
-   (el servidor lo dice al guardar). */
+/* La cuenta nace con su Equipo Básico de Salud. La coordinación no pertenece
+   a un EBS: lidera zonas, y cada zona agrupa varios EBS. */
 function requiereEquipo(rol) {
   const nivel = nivelDe(rol);
   return nivel === 'profesional' || nivel === 'tecnico' || nivel === 'maestro';
+}
+
+/* Sin equipo propio, la coordinación indica en el ítem 10 el EBS de cada
+   visita que diligencia (debe ser un EBS registrado). El resto firma el
+   ítem 10 con el equipo de su cuenta. */
+function eligeEquipoDeLaFicha(rol) {
+  return nivelDe(rol) === 'coordinacion';
 }
 
 /* El perfil del ítem 14 con que firma: para el personal asistencial es su
@@ -238,7 +244,7 @@ function puedeRecibirAutorizacion(usuario, ficha) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ROLES, PERMISOS_POR_NIVEL, esRolValido, nivelDe, etiquetaDeRol,
-    esAsistencial, requiereEquipo, eligePerfil, rolesQuePuedeCrear, permisosDe, puede,
+    esAsistencial, requiereEquipo, eligeEquipoDeLaFicha, eligePerfil, rolesQuePuedeCrear, permisosDe, puede,
     alcanceDeLectura, puedeVerFicha, puedeCorregir, puedeEvolucionar, puedeRecibirAutorizacion
   };
 }

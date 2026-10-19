@@ -85,6 +85,9 @@ async function principal() {
   verificar('la coordinación no necesita equipo; el personal asistencial sí',
     !roles.requiereEquipo('lider_ebs') && roles.requiereEquipo('enfermeria') && roles.requiereEquipo('maestro'));
   verificar('la coordinación elige su perfil del ítem 14', roles.eligePerfil('lider_ebs') && !roles.eligePerfil('enfermeria'));
+  verificar('la coordinación, sin EBS propio, indica el de cada visita; el personal asistencial no',
+    roles.eligeEquipoDeLaFicha('coordinador_ebs') && roles.eligeEquipoDeLaFicha('lider_ebs') &&
+    !roles.eligeEquipoDeLaFicha('enfermeria') && !roles.eligeEquipoDeLaFicha('maestro'));
 
   const profesional = { rol: 'enfermeria', equipoSaludId: 7, funcionarioId: 100 };
   const auxiliar = { rol: 'auxiliar_enfermeria', equipoSaludId: 7, funcionarioId: 101 };

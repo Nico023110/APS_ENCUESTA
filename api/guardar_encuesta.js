@@ -501,6 +501,16 @@ async function fichaExistente(cliente, codigo) {
   return r.rows[0] || null;
 }
 
+/* RN-010 — El EBS registrado y activo con ese código (sin distinguir
+   mayúsculas), con el código tal como está guardado, o null. */
+async function equipoRegistrado(cliente, codigo) {
+  if (!codigo) return null;
+  const r = await cliente.query(`
+    SELECT codigo FROM aps.equipo_salud WHERE upper(codigo) = upper($1) AND activo LIMIT 1
+  `, [codigo]);
+  return r.rows[0] ? r.rows[0].codigo : null;
+}
+
 /* RN-228 — La autorización vigente que la coordinación o el maestro le dieron
    a este usuario para corregir esta ficha —incluido lo registrado en su plan
    de cuidado—, o null. */
@@ -805,12 +815,36 @@ module.exports = async (req, res) => {
       if (!roles.puede(usuario.rol, 'ficha.crear')) {
         return res.status(403).json({ error: 'Su rol no permite registrar fichas nuevas.', codigo: 'sin_permiso' });
       }
-      if (!usuario.equipoCodigo) {
+      /* La coordinación no pertenece a un EBS: lidera zonas con varios. Sin
+         equipo propio, la ficha se firma con el EBS que indicó en el ítem 10,
+         que tiene que estar registrado: un código mal escrito crearía un
+         equipo fantasma al que nadie más ve. */
+      let equipoDeLaFicha = usuario.equipoCodigo;
+      if (!equipoDeLaFicha && roles.eligeEquipoDeLaFicha(usuario.rol)) {
+        const indicado = (texto(req.body.equipoSaludId) || '').toUpperCase();
+        equipoDeLaFicha = await equipoRegistrado(cliente, indicado);
+        if (!equipoDeLaFicha) {
+          return res.status(400).json({
+            error: 'La ficha no cumple las reglas de negocio',
+            total: 1,
+            bloqueos: [{
+              codigo: 'RN-010', ruta: 'equipoSaludId', campo: 'equipoSaludId', severidad: 'bloqueo',
+              mensaje: indicado
+                ? 'El EBS ' + indicado + ' no está registrado. Indique en el ítem 10 el código de un Equipo Básico de ' +
+                  'Salud existente.'
+                : 'Indique en el ítem 10 el Equipo Básico de Salud de esta visita.',
+              recibido: indicado || null
+            }],
+            advertencias: []
+          });
+        }
+      }
+      if (!equipoDeLaFicha) {
         return res.status(403).json({ error: 'Su cuenta no tiene un Equipo Básico de Salud asignado. Solicítelo al administrador.',
           codigo: 'sin_equipo' });
       }
       fijarFirma(req.body, {
-        equipoCodigo: usuario.equipoCodigo, tipoId: usuario.tipoId, numeroId: usuario.documento,
+        equipoCodigo: equipoDeLaFicha, tipoId: usuario.tipoId, numeroId: usuario.documento,
         nombre: usuario.nombre, perfil: usuario.perfilProfesional || usuario.rol, perfilOtro: usuario.perfilOtro
       });
       tipoEvento = 'creacion';

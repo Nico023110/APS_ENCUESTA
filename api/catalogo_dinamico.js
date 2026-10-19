@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   if (!usuario) return;
 
   try {
-    const [eapbRes, prestadorRes, uzpeRes, terRes] = await Promise.all([
+    const [eapbRes, prestadorRes, uzpeRes, terRes, equiposRes] = await Promise.all([
       consultar('SELECT codigo AS valor, nombre AS etiqueta, regimen FROM cat.eapb WHERE vigente = true ORDER BY nombre'),
       consultar('SELECT codigo AS valor, nombre AS etiqueta FROM cat.prestador WHERE vigente = true ORDER BY nombre'),
       consultar('SELECT codigo AS valor, nombre AS etiqueta FROM cat.uzpe WHERE vigente = true ORDER BY nombre'),
@@ -22,7 +22,10 @@ module.exports = async (req, res) => {
         JOIN cat.microterritorio m ON t.codigo = m.territorio_codigo
         WHERE t.vigente = true AND m.vigente = true
         ORDER BY t.codigo, m.codigo
-      `)
+      `),
+      /* Los EBS registrados: la coordinación, que lidera zonas con varios
+         EBS, elige en el ítem 10 el de cada visita. Sólo códigos. */
+      consultar('SELECT codigo FROM aps.equipo_salud WHERE activo ORDER BY codigo')
     ]);
 
     const territorios = {};
@@ -39,7 +42,8 @@ module.exports = async (req, res) => {
       eapb: eapbRes.rows,
       prestador: prestadorRes.rows,
       uzpe: uzpeRes.rows,
-      territorios: territorios
+      territorios: territorios,
+      equipos: equiposRes.rows.map(function (fila) { return fila.codigo; })
     };
 
     res.setHeader('Cache-Control', 'public, max-age=3600');

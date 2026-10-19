@@ -290,6 +290,7 @@ async function cargarCatalogoDeAcciones() {
     const cacheCatalogos = localStorage.getItem('aps_catalogos_dinamicos');
     if (cacheCatalogos) {
       fijarCatalogosDinamicos(JSON.parse(cacheCatalogos));
+      pintarListaDeEquipos();
     }
   } catch (error) {
     console.warn('No fue posible leer los catálogos dinámicos guardados:', error);
@@ -313,6 +314,7 @@ async function cargarCatalogoDeAcciones() {
     if (resCatalogos.ok) {
       const dataCatalogos = await resCatalogos.json();
       fijarCatalogosDinamicos(dataCatalogos);
+      pintarListaDeEquipos();
       localStorage.setItem('aps_catalogos_dinamicos', JSON.stringify(dataCatalogos));
       /* El select del ítem 7 se llenó al arrancar con el catálogo que hubiera
          (el estático o la copia guardada); si la base trae territorios nuevos
@@ -340,6 +342,16 @@ async function cargarCatalogoDeAcciones() {
         'Conéctese al menos una vez para descargarlos.', 'warning');
     }
   }
+}
+
+/* RN-010 — Los EBS registrados, para el ítem 10 de quien lidera una zona y
+   elige el EBS de cada visita (sesion.js le deja el campo abierto). */
+function pintarListaDeEquipos() {
+  const lista = document.getElementById('listaEquiposEbs');
+  if (!lista || typeof CAT_EQUIPOS_EBS === 'undefined') return;
+  lista.innerHTML = CAT_EQUIPOS_EBS.map(function (codigo) {
+    return '<option value="' + escaparHtml(codigo) + '"></option>';
+  }).join('');
 }
 
 /* RN-222 — El cierre por causa externa exige registrar el motivo. */

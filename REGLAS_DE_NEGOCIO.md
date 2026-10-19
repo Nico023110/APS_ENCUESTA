@@ -138,6 +138,8 @@ Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad;
 
 **Estructura de la ficha técnica APS124CCFP (variable 15):** las letras EBS seguidas de un consecutivo de 3 dígitos (`EBS001`). Se verifica como **advertencia**, no como bloqueo: hay equipos registrados con otra forma y sus fichas cuelgan de ese código. La gestión de usuarios lo advierte al guardar un equipo que no la sigue.
 
+**Quién lo firma.** El personal asistencial y el maestro firman el ítem 10 con el EBS de su cuenta, fijo en el formulario. La coordinación del EBS y los líderes de zona no pertenecen a un EBS —cada zona agrupa varios—: al diligenciar una ficha indican el EBS de esa visita, con la lista de los EBS registrados, y el servidor rechaza un código que no corresponda a un EBS registrado y activo.
+
 ### RN-011 — Prestador primario / Organismo de adscripción
 
 **Ítem 11.** Campo obligatorio para registrar la Institución Prestadora de Servicios de Salud (IPS) pública o entidad de adscripción legal a la que pertenece el EBS.

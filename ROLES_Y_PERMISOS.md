@@ -47,9 +47,11 @@ El instrumento no distingue permisos entre profesiones; lo que distingue es el
   la captura sobre cualquier ficha —verla, corregirla, evolucionarla, cambiar
   lo registrado en su plan y autorizar a otros a corregirla—, el reporte SI‑APS
   y **crear** cuentas del personal asistencial. **No modifica** cuentas, **no
-  restablece** claves y **no elimina** fichas. Su equipo es opcional: sin él
-  no registra fichas nuevas. Firma el ítem 14 con el perfil que se le indique
-  al crearla (si no, «Otro: su cargo»).
+  restablece** claves y **no elimina** fichas. No pertenece a un EBS: lidera
+  zonas, y cada zona agrupa varios EBS. Se crea **sin equipo** y con su zona
+  como cargo; al diligenciar una ficha indica en el ítem 10 el EBS de esa
+  visita, que debe estar registrado. Firma el ítem 14 con el perfil que se le
+  indique al crearla (si no, «Otro: su cargo»).
 - **Administrador**: administra (cuentas, equipos, catálogos) y consulta y
   corrige cualquier ficha; no captura.
 - **Maestro**: lo hace todo y es el **único que elimina una ficha** de la
@@ -93,7 +95,9 @@ Consecuencias en la interfaz:
 - Al **administrador** no se le muestra «Nueva Encuesta», el botón principal de
   Inicio ni «Sincronizar a la nube».
 - Para los roles asistenciales los ítems **10, 12, 13 y 14** se rellenan desde la
-  sesión y quedan fijos. El servidor los impone de todos modos: una ficha nueva
+  sesión y quedan fijos. La coordinación sin EBS propio deja el ítem 10 abierto,
+  con la lista de los EBS registrados, para indicar el de cada visita; el
+  servidor rechaza un EBS que no exista. El servidor los impone de todos modos: una ficha nueva
   se firma con el equipo y el responsable de quien la envía; al corregir una
   ficha existente se conservan el equipo y el responsable originales y la
   corrección queda en `aud.evento` a nombre de quien la hizo (RN‑225).

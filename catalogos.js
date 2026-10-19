@@ -1491,6 +1491,11 @@ const CAT_REGIMEN_AFILIACION = [
    `nit`.
    --------------------------------------------------------- */
 
+/* RN-010 — Códigos de los Equipos Básicos de Salud registrados. Llegan de la
+   base (catalogo_dinamico): la coordinación, que lidera zonas con varios EBS,
+   elige en el ítem 10 el de cada visita. */
+const CAT_EQUIPOS_EBS = [];
+
 /* Red pública de Santiago de Cali. */
 /* RN-011 — Único prestador que diligencia la ficha con esta herramienta. */
 const PRESTADOR_FIJO = { valor: 'PROV-ESE-LADERA', etiqueta: 'E.S.E. Red de Salud de Ladera', nit: '805027289' };
@@ -1995,6 +2000,10 @@ function fijarCatalogoAcciones(filas) {
 }
 
 function fijarCatalogosDinamicos(data) {
+  if (Array.isArray(data.equipos)) {
+    CAT_EQUIPOS_EBS.length = 0;
+    data.equipos.forEach(function (codigo) { CAT_EQUIPOS_EBS.push(codigo); });
+  }
   if (data.eapb) {
     CAT_EAPB.length = 0;
     data.eapb.forEach(function(r) { CAT_EAPB.push(r); });

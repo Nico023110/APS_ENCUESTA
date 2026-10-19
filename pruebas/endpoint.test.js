@@ -214,6 +214,9 @@ async function limpiar() {
   await asegurarUsuarioDePrueba(cliente, {
     documento: '1144099004', nombre: 'Prueba Líder EBS', rol: 'lider_ebs', equipo: 'EBS12'
   });
+  await asegurarUsuarioDePrueba(cliente, {
+    documento: '1144099005', nombre: 'Prueba Coordinadora Zona', rol: 'coordinador_ebs', equipo: null
+  });
   await cliente.end();
   sesion = await iniciarSesionDePrueba(BASE);
   coordinacion = await iniciarSesionDePrueba(BASE, { documento: '1144099004', clave: USUARIO_PRUEBA.clave });
@@ -456,6 +459,58 @@ async function correrPruebas() {
   completa = await completaDe(fichaDeAuxiliar.codigoFicha, coordinacion.cabeceras);
   verificar('La coordinación la trae para corregirla', completa.estado === 200 && completa.cuerpo.corregible === true,
     'estado ' + completa.estado);
+
+  console.log('\n=== 5f. La coordinación sin EBS propio indica el EBS de cada visita (RN-010) ===');
+
+  /* La coordinadora y los líderes no pertenecen a un EBS: lideran zonas con
+     varios. Su cuenta no tiene equipo y la ficha se firma con el que indican. */
+  const deZona = await iniciarSesionDePrueba(BASE, { documento: '1144099005', clave: USUARIO_PRUEBA.clave });
+  const catalogoZona = await fetch(BASE + '/api/catalogo_dinamico', { headers: deZona.cabeceras }).then(function (x) { return x.json(); });
+  verificar('El catálogo trae los EBS registrados para elegir',
+    Array.isArray(catalogoZona.equipos) && catalogoZona.equipos.indexOf('EBS12') !== -1,
+    JSON.stringify(catalogoZona.equipos || null).slice(0, 120));
+
+  const fichaDeZona = fichaValida(sello + 'z1');
+  fichaDeZona.equipoSaludId = 'ebs12';
+  r = await enviar(fichaDeZona, deZona.cabeceras);
+  verificar('Sin EBS propio, registra la ficha con el EBS que indica => 200', r.estado === 200,
+    'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
+  const equipoDeZona = await (async function () {
+    const c = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    await c.connect();
+    const fila = (await c.query(`
+      SELECT eq.codigo FROM aps.ficha f JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id WHERE f.codigo = $1`,
+    [fichaDeZona.codigoFicha])).rows[0] || {};
+    await c.end();
+    return fila.codigo;
+  })();
+  verificar('  la ficha queda en ese EBS, con su código tal como está registrado', equipoDeZona === 'EBS12', String(equipoDeZona));
+
+  const fichaEbsInexistente = fichaValida(sello + 'z2');
+  fichaEbsInexistente.equipoSaludId = 'EBS999X';
+  r = await enviar(fichaEbsInexistente, deZona.cabeceras);
+  verificar('Un EBS que no está registrado => 400 en el ítem 10', r.estado === 400 && bloqueoEn(r.cuerpo, 'equipoSaludId'),
+    'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
+
+  const fichaSinEbs = fichaValida(sello + 'z3');
+  fichaSinEbs.equipoSaludId = '';
+  r = await enviar(fichaSinEbs, deZona.cabeceras);
+  verificar('Sin indicar el EBS => 400 en el ítem 10', r.estado === 400 && bloqueoEn(r.cuerpo, 'equipoSaludId'),
+    'estado ' + r.estado);
+
+  const ajena = fichaValida(sello + 'z4');
+  ajena.equipoSaludId = 'EBS99';
+  r = await enviar(ajena, sesion.cabeceras);
+  const equipoAjena = r.estado === 200 ? await (async function () {
+    const c = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    await c.connect();
+    const fila = (await c.query(`
+      SELECT eq.codigo FROM aps.ficha f JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id WHERE f.codigo = $1`,
+    [ajena.codigoFicha])).rows[0] || {};
+    await c.end();
+    return fila.codigo;
+  })() : null;
+  verificar('La profesional no elige EBS: su ficha queda en el de su cuenta', equipoAjena === 'EBS12', String(equipoAjena));
 
   console.log('\n=== 5d. /api/usuarios — gestión de cuentas por rol ===');
 

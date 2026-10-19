@@ -1967,7 +1967,7 @@
             <label for="usuarioEquipo">Equipo Básico de Salud</label>
             <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
           </div>
-          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para el personal asistencial: firma el ítem 10 de cada ficha. La coordinación puede no tenerlo, pero sin él no registra fichas nuevas. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
+          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para el personal asistencial: firma el ítem 10 de cada ficha. La coordinación y los líderes no pertenecen a un EBS (lideran zonas con varios): déjelo vacío y anote la zona en el cargo; al diligenciar una ficha indican el EBS de la visita. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
           <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
             <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
             <select id="usuarioPerfil" name="perfil"></select>
@@ -2061,6 +2061,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <datalist id="listaOcupacionesCiuo"></datalist>
+<datalist id="listaEquiposEbs"></datalist>
 <script src="catalogos_sispro.js"></script>
 <script src="catalogos.js"></script>
 <script src="anexo.js"></script>

@@ -334,9 +334,27 @@
     control.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  /* La coordinación no pertenece a un EBS: lidera zonas con varios. Sin
+     equipo propio, el ítem 10 queda abierto para indicar el EBS de la visita,
+     con la lista de los registrados (app.js); el servidor exige que exista. */
+  function eligeEquipoDeLaFicha() {
+    return !usuario.equipoCodigo && usuario.nivel === 'coordinacion';
+  }
+
+  function abrirCampoDeEquipo(formulario) {
+    const control = formulario.querySelector('[name="equipoSaludId"]');
+    if (!control) return;
+    control.readOnly = false;
+    control.classList.remove('is-sesion');
+    control.setAttribute('list', 'listaEquiposEbs');
+    control.setAttribute('autocomplete', 'off');
+    control.placeholder = 'EBS de esta visita, ej. EBS001';
+  }
+
   function aplicarEnFormulario(formulario) {
     if (!formulario || !usuario || usuario.nivel === 'administrador') return;
-    fijarCampo(formulario, 'equipoSaludId', usuario.equipoCodigo || '');
+    if (eligeEquipoDeLaFicha()) abrirCampoDeEquipo(formulario);
+    else fijarCampo(formulario, 'equipoSaludId', usuario.equipoCodigo || '');
     fijarCampo(formulario, 'responsableTipoId', usuario.tipoId || 'CC');
     fijarCampo(formulario, 'responsableNumeroId', usuario.documento);
     fijarCampo(formulario, 'perfilProfesional', usuario.perfilProfesional || usuario.rol);
@@ -345,9 +363,11 @@
     const nota = formulario.querySelector('[data-sesion="nota"]');
     if (nota) {
       nota.hidden = false;
-      (nota.querySelector('span') || nota).textContent =
-        'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
-        (usuario.equipoCodigo ? ', ' + usuario.equipoCodigo : '') + '.';
+      (nota.querySelector('span') || nota).textContent = eligeEquipoDeLaFicha()
+        ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Como lidera una zona, indique en el ítem 10 ' +
+          'el EBS de esta visita.'
+        : 'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
+          (usuario.equipoCodigo ? ', ' + usuario.equipoCodigo : '') + '.';
     }
   }
 

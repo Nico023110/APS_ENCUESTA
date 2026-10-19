@@ -132,14 +132,56 @@ function leerCuerpo(peticion) {
   });
 }
 
-/* Se recarga el módulo en cada petición para poder editar los manejadores
-   sin reiniciar el servidor. Es deliberado y sólo vale en desarrollo. */
+/* Los manejadores comparten módulos —roles.js, api/_auth.js, reglas.js…— que
+   require() guarda en caché. Recargar sólo el manejador dejaba esos módulos
+   con la versión con que arrancó el servidor: un permiso nuevo en roles.js no
+   contaba hasta reiniciar, y el manejador nuevo respondía con la regla vieja.
+   Si alguno cambió en disco, se sueltan todos los módulos del proyecto para
+   que se vuelvan a cargar juntos. _db.js se conserva: guarda el pool de
+   conexiones, y soltarlo dejaría conexiones abiertas sin dueño. */
+const fechaDeCarga = new Map();
+
+function modulosDelProyecto() {
+  const dependencias = path.sep + 'node_modules' + path.sep;
+  return Object.keys(require.cache).filter(function (ruta) {
+    return ruta.indexOf(RAIZ + path.sep) === 0 && ruta.indexOf(dependencias) === -1 &&
+      ruta !== __filename && path.basename(ruta) !== '_db.js';
+  });
+}
+
+function modificadoEn(ruta) {
+  try { return fs.statSync(ruta).mtimeMs; } catch (error) { return null; }
+}
+
+function soltarModulosModificados() {
+  const propios = modulosDelProyecto();
+  const alguno = propios.some(function (ruta) {
+    return fechaDeCarga.has(ruta) && fechaDeCarga.get(ruta) !== modificadoEn(ruta);
+  });
+  if (!alguno) return;
+  propios.forEach(function (ruta) {
+    delete require.cache[ruta];
+    fechaDeCarga.delete(ruta);
+  });
+}
+
+function recordarFechasDeCarga() {
+  modulosDelProyecto().forEach(function (ruta) {
+    if (!fechaDeCarga.has(ruta)) fechaDeCarga.set(ruta, modificadoEn(ruta));
+  });
+}
+
+/* Se recarga el manejador en cada petición para poder editarlo sin
+   reiniciar el servidor, y con él los módulos del proyecto que hayan
+   cambiado. Es deliberado y sólo vale en desarrollo. */
 function cargarManejador(nombre) {
   const ruta = path.join(DIR_API, nombre + '.js');
   if (!fs.existsSync(ruta)) return null;
 
+  soltarModulosModificados();
   delete require.cache[require.resolve(ruta)];
   const modulo = require(ruta);
+  recordarFechasDeCarga();
   return typeof modulo === 'function' ? modulo : modulo.default;
 }
 
@@ -273,7 +315,8 @@ servidor.listen(PUERTO, function () {
       ? 'configurada en .env.local'
       : 'SIN CONFIGURAR — /api fallará (revise .env.local)'));
   console.log('');
-  console.log('  Los manejadores de api/ se recargan solos al editarlos.');
+  console.log('  Los manejadores de api/ y los módulos que comparten (roles.js, api/_*.js…)');
+  console.log('  se recargan solos al editarlos; api/_db.js exige reiniciar.');
   console.log('  Ctrl+C para detener.');
   console.log('');
 });
