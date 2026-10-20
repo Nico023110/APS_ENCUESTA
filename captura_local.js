@@ -180,14 +180,25 @@ function actualizarCodigoPorEquipo() {
  * empezado antes de guardar otras.
  */
 function confirmarCodigoFicha(codigo) {
+  if (!reservarConsecutivoDeFicha(codigo)) return;
+  codigoEnCurso = null;
+}
+
+/**
+ * Deja usado el consecutivo de un código de este dispositivo; los de otro
+ * dispositivo no se tocan (devuelve false). Lo usa también la lista de fichas
+ * sin terminar: una ficha que se deja a medias para empezar otra ya tiene su
+ * código, y la siguiente no puede nacer con el mismo.
+ */
+function reservarConsecutivoDeFicha(codigo) {
   const partes = String(codigo || '').split('-');
-  if (partes.length !== 5 || partes[2] !== identificadorDeDispositivo()) return;
+  if (partes.length !== 5 || partes[2] !== identificadorDeDispositivo()) return false;
 
   const consecutivo = parseInt(partes[3], 10);
   if (Number.isFinite(consecutivo) && consecutivo > ultimoConsecutivoDeFicha()) {
     escribirLocal(CLAVE_CONSECUTIVO_FICHA, String(consecutivo));
   }
-  codigoEnCurso = null;
+  return true;
 }
 
 /**
@@ -214,33 +225,63 @@ const ESPERA_BORRADOR_MS = 1200;
 
 let temporizadorBorrador = null;
 
-/* Contenido del formulario recién reiniciado o recién cargado. Mientras lo
-   que hay en pantalla sea igual, no hay nada que guardar: así el borrador no
-   nace de los valores que ponen solos la sesión, los catálogos o una carga. */
-let contenidoDeReferencia = null;
+/* Valor de cada campo en el formulario recién reiniciado o recién cargado.
+   Una ficha cuenta como empezada sólo cuando el encuestador eligió o escribió
+   algo en algún campo. Antes se comparaba el formulario entero, y bastaba con
+   pulsar «Agregar otra familia» o «Agregar integrante» —bloques vacíos, sin
+   un solo dato— para que al reabrir apareciera una «ficha sin terminar». */
+let valoresDeReferencia = null;
 
 let avisoSinEspacioMostrado = false;
 
-/* Campos que se escriben solos y no dicen que el encuestador haya empezado
-   una ficha: la firma de la sesión (que puede llegar tarde), el código y el
-   consentimiento, que por sí solo no es una ficha empezada. */
-const CAMPOS_FUERA_DEL_BORRADOR = ['equipoSaludId', 'responsableTipoId', 'responsableNumeroId',
-  'responsableNombre', 'perfilProfesional', 'perfilProfesionalOtro', 'codigoFicha',
-  'consentimiento', 'yaRegistradaEnLaBase'];
+/* Campos que no dicen que el encuestador haya empezado una ficha: el
+   consentimiento, que por sí solo no es una ficha empezada, y la marca
+   interna de corrección. Los que escribe el sistema —firma de la sesión,
+   código, cálculos— se reconocen por estar fijos o ser de sólo lectura. */
+const CAMPOS_FUERA_DEL_BORRADOR = ['consentimiento', 'yaRegistradaEnLaBase'];
 
 function claveBorrador() {
   const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
   return PREFIJO_BORRADOR + (usuario && usuario.id ? usuario.id : 'local');
 }
 
-function contenidoComparable(datos) {
-  const copia = Object.assign({}, datos);
-  CAMPOS_FUERA_DEL_BORRADOR.forEach(function (clave) { delete copia[clave]; });
-  return JSON.stringify(copia);
-}
-
 function formularioDeCaptura() {
   return document.getElementById('encuestaForm');
+}
+
+/** Los controles que el encuestador diligencia, con la llave de cada valor. */
+function valoresDiligenciables(formulario) {
+  const valores = new Map();
+  Array.prototype.forEach.call(formulario.querySelectorAll('input[name], select[name], textarea[name]'), function (control) {
+    const nombre = control.getAttribute('name');
+    const hoja = nombre.slice(nombre.lastIndexOf('.') + 1);
+    if (CAMPOS_FUERA_DEL_BORRADOR.indexOf(hoja) !== -1) return;
+    if (control.type === 'hidden' || control.readOnly || control.disabled) return;
+    if (control.classList.contains('is-sesion') || control.classList.contains('is-fijo')) return;
+    if (control.dataset.autoasignado === 'si') return;
+
+    if (control.type === 'checkbox' || control.type === 'radio') {
+      valores.set(nombre + '=' + control.value, control.checked ? 'si' : '');
+    } else {
+      valores.set(nombre, String(control.value || '').trim());
+    }
+  });
+  return valores;
+}
+
+/**
+ * ¿El encuestador eligió o escribió algo? Un campo cuenta si tiene valor y
+ * ese valor no es el que traía el formulario al empezar: los preseleccionados
+ * (UZPE, la fecha de hoy) o lo cargado de una corrección no son diligenciar.
+ */
+function fichaTieneDatos() {
+  const formulario = formularioDeCaptura();
+  if (!formulario || valoresDeReferencia === null) return false;
+  let tiene = false;
+  valoresDiligenciables(formulario).forEach(function (valor, llave) {
+    if (!tiene && valor !== '' && valoresDeReferencia.get(llave) !== valor) tiene = true;
+  });
+  return tiene;
 }
 
 /** Lo que hay ahora en el formulario pasa a ser «sin cambios». */
@@ -248,7 +289,7 @@ function marcarFormularioLimpio() {
   clearTimeout(temporizadorBorrador);
   const formulario = formularioDeCaptura();
   if (!formulario) return;
-  contenidoDeReferencia = contenidoComparable(recolectarDatosFormulario(formulario));
+  valoresDeReferencia = valoresDiligenciables(formulario);
 }
 
 function leerBorrador() {
@@ -266,8 +307,12 @@ function leerBorrador() {
 
 function descartarBorrador() {
   clearTimeout(temporizadorBorrador);
+  /* Guardada en la base, descartada o cancelada: deja de estar sin terminar. */
+  const actual = leerBorrador();
+  if (actual) olvidarEnCurso(claveDeBorrador(actual));
   borrarLocal(claveBorrador());
   ocultarAvisoBorrador();
+  actualizarEstadoAvance(null);
 }
 
 function programarBorrador() {
@@ -278,13 +323,19 @@ function programarBorrador() {
 function guardarBorradorAhora() {
   clearTimeout(temporizadorBorrador);
   const formulario = formularioDeCaptura();
-  if (!formulario || contenidoDeReferencia === null) return;
-
-  const datos = recolectarDatosFormulario(formulario);
+  if (!formulario || valoresDeReferencia === null) return;
 
   /* Sin autorización no hay captura (RN-001): nada que conservar. */
-  if (datos.consentimiento === 'no') return;
-  if (contenidoComparable(datos) === contenidoDeReferencia) return;
+  if (obtenerConsentimiento() === 'no') return;
+
+  /* Sin ningún campo diligenciado no hay ficha empezada. Si había un
+     borrador —se escribió algo y después se borró—, deja de haberlo. */
+  if (!fichaTieneDatos()) {
+    if (leerBorrador()) descartarBorrador();
+    return;
+  }
+
+  const datos = recolectarDatosFormulario(formulario);
 
   const borrador = {
     version: VERSION_BORRADOR,
@@ -301,13 +352,155 @@ function guardarBorradorAhora() {
     datos: datos
   };
 
-  if (!escribirLocal(claveBorrador(), JSON.stringify(borrador)) && !avisoSinEspacioMostrado) {
+  const escrito = escribirLocal(claveBorrador(), JSON.stringify(borrador)) && recordarEnCurso(borrador);
+  if (!escrito && !avisoSinEspacioMostrado) {
     avisoSinEspacioMostrado = true;
     mostrarNotificacion(
       'No hay espacio en el dispositivo para guardar la ficha en curso. ' +
       'Sincronice las fichas pendientes para liberar espacio; hasta entonces, no cierre la aplicación.',
       'warning');
   }
+  if (escrito) actualizarEstadoAvance(borrador.guardadoEn);
+  return escrito;
+}
+
+/* --- 2.0 Fichas sin terminar ----------------------------------------------
+   El borrador de arriba es la ficha que está en el formulario. Además, cada
+   ficha empezada queda en una lista del dispositivo hasta que se guarda en la
+   base o se descarta: el historial la muestra como «sin terminar · no
+   cargada» con «Continuar», y empezar otra ficha no la pierde. Es el
+   pre-guardado que pidió la E.S.E. (observaciones del 19-10-2026): se guarda
+   solo, poco después de cada cambio, y con «Guardar avance» al momento. */
+const PREFIJO_EN_CURSO = 'aps_en_curso_';
+
+function claveEnCurso() {
+  const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
+  return PREFIJO_EN_CURSO + (usuario && usuario.id ? usuario.id : 'local');
+}
+
+/* Una corrección se reconoce por la ficha que corrige; una ficha nueva, por
+   su código, que se le asigna al empezarla. */
+function claveDeBorrador(borrador) {
+  if (borrador && borrador.correccion && borrador.correccion.id) return 'correccion:' + borrador.correccion.id;
+  return 'ficha:' + ((borrador && borrador.codigoFicha) || 'sin-codigo');
+}
+
+function leerFichasEnCurso() {
+  const crudo = leerLocal(claveEnCurso());
+  if (!crudo) return [];
+  try {
+    const lista = JSON.parse(crudo);
+    return Array.isArray(lista)
+      ? lista.filter(function (b) { return b && b.version === VERSION_BORRADOR && b.datos; })
+      : [];
+  } catch (error) {
+    console.warn('La lista de fichas sin terminar no se pudo leer y se descarta:', error);
+    borrarLocal(claveEnCurso());
+    return [];
+  }
+}
+
+function recordarEnCurso(borrador) {
+  reservarConsecutivoDeFicha(borrador && borrador.codigoFicha);
+  const clave = claveDeBorrador(borrador);
+  const lista = leerFichasEnCurso().filter(function (b) { return claveDeBorrador(b) !== clave; });
+  lista.unshift(borrador);
+  return escribirLocal(claveEnCurso(), JSON.stringify(lista));
+}
+
+function olvidarEnCurso(clave) {
+  const lista = leerFichasEnCurso();
+  const quedan = lista.filter(function (b) { return claveDeBorrador(b) !== clave; });
+  if (quedan.length !== lista.length) escribirLocal(claveEnCurso(), JSON.stringify(quedan));
+}
+
+/** Las fichas sin terminar de este usuario en este dispositivo, la más reciente primero. */
+function obtenerFichasEnCurso() {
+  return leerFichasEnCurso().map(function (borrador) {
+    return Object.assign({ clave: claveDeBorrador(borrador) }, borrador);
+  });
+}
+
+/* «Avance guardado en este equipo a las 10:42», junto a «Guardar avance». */
+function actualizarEstadoAvance(iso) {
+  const estado = document.getElementById('estadoAvance');
+  if (!estado) return;
+  if (!iso) {
+    estado.textContent = '';
+    return;
+  }
+  const hora = new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  estado.textContent = 'Avance guardado en este equipo a las ' + hora;
+}
+
+/* «Guardar avance»: lo mismo que el guardado automático, pero ya, y dicho. */
+function guardarAvance(boton) {
+  if (!fichaTieneDatos()) {
+    actualizarEstadoAvance(null);
+    const estado = document.getElementById('estadoAvance');
+    if (estado) estado.textContent = 'Todavía no hay nada que guardar.';
+    return;
+  }
+  if (guardarBorradorAhora()) {
+    if (boton) {
+      boton.classList.add('is-guardado');
+      setTimeout(function () { boton.classList.remove('is-guardado'); }, 1600);
+    }
+    if (typeof mostrarAvisoBreve === 'function') {
+      mostrarAvisoBreve('El avance de la ficha se guardó correctamente en este equipo.', 'success');
+    }
+  }
+}
+
+/* «Continuar» desde el historial: la ficha en pantalla, si la hay, queda en
+   la lista; la elegida vuelve al formulario donde se dejó. */
+function continuarFichaEnCurso(clave) {
+  const elegida = leerFichasEnCurso().find(function (b) { return claveDeBorrador(b) === clave; });
+  if (!elegida) {
+    mostrarNotificacion('Esa ficha sin terminar ya no está en este equipo.', 'warning');
+    return;
+  }
+  const actual = leerBorrador();
+  if (actual && claveDeBorrador(actual) !== clave) guardarBorradorAhora();
+
+  if (encuestaEnCorreccion) salirDeCorreccion();
+  formularioDeCaptura().reset();
+  reiniciarEstadoFormulario();
+  escribirLocal(claveBorrador(), JSON.stringify(elegida));
+  restaurarBorrador(elegida);
+}
+
+/* «Descartar» desde el historial: se pierde lo diligenciado, así que se pregunta. */
+function descartarFichaEnCurso(clave, alTerminar) {
+  pedirConfirmacion({
+    titulo: 'Descartar la ficha sin terminar',
+    mensaje: 'Se borrará lo diligenciado en esta ficha, que no se ha cargado a la base. No se podrá recuperar.',
+    textoConfirmar: 'Descartar',
+    alConfirmar: function () {
+      const actual = leerBorrador();
+      if (actual && claveDeBorrador(actual) === clave) {
+        reiniciarFichaEnCurso();
+      } else {
+        olvidarEnCurso(clave);
+      }
+      if (typeof alTerminar === 'function') alTerminar();
+    }
+  });
+}
+
+/* «Empezar otra ficha»: la de pantalla queda sin terminar en el historial y
+   el formulario vuelve a empezar. */
+function empezarOtraFicha() {
+  if (fichaTieneDatos()) guardarBorradorAhora();
+  if (encuestaEnCorreccion) salirDeCorreccion();
+  clearTimeout(temporizadorBorrador);
+  borrarLocal(claveBorrador());
+  ocultarAvisoBorrador();
+  formularioDeCaptura().reset();
+  reiniciarEstadoFormulario();
+  actualizarEstadoAvance(null);
+  const inicio = document.getElementById('seccion-1');
+  if (inicio) inicio.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* --- 2.1 Recuperación ---------------------------------------------------- */
@@ -347,6 +540,10 @@ function restaurarBorrador(borrador) {
       modoEvolucionPlan = bloqueo.evolucionPlan === true;
       const original = correccionDesdeServidor ||
         obtenerEncuestas().find(function (e) { return e.id === encuestaEnCorreccion; }) || null;
+      /* RN-051: al completar integrantes, cuáles ya estaban también lo dice
+         la ficha original; los del borrador después de ésos son los nuevos. */
+      modoCompletarIntegrantes = bloqueo.completarIntegrantes === true && Boolean(original);
+      integrantesRegistrados = modoCompletarIntegrantes ? registrosDeIntegrantes(original) : null;
       reponerBloqueosDePlan(original, datos);
     } else {
       mostrarAvisoDeCorreccion(datos);
@@ -388,17 +585,13 @@ function confirmarAntesDeReemplazarBorrador(idCorreccion, continuar) {
     return false;
   }
 
-  pedirConfirmacion({
-    titulo: 'Ficha sin terminar',
-    mensaje: 'La ficha ' + (borrador.codigoFicha || 'en curso') + ' no se ha guardado. ' +
-      'Si abre otra para corregirla, la ficha sin terminar se descartará.',
-    textoConfirmar: 'Descartar y corregir',
-    alConfirmar: function () {
-      descartarBorrador();
-      continuar();
-    }
-  });
-  return false;
+  /* La ficha en pantalla no se pierde: queda en el historial como sin
+     terminar, y se sigue con la otra sin preguntar. */
+  if (fichaTieneDatos()) guardarBorradorAhora();
+  clearTimeout(temporizadorBorrador);
+  borrarLocal(claveBorrador());
+  ocultarAvisoBorrador();
+  return true;
 }
 
 /* --- 2.2 Aviso en el formulario ----------------------------------------- */
@@ -485,10 +678,20 @@ function inicializarCapturaLocal() {
   /* Agregar o quitar una familia, un integrante o una fila de plan no dispara
      input ni change. */
   formulario.addEventListener('click', function (evento) {
+    const avance = evento.target.closest('[data-accion="guardarAvance"]');
+    if (avance) {
+      guardarAvance(avance);
+      return;
+    }
     if (evento.target.closest('[data-accion], .btn--bloque, #btnAgregarComplemento, .complemento-quitar')) {
       programarBorrador();
     }
   });
+
+  const botonAvance = document.getElementById('btnGuardarAvance');
+  if (botonAvance) botonAvance.addEventListener('click', function () { guardarAvance(botonAvance); });
+  const botonOtra = document.getElementById('btnEmpezarOtraFicha');
+  if (botonOtra) botonOtra.addEventListener('click', empezarOtraFicha);
 
   const equipo = document.getElementById('equipoSaludId');
   if (equipo) {

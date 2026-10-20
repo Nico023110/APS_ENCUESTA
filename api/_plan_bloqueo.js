@@ -5,16 +5,14 @@
    sólo se completa. Se compara el plan que está en la base con el que llega
    y se devuelve lo que se cambió o se quitó de lo registrado:
 
-     acción registrada        no se cambia ni se quita; se agregan otras.
-     seguimiento registrado   el responsable y la acción concertada no se
-                              cambian; el 1.º y el 2.º seguimiento, una vez
-                              registrados, tampoco. Uno vacío se completa.
+     acción o seguimiento     no se quita; lo que tiene escrito no se
+     registrado               cambia; lo que tiene vacío se completa.
      plan de un ámbito        no desaparece si tenía algo registrado.
 
-   Las acciones y los seguimientos se comparan en su orden —el formulario
-   conserva el de la base y agrega lo nuevo al final— y sólo cuentan los que
-   la base guarda: una acción sin código o sin ejecutor, o un seguimiento sin
-   acción concertada o sin responsable, no se escriben (guardar_encuesta.js).
+   Nada del plan es obligatorio (RN-222): la base guarda toda fila con algo
+   escrito, aunque esté a medias, y ésa es la que cuenta como registrada.
+   Las filas se comparan en su orden —el formulario conserva el de la base y
+   agrega lo nuevo al final—.
 
    Cambiar lo registrado exige autorización (aps.permiso_plan); quien decide
    si la hay es guardar_encuesta.js. Esto sólo dice qué cambió.
@@ -45,24 +43,35 @@ function normal(valor) {
   return /^\d{4}-\d{2}-\d{2}T/.test(texto) ? texto.slice(0, 10) : texto;
 }
 
-function lleno() {
-  return Array.prototype.every.call(arguments, function (v) { return normal(v) !== null; });
+/* RN-222: nada del plan es obligatorio, así que la base guarda toda fila
+   con algo escrito, aunque esté a medias. Ésas son las registradas; dentro de
+   ellas, lo que ya tiene valor no se cambia y lo vacío se completa. Cada una
+   lleva su posición en el arreglo original para que el aviso señale el campo
+   exacto en el formulario. */
+function filaConAlgo(fila) {
+  return Object.keys(fila || {}).some(function (campo) {
+    const valor = fila[campo];
+    return Array.isArray(valor) ? valor.length > 0 : normal(valor) !== null;
+  });
 }
 
-/* Las filas que la base guarda, con su posición en el arreglo original para
-   que el aviso señale el campo exacto en el formulario. */
 function accionesGuardadas(plan) {
   return ((plan && Array.isArray(plan.acciones)) ? plan.acciones : [])
     .map(function (accion, indice) { return { item: accion || {}, indice: indice }; })
-    .filter(function (a) { return lleno(a.item.codigoAccion, a.item.ejecutorTipoId, a.item.ejecutorNumeroId); });
+    .filter(function (a) { return filaConAlgo(a.item); });
 }
 
 function seguimientosGuardados(plan) {
   return ((plan && Array.isArray(plan.seguimientos)) ? plan.seguimientos : [])
     .map(function (seguimiento, indice) { return { item: seguimiento || {}, indice: indice }; })
-    .filter(function (s) {
-      return lleno(s.item.accionConcertada, s.item.seguimientoTipoId, s.item.seguimientoNumeroId);
-    });
+    .filter(function (s) { return filaConAlgo(s.item); });
+}
+
+/* El primer campo que tenía valor y ya no lo tiene igual. */
+function campoCambiado(campos, antes, despues) {
+  return campos.find(function (campo) {
+    return normal(antes[campo]) !== null && normal(antes[campo]) !== normal(despues[campo]);
+  });
 }
 
 function nombreDe(integrante) {
@@ -150,12 +159,11 @@ function cambiosEnPlanRegistrado(anterior, nueva) {
           'Se quitó la acción ' + (n + 1) + ' de ' + actual.etiqueta + ', que ya está registrada.'));
         return;
       }
-      const distinto = CAMPOS_ACCION.find(function (campo) {
-        return normal(antes.item[campo]) !== normal(despues.item[campo]);
-      });
+      const distinto = campoCambiado(CAMPOS_ACCION, antes.item, despues.item);
       if (distinto) {
         cambios.push(bloqueo(actual.ruta + '.acciones[' + despues.indice + '].' + distinto,
-          'La acción ' + (n + 1) + ' de ' + actual.etiqueta + ' ya está registrada y no se puede cambiar.'));
+          'La acción ' + (n + 1) + ' de ' + actual.etiqueta + ' ya está registrada: lo que tiene escrito ' +
+          'no se puede cambiar; sólo se completa lo que falta.'));
       }
     });
 
@@ -168,19 +176,14 @@ function cambiosEnPlanRegistrado(anterior, nueva) {
         return;
       }
       const prefijo = actual.ruta + '.seguimientos[' + despues.indice + '].';
-      const distinto = CAMPOS_SEGUIMIENTO.find(function (campo) {
-        return normal(antes.item[campo]) !== normal(despues.item[campo]);
-      });
+      const distinto = campoCambiado(CAMPOS_SEGUIMIENTO, antes.item, despues.item);
       if (distinto) {
         cambios.push(bloqueo(prefijo + distinto,
           'El seguimiento ' + (n + 1) + ' de ' + actual.etiqueta + ' ya está registrado: ' +
-          'su responsable y la acción concertada no se pueden cambiar.'));
+          'su responsable y la acción concertada, una vez escritos, no se pueden cambiar.'));
       }
       TRAMOS_SEGUIMIENTO.forEach(function (tramo) {
-        if (normal(antes.item[tramo.fecha]) === null) return;   // vacío: se completa
-        const cambiado = tramo.campos.find(function (campo) {
-          return normal(antes.item[campo]) !== normal(despues.item[campo]);
-        });
+        const cambiado = campoCambiado(tramo.campos, antes.item, despues.item);
         if (cambiado) {
           cambios.push(bloqueo(prefijo + cambiado,
             'El ' + tramo.nombre + ' del seguimiento ' + (n + 1) + ' de ' + actual.etiqueta +

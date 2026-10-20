@@ -153,7 +153,11 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
   }
   ficha.ebs = firma.ebs || ficha.ebs;
   await elegir('#prestadorPrimario', ficha.prestador, 'Prestador primario');
-  await escribir('#codigoFicha', ficha.codigo, 'Código de la ficha');
+  /* RN-015: el código lo genera el dispositivo al empezar la ficha; se lee
+     para reconocerla después en el almacenamiento local. */
+  ficha.codigo = await page.locator('#codigoFicha').inputValue();
+  if (ficha.codigo) diario.ok('Código de la ficha (generado, RN-015)', ficha.codigo);
+  else diario.problema('Código de la ficha', 'la ficha nueva no trae código generado (RN-015)');
   await escribir('#fechaDiligenciamiento', HOY, 'Fecha de diligenciamiento');
 
   await seccion('2.4.1 Datos de abordaje');
@@ -175,12 +179,23 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
   if (direccion.trim()) diario.ok('Dirección compuesta', direccion.trim().slice(0, 80));
 
   /* Ítem 22: georreferenciación. */
-  await escribir('#latitud', ficha.latitud, 'Latitud');
-  await escribir('#longitud', ficha.longitud, 'Longitud');
+  /* Latitud y longitud son de sólo lectura: las llena la geocodificación o
+     el GPS. La prueba concede la ubicación (playwright.config.js). */
+  await page.locator('#btnCapturarGps').click();
+  await expect(page.locator('#latitud')).not.toHaveValue('', { timeout: 15000 })
+    .then(async function () {
+      diario.ok('Coordenadas tomadas del GPS', await page.locator('#latitud').inputValue() + ', ' +
+        await page.locator('#longitud').inputValue());
+    })
+    .catch(function () { diario.problema('Coordenadas', 'el GPS no llenó la latitud y la longitud'); });
+  /* La captura avisa con un diálogo («Coordenadas capturadas…»): se cierra
+     como lo haría el encuestador. */
+  const entendido = page.getByRole('button', { name: 'Entendido' });
+  if (await entendido.isVisible({ timeout: 3000 }).catch(function () { return false; })) await entendido.click();
   await escribir('#ubicacionReferencia', ficha.ubicacionReferencia, 'Punto de referencia');
 
-  await escribir('#idHogar', ficha.hogar, 'ID del hogar');
-  await escribir('#idFamilia', ficha.familia, 'ID de la familia');
+  /* Ítems 25 y 26: los asigna el servidor al guardar (anexo SI-APS). */
+  diario.noAplica('ID del hogar y de la familia', 'los asigna el servidor al guardar');
   await elegir('#estrato', ficha.estrato, 'Estrato');
   await escribir('#hogaresEnVivienda', ficha.hogaresEnVivienda, 'Hogares en la vivienda');
   await escribir('#personasEnVivienda', ficha.personasEnVivienda, 'Personas en la vivienda');
@@ -221,10 +236,10 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await seccion('3.3 Agua y saneamiento básico');
 
-  await elegir('#fuenteAgua', ficha.fuenteAgua, 'Fuente de agua');
-  await elegir('#disposicionExcretas', ficha.disposicionExcretas, 'Disposición de excretas');
-  await elegir('#aguasResiduales', ficha.aguasResiduales, 'Aguas residuales');
-  await elegir('#residuosSolidos', ficha.residuosSolidos, 'Residuos sólidos');
+  await marcar('fuenteAgua', ficha.fuenteAgua, 'Fuente de agua');
+  await marcar('disposicionExcretas', ficha.disposicionExcretas, 'Disposición de excretas');
+  await marcar('aguasResiduales', ficha.aguasResiduales, 'Aguas residuales');
+  await marcar('residuosSolidos', ficha.residuosSolidos, 'Residuos sólidos');
 
   /* ---------------------------------------------------------
      4. La familia
@@ -278,6 +293,9 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
      6. Plan de cuidado
      --------------------------------------------------------- */
 
+  await seccion('Preguntas del anexo técnico SI-APS');
+  await diligenciarAnexo(page, diario);
+
   const verificarHerencia = crearVerificadorDeHerencia(page, diario);
 
   await seccion('6.1 Plan de cuidado de la vivienda');
@@ -286,7 +304,7 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
      de la ficha; lo que corresponde es comprobarlos. */
   await verificarHerencia('planVivienda', {
     codigoEbs: ficha.ebs,
-    codigoVivienda: ficha.hogar
+    codigoVivienda: ''
   }, ['RN-111', 'RN-112']);
 
   await diligenciarAccionYSeguimiento(
@@ -301,10 +319,10 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await verificarHerencia('planesFamilia[0]', {
     codigoEbs: ficha.ebs,
-    codigoVivienda: ficha.hogar,
-    /* RN-026: la llave de la familia no es el ítem 26 que se digitó, sino la
-       que el servidor deriva del hogar y del consecutivo. */
-    codigoFamilia: ficha.codigoFamiliaDerivado
+    /* Los códigos de vivienda y familia los asigna el servidor al guardar
+       (anexo SI-APS): antes de guardar, el plan los hereda vacíos. */
+    codigoVivienda: '',
+    codigoFamilia: ''
   }, ['RN-120', 'RN-121', 'RN-122']);
 
   await diligenciarAccionYSeguimiento(
@@ -319,8 +337,8 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await verificarHerencia('planesPersona[0]', {
     codigoEbs: ficha.ebs,
-    codigoVivienda: ficha.hogar,
-    codigoFamilia: ficha.codigoFamiliaDerivado
+    codigoVivienda: '',
+    codigoFamilia: ''
   }, ['RN-130', 'RN-131', 'RN-132']);
 
   await verificarDocumentoDelPlan(page, diario, personas[intervenido]);
@@ -375,7 +393,7 @@ async function diligenciarIntegrante(page, diario, indice, persona, seccion, api
   await marcar(P + 'rolFamiliar', persona.rol, 'Rol en la familia');
 
   /* --- Socioeconómicas --- */
-  await elegir(P + 'ocupacion', persona.ocupacion, 'Ocupación (CIUO)');
+  await escribir(P + 'ocupacion', persona.ocupacion, 'Ocupación (CIUO)');
   await elegir(P + 'nivelEducativo', persona.nivelEducativo, 'Nivel educativo');
   await elegir(P + 'regimenAfiliacion', persona.regimen || 'subsidiado', 'Régimen de afiliación');
   await elegir(P + 'eapb', persona.eapb || 'ESS024', 'EAPB');
@@ -434,14 +452,9 @@ async function diligenciarIntegrante(page, diario, indice, persona, seccion, api
   await marcar(P + 'zonaEndemica', 'ninguna', 'Zona endémica');
   await marcar(P + 'limitacionCotidiana', 'no', 'Limitación en la vida cotidiana');
 
-  /* Ítem 105: situaciones de riesgo psicosocial, sólo entre los 14 y los 28. */
-  if (isFinite(anios) && anios >= 14 && anios <= 28) {
-    await marcar(P + 'riesgosSaludMentalJoven', 'ninguna',
-      'Situaciones de riesgo para la salud mental (ítem 105)', SI_APLICA);
-  } else {
-    diario.noAplica('Situaciones de riesgo para la salud mental',
-      'sólo se indaga entre los 14 y los 28 años');
-  }
+  /* Ítem 105: se indaga a todo integrante (anexo SI-APS, variable 54). */
+  await marcar(P + 'riesgosSaludMentalJoven', 'ninguna',
+    'Situaciones de riesgo para la salud mental (ítem 105)');
 
   /* Salud mental y consumo: desde los 14 años (RN-105 a RN-110). */
   if (isFinite(anios) && anios >= 14) {
@@ -595,6 +608,10 @@ async function cerrarYGuardar(page, diario, ficha) {
   await page.waitForTimeout(1200);
 
   const avisos = await ayudas.leerAvisos(page);
+  /* El aviso del resultado es un diálogo: se cierra para seguir, como el
+     encuestador pulsaría «Entendido». */
+  const entendido = page.getByRole('button', { name: 'Entendido' });
+  if (await entendido.isVisible().catch(function () { return false; })) await entendido.click();
   const erroresDeCampo = await ayudas.leerErroresDeCampo(page);
   const impedimentos = await ayudas.leerImpedimentos(page);
   const alertas = await ayudas.leerAlertas(page);
@@ -709,21 +726,26 @@ async function cerrarYGuardar(page, diario, ficha) {
   }
 
   await page.getByRole('button', { name: 'Inicio' }).click();
-  await page.getByRole('button', { name: 'Sincronizar a la Nube' }).click();
+  await page.getByRole('button', { name: 'Sincronizar ahora' }).click();
   await page.waitForTimeout(900);
 
   const avisosSync = await ayudas.leerAvisos(page);
   avisosSync.forEach(function (a) { console.log('   • aviso [' + a.tipo + '] ' + a.texto); });
 
-  const yaEstaba = avisosSync.some(function (a) {
-    return a.texto.indexOf('ya están guardadas') !== -1;
-  });
+  /* Lo que salió bien lo dice el módulo de sincronía de Inicio, sin aviso
+     modal: «Todo está en la base». Un aviso sólo aparece ante un rechazo. */
+  const modulo = page.locator('#sincronia');
+  await modulo.locator('.sincronia__titulo').filter({ hasText: 'Todo está en la base' })
+    .waitFor({ timeout: 10000 }).catch(function () {});
+  const tituloSync = (await modulo.locator('.sincronia__titulo').textContent() || '').trim();
+  const estadoSync = await modulo.getAttribute('data-estado');
 
-  if (yaEstaba) {
-    diario.ok('Sincronizar no reenvía lo que ya está en la base');
+  if (estadoSync === 'listo' && tituloSync === 'Todo está en la base') {
+    diario.ok('Sincronizar no reenvía lo que ya está en la base', tituloSync);
   } else {
     diario.problema('Sincronización',
       'no informó que la ficha ya estaba guardada',
+      estadoSync + ' · ' + tituloSync + ' | ' +
       avisosSync.map(function (a) { return a.tipo + ': ' + a.texto; }).join(' | '));
   }
 
@@ -733,6 +755,62 @@ async function cerrarYGuardar(page, diario, ficha) {
   return { guardo: true, respuestaApi: respuestaApi, alertas: alertas };
 }
 
+
+/**
+ * Las preguntas del anexo técnico SI-APS (anexo.js) se pintan solas en cada
+ * tarjeta y muchas dependen de otra respuesta. Se responden las visibles con
+ * respuestas válidas y conservadoras —«No», «Ninguno» o «No aplica» cuando
+ * existen, si no la primera opción; la fecha de hoy; un cero; un texto corto—
+ * y se repite mientras aparezcan preguntas nuevas.
+ */
+async function diligenciarAnexo(page, diario) {
+  for (let pasada = 1; pasada <= 6; pasada++) {
+    const respondidas = await page.evaluate(function () {
+      const hoy = new Date();
+      const iso = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+        String(hoy.getDate()).padStart(2, '0');
+      const disparar = function (el) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      const hechas = [];
+      document.querySelectorAll('#encuestaForm [data-anexo]').forEach(function (campo) {
+        if (campo.closest('[hidden]')) return;
+        const radios = Array.from(campo.querySelectorAll('input[type="radio"]:not(:disabled)'));
+        const casillas = Array.from(campo.querySelectorAll('input[type="checkbox"]:not(:disabled)'));
+        const lista = campo.querySelector('select:not(:disabled)');
+        const texto = campo.querySelector('input[type="text"]:not([readonly]):not(:disabled), ' +
+          'input[type="number"]:not(:disabled), input[type="date"]:not(:disabled)');
+        if (radios.length) {
+          if (radios.some(function (r) { return r.checked; })) return;
+          const r = radios.find(function (x) { return x.value === 'no'; }) || radios[0];
+          r.checked = true; disparar(r);
+        } else if (casillas.length) {
+          if (casillas.some(function (c) { return c.checked; })) return;
+          const c = casillas.find(function (x) { return /^(ninguno|ninguna|no_aplica)$/.test(x.value); }) || casillas[0];
+          c.checked = true; disparar(c);
+        } else if (lista) {
+          if (lista.value) return;
+          const o = Array.from(lista.options).find(function (x) { return x.value; });
+          if (!o) return;
+          lista.value = o.value; disparar(lista);
+        } else if (texto) {
+          if (texto.value) return;
+          texto.value = texto.type === 'number' ? (texto.min || '0') : (texto.type === 'date' ? iso :
+            (texto.inputMode === 'numeric' ? '3157684920' : 'Prueba automática'));
+          disparar(texto);
+        } else {
+          return;
+        }
+        hechas.push(campo.dataset.anexo);
+      });
+      return hechas;
+    });
+    if (respondidas.length === 0) break;
+    diario.ok('Anexo SI-APS, pasada ' + pasada, respondidas.length + ' pregunta(s): ' + respondidas.slice(0, 6).join(', ') +
+      (respondidas.length > 6 ? '…' : ''));
+  }
+}
 
 module.exports = {
   fechaISO: fechaISO,

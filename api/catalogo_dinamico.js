@@ -12,21 +12,33 @@ module.exports = async (req, res) => {
   if (!usuario) return;
 
   try {
-    const [eapbRes, prestadorRes, uzpeRes, terRes, equiposRes] = await Promise.all([
-      consultar('SELECT codigo AS valor, nombre AS etiqueta, regimen FROM cat.eapb WHERE vigente = true ORDER BY nombre'),
-      consultar('SELECT codigo AS valor, nombre AS etiqueta FROM cat.prestador WHERE vigente = true ORDER BY nombre'),
-      consultar('SELECT codigo AS valor, nombre AS etiqueta FROM cat.uzpe WHERE vigente = true ORDER BY nombre'),
-      consultar(`
-        SELECT t.codigo as ter_codigo, m.codigo as mt_codigo, m.nombre, m.comuna 
-        FROM cat.territorio t
-        JOIN cat.microterritorio m ON t.codigo = m.territorio_codigo
-        WHERE t.vigente = true AND m.vigente = true
-        ORDER BY t.codigo, m.codigo
-      `),
-      /* Los EBS registrados: la coordinación, que lidera zonas con varios
-         EBS, elige en el ítem 10 el de cada visita. Sólo códigos. */
-      consultar('SELECT codigo FROM aps.equipo_salud WHERE activo ORDER BY codigo')
-    ]);
+    /* Las cinco listas en una sola consulta. Eran cinco consultas en paralelo
+       sobre el pool: con el pool frío, cinco conexiones nuevas a la base
+       —cada una con su negociación TLS— para un catálogo que cabe en una. */
+    const listas = (await consultar(`
+      SELECT
+        (SELECT coalesce(json_agg(json_build_object('valor', codigo, 'etiqueta', nombre, 'regimen', regimen) ORDER BY nombre), '[]')
+           FROM cat.eapb WHERE vigente = true) AS eapb,
+        (SELECT coalesce(json_agg(json_build_object('valor', codigo, 'etiqueta', nombre) ORDER BY nombre), '[]')
+           FROM cat.prestador WHERE vigente = true) AS prestador,
+        (SELECT coalesce(json_agg(json_build_object('valor', codigo, 'etiqueta', nombre) ORDER BY nombre), '[]')
+           FROM cat.uzpe WHERE vigente = true) AS uzpe,
+        (SELECT coalesce(json_agg(json_build_object('ter_codigo', t.codigo, 'mt_codigo', m.codigo,
+                                                    'nombre', m.nombre, 'comuna', m.comuna)
+                                  ORDER BY t.codigo, m.codigo), '[]')
+           FROM cat.territorio t
+           JOIN cat.microterritorio m ON t.codigo = m.territorio_codigo
+          WHERE t.vigente = true AND m.vigente = true) AS territorios,
+        /* Los EBS registrados: la coordinación, que lidera zonas con varios
+           EBS, elige en el ítem 10 el de cada visita. Sólo códigos. */
+        (SELECT coalesce(json_agg(codigo ORDER BY codigo), '[]')
+           FROM aps.equipo_salud WHERE activo) AS equipos
+    `)).rows[0];
+    const eapbRes = { rows: listas.eapb };
+    const prestadorRes = { rows: listas.prestador };
+    const uzpeRes = { rows: listas.uzpe };
+    const terRes = { rows: listas.territorios };
+    const equiposRes = { rows: listas.equipos.map(function (codigo) { return { codigo: codigo }; }) };
 
     const territorios = {};
     for (const row of terRes.rows) {

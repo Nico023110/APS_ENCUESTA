@@ -20,6 +20,8 @@
 
 'use strict';
 
+const { reemplazarPuentes } = require('./_puentes');
+
 const LLAVE_POR_TABLA = {
   ficha: 'id',
   hogar: 'id',
@@ -61,6 +63,7 @@ async function escribirAnexo(cliente, m, tabla, id, objeto, lector) {
 
   const asignaciones = [];
   const parametros = [];
+  const puentes = [];
   let filas = 0;
 
   for (const pregunta of preguntas) {
@@ -68,22 +71,25 @@ async function escribirAnexo(cliente, m, tabla, id, objeto, lector) {
     const valor = objeto[pregunta.clave];
 
     if (pregunta.tipo === 'multiple') {
-      const puente = m.tablaPuenteDePregunta(pregunta);
-      const padre = m.columnaPadreDePregunta(pregunta);
-      await cliente.query('DELETE FROM ' + puente + ' WHERE ' + padre + ' = $1', [id]);
-      if (!aplica) continue;
-
-      const codigos = (Array.isArray(valor) ? valor : [valor]).map(texto).filter(function (c) { return c !== null; });
-      for (const codigo of Array.from(new Set(codigos))) {
-        await cliente.query('INSERT INTO ' + puente + ' (' + padre + ', codigo) VALUES ($1, $2)', [id, codigo]);
-        filas++;
-      }
+      /* Si no aplica, sólo se borra (lista vacía). */
+      const codigos = aplica
+        ? Array.from(new Set((Array.isArray(valor) ? valor : [valor]).map(texto).filter(function (c) { return c !== null; })))
+        : [];
+      puentes.push({
+        tabla: m.tablaPuenteDePregunta(pregunta),
+        columnaDueno: m.columnaPadreDePregunta(pregunta),
+        codigos: codigos
+      });
+      filas += codigos.length;
       continue;
     }
 
     parametros.push(aplica ? valorSql(pregunta, valor) : null);
     asignaciones.push(m.columnaDePregunta(pregunta) + ' = $' + parametros.length);
   }
+
+  /* Todas las selecciones múltiples de esta fila en una sola consulta. */
+  await reemplazarPuentes(cliente, id, puentes);
 
   if (asignaciones.length > 0) {
     parametros.push(id);
@@ -187,16 +193,13 @@ function opcionPrincipal(m, campo, valor) {
 }
 
 async function escribirListasConvertidas(cliente, nivel, id, objeto) {
-  let filas = 0;
-  for (const def of LISTAS_CONVERTIDAS) {
-    if (def.nivel !== nivel || objeto[def.campo] === undefined) continue;
-    await cliente.query('DELETE FROM ' + def.tabla + ' WHERE ' + def.padre + ' = $1', [id]);
-    for (const codigo of Array.from(new Set(comoLista(objeto[def.campo])))) {
-      await cliente.query('INSERT INTO ' + def.tabla + ' (' + def.padre + ', codigo) VALUES ($1, $2)', [id, codigo]);
-      filas++;
-    }
-  }
-  return filas;
+  const puentes = LISTAS_CONVERTIDAS
+    .filter(function (def) { return def.nivel === nivel && objeto[def.campo] !== undefined; })
+    .map(function (def) {
+      return { tabla: def.tabla, columnaDueno: def.padre, codigos: Array.from(new Set(comoLista(objeto[def.campo]))) };
+    });
+  await reemplazarPuentes(cliente, id, puentes);
+  return puentes.reduce(function (total, p) { return total + p.codigos.length; }, 0);
 }
 
 /** @returns Map fichaId → { campo: [códigos] }, para varias fichas a la vez. */

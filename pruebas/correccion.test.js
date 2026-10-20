@@ -149,7 +149,8 @@ try {
     ' construirEncuestaDesdeDatos: construirEncuestaDesdeDatos,' +
     ' cargarEncuestaEnFormulario: cargarEncuestaEnFormulario,' +
     ' reiniciarEstadoFormulario: reiniciarEstadoFormulario,' +
-    ' validarReglas: validarReglas };');
+    ' validarReglas: validarReglas,' +
+    ' evaluarAdvertencias: evaluarAdvertencias };');
   ventana.document.dispatchEvent(new ventana.Event('DOMContentLoaded', { bubbles: true }));
 } catch (error) {
   errores.push('montaje: ' + error.message);
@@ -416,10 +417,15 @@ async function comprobarBuscadorDeCups() {
     JSON.stringify(rechazos.map(function (i) { return i.mensaje; })));
 
   conCupsOficial.planVivienda.acciones[0].codigoAccion = 'lo que sea que escriba';
-  const rechazoProsa = api.validarReglas(conCupsOficial)
+  /* RN-222: nada del plan bloquea el guardado; la prosa en el campo del
+     código se advierte junto al campo en vez de rechazarse. */
+  const bloqueoProsa = api.validarReglas(conCupsOficial)
     .filter(function (i) { return i.campo === 'codigoAccion'; });
-  verificar('pero la prosa en el campo del código sigue rechazándose',
-    rechazoProsa.length > 0);
+  const avisoProsa = api.evaluarAdvertencias(conCupsOficial)
+    .filter(function (i) { return i.campo === 'codigoAccion'; });
+  verificar('pero la prosa en el campo del código se advierte (sin bloquear el guardado)',
+    bloqueoProsa.length === 0 && avisoProsa.length > 0,
+    JSON.stringify({ bloqueos: bloqueoProsa.length, avisos: avisoProsa.length }));
 
   await comprobarDiagnosticoDeFallos(entrada, combo, lista);
 

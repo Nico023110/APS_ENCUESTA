@@ -11,7 +11,7 @@
       señal, y si dice que ya no existe, se sale.
    2. fetch. Toda llamada a /api/ lleva la cabecera anti-CSRF y la cookie;
       un 401 cierra la sesión local y vuelve al inicio de sesión.
-   3. Bloqueo por inactividad (RN-223.6). Tras 15 minutos sin tocar la
+   3. Bloqueo por inactividad (RN-223.6). Tras 20 minutos sin tocar la
       pantalla se cubre la aplicación y se pide la contraseña de nuevo. La
       ficha en curso no se pierde: sigue debajo.
    4. Firma. Los ítems 10 y 12-14 (equipo y responsable) se escriben desde la
@@ -24,7 +24,7 @@
 
   const CLAVE_CACHE = 'aps_sesion_usuario';
   const RUTA_LOGIN = '/login.html';
-  const INACTIVIDAD_BLOQUEO_MS = 15 * 60 * 1000;
+  const INACTIVIDAD_BLOQUEO_MS = 20 * 60 * 1000;
   const REVISION_INACTIVIDAD_MS = 30 * 1000;
 
   let usuario = leerCache();

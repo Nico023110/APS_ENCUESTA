@@ -1211,6 +1211,16 @@ function sincronizarIntegrantes(familia) {
   const declarados = Number(campo.value);
   if (!isFinite(declarados) || declarados < 1) return;
 
+  /* Completando integrantes (correccion.js) el ítem 51 sólo sube: bajarlo
+     quitaría integrantes ya registrados, y eso es corregir la ficha. */
+  const minimo = typeof minimoDeIntegrantes === 'function' ? minimoDeIntegrantes(familia) : 1;
+  if (declarados < minimo) {
+    campo.value = minimo;
+    mostrarNotificacion('Al completar integrantes el número de integrantes (ítem 51) puede aumentar, no ' +
+      'disminuir: la familia ya tenía ' + minimo + ' declarados.', 'warning');
+    return sincronizarIntegrantes(familia);
+  }
+
   const bloques = contenedor.querySelectorAll(':scope > [data-bloque="integrante"]');
   const actuales = bloques.length;
 
@@ -1457,6 +1467,7 @@ function recalcularFormularioCompleto() {
   propagarLlavesHeredadas();
   actualizarSelectoresDePlan();
   actualizarLimitesDeFecha();
+  actualizarCamposCondicionalesDelPlan(document);
 
   /* Los códigos que llegan puestos —una ficha abierta para corregir— no los
      tecleó nadie, así que nadie disparó su búsqueda. Resolverlos aquí les pone
@@ -1466,8 +1477,38 @@ function recalcularFormularioCompleto() {
   actualizarEncabezadosDeBloques();
 }
 
+/* Ítems 115 / 125 / 136b y 118-119 / 128-129 / 139-140. Una acción
+   «Derivada» pide a dónde se deriva y, si ya la hay, la fecha de la cita; un
+   seguimiento «No cumple» pide su motivo (RN-226.4). Esos campos sólo se ven
+   cuando aplican, y al dejar de aplicar se vacían: un destino de una acción
+   que pasó a «En sitio» no debe viajar a la base. */
+function actualizarCamposCondicionalesDelPlan(raiz) {
+  const base = raiz || document;
+  const filas = base.matches && base.matches('tr[data-fila="accion"]')
+    ? [base] : Array.prototype.slice.call(base.querySelectorAll('tr[data-fila="accion"]'));
+  filas.forEach(function (fila) {
+    const derivacion = fila.querySelector('[data-rol="derivacion"]');
+    if (!derivacion) return;
+    const elegida = fila.querySelector('input[type="radio"][name$=".tipoRespuesta"]:checked');
+    const derivada = Boolean(elegida && elegida.value === 'derivada');
+    derivacion.hidden = !derivada;
+    if (!derivada) derivacion.querySelectorAll('input').forEach(function (campo) { campo.value = ''; });
+  });
+
+  base.querySelectorAll('input[data-rol="motivoNc"]').forEach(function (motivo) {
+    const estado = motivo.parentElement && motivo.parentElement.querySelector('select');
+    const noCumple = Boolean(estado && estado.value === 'NC');
+    motivo.hidden = !noCumple;
+    if (!noCumple) motivo.value = '';
+  });
+}
+
 function manejarCambioEnFormulario(evento) {
   const objetivo = evento.target;
+
+  if (objetivo.closest && objetivo.closest('tr[data-fila="accion"], tr[data-fila="seguimiento"]')) {
+    actualizarCamposCondicionalesDelPlan(objetivo.closest('tr'));
+  }
 
   /* La fecha de la ficha es el tope de todas las demás, así que al cambiarla
      hay que repasar el formulario entero (RN-016 / RN-064). */
@@ -1627,7 +1668,12 @@ const CONFIG_BLOQUE_ELIMINAR = {
   },
   integrante: {
     tituloRol: 'tituloIntegrante', generico: 'este integrante', nombreModal: 'integrante',
-    detalle: function () { return ''; }
+    /* RN-051: quitar el bloque no baja el ítem 51. Si la persona no estaba
+       en la visita, queda pendiente y se agrega después. */
+    detalle: function () {
+      return ' de esta ficha. El ítem 51 se conserva: si no estaba en la visita, podrá agregarlo después ' +
+        'desde Historial → Completar integrantes';
+    }
   },
   planFamilia: {
     tituloRol: 'tituloPlanFamilia', generico: 'este plan de cuidado', nombreModal: 'plan de cuidado',

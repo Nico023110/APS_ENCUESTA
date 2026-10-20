@@ -819,6 +819,11 @@ function geocodificarDesdeFormulario(forzar) {
   const firma = via + '||' + ancla;
   if (!forzar && firma === ultimaConsultaGeocodificada) return;
 
+  /* Lo que se digitó a mano no lo pisa el cálculo automático; sólo «Buscar
+     dir.» (forzar) lo reemplaza. */
+  if (!forzar && origenCoordenadas === 'manual' &&
+      document.getElementById('latitud').value && document.getElementById('longitud').value) return;
+
   if (!origenEsSeguro()) {
     establecerEstadoGeo('Sin coordenadas automáticas.');
     establecerAvisoGeo(
@@ -846,6 +851,7 @@ function geocodificarDesdeFormulario(forzar) {
       document.getElementById('longitud').value = resultado.longitud.toFixed(6);
 
       origenCoordenadas = 'geocodificacion';
+      habilitarCoordenadasManuales(false);
       precisionCoordenadas = resultado.precision;
       referenciaCoordenadas = resultado.referencia || null;
 
@@ -896,6 +902,7 @@ function capturarCoordenadasGps() {
       document.getElementById('longitud').value = posicion.coords.longitude.toFixed(6);
 
       origenCoordenadas = 'gps';
+      habilitarCoordenadasManuales(false);
       precisionCoordenadas = posicion.coords.accuracy === null ? null : Math.round(posicion.coords.accuracy);
       referenciaCoordenadas = null;
 
@@ -940,12 +947,48 @@ function actualizarAvisoCoordenadas() {
   aviso.hidden = false;
 }
 
-function marcarCoordenadasManuales() {
+function marcarCoordenadasManuales(evento) {
+  /* Lo que se copia de Google Maps llega como «3.451647, -76.531985» en un
+     solo campo: se reparte entre la latitud y la longitud. */
+  const campo = evento && evento.target;
+  if (campo && /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(campo.value)) {
+    const partes = campo.value.split(',');
+    document.getElementById('latitud').value = partes[0].trim();
+    document.getElementById('longitud').value = partes[1].trim();
+  }
+
   origenCoordenadas = 'manual';
   precisionCoordenadas = null;
   referenciaCoordenadas = null;
   establecerEstadoGeo('Coordenadas digitadas manualmente.');
   actualizarAvisoCoordenadas();
+}
+
+/* Las coordenadas son de sólo lectura: las llena la dirección, el GPS o, con
+   este botón, quien diligencia —en zona rural casi siempre; en urbana cuando
+   el cálculo no las encuentra—. El botón dice en qué estado están. */
+function habilitarCoordenadasManuales(activar) {
+  const latitud = document.getElementById('latitud');
+  const longitud = document.getElementById('longitud');
+  const boton = document.getElementById('btnDigitarCoordenadas');
+  if (!latitud || !longitud || !boton) return;
+
+  latitud.readOnly = !activar;
+  longitud.readOnly = !activar;
+  boton.setAttribute('aria-pressed', activar ? 'true' : 'false');
+  boton.classList.toggle('btn--activo', activar);
+  boton.innerHTML = activar
+    ? '<i class="ph ph-check" aria-hidden="true"></i> Coordenadas habilitadas'
+    : '<i class="ph ph-pencil-simple-line" aria-hidden="true"></i> Digitar coordenadas';
+  boton.title = activar
+    ? 'La latitud y la longitud se pueden escribir. Pulse de nuevo para bloquearlas.'
+    : 'Habilita la latitud y la longitud para escribirlas';
+
+  if (activar) {
+    establecerEstadoGeo('Escriba la latitud y la longitud (por ejemplo 3.451647 y -76.531985), o pegue las dos ' +
+      'separadas por coma en la latitud.');
+    latitud.focus();
+  }
 }
 
 /* ---------------------------------------------------------
@@ -1154,8 +1197,46 @@ function actualizarEncuesta(id, datosActualizados) {
   }
 }
 
-// Nueva función de sincronización con la API (Backend en Vercel)
+/* La subida en curso: el módulo de Inicio la cuenta («Subiendo 2 de 5») y
+   un segundo toque no la lanza otra vez. null cuando no hay ninguna. */
+let sincronizacionEnCurso = null;
+
+/* Cómo terminó la última sincronización de esta sesión, para decirlo en el
+   módulo («3 fichas subidas») en vez de abrir un aviso. */
+let ultimoResultadoSync = null;
+
+/* Cuándo terminó la última sincronización en este dispositivo. Es una
+   comodidad de pantalla («Sincronizado hoy a las 10:42»): si el navegador la
+   pierde, el módulo sólo deja de decirlo. */
+const CLAVE_ULTIMA_SINCRONIZACION = 'aps_ultima_sincronizacion';
+
+function leerUltimaSincronizacion() {
+  try { return localStorage.getItem(CLAVE_ULTIMA_SINCRONIZACION); } catch (e) { return null; }
+}
+
+function anotarUltimaSincronizacion() {
+  try { localStorage.setItem(CLAVE_ULTIMA_SINCRONIZACION, new Date().toISOString()); } catch (e) { /* sin almacenamiento */ }
+}
+
+function haySenal() {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+/* Sincronizar es subir lo que sólo está en este equipo y, después, traer lo
+   que haya en la base: así también aparece lo que otros dispositivos del
+   equipo guardaron. Con nada pendiente, el toque sólo trae. */
 async function sincronizarEncuestas() {
+  if (sincronizacionEnCurso) return;
+
+  /* Sin señal no se intenta: cada ficha fallaría por separado y el resumen
+     lo achacaría al servidor. Las fichas siguen a salvo en el equipo. */
+  if (!haySenal()) {
+    mostrarNotificacion('No hay conexión. Las fichas siguen guardadas en este equipo; ' +
+      'sincronice cuando vuelva la señal.', 'info');
+    renderizarEstadoSync();
+    return;
+  }
+
   const encuestasLocales = obtenerEncuestas();
 
   /* Sólo lo que falta por subir. Antes se reenviaba todo el historial en cada
@@ -1164,15 +1245,10 @@ async function sincronizarEncuestas() {
      nunca reflejaba lo que acababa de pasar. */
   const pendientes = encuestasLocales.filter(function (e) { return e.sincronizada !== true; });
 
-  if (pendientes.length === 0) {
-    mostrarNotificacion(
-      encuestasLocales.length === 0
-        ? 'No hay encuestas para sincronizar.'
-        : 'Todas las encuestas ya están guardadas en la base.', 'info');
-    return;
-  }
-
-  mostrarNotificacion('Sincronizando encuestas con la nube...', 'info');
+  /* El progreso se ve en el módulo de Inicio, donde se pulsó: un aviso
+     modal de «sincronizando…» lo tapaba durante toda la subida. */
+  sincronizacionEnCurso = { hechas: 0, total: pendientes.length };
+  renderizarEstadoSync();
 
   let exitosas = 0;
   const rechazadas = [];
@@ -1212,15 +1288,24 @@ async function sincronizarEncuestas() {
           codigo: encuesta.codigoFicha || encuesta.id, bloqueos: [], fallaDelServidor: null
         });
       }
+      sincronizacionEnCurso.hechas++;
+      renderizarEstadoSync();
     }
 
     // Guardar los estados actualizados en localStorage
     guardarEncuestas(encuestasLocales);
 
-    if (exitosas > 0) {
-      mostrarNotificacion('Se sincronizaron ' + exitosas + ' encuesta(s) correctamente.' +
-        (rechazadas.length > 0 ? ' (' + rechazadas.length + ' con error)' : ''), 'success');
-    }
+    /* Lo que hay en la base, incluido lo que acaba de subir y lo que otros
+       dispositivos del equipo guardaron. */
+    sincronizacionEnCurso.trayendo = true;
+    renderizarEstadoSync();
+    await refrescarFichasDelServidor();
+
+    /* Lo que salió bien se dice en el mismo módulo, sin aviso modal: no hay
+       nada que decidir. Sólo un rechazo abre aviso, porque hay que leer qué
+       ficha y qué campo corregir. */
+    ultimoResultadoSync = { subidas: exitosas, rechazadas: rechazadas.length };
+    if (rechazadas.length === 0) anotarUltimaSincronizacion();
 
     /* El aviso decía «revise la consola (F12)». Un encuestador no abre la
        consola: se queda sin saber qué corregir y la ficha no sube nunca. El
@@ -1242,7 +1327,9 @@ async function sincronizarEncuestas() {
       }
 
       mostrarNotificacion(
-        rechazadas.length + ' encuesta(s) no se pudieron guardar.' + detalle, 'error');
+        (exitosas > 0 ? textoCantidad(exitosas, 'ficha subió', 'fichas subieron') + ' a la base. ' : '') +
+        textoCantidad(rechazadas.length, 'ficha no se pudo guardar.', 'fichas no se pudieron guardar.') + detalle,
+        'error');
 
       console.table(rechazadas.map(function (r) {
         return {
@@ -1253,11 +1340,13 @@ async function sincronizarEncuestas() {
       }));
     }
     
-    renderizarInicio(); 
-    renderizarHistorial();
   } catch (error) {
     console.error('Fallo en sincronización:', error);
     mostrarNotificacion('Error de red al sincronizar. Reintente cuando tenga conexión.', 'error');
+  } finally {
+    sincronizacionEnCurso = null;
+    renderizarInicio();
+    renderizarHistorial();
   }
 }
 
@@ -1343,6 +1432,50 @@ function mostrarNotificacion(mensaje, tipo, alCerrar) {
   });
 }
 
+/**
+ * Aviso breve que no bloquea la pantalla: aparece en la esquina, se lee y se
+ * va solo. Para confirmar algo que salió bien y no exige decisión —como
+ * «Guardar avance»—, donde un aviso modal interrumpiría el diligenciamiento.
+ */
+function mostrarAvisoBreve(mensaje, tipo, duracionMs) {
+  tipo = tipo || 'success';
+  const contenedor = document.getElementById('toastContainer');
+  if (!contenedor) return;
+
+  /* El mismo aviso ya en pantalla (p. ej. «Guardar avance» pulsado varias
+     veces seguidas) no se apila: se deja el que está y se reinicia su
+     tiempo. */
+  const existente = Array.prototype.find.call(contenedor.children, function (otro) {
+    return otro.dataset.mensaje === mensaje && !otro.classList.contains('is-leaving');
+  });
+  if (existente) {
+    clearTimeout(existente._temporizador);
+    existente._temporizador = programarSalidaDeAviso(existente, duracionMs);
+    return;
+  }
+
+  const aviso = document.createElement('div');
+  aviso.dataset.mensaje = mensaje;
+  aviso.className = 'toast toast--' + tipo;
+  aviso.setAttribute('role', 'status');
+  aviso.setAttribute('aria-live', 'polite');
+  const textos = document.createElement('div');
+  const titulo = document.createElement('strong');
+  titulo.textContent = TITULOS_TOAST[tipo] || TITULOS_TOAST.info;
+  textos.appendChild(titulo);
+  textos.appendChild(document.createTextNode(mensaje));
+  aviso.appendChild(textos);
+  contenedor.appendChild(aviso);
+  aviso._temporizador = programarSalidaDeAviso(aviso, duracionMs);
+}
+
+function programarSalidaDeAviso(aviso, duracionMs) {
+  return setTimeout(function () {
+    aviso.classList.add('is-leaving');
+    setTimeout(function () { aviso.remove(); }, 400);
+  }, duracionMs || 3500);
+}
+
 /* ---------------------------------------------------------
    13. NAVEGACIÓN ENTRE VISTAS (tabs)
    --------------------------------------------------------- */
@@ -1399,6 +1532,21 @@ function inicializarNavegacion() {
     });
   });
 
+  /* Las filas de «Fichas que requieren atención» abren el historial ya
+     filtrado, con los demás filtros limpios: la lista muestra exactamente
+     las fichas que contaba la fila. */
+  document.querySelectorAll('[data-filtro-historial]').forEach(function (boton) {
+    boton.addEventListener('click', function () {
+      ['filtroTexto', 'filtroHacinamiento', 'filtroPlanCuidado'].forEach(function (id) {
+        const campo = document.getElementById(id);
+        if (campo) campo.value = '';
+      });
+      const filtro = document.getElementById(boton.dataset.filtroHistorial);
+      if (filtro) filtro.value = boton.dataset.valor;
+      cambiarVista('historial');
+    });
+  });
+
   /* La medida depende de la fuente cargada y del ancho de la ventana. */
   window.addEventListener('resize', moverIndicadorDeTabs);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(moverIndicadorDeTabs);
@@ -1409,26 +1557,113 @@ function inicializarNavegacion() {
    14. RENDERIZADO — VISTA INICIO (indicadores + últimos registros)
    --------------------------------------------------------- */
 
+/* La vivienda de una ficha. El NUV no se repite ni se reinicia; el código
+   de la vivienda lo reemplaza en una fila que no lo traiga. Una ficha que
+   todavía no sube no tiene ninguno de los dos: cuenta como su propia vivienda
+   hasta que la base le asigne la suya. */
+function claveDeVivienda(encuesta) {
+  if (encuesta.nuv) return 'nuv:' + encuesta.nuv;
+  if (encuesta.idHogar) return 'vivienda:' + encuesta.idHogar;
+  return 'ficha:' + (encuesta.codigoFicha || encuesta.id);
+}
+
+/* Hogares, familias y personas de la vivienda según una ficha. La fila que
+   viene de la base trae las cuentas hechas (listar_fichas.js); la ficha del
+   dispositivo trae sus familias completas y se cuentan aquí con el mismo
+   criterio de RN-028: una familia sin hogar (fichas anteriores al ítem) es un
+   hogar propio. */
+function composicionDeFicha(encuesta) {
+  const resumen = encuesta.composicion;
+  if (resumen) {
+    return {
+      declarados: Number(resumen.hogaresDeclarados) || 0,
+      hogares: Number(resumen.hogares) || 0,
+      familias: Number(resumen.familias) || 0,
+      personas: Number(resumen.personas) || 0
+    };
+  }
+
+  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+  const hogares = new Set(familias.map(function (familia, i) {
+    return Number(familia.hogarNumero) >= 1 ? Number(familia.hogarNumero) : 'familia' + i;
+  }));
+  return {
+    declarados: Number(encuesta.hogaresEnVivienda) || 0,
+    hogares: hogares.size,
+    familias: familias.length,
+    personas: familias.reduce(function (total, familia) {
+      return total + (Array.isArray(familia.integrantes) ? familia.integrantes.length : 0);
+    }, 0)
+  };
+}
+
 function calcularIndicadores(encuestas) {
-  const conHacinamiento = encuestas.filter(function (e) { return e.hacinamiento === 'si'; }).length;
-  const situacionesInminentes = encuestas.filter(function (e) {
-    return requiereAtencionPrioritaria(e.situacionInminente);
-  }).length;
-  const territorios = new Set(
-    encuestas.map(function (e) { return e.territorio; }).filter(Boolean)
-  );
+  /* Volver a una vivienda deja otra ficha, no otra vivienda: de cada una se
+     toma su última visita, que es la que dice cómo está hoy. */
+  const ultimaVisita = new Map();
+  encuestas.forEach(function (encuesta) {
+    const clave = claveDeVivienda(encuesta);
+    const previa = ultimaVisita.get(clave);
+    if (!previa || new Date(encuesta.fechaRegistro || 0) > new Date(previa.fechaRegistro || 0)) {
+      ultimaVisita.set(clave, encuesta);
+    }
+  });
 
-  const planPendiente = encuestas.filter(function (e) {
-    return e.planCuidado && e.planCuidado.pendiente === true;
-  }).length;
+  let hogares = 0;
+  let hogaresSinCaracterizar = 0;
+  let familias = 0;
+  let personas = 0;
+  const porTerritorio = new Map();
 
+  ultimaVisita.forEach(function (encuesta) {
+    const c = composicionDeFicha(encuesta);
+    hogares += c.hogares;
+    /* RN-028: un hogar declarado en el ítem 28 que no estaba en la visita. */
+    hogaresSinCaracterizar += Math.max(0, c.declarados - c.hogares);
+    familias += c.familias;
+    personas += c.personas;
+
+    if (!encuesta.territorio) return;
+    const territorio = porTerritorio.get(encuesta.territorio) ||
+      { codigo: encuesta.territorio, viviendas: 0, familias: 0 };
+    territorio.viviendas += 1;
+    territorio.familias += c.familias;
+    porTerritorio.set(encuesta.territorio, territorio);
+  });
+
+  const territorios = Array.from(porTerritorio.values()).sort(function (a, b) {
+    return b.viviendas - a.viviendas || b.familias - a.familias || a.codigo.localeCompare(b.codigo);
+  });
+
+  /* Lo que pide atención se cuenta por ficha, no por vivienda: así la cifra
+     es la misma que deja el filtro del historial al que lleva. */
   return {
     totalEncuestas: encuestas.length,
-    conHacinamiento: conHacinamiento,
-    situacionesInminentes: situacionesInminentes,
-    territoriosCubiertos: territorios.size,
-    planPendiente: planPendiente
+    viviendas: ultimaVisita.size,
+    hogares: hogares,
+    hogaresSinCaracterizar: hogaresSinCaracterizar,
+    familias: familias,
+    personas: personas,
+    territorios: territorios,
+    conHacinamiento: encuestas.filter(function (e) { return e.hacinamiento === 'si'; }).length,
+    situacionesInminentes: encuestas.filter(function (e) {
+      return requiereAtencionPrioritaria(e.situacionInminente);
+    }).length,
+    planPendiente: encuestas.filter(function (e) {
+      return e.planCuidado && e.planCuidado.pendiente === true;
+    }).length
   };
+}
+
+/* Cifras con el separador de miles de Colombia (1.284) y razones con un
+   decimal y coma (1,2). */
+function formatearCantidad(n) {
+  return Number(n).toLocaleString('es-CO');
+}
+
+function formatearRazon(parte, todo) {
+  if (!todo) return null;
+  return (parte / todo).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 /* Dice si el equipo pidió menos movimiento. Se consulta en cada uso y no se
@@ -1455,7 +1690,7 @@ function animarCifra(elemento, destino, retardo) {
   elemento.dataset.valor = destino;
 
   if (actual === destino || prefiereMenosMovimiento()) {
-    elemento.textContent = destino;
+    elemento.textContent = formatearCantidad(destino);
     elemento.rafCifra = null;
     return;
   }
@@ -1469,117 +1704,252 @@ function animarCifra(elemento, destino, retardo) {
   function paso(ahora) {
     const t = Math.max(0, Math.min(1, (ahora - arranque) / duracion));
     const suave = 1 - Math.pow(1 - t, 3);        /* ease-out cúbico */
-    elemento.textContent = Math.round(actual + (destino - actual) * suave);
+    elemento.textContent = formatearCantidad(Math.round(actual + (destino - actual) * suave));
     if (t < 1) {
       elemento.rafCifra = requestAnimationFrame(paso);
     } else {
-      elemento.textContent = destino;
+      elemento.textContent = formatearCantidad(destino);
       elemento.rafCifra = null;
     }
   }
 
-  elemento.textContent = actual;
+  elemento.textContent = formatearCantidad(actual);
   elemento.rafCifra = requestAnimationFrame(paso);
 }
 
-function plantillaIndicador(tarjeta, orden) {
-  return (
-    '<div class="indicator-card entra" style="--orden: ' + orden + '">' +
-      '<div class="indicator-card__icon indicator-card__icon--' + tarjeta.clase + '">' + tarjeta.icono + '</div>' +
-      '<div class="indicator-card__datos">' +
-        '<div class="indicator-card__cifra">' +
-          '<span class="indicator-card__value">0</span>' +
-        '</div>' +
-        '<div class="indicator-card__label">' +
-          '<span>' + tarjeta.etiqueta + '</span>' +
-          '<span class="indicator-card__punto" aria-hidden="true"></span>' +
-        '</div>' +
-      '</div>' +
-    '</div>'
-  );
+function textoRazon(parte, todo, unidad) {
+  const razon = formatearRazon(parte, todo);
+  return razon === null ? '' : razon + ' ' + unidad;
+}
+
+/* La cadena de Inicio: vivienda → hogar → familia → persona, el mismo
+   anidamiento del instrumento. Cada nivel dice cuántos le caben del anterior
+   («1,2 por vivienda»): es lo que hace que cuatro cifras sueltas se lean
+   como una sola población.
+
+   El marcado es fijo (index.html) y aquí sólo se parchean cifras y textos:
+   reescribirlo en cada repintado volvería a disparar la entrada cada vez que
+   contesta la base, y la pantalla parecería recargarse sola. */
+function renderizarComposicion(indicadores) {
+  const territorios = indicadores.territorios.length;
+  const niveles = [
+    {
+      nivel: 'viviendas',
+      valor: indicadores.viviendas,
+      detalle: indicadores.viviendas === 0 ? 'Aún sin visitas'
+        : (territorios > 0 ? 'en ' + textoCantidad(territorios, 'territorio', 'territorios') : '')
+    },
+    { nivel: 'hogares', valor: indicadores.hogares, detalle: textoRazon(indicadores.hogares, indicadores.viviendas, 'por vivienda') },
+    { nivel: 'familias', valor: indicadores.familias, detalle: textoRazon(indicadores.familias, indicadores.hogares, 'por hogar') },
+    { nivel: 'personas', valor: indicadores.personas, detalle: textoRazon(indicadores.personas, indicadores.familias, 'por familia') }
+  ];
+
+  niveles.forEach(function (nivel, i) {
+    const caja = document.querySelector('.cadena__nivel[data-nivel="' + nivel.nivel + '"]');
+    if (!caja) return;
+    caja.classList.toggle('cadena__nivel--cero', nivel.valor === 0);
+    const cifra = caja.querySelector('.cadena__valor');
+    /* El conteo arranca cuando la cadena termina de entrar (--orden 2 por
+       el --stagger de 55 ms) y avanza un nivel cada 55 ms más. */
+    if (cifra) animarCifra(cifra, nivel.valor, 110 + i * 55);
+    const detalle = caja.querySelector('.cadena__detalle');
+    if (detalle) detalle.textContent = nivel.detalle;
+  });
+
+  /* RN-028: los hogares declarados que no estaban en la visita. Ámbar con
+     punto, como todo lo pendiente; no se muestra cuando no hay ninguno. */
+  const aviso = document.getElementById('hogaresSinCaracterizar');
+  if (aviso) {
+    const pendientes = indicadores.hogaresSinCaracterizar;
+    aviso.hidden = pendientes === 0;
+    aviso.querySelector('.cadena__aviso-texto').textContent =
+      textoCantidad(pendientes, 'declarado sin caracterizar', 'declarados sin caracterizar');
+  }
+}
+
+const TERRITORIOS_VISIBLES = 6;
+
+/* Viviendas por territorio: una sola serie, así que no lleva leyenda (el
+   título dice qué se mide) y cada barra lleva su cifra escrita al lado. Las
+   barras se miden contra el territorio con más viviendas, no contra un
+   total: no hay un «100 %» de cobertura que se conozca. */
+function renderizarTerritorios(territorios) {
+  const lista = document.getElementById('barrasTerritorio');
+  if (!lista) return;
+
+  const nota = document.getElementById('notaTerritorios');
+  if (nota) nota.textContent = territorios.length ? textoCantidad(territorios.length, 'territorio', 'territorios') : '';
+
+  if (territorios.length === 0) {
+    lista.innerHTML = '<li class="barras__vacio">Cada vivienda caracterizada se suma aquí a su territorio.</li>';
+    return;
+  }
+
+  /* Las barras crecen desde la base sólo en la primera pintura. Al repintar
+     con lo que conteste la base, volver a crecer parecería una recarga. */
+  lista.classList.toggle('barras--crece', !lista.dataset.pintado);
+  lista.dataset.pintado = '1';
+
+  const visibles = territorios.slice(0, TERRITORIOS_VISIBLES);
+  const maximo = visibles[0].viviendas;
+  const filas = visibles.map(function (territorio, i) {
+    const etiqueta = etiquetaTerritorio(territorio.codigo);
+    const nombre = etiqueta.indexOf(' · ') === -1 ? '' : etiqueta.split(' · ')[1];
+    return (
+      '<li class="barra" style="--proporcion: ' + (territorio.viviendas / maximo).toFixed(4) + '; --orden: ' + i + '">' +
+        '<span class="barra__nombre">' +
+          '<span class="barra__codigo">' + escaparHtml(territorio.codigo) + '</span>' +
+          escaparHtml(nombre) +
+        '</span>' +
+        '<span class="barra__cifras">' +
+          '<strong>' + formatearCantidad(territorio.viviendas) + '</strong> ' +
+          (territorio.viviendas === 1 ? 'vivienda' : 'viviendas') +
+          '<span class="barra__secundaria"> · ' + textoCantidad(territorio.familias, 'familia', 'familias') + '</span>' +
+        '</span>' +
+        '<span class="barra__carril" aria-hidden="true"><span class="barra__relleno"></span></span>' +
+      '</li>'
+    );
+  });
+
+  const resto = territorios.length - visibles.length;
+  if (resto > 0) {
+    filas.push('<li class="barras__resto">y ' + textoCantidad(resto, 'territorio más', 'territorios más') + '</li>');
+  }
+  lista.innerHTML = filas.join('');
+}
+
+/* Lo que requiere atención. "estado" tiñe la fila sólo cuando hay algo que
+   contar: «0 situaciones inminentes» es una buena noticia, no una alerta. */
+function renderizarAtencion(indicadores) {
+  [
+    { id: 'atencionInminente', valor: indicadores.situacionesInminentes, estado: 'alerta' },
+    { id: 'atencionHacinamiento', valor: indicadores.conHacinamiento, estado: 'alerta' },
+    { id: 'atencionPlan', valor: indicadores.planPendiente, estado: 'aviso' }
+  ].forEach(function (fila, i) {
+    const caja = document.getElementById(fila.id);
+    if (!caja) return;
+    const activo = fila.valor > 0;
+    caja.classList.toggle('atencion__fila--alerta', activo && fila.estado === 'alerta');
+    caja.classList.toggle('atencion__fila--aviso', activo && fila.estado === 'aviso');
+    const cifra = caja.querySelector('.atencion__valor');
+    if (cifra) animarCifra(cifra, fila.valor, 220 + i * 55);
+  });
 }
 
 function renderizarIndicadores(encuestas) {
   const indicadores = calcularIndicadores(encuestas);
-  const contenedor = document.getElementById('indicatorsGrid');
-  if (!contenedor) return;
 
-  /* El total ya no es una teja más: vive en el marcador del bento, con su
-     propio peso. Aquí quedan las cuatro cifras de estado del territorio.
-
-     "estado" tiñe la cifra y enciende el punto de 6 px, pero sólo cuando el
-     valor es mayor que cero: «0 situaciones inminentes» es una buena noticia,
-     no una alerta. Territorios cubiertos no es un estado, es un recuento, y
-     por eso no lleva "estado". */
   const marcador = document.getElementById('totalFichas');
   if (marcador) animarCifra(marcador, indicadores.totalEncuestas, 0);
 
-  const tarjetas = [
-    { icono: '<i class="ph ph-bed"></i>', clase: 'red', valor: indicadores.conHacinamiento, etiqueta: 'Hogares con hacinamiento', estado: 'alerta' },
-    { icono: '<i class="ph ph-warning-circle"></i>', clase: 'amber', valor: indicadores.situacionesInminentes, etiqueta: 'Situaciones inminentes', estado: 'alerta' },
-    { icono: '<i class="ph ph-map-pin"></i>', clase: 'blue', valor: indicadores.territoriosCubiertos, etiqueta: 'Territorios cubiertos' },
-    { icono: '<i class="ph ph-clock-countdown"></i>', clase: 'amber', valor: indicadores.planPendiente, etiqueta: 'Plan de cuidado pendiente', estado: 'aviso' }
-  ];
-
-  /* Las tejas se construyen una sola vez y después se parchean en sitio. Si
-     se reescribiera el innerHTML en cada repintado, la entrada escalonada se
-     dispararía otra vez cada vez que contesta la base y la pantalla parecería
-     estar recargándose sola. */
-  const primeraPintura = contenedor.children.length !== tarjetas.length;
-  if (primeraPintura) {
-    contenedor.innerHTML = tarjetas.map(function (tarjeta, i) {
-      return plantillaIndicador(tarjeta, i + 1);
-    }).join('');
-  }
-
-  tarjetas.forEach(function (tarjeta, i) {
-    const teja = contenedor.children[i];
-    if (!teja) return;
-    const activo = tarjeta.valor > 0;
-
-    teja.classList.toggle('indicator-card--cero', !activo);
-    teja.classList.toggle('indicator-card--alerta', activo && tarjeta.estado === 'alerta');
-    teja.classList.toggle('indicator-card--aviso', activo && tarjeta.estado === 'aviso');
-
-    const cifra = teja.querySelector('.indicator-card__value');
-    /* El conteo empieza cuando la teja termina de entrar (55 ms por hermano,
-       el mismo --stagger del CSS), para que no cuente detrás de una tarjeta
-       que todavía se está desplazando. */
-    if (cifra) animarCifra(cifra, tarjeta.valor, primeraPintura ? (i + 1) * 55 : 0);
-  });
+  renderizarComposicion(indicadores);
+  renderizarTerritorios(indicadores.territorios);
+  renderizarAtencion(indicadores);
 }
 
+/* «hoy a las 10:42», «ayer a las 16:05» o «el 12 oct a las 09:30». */
+function textoCuando(fechaIso) {
+  const fecha = new Date(fechaIso);
+  if (!fechaIso || isNaN(fecha.getTime())) return '';
+  const hoy = new Date();
+  const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1);
+  const hora = ' a las ' + formatearHora(fechaIso);
+  if (fecha.toDateString() === hoy.toDateString()) return 'hoy' + hora;
+  if (fecha.toDateString() === ayer.toDateString()) return 'ayer' + hora;
+  return 'el ' + fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + hora;
+}
+
+/* Icono del estado y contenido del botón en cada estado del módulo. */
+const VISTA_SINCRONIA = {
+  listo: { icono: 'ph-cloud-check', boton: 'Sincronizar ahora', botonIcono: 'ph-arrows-clockwise' },
+  pendiente: { icono: 'ph-cloud-arrow-up', boton: 'Sincronizar ahora', botonIcono: 'ph-arrow-right' },
+  subiendo: { icono: 'ph-arrows-clockwise', boton: 'Sincronizando…', botonIcono: null },
+  'sin-red': { icono: 'ph-cloud-slash', boton: 'Esperando señal', botonIcono: null }
+};
+
 /**
- * Píldora de sincronización del encabezado de Inicio. Cuenta exactamente lo
- * mismo que cuenta sincronizarEncuestas(): fichas de este equipo que aún no
- * están en la base. Verde y quieta cuando no queda nada; ámbar y pulsable
- * cuando sí, con la acción que resuelve el estado en el mismo sitio donde se
- * lee el estado.
+ * Módulo de sincronización de Inicio, junto al total de fichas: lo primero
+ * que se ve al abrir. Cuenta exactamente lo mismo que sincronizarEncuestas()
+ * —fichas de este equipo que aún no están en la base— y dice en el mismo
+ * sitio qué pasa y qué hacer:
+ *   pendiente  ámbar, con el único punto que late, y el botón en azul lleno;
+ *   listo      verde, con cuándo se sincronizó, y el botón en segundo plano;
+ *   subiendo   «Subiendo 2 de 5…» con su barra de avance, botón ocupado;
+ *   sin-red    las fichas esperan la señal, botón deshabilitado.
+ * Sólo se parchea el marcado fijo de index.html: el estado cambia en cada
+ * ficha que sube y reescribirlo haría parpadear el botón bajo el dedo.
  */
 function renderizarEstadoSync() {
-  const caja = document.getElementById('estadoSync');
-  if (!caja) return;
+  const modulo = document.getElementById('sincronia');
+  if (!modulo) return;
 
   const locales = obtenerEncuestas();
   const pendientes = locales.filter(function (e) { return e.sincronizada !== true; }).length;
-  const punto = '<span class="estado-sync__punto" aria-hidden="true"></span>';
+  const curso = sincronizacionEnCurso;
+  const ultima = leerUltimaSincronizacion();
 
-  if (pendientes === 0) {
-    caja.innerHTML =
-      '<span class="estado-sync estado-sync--listo">' + punto +
-        (locales.length === 0 ? 'Sin fichas por subir' : 'Todo sincronizado') +
-      '</span>';
-    return;
+  let estado;
+  let titulo;
+  let detalle;
+  let avance = 0;
+
+  if (curso) {
+    estado = 'subiendo';
+    if (curso.trayendo || curso.total === 0) {
+      titulo = 'Consultando la base…';
+      detalle = 'Trayendo lo que guardó el equipo';
+      avance = 1;
+    } else {
+      titulo = 'Subiendo ' + Math.min(curso.hechas + 1, curso.total) + ' de ' + curso.total + '…';
+      detalle = 'No cierre la aplicación';
+      avance = curso.hechas / curso.total;
+    }
+  } else if (!haySenal()) {
+    estado = 'sin-red';
+    titulo = 'Sin conexión';
+    detalle = pendientes > 0
+      ? textoCantidad(pendientes, 'ficha espera', 'fichas esperan') + ' la señal'
+      : 'Puede seguir capturando fichas';
+  } else if (pendientes > 0) {
+    estado = 'pendiente';
+    titulo = textoCantidad(pendientes, 'ficha sin subir', 'fichas sin subir');
+    detalle = 'Sólo están en este equipo';
+  } else {
+    estado = 'listo';
+    if (locales.length === 0 && !ultima) {
+      titulo = 'Nada por subir';
+      detalle = 'Lo que guarde sin señal esperará aquí';
+    } else {
+      titulo = 'Todo está en la base';
+      if (ultimoResultadoSync && ultimoResultadoSync.subidas > 0 && ultima) {
+        detalle = textoCantidad(ultimoResultadoSync.subidas, 'ficha subida', 'fichas subidas') + ' ' + textoCuando(ultima);
+      } else if (ultima) {
+        detalle = 'Sincronizado ' + textoCuando(ultima);
+      } else {
+        detalle = 'Las fichas de este equipo ya subieron';
+      }
+    }
   }
 
-  caja.innerHTML =
-    '<button type="button" class="estado-sync estado-sync--pendiente" ' +
-      'onclick="sincronizarEncuestas()" ' +
-      'title="Subir ahora las fichas que sólo están en este equipo">' + punto +
-      '<span><span class="estado-sync__contador">' + pendientes + '</span> ' +
-        (pendientes === 1 ? 'ficha sin subir' : 'fichas sin subir') +
-      '</span>' +
-    '</button>';
+  const vista = VISTA_SINCRONIA[estado];
+  modulo.dataset.estado = estado;
+  modulo.setAttribute('aria-busy', estado === 'subiendo' ? 'true' : 'false');
+
+  const icono = modulo.querySelector('.sincronia__icono i');
+  if (icono) icono.className = 'ph ' + vista.icono;
+  modulo.querySelector('.sincronia__titulo').textContent = titulo;
+  modulo.querySelector('.sincronia__detalle').textContent = detalle;
+
+  const barra = modulo.querySelector('.sincronia__barra');
+  barra.hidden = estado !== 'subiendo';
+  barra.querySelector('.sincronia__avance').style.transform = 'scaleX(' + avance + ')';
+
+  const boton = document.getElementById('btnSincronizar');
+  boton.disabled = estado === 'subiendo' || estado === 'sin-red';
+  boton.querySelector('.btn-sync__texto').textContent = vista.boton;
+  const isla = boton.querySelector('.btn-sync__icono');
+  isla.hidden = !vista.botonIcono;
+  if (vista.botonIcono) isla.firstElementChild.className = 'ph ' + vista.botonIcono;
 }
 
 function badgeHacinamiento(valor) {
@@ -1615,6 +1985,146 @@ function badgePlanCuidado(encuesta) {
   }
   return '<span class="badge badge--plan-registrado" title="' + plan.accionesRegistradas +
     ' acción(es) registrada(s)">Registrado</span>';
+}
+
+/* RN-200: plazo de atención por prioridad, contado desde que se detecta la
+   alerta. Es el mismo de aps.plazo_prioridad() en la base. */
+const HORAS_PLAZO_PRIORIDAD = { inmediata: 0, prioritaria: 72, regular: 30 * 24 };
+
+/* Los planes de una ficha completa: el de la vivienda, el de cada familia y
+   el de cada integrante. */
+function planesDeFicha(encuesta) {
+  const planes = [encuesta.planVivienda];
+  (encuesta.familias || []).forEach(function (familia) {
+    planes.push(familia.planFamilia);
+    (familia.integrantes || []).forEach(function (integrante) { planes.push(integrante.planPersona); });
+  });
+  return planes.filter(Boolean);
+}
+
+/**
+ * Lo que el historial muestra del plan de cuidado: alertas por prioridad, el
+ * plazo más próximo de las que siguen sin conducta, derivaciones con su
+ * próxima cita y seguimientos realizados. La fila de la base lo trae hecho
+ * (api/_plan_cuidado.js); la ficha del dispositivo trae el plan completo y
+ * se calcula aquí con el mismo motor de reglas que decidió si está
+ * pendiente. Una fila sin lo uno ni lo otro devuelve null.
+ */
+function detallePlanDeFicha(encuesta) {
+  const plan = encuesta && encuesta.planCuidado;
+  if (plan && plan.detalle) return plan.detalle;
+  if (!encuesta || !Array.isArray(encuesta.familias) || typeof evaluarAlertas !== 'function') return null;
+
+  let alertas;
+  let sinConducta;
+  try {
+    alertas = evaluarAlertas(encuesta);
+    sinConducta = verificarTrazabilidadAlertas(encuesta, alertas);
+  } catch (error) {
+    return null;
+  }
+
+  const porPrioridad = { inmediata: 0, prioritaria: 0, regular: 0 };
+  alertas.forEach(function (alerta) {
+    if (porPrioridad[alerta.prioridad] !== undefined) porPrioridad[alerta.prioridad]++;
+  });
+
+  const detectada = new Date(encuesta.fechaRegistro || Date.now()).getTime();
+  let vence = null;
+  sinConducta.forEach(function (alerta) {
+    const horas = HORAS_PLAZO_PRIORIDAD[alerta.prioridad];
+    if (horas === undefined) return;
+    const limite = detectada + horas * 3600000;
+    if (vence === null || limite < vence) vence = limite;
+  });
+
+  const hoy = new Date().toISOString().split('T')[0];
+  let derivadas = 0;
+  let proximaCita = null;
+  let hechos = 0;
+  let esperados = 0;
+  planesDeFicha(encuesta).forEach(function (p) {
+    (p.acciones || []).forEach(function (accion) {
+      if (!accion || !accion.codigoAccion) return;
+      if (accion.tipoRespuesta === 'derivada') derivadas++;
+      if (accion.fechaCita && accion.fechaCita >= hoy && (!proximaCita || accion.fechaCita < proximaCita)) {
+        proximaCita = accion.fechaCita;
+      }
+    });
+    (p.seguimientos || []).forEach(function (seg) {
+      if (!seg || !seg.accionConcertada) return;
+      esperados += 2;
+      if (seg.seg1Fecha) hechos++;
+      if (seg.seg2Fecha) hechos++;
+    });
+  });
+
+  return {
+    alertas: porPrioridad,
+    venceSinConducta: vence === null ? null : new Date(vence).toISOString(),
+    derivadas: derivadas,
+    proximaCita: proximaCita,
+    seguimientosHechos: hechos,
+    seguimientosEsperados: esperados
+  };
+}
+
+/* «Plazo vencido hace 3 días», «Vence en 2 días»… y qué tan urgente es:
+   vencido (rojo), cerca —tres días o menos— (ámbar) o con tiempo. */
+function plazoDeAtencion(venceIso) {
+  const vence = new Date(venceIso);
+  if (!venceIso || isNaN(vence.getTime())) return null;
+  const DIA = 86400000;
+  const resta = vence.getTime() - Date.now();
+  if (resta <= 0) {
+    const dias = Math.floor(-resta / DIA);
+    return {
+      nivel: 'vencido',
+      texto: dias === 0 ? 'Plazo vencido hoy' : 'Plazo vencido hace ' + textoCantidad(dias, 'día', 'días')
+    };
+  }
+  const dias = Math.ceil(resta / DIA);
+  return {
+    nivel: dias <= 3 ? 'cerca' : 'a-tiempo',
+    texto: resta < DIA ? 'Vence en menos de un día' : 'Vence en ' + textoCantidad(dias, 'día', 'días')
+  };
+}
+
+/**
+ * El plan de cuidado en la tarjeta del historial: el estado (y la
+ * autorización, si la hay) y, si quedan alertas sin conducta, el plazo de la
+ * más urgente. El detalle de alertas, acciones y seguimientos está en «Ver».
+ */
+function resumenPlanEnHistorial(encuesta) {
+  const plan = encuesta.planCuidado;
+  const cabecera = badgePlanCuidado(encuesta) + badgeAutorizacionPlan(encuesta);
+  const detalle = plan && plan.pendiente === true ? detallePlanDeFicha(encuesta) : null;
+  const plazo = detalle ? plazoDeAtencion(detalle.venceSinConducta) : null;
+  if (!plazo) return cabecera;
+
+  return (
+    '<div class="plan-resumen__cabecera">' + cabecera +
+      '<span class="plan-resumen__plazo plan-resumen__plazo--' + plazo.nivel + '"' +
+      ' title="Plazo de atención (RN-200) de la alerta sin conducta más urgente: ' +
+      escaparHtml(formatearFechaHora(detalle.venceSinConducta)) + '">' +
+      '<i class="ph ph-timer" aria-hidden="true"></i>' + escaparHtml(plazo.texto) + '</span>' +
+    '</div>'
+  );
+}
+
+/* RN-051 — Integrantes declarados en el ítem 51 que no estaban en la visita.
+   La fila de la base trae la cuenta hecha (listar_fichas.js); la ficha del
+   dispositivo se cuenta aquí, familia por familia. */
+function integrantesPendientesDe(encuesta) {
+  if (!encuesta) return 0;
+  if (typeof encuesta.integrantesPendientes === 'number' && !Array.isArray(encuesta.familias)) {
+    return encuesta.integrantesPendientes;
+  }
+  return (Array.isArray(encuesta.familias) ? encuesta.familias : []).reduce(function (total, familia) {
+    const declarados = Number(familia && familia.numeroIntegrantes) || 0;
+    const capturados = Array.isArray(familia && familia.integrantes) ? familia.integrantes.length : 0;
+    return total + Math.max(0, declarados - capturados);
+  }, 0);
 }
 
 function badgeSituacion(valor) {
@@ -1675,7 +2185,68 @@ function obtenerEncuestasFiltradas() {
   });
 }
 
+/* Las fichas empezadas y guardadas sólo en este equipo (captura_local.js),
+   arriba del historial: todavía no están cargadas a la base y hay que
+   completarlas. «Continuar» las devuelve al formulario donde se dejaron. */
+function renderizarFichasEnCurso() {
+  const seccion = document.getElementById('fichasEnCurso');
+  const lista = document.getElementById('listaEnCurso');
+  if (!seccion || !lista || typeof obtenerFichasEnCurso !== 'function') return;
+
+  const fichas = obtenerFichasEnCurso();
+  seccion.hidden = fichas.length === 0;
+  if (fichas.length === 0) {
+    lista.innerHTML = '';
+    return;
+  }
+
+  lista.innerHTML = fichas.map(function (borrador) {
+    const datos = borrador.datos || {};
+    const familias = Array.isArray(datos.familias) ? datos.familias : [];
+    const personas = familias.reduce(function (total, f) {
+      return total + (Array.isArray(f.integrantes) ? f.integrantes.length : 0);
+    }, 0);
+    const lugar = [datos.territorio ? etiquetaTerritorio(datos.territorio) : null,
+      datos.direccion || datos.direccionLegible || null].filter(Boolean).join(' · ');
+    const contenido = familias.length > 0
+      ? textoCantidad(familias.length, 'familia', 'familias') + ' · ' + textoCantidad(personas, 'integrante', 'integrantes')
+      : 'Sin familias todavía';
+    const esCorreccion = Boolean(borrador.correccion && borrador.correccion.id);
+    const clave = escaparHtml(borrador.clave);
+
+    return (
+      '<li class="en-curso__ficha">' +
+        '<div class="en-curso__datos">' +
+          '<p class="en-curso__codigo">' +
+            '<span class="badge badge--warning">' + (esCorreccion ? 'Corrección sin terminar' : 'Sin terminar') + '</span>' +
+            (borrador.codigoFicha ? '<span class="mono">' + escaparHtml(borrador.codigoFicha) + '</span>' : '') +
+          '</p>' +
+          (lugar ? '<p class="en-curso__lugar">' + escaparHtml(lugar) + '</p>' : '') +
+          '<p class="en-curso__meta">' + escaparHtml(contenido) + ' · guardada en este equipo ' +
+            escaparHtml(textoCuando(borrador.guardadoEn)) + '. No está en la base: complétela y pulse «Guardar todo».</p>' +
+        '</div>' +
+        '<div class="en-curso__acciones">' +
+          '<button type="button" class="btn acciones-ficha__destacada" data-continuar="' + clave + '">' +
+            '<i class="ph ph-arrow-right" aria-hidden="true"></i>Continuar</button>' +
+          '<button type="button" class="btn acciones-ficha__boton" data-descartar-en-curso="' + clave + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i>Descartar</button>' +
+        '</div>' +
+      '</li>'
+    );
+  }).join('');
+
+  lista.querySelectorAll('[data-continuar]').forEach(function (boton) {
+    boton.addEventListener('click', function () { continuarFichaEnCurso(boton.dataset.continuar); });
+  });
+  lista.querySelectorAll('[data-descartar-en-curso]').forEach(function (boton) {
+    boton.addEventListener('click', function () {
+      descartarFichaEnCurso(boton.dataset.descartarEnCurso, renderizarFichasEnCurso);
+    });
+  });
+}
+
 function renderizarHistorial() {
+  renderizarFichasEnCurso();
   const encuestas = obtenerEncuestasFiltradas();
   const cuerpoTabla = document.getElementById('historialTableBody');
   const estadoVacio = document.getElementById('historialEmptyState');
@@ -1716,6 +2287,18 @@ function renderizarHistorial() {
     /* La acción pendiente va primero y a lo ancho; las de consulta, en una
        fila de píldoras; eliminar, como ícono al final: es la menos frecuente
        y la única destructiva, y en rojo lleno pesaba más que las útiles. */
+    /* RN-051: integrantes declarados que no estaban en la visita. Se agregan
+       con «Completar integrantes», con el mismo alcance que evolucionar el
+       plan; una ficha que aún no sube se corrige libremente. */
+    const faltan = integrantesPendientesDe(encuesta);
+    const sinCompletar = enLaBase && !puedeEvolucionarEnLaBase(encuesta) && !puedeCorregirEnLaBase(encuesta)
+      ? ' disabled title="Diligenciada por otra persona: su rol no permite completar sus integrantes."' : '';
+    const botonCompletar = faltan > 0
+      ? '<button type="button" class="btn acciones-ficha__destacada acciones-ficha__destacada--integrantes" ' +
+        'data-completar="' + id + '"' + sinCompletar + '>' +
+        '<i class="ph ph-user-plus" aria-hidden="true"></i>Completar integrantes' +
+        '<span class="acciones-ficha__conteo">' + (faltan === 1 ? 'falta 1' : 'faltan ' + faltan) + '</span></button>'
+      : '';
     const botonEvolucionar = enLaBase && plan.pendiente === true
       ? '<button type="button" class="btn acciones-ficha__destacada" data-evolucionar="' + id + '"' + sinEvolucionar + '>' +
         '<i class="ph ph-clipboard-text" aria-hidden="true"></i>Evolucionar plan de cuidado</button>'
@@ -1739,7 +2322,7 @@ function renderizarHistorial() {
            aquí no había manera de saber cuál de todas hay que corregir. */
         '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
         '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
-        '<td data-label="Plan de cuidado">' + badgePlanCuidado(encuesta) + badgeAutorizacionPlan(encuesta) + '</td>' +
+        '<td data-label="Plan de cuidado" class="celda-plan">' + resumenPlanEnHistorial(encuesta) + '</td>' +
         '<td data-label="Fecha y hora">' + formatearFecha(encuesta.fechaRegistro) +
           (formatearHora(encuesta.fechaRegistro)
             ? '<span class="celda-hora">' + formatearHora(encuesta.fechaRegistro) + '</span>'
@@ -1753,6 +2336,7 @@ function renderizarHistorial() {
         '<td data-label="Situación inminente">' + badgeSituacion(encuesta.situacionInminente) + '</td>' +
         '<td class="actions-cell">' +
           '<div class="acciones-ficha">' +
+            botonCompletar +
             botonEvolucionar +
             '<div class="acciones-ficha__fila">' +
               '<button type="button" class="btn acciones-ficha__boton" data-ver="' + id + '">' +
@@ -1779,6 +2363,9 @@ function renderizarHistorial() {
   });
   cuerpoTabla.querySelectorAll('[data-evolucionar]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirEvolucionDePlan(boton.dataset.evolucionar); });
+  });
+  cuerpoTabla.querySelectorAll('[data-completar]').forEach(function (boton) {
+    boton.addEventListener('click', function () { abrirCompletarIntegrantes(boton.dataset.completar); });
   });
   cuerpoTabla.querySelectorAll('[data-autorizar]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirAutorizacionDePlan(boton.dataset.autorizar); });
@@ -2151,6 +2738,7 @@ function construirFamiliaDetalle(familia, fechaReferencia) {
     '<div class="detalle-familia">' +
       '<h5 class="detalle-familia__titulo">Familia' +
         (familia.idFamilia ? ' <span class="mono">' + escaparHtml(familia.idFamilia) + '</span>' : '') +
+        (familia.codigoCf ? ' · ficha <span class="mono">' + escaparHtml(familia.codigoCf) + '</span>' : '') +
       '</h5>' +
       '<p class="detalle-familia__meta">' + meta + '</p>' +
       (integrantes.length > 0
@@ -2271,6 +2859,8 @@ async function abrirModalDetalle(id) {
     }
   }
 
+  const fichaConPlan = await fichaConPlanCompleto(encuesta);
+
   const microterritorio = buscarMicroterritorio(encuesta.territorio, encuesta.microterritorio);
   const perfil = encuesta.perfilProfesional === 'otro'
     ? 'Otro: ' + (encuesta.perfilProfesionalOtro || '')
@@ -2342,20 +2932,263 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Factores de contaminación', valor: etiquetasDeCatalogo(CAT_FACTORES_CONTAMINACION, encuesta.factoresContaminacion) }
     ]) +
     construirSeccionHogares(encuesta) +
-    construirSeccionDetalle('Plan de cuidado (RN-220)', [
-      { etiqueta: 'Estado', valor: describirEstadoPlan(encuesta.planCuidado) },
-      { etiqueta: 'Acciones registradas', valor: encuesta.planCuidado ? encuesta.planCuidado.accionesRegistradas : null },
-      { etiqueta: 'Alertas sin conducta', valor: encuesta.planCuidado ? encuesta.planCuidado.alertasSinConducta : null }
-    ]);
+    construirSeccionPlan(encuesta, fichaConPlan);
 
   document.getElementById('modalDetalle').hidden = false;
 }
 
-function describirEstadoPlan(plan) {
-  if (!plan || typeof plan.pendiente !== 'boolean') return null;
-  return plan.pendiente
-    ? 'Pendiente — puede completarse desde Historial → Corregir'
-    : 'Registrado';
+/**
+ * La ficha con sus planes de cuidado completos, para la sección del plan del
+ * detalle. La del dispositivo ya los trae. La que sólo está en la base se
+ * pide a /api/ficha_completa, que decide si este usuario puede verlos —quien
+ * corrige la ficha o evoluciona su plan— y deja la consulta en auditoría;
+ * si no puede, o no hay red, el detalle muestra sólo el resumen.
+ */
+async function fichaConPlanCompleto(encuesta) {
+  if (!encuesta.soloEnServidor) return encuesta;
+  if (!puedeEvolucionarEnLaBase(encuesta) && !puedeCorregirEnLaBase(encuesta)) return null;
+  try {
+    const respuesta = await fetch('/api/ficha_completa?codigo=' + encodeURIComponent(encuesta.codigoFicha));
+    if (!respuesta.ok) return null;
+    const cuerpo = await respuesta.json();
+    if (!cuerpo || !cuerpo.encuesta) return null;
+    return Object.assign({}, cuerpo.encuesta, { fechaRegistro: encuesta.fechaRegistro });
+  } catch (error) {
+    console.warn('No fue posible traer el plan de cuidado de la ficha:', error);
+    return null;
+  }
+}
+
+const NOMBRE_PRIORIDAD = { inmediata: 'Inmediata', prioritaria: 'Prioritaria', regular: 'Regular' };
+const ETIQUETA_AMBITO_PLAN = { vivienda: 'Plan de la vivienda', familia: 'Plan de la familia', persona: 'Plan de la persona' };
+
+/* Fecha de una columna date ('2026-10-19' → «19 oct 2026»), leída como fecha
+   local para que no retroceda un día por la zona horaria. */
+function fechaDeColumna(fechaTexto) {
+  const partes = String(fechaTexto || '').split('-').map(Number);
+  if (partes.length !== 3 || partes.some(isNaN)) return '';
+  return new Date(partes[0], partes[1] - 1, partes[2])
+    .toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/* Nombre CUPS / NoCUPS de un código, si el dispositivo ya lo conoce (el
+   catálogo descargado o los códigos ya resueltos por el buscador). */
+function nombreDeAccion(codigo) {
+  const opcion = (typeof CAT_ACCION_PLAN !== 'undefined' ? CAT_ACCION_PLAN : [])
+    .find(function (o) { return o.valor === codigo; });
+  if (opcion) return opcion.etiqueta.replace(codigo + ' — ', '');
+  if (typeof CUPS_RESUELTOS !== 'undefined' && CUPS_RESUELTOS.get(codigo)) return CUPS_RESUELTOS.get(codigo);
+  return null;
+}
+
+function accionesDelPlan(plan) {
+  return (plan && plan.acciones || []).filter(function (a) { return a && a.codigoAccion; });
+}
+
+function seguimientosDelPlan(plan) {
+  return (plan && plan.seguimientos || []).filter(function (s) { return s && s.accionConcertada; });
+}
+
+/* Los planes de la ficha que tienen algo registrado, con el nombre de a quién
+   pertenecen: la vivienda, cada familia por su código, cada persona. */
+function planesConNombre(encuesta) {
+  const lista = [{ titulo: 'Plan de la vivienda', plan: encuesta.planVivienda }];
+  (encuesta.familias || []).forEach(function (familia, i) {
+    lista.push({ titulo: 'Plan de la familia', codigo: familia.idFamilia || String(i + 1), plan: familia.planFamilia });
+    (familia.integrantes || []).forEach(function (integrante, j) {
+      lista.push({ titulo: 'Plan de ' + nombreIntegrante(integrante, j), plan: integrante.planPersona });
+    });
+  });
+  return lista.filter(function (item) {
+    return accionesDelPlan(item.plan).length > 0 || seguimientosDelPlan(item.plan).length > 0;
+  });
+}
+
+function construirAccionDetalle(accion) {
+  const nombre = nombreDeAccion(accion.codigoAccion);
+  const ejecutor = [accion.ejecutorTipoId, accion.ejecutorNumeroId].filter(Boolean).join(' ');
+  const respuesta = accion.tipoRespuesta === 'derivada'
+    ? 'Derivada' + (accion.institucionDestino ? ' a ' + escaparHtml(accion.institucionDestino) : '') +
+      (accion.fechaCita ? ' · cita el ' + escaparHtml(fechaDeColumna(accion.fechaCita)) : ' · sin cita asignada')
+    : escaparHtml(etiquetaDeCatalogo(CAT_TIPO_RESPUESTA, accion.tipoRespuesta) || 'Sin tipo de respuesta');
+
+  return (
+    '<li class="detalle-plan__item">' +
+      '<p class="detalle-plan__accion">' +
+        '<span class="mono detalle-plan__codigo">' + escaparHtml(accion.codigoAccion) + '</span>' +
+        (nombre ? '<span>' + escaparHtml(nombre) + '</span>' : '') +
+      '</p>' +
+      (accion.procedimientoRealizado
+        ? '<p class="detalle-plan__texto">' + escaparHtml(accion.procedimientoRealizado) + '</p>' : '') +
+      '<p class="detalle-plan__meta">' +
+        '<span class="detalle-plan__respuesta detalle-plan__respuesta--' +
+          (accion.tipoRespuesta === 'derivada' ? 'derivada' : 'sitio') + '">' + respuesta + '</span>' +
+        (ejecutor ? '<span>Ejecutó <span class="mono">' + escaparHtml(ejecutor) + '</span></span>' : '') +
+      '</p>' +
+    '</li>'
+  );
+}
+
+/* Un seguimiento: el acuerdo y sus dos controles (ítems 118-119), cada uno
+   con su fecha y su estado C / CP / NC, o «pendiente» si aún no se hizo. */
+function construirSeguimientoDetalle(seg) {
+  const control = function (orden, fecha, estado, motivo) {
+    if (!fecha) {
+      return '<span class="detalle-plan__control detalle-plan__control--pendiente">' + orden + ': pendiente</span>';
+    }
+    const cumple = estado === 'C';
+    return (
+      '<span class="detalle-plan__control detalle-plan__control--' + (cumple ? 'cumple' : 'parcial') + '">' +
+        orden + ': ' + escaparHtml(fechaDeColumna(fecha)) +
+        (estado ? ' · ' + escaparHtml(etiquetaDeCatalogo(CAT_ESTADO_SEGUIMIENTO, estado)) : '') +
+      '</span>' +
+      (motivo ? '<span class="detalle-plan__motivo">Motivo: ' + escaparHtml(motivo) + '</span>' : '')
+    );
+  };
+  const responsable = [seg.seguimientoTipoId, seg.seguimientoNumeroId].filter(Boolean).join(' ');
+
+  return (
+    '<li class="detalle-plan__item">' +
+      '<p class="detalle-plan__texto detalle-plan__texto--fuerte">' + escaparHtml(seg.accionConcertada) + '</p>' +
+      '<p class="detalle-plan__meta">' +
+        control('1.er seguimiento', seg.seg1Fecha, seg.seg1Estado, seg.seg1MotivoNc) +
+        control('2.º seguimiento', seg.seg2Fecha, seg.seg2Estado, seg.seg2MotivoNc) +
+        (responsable ? '<span>Responsable <span class="mono">' + escaparHtml(responsable) + '</span></span>' : '') +
+      '</p>' +
+    '</li>'
+  );
+}
+
+/* Cada alerta con su prioridad, a quién se refiere y si ya tiene conducta en
+   su plan (RN-220); las que no, con su plazo de atención (RN-200). */
+function construirAlertasDetalle(completa) {
+  let alertas;
+  let sinConducta;
+  try {
+    alertas = evaluarAlertas(completa);
+    sinConducta = verificarTrazabilidadAlertas(completa, alertas);
+  } catch (error) {
+    return '';
+  }
+  if (alertas.length === 0) {
+    return '<p class="detalle-plan__vacio">La ficha no generó alertas.</p>';
+  }
+
+  const clave = function (a) { return [a.codigo, a.plan, a.referencia, a.ruta].join('|'); };
+  const pendientes = new Set(sinConducta.map(clave));
+  const detectada = new Date(completa.fechaRegistro || Date.now()).getTime();
+
+  const filas = alertas.slice().sort(function (a, b) {
+    /* ORDEN_PRIORIDAD viene de reglas.js: más alto, más urgente. */
+    return (ORDEN_PRIORIDAD[b.prioridad] || 0) - (ORDEN_PRIORIDAD[a.prioridad] || 0);
+  }).map(function (alerta) {
+    const pendiente = pendientes.has(clave(alerta));
+    const horas = HORAS_PLAZO_PRIORIDAD[alerta.prioridad];
+    const plazo = pendiente && horas !== undefined
+      ? plazoDeAtencion(new Date(detectada + horas * 3600000).toISOString()) : null;
+    /* A quién se refiere (familia, integrante) y qué plan debe responderla. */
+    const meta = [alerta.referencia, ETIQUETA_AMBITO_PLAN[alerta.plan]].filter(Boolean).map(escaparHtml).join(' · ');
+
+    return (
+      '<li class="detalle-plan__alerta">' +
+        '<span class="prioridad-chip prioridad-chip--' + escaparHtml(alerta.prioridad) + '">' +
+          escaparHtml(NOMBRE_PRIORIDAD[alerta.prioridad] || alerta.prioridad) + '</span>' +
+        '<span class="detalle-plan__alerta-texto">' +
+          '<span class="detalle-plan__alerta-titulo">' + escaparHtml(alerta.titulo) + '</span>' +
+          '<span class="detalle-plan__alerta-meta">' +
+            (alerta.codigo ? '<span class="mono">' + escaparHtml(alerta.codigo) + '</span> · ' : '') +
+            meta +
+          '</span>' +
+        '</span>' +
+        '<span class="detalle-plan__alerta-estado">' +
+          (pendiente
+            ? '<span class="badge badge--plan-pendiente">Sin conducta</span>' +
+              (plazo ? '<span class="plan-resumen__plazo plan-resumen__plazo--' + plazo.nivel + '">' +
+                escaparHtml(plazo.texto) + '</span>' : '')
+            : '<span class="badge badge--plan-registrado">Con conducta</span>') +
+        '</span>' +
+      '</li>'
+    );
+  });
+
+  return '<ul class="detalle-plan__alertas">' + filas.join('') + '</ul>';
+}
+
+/**
+ * Sección «Plan de cuidado» del detalle. Con los planes a la mano: el estado,
+ * el plazo y las cuentas arriba; las alertas una por una; y cada plan con sus
+ * acciones (código, procedimiento, en sitio o derivada con su cita, quién la
+ * hizo) y sus seguimientos (acuerdo, dos controles con fecha y estado). Sin
+ * ellos —una ficha de la base que este rol no corrige ni evoluciona—, el
+ * resumen que trajo el historial y por qué no hay más.
+ */
+function construirSeccionPlan(encuesta, completa) {
+  const plan = encuesta.planCuidado;
+  const detalle = completa ? detallePlanDeFicha(completa) : detallePlanDeFicha(encuesta);
+
+  const cabecera = [];
+  if (plan && typeof plan.pendiente === 'boolean') cabecera.push(badgePlanCuidado(encuesta));
+  const plazo = plan && plan.pendiente && detalle ? plazoDeAtencion(detalle.venceSinConducta) : null;
+  if (plazo) {
+    cabecera.push('<span class="plan-resumen__plazo plan-resumen__plazo--' + plazo.nivel + '">' +
+      '<i class="ph ph-timer" aria-hidden="true"></i>' + escaparHtml(plazo.texto) + '</span>');
+  }
+
+  const cuentas = [];
+  if (plan) cuentas.push(textoCantidad(plan.accionesRegistradas || 0, 'acción', 'acciones'));
+  if (detalle && detalle.derivadas > 0) cuentas.push(textoCantidad(detalle.derivadas, 'derivación', 'derivaciones'));
+  if (detalle && detalle.seguimientosEsperados > 0) {
+    cuentas.push(detalle.seguimientosHechos + ' de ' + detalle.seguimientosEsperados + ' seguimientos');
+  }
+  if (plan && plan.alertasSinConducta > 0) {
+    cuentas.push(textoCantidad(plan.alertasSinConducta, 'alerta sin conducta', 'alertas sin conducta'));
+  }
+
+  let cuerpo;
+  if (completa) {
+    const planes = planesConNombre(completa).map(function (item) {
+      const acciones = accionesDelPlan(item.plan);
+      const seguimientos = seguimientosDelPlan(item.plan);
+      return (
+        '<li class="detalle-plan__plan">' +
+          '<h5 class="detalle-plan__plan-titulo">' + escaparHtml(item.titulo) +
+            (item.codigo ? ' <span class="mono">' + escaparHtml(item.codigo) + '</span>' : '') + '</h5>' +
+          (acciones.length > 0
+            ? '<p class="detalle-plan__subtitulo">Acciones</p><ul class="detalle-plan__lista">' +
+              acciones.map(construirAccionDetalle).join('') + '</ul>'
+            : '') +
+          (seguimientos.length > 0
+            ? '<p class="detalle-plan__subtitulo">Seguimientos</p><ul class="detalle-plan__lista">' +
+              seguimientos.map(construirSeguimientoDetalle).join('') + '</ul>'
+            : '') +
+        '</li>'
+      );
+    });
+
+    cuerpo =
+      '<p class="detalle-plan__bloque">Alertas</p>' + construirAlertasDetalle(completa) +
+      '<p class="detalle-plan__bloque">Acciones y seguimientos</p>' +
+      (planes.length > 0
+        ? '<ol class="detalle-plan__planes">' + planes.join('') + '</ol>'
+        : '<p class="detalle-plan__vacio">No hay acciones ni seguimientos registrados. ' +
+          'Se registran desde Historial → Evolucionar plan de cuidado.</p>');
+  } else {
+    cuerpo = '<p class="detalle-plan__vacio">El detalle de alertas, acciones y seguimientos lo ve quien puede ' +
+      'corregir la ficha o evolucionar su plan, con conexión.</p>';
+  }
+
+  return (
+    '<div class="detail-section detalle-plan">' +
+      '<h3>Plan de cuidado (RN-220)</h3>' +
+      (cabecera.length > 0 || cuentas.length > 0
+        ? '<div class="detalle-plan__resumen">' +
+            cabecera.join('') +
+            (cuentas.length > 0 ? '<span class="detalle-plan__cuentas">' + escaparHtml(cuentas.join(' · ')) + '</span>' : '') +
+          '</div>'
+        : '') +
+      cuerpo +
+    '</div>'
+  );
 }
 
 function cerrarModalDetalle() {
@@ -2693,13 +3526,34 @@ function contenedorPorRuta(formulario, ruta) {
   return control ? control.closest('.field, td') : null;
 }
 
+/* El bloque de familia o de integrante que nombra una ruta
+   (`familias[0].integrantes[1].x`), o el formulario si no nombra ninguno. */
+function bloqueDeRuta(formulario, ruta) {
+  const coincidencia = /^familias\[(\d+)\](?:\.integrantes\[(\d+)\])?/.exec(String(ruta || ''));
+  if (!coincidencia) return formulario;
+  const familia = formulario.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]')[Number(coincidencia[1])];
+  if (!familia) return formulario;
+  if (coincidencia[2] === undefined) return familia;
+  const integrante = familia.querySelectorAll(
+    '[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]')[Number(coincidencia[2])];
+  return integrante || familia;
+}
+
+/* Respaldo por `data-campo`, buscado dentro del bloque de la ruta: un grupo
+   que aún no tiene casillas —las atenciones RPMS antes de la fecha de
+   nacimiento y el sexo— no tiene control con ese nombre, y buscar en todo
+   el formulario marcaba el campo del primer integrante, no el de éste. */
+function contenedorDeRespaldo(formulario, item) {
+  return bloqueDeRuta(formulario, item.ruta).querySelector('[data-campo="' + item.campo + '"]');
+}
+
 function marcarIncumplimiento(formulario, incumplimiento) {
   /* La `ruta` nombra el control exacto —`planVivienda.acciones[0].ejecutorNumeroId`
      señala esa casilla y no las tres del plan a la vez—, así que se prefiere
      cuando hay un control con ese nombre. `data-campo` queda de respaldo para
      las reglas que marcan un bloque entero y no un control concreto. */
   const contenedor = contenedorPorRuta(formulario, incumplimiento.ruta) ||
-    formulario.querySelector('[data-campo="' + incumplimiento.campo + '"]');
+    contenedorDeRespaldo(formulario, incumplimiento);
 
   if (!contenedor || contenedor.querySelector('.field-error-msg')) return contenedor;
 
@@ -2714,7 +3568,7 @@ function marcarIncumplimiento(formulario, incumplimiento) {
 /** Igual que marcarIncumplimiento, en ámbar: la advertencia no bloquea. */
 function marcarAdvertencia(formulario, advertencia) {
   const contenedor = contenedorPorRuta(formulario, advertencia.ruta) ||
-    formulario.querySelector('[data-campo="' + advertencia.campo + '"]');
+    contenedorDeRespaldo(formulario, advertencia);
 
   // Un error ya visible manda sobre la advertencia.
   if (!contenedor || contenedor.querySelector('.field-error-msg, .field-warning-msg')) return contenedor;
@@ -2838,6 +3692,109 @@ function renderizarAlertas(alertas, sinAccion) {
       '</div>' +
     '</div>';
   }).join('');
+}
+
+/* Quién recibe la conducta de cada alerta, en el orden del plan (6.1, 6.2,
+   6.3): la vivienda, cada familia, cada persona. */
+function destinoDeAlerta(alerta) {
+  if (alerta.plan === 'vivienda') return { orden: '0', titulo: '6.1 Vivienda' };
+  const familia = /^Familia \d+/.exec(alerta.referencia || '');
+  if (alerta.plan === 'familia') {
+    return { orden: '1' + (familia ? familia[0] : ''), titulo: '6.2 ' + (familia ? familia[0] : 'Familia') };
+  }
+  return { orden: '2' + (alerta.referencia || ''), titulo: '6.3 ' + (alerta.referencia || 'Persona') };
+}
+
+/**
+ * Las alertas de la ficha al comienzo de la sección 6, agrupadas por a quién
+ * le toca la conducta y con su prioridad, para estructurar el plan de cuidado
+ * con ellas a la vista. Se recalcula mientras se diligencia (ver
+ * programarRiesgoEnVivo): antes sólo se veían al pulsar «Guardar».
+ */
+function renderizarResumenAlertasPlan(alertas, sinAccion, riesgo) {
+  const cuerpo = document.getElementById('resumenAlertasCuerpo');
+  const etiquetaRiesgo = document.getElementById('resumenAlertasRiesgo');
+  if (!cuerpo) return;
+
+  if (etiquetaRiesgo) {
+    etiquetaRiesgo.className = 'resumen-alertas__riesgo resumen-alertas__riesgo--' +
+      (CLASE_SEMAFORO[riesgo && riesgo.nivel] || 'gris');
+    etiquetaRiesgo.textContent = riesgo ? riesgo.etiqueta : '';
+  }
+
+  if (!alertas || alertas.length === 0) {
+    cuerpo.innerHTML = '<p class="resumen-alertas__vacio">Aún no hay alertas. Aparecen aquí mientras se ' +
+      'diligencian la vivienda, las familias y los integrantes.</p>';
+    return;
+  }
+
+  const sinConducta = new Set(sinAccion.map(function (a) { return a.codigo + '|' + (a.referencia || '') + '|' + a.plan; }));
+  const grupos = new Map();
+  alertas.slice().sort(function (a, b) {
+    return (ORDEN_PRIORIDAD[b.prioridad] || 0) - (ORDEN_PRIORIDAD[a.prioridad] || 0);
+  }).forEach(function (alerta) {
+    const destino = destinoDeAlerta(alerta);
+    if (!grupos.has(destino.orden)) grupos.set(destino.orden, { titulo: destino.titulo, alertas: [] });
+    grupos.get(destino.orden).alertas.push(alerta);
+  });
+
+  const conteo = { inmediata: 0, prioritaria: 0, regular: 0 };
+  alertas.forEach(function (a) { if (conteo[a.prioridad] !== undefined) conteo[a.prioridad]++; });
+  const etiquetas = { inmediata: ['inmediata', 'inmediatas'], prioritaria: ['prioritaria', 'prioritarias'],
+    regular: ['regular', 'regulares'] };
+  const resumen = ['inmediata', 'prioritaria', 'regular'].filter(function (p) { return conteo[p] > 0; })
+    .map(function (p) {
+      return '<span class="prioridad-chip prioridad-chip--' + p + '">' +
+        textoCantidad(conteo[p], etiquetas[p][0], etiquetas[p][1]) + '</span>';
+    }).join('');
+
+  cuerpo.innerHTML =
+    '<p class="resumen-alertas__conteo">' + resumen +
+      '<span class="resumen-alertas__pendientes">' +
+        textoCantidad(sinAccion.length, 'sin conducta', 'sin conducta') + '</span></p>' +
+    Array.from(grupos.keys()).sort().map(function (clave) {
+      const grupo = grupos.get(clave);
+      return (
+        '<div class="resumen-alertas__grupo">' +
+          '<p class="resumen-alertas__destino">' + escaparHtml(grupo.titulo) + '</p>' +
+          '<ul class="resumen-alertas__lista">' + grupo.alertas.map(function (alerta) {
+            const pendiente = sinConducta.has(alerta.codigo + '|' + (alerta.referencia || '') + '|' + alerta.plan);
+            return (
+              '<li class="resumen-alertas__item">' +
+                '<span class="prioridad-chip prioridad-chip--' + escaparHtml(alerta.prioridad) + '">' +
+                  escaparHtml(NOMBRE_PRIORIDAD[alerta.prioridad] || alerta.prioridad) + '</span>' +
+                '<span class="resumen-alertas__texto">' +
+                  '<span class="resumen-alertas__alerta">' + escaparHtml(alerta.titulo) + '</span>' +
+                  '<span class="resumen-alertas__descripcion">' + escaparHtml(alerta.descripcion) + '</span>' +
+                '</span>' +
+                (pendiente
+                  ? '<span class="badge badge--plan-pendiente">Sin conducta</span>'
+                  : '<span class="badge badge--plan-registrado">Con conducta</span>') +
+              '</li>'
+            );
+          }).join('') + '</ul>' +
+        '</div>'
+      );
+    }).join('');
+}
+
+/* Las alertas, el resumen de riesgo y el cierre se recalculan mientras se
+   diligencia, un momento después de la última tecla: recalcular a cada
+   pulsación recogería el formulario entero doscientas veces por minuto. */
+let temporizadorRiesgoEnVivo = null;
+
+function programarRiesgoEnVivo() {
+  if (temporizadorRiesgoEnVivo) clearTimeout(temporizadorRiesgoEnVivo);
+  temporizadorRiesgoEnVivo = setTimeout(function () {
+    temporizadorRiesgoEnVivo = null;
+    const formulario = document.getElementById('encuestaForm');
+    if (!formulario) return;
+    try {
+      actualizarTableroDeRiesgo(recolectarDatosFormulario(formulario));
+    } catch (error) {
+      console.warn('No fue posible recalcular las alertas en vivo:', error);
+    }
+  }, 600);
 }
 
 /** Lo que de `resumirPlanCuidado` se persiste con la ficha. */
@@ -3038,7 +3995,7 @@ function destinoDePendiente(formulario, item) {
   }
 
   if (item.campo) {
-    const porCampo = formulario.querySelector('[data-campo="' + item.campo + '"]');
+    const porCampo = contenedorDeRespaldo(formulario, item);
     if (porCampo) return { destino: porCampo, control: null };
   }
 
@@ -3455,9 +4412,11 @@ function actualizarTableroDeRiesgo(datos) {
   const alertas = evaluarAlertas(datos);
   const sinAccion = verificarTrazabilidadAlertas(datos, alertas);
 
-  renderizarSemaforo(clasificarRiesgoFamiliar(datos, alertas));
+  const riesgo = clasificarRiesgoFamiliar(datos, alertas);
+  renderizarSemaforo(riesgo);
   renderizarAlertas(alertas, sinAccion);
   renderizarPlanCuidado(resumirPlanCuidado(datos, alertas));
+  renderizarResumenAlertasPlan(alertas, sinAccion, riesgo);
 
   // RN-022: el motivo sólo se pide cuando falta la georreferenciación.
   const faltaGeo = typeof datos.latitud !== 'number' || typeof datos.longitud !== 'number';
@@ -3513,6 +4472,15 @@ function opcionesDeConfirmacionDeGuardado(datos, caso, advertencias) {
       textoConfirmar: 'Sí, guardar el plan'
     };
   }
+  if (caso === 'integrantes') {
+    const nuevos = typeof integrantesNuevosEn === 'function' ? integrantesNuevosEn(datos) : 0;
+    return {
+      titulo: 'Agregar integrantes',
+      mensaje: '¿Está seguro de que desea agregar ' + textoCantidad(nuevos, 'integrante', 'integrantes') +
+        ' a la ficha' + codigo + '? Quedarán registrados con lo demás de la visita.' + avisos,
+      textoConfirmar: 'Sí, agregar'
+    };
+  }
   if (caso === 'incompleta') {
     return {
       titulo: 'Guardar visita incompleta',
@@ -3552,11 +4520,18 @@ async function manejarEnvioFormulario(evento) {
      pendientes —por ejemplo, reglas que cambiaron después de la visita— no
      detienen el plan. */
   const enPlan = typeof enEvolucionDePlan === 'function' && enEvolucionDePlan();
-  const delPlan = function (item) { return !enPlan || esRutaDelPlan(item && item.ruta); };
+  /* RN-051: completando integrantes cuentan los nuevos, el ítem 51, el plan
+     y RN-029, con el mismo criterio que el servidor. */
+  const enCompletar = typeof enCompletarIntegrantes === 'function' && enCompletarIntegrantes();
+  const delPlan = function (item) {
+    if (enPlan) return esRutaDelPlan(item && item.ruta);
+    if (enCompletar) return esRutaDeCompletar(item);
+    return true;
+  };
 
   // RN-222: cierre por causa externa. Se admite la ficha incompleta siempre
   // que quede registrado el motivo, y no entra al denominador de cobertura.
-  if (datos.visitaIncompleta && !enPlan) {
+  if (datos.visitaIncompleta && !enPlan && !enCompletar) {
     if (esVacioTexto(datos.motivoVisitaIncompleta)) {
       mostrarNotificacion('Registre el motivo del cierre por causa externa.', 'error', function () {
         enfocarElemento(document.getElementById('campoMotivoIncompleta'), document.getElementById('motivoVisitaIncompleta'));
@@ -3570,7 +4545,7 @@ async function manejarEnvioFormulario(evento) {
 
   const resultadoCierre = validarCierre(datos);
   const incumplimientos = validarReglas(datos).filter(delPlan);
-  if (enPlan) {
+  if (enPlan || enCompletar) {
     resultadoCierre.impedimentos = resultadoCierre.impedimentos.filter(delPlan);
     resultadoCierre.puedeCerrar = resultadoCierre.impedimentos.length === 0;
   }
@@ -3616,7 +4591,7 @@ async function manejarEnvioFormulario(evento) {
 
   /* Sólo se pregunta cuando de verdad se puede guardar: con pendientes, lo
      que corresponde es corregirlos, y eso ya lo dicen el aviso y la barra. */
-  const caso = enPlan ? 'plan' : (encuestaEnCorreccion ? 'correccion' : 'nueva');
+  const caso = enPlan ? 'plan' : enCompletar ? 'integrantes' : (encuestaEnCorreccion ? 'correccion' : 'nueva');
   if (!await confirmarGuardado(opcionesDeConfirmacionDeGuardado(datos, caso, advertencias.length))) return;
 
   if (advertencias.length > 0) {
@@ -3667,6 +4642,13 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
     mensaje = 'El plan de cuidado se guardó.';
   }
 
+  /* RN-051: completando integrantes, el servidor escribe sólo los nuevos. */
+  const enCompletar = typeof enCompletarIntegrantes === 'function' && enCompletarIntegrantes();
+  if (enCompletar) {
+    encuesta.completarIntegrantes = true;
+    mensaje = 'Se agregaron ' + textoCantidad(integrantesNuevosEn(datos), 'integrante', 'integrantes') + '.';
+  }
+
   const resultado = await enviarFichaAlServidor(encuesta, boton);
 
   /* Rechazo por reglas de negocio: la ficha NO se guarda ni se limpia el
@@ -3706,7 +4688,7 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
        dispositivo, se pone al día para que el historial no muestre el plan
        de antes. */
     const hayCopiaLocal = obtenerEncuestas().some(function (e) { return e.id === encuestaEnCorreccion; });
-    if (!(correccionDesdeServidor && encuesta.sincronizada) || (enPlan && hayCopiaLocal)) {
+    if (!(correccionDesdeServidor && encuesta.sincronizada) || ((enPlan || enCompletar) && hayCopiaLocal)) {
       reemplazarEncuesta(encuestaEnCorreccion, encuesta);
     }
     salirDeCorreccion();
@@ -3776,6 +4758,7 @@ function aplicarCodigosAsignados(encuesta, codigos) {
     const codigoFamilia = (codigos.familias || [])[i];
     if (!familia || !codigoFamilia) return;
     familia.idFamilia = codigoFamilia;
+    if (codigos.codigosCf && codigos.codigosCf[i]) familia.codigoCf = codigos.codigosCf[i];
     llaves(familia.planFamilia, codigoFamilia);
     (Array.isArray(familia.integrantes) ? familia.integrantes : []).forEach(function (integrante) {
       llaves(integrante && integrante.planPersona, codigoFamilia);
@@ -3919,6 +4902,7 @@ function reiniciarEstadoFormulario() {
   referenciaCoordenadas = null;
   ultimaConsultaGeocodificada = null;
   clearTimeout(temporizadorGeocodificacion);
+  habilitarCoordenadasManuales(false);
   establecerEstadoGeo('');
   establecerAvisoGeo('');
 
@@ -4025,6 +5009,12 @@ function inicializarFormulario() {
      burbuja y tiene que recibir ya el valor limpio. */
   formulario.addEventListener('change', normalizarCampoCapturado, true);
 
+  /* Alertas y resumen de riesgo en vivo, para estructurar el plan de cuidado
+     con los riesgos a la vista (observación de la E.S.E., 19-10-2026). */
+  formulario.addEventListener('input', programarRiesgoEnVivo);
+  formulario.addEventListener('change', programarRiesgoEnVivo);
+  programarRiesgoEnVivo();
+
   // RN-001 — bloqueo de captura sin consentimiento
   document.querySelectorAll('input[name="consentimiento"]').forEach(function (radio) {
     radio.addEventListener('change', aplicarBloqueoPorConsentimiento);
@@ -4077,6 +5067,9 @@ function inicializarFormulario() {
     geocodificarDesdeFormulario(true);
   });
   document.getElementById('btnCapturarGps').addEventListener('click', capturarCoordenadasGps);
+  document.getElementById('btnDigitarCoordenadas').addEventListener('click', function () {
+    habilitarCoordenadasManuales(document.getElementById('latitud').readOnly);
+  });
   document.getElementById('latitud').addEventListener('input', marcarCoordenadasManuales);
   document.getElementById('longitud').addEventListener('input', marcarCoordenadasManuales);
 
@@ -4089,9 +5082,13 @@ function inicializarFormulario() {
   document.getElementById('habitacionesVivienda').addEventListener('input', actualizarCalculoHacinamientoEnFormulario);
 
   /* Limpiar ahora también borra el borrador automático, y con él la última
-     copia de la ficha: se pregunta antes. */
+     copia de la ficha: se pregunta antes, si hay algo que perder. */
   document.getElementById('btnLimpiar').addEventListener('click', function (evento) {
     evento.preventDefault();
+    if (!fichaTieneDatos()) {
+      reiniciarFichaEnCurso();
+      return;
+    }
     pedirConfirmacion({
       titulo: 'Limpiar formulario',
       mensaje: 'Se borrarán todas las respuestas de esta ficha y no se podrán recuperar.',
@@ -4210,6 +5207,13 @@ function inicializarIndiceActivo() {
 }
 
 function inicializarAplicacion() {
+  /* Lo que hay en la base se pide antes de armar el formulario: así la red
+     trabaja mientras el navegador construye los bloques, en vez de esperar
+     a que termine (en un teléfono modesto son cientos de milisegundos). La
+     respuesta no puede procesarse antes de que acabe esta función, que es
+     síncrona, así que el resultado se pinta igual que antes, al final. */
+  const primeraLecturaDeLaBase = refrescarFichasDelServidor();
+
   inicializarCabeceraAlDesplazar();
   inicializarIndiceActivo();
   inicializarCatalogosDelFormulario();
@@ -4224,6 +5228,10 @@ function inicializarAplicacion() {
   inicializarValidacionEnVivo();
   retirarDatosDemostracion();
   inicializarNavegacion();
+  /* El módulo de sincronización dice si hay señal: se repinta al perderla y
+     al recuperarla. */
+  window.addEventListener('online', renderizarEstadoSync);
+  window.addEventListener('offline', renderizarEstadoSync);
   inicializarFiltrosHistorial();
   inicializarFormulario();
   inicializarModales();
@@ -4235,7 +5243,7 @@ function inicializarAplicacion() {
   /* Primer vistazo a lo que hay en la base, para que abrir la aplicación ya
      muestre lo que otros dispositivos hayan guardado y no sólo lo que hay en
      este navegador. */
-  refrescarFichasDelServidor().then(function () {
+  primeraLecturaDeLaBase.then(function () {
     renderizarInicio();
     renderizarHistorial();
   });

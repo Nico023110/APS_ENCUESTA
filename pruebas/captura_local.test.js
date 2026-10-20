@@ -128,6 +128,22 @@ const CLAVE_BORRADOR = 'aps_borrador_local';
   app.api.guardarBorradorAhora();
   check('Marcar sólo el consentimiento no crea borrador', !(CLAVE_BORRADOR in almacen));
 
+  app.$('#btnAgregarFamilia').click();
+  app.$('[data-accion="agregarIntegrante"]').click();
+  app.api.guardarBorradorAhora();
+  check('Agregar una familia o un integrante sin llenar nada no crea borrador', !(CLAVE_BORRADOR in almacen));
+  check('…aunque el formulario sí tenga los bloques nuevos',
+    app.doc.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').length === 2);
+  app.api.reiniciarFichaEnCurso();
+  app.marcar('consentimiento', 'si');
+
+  app.escribir('#ubicacionReferencia', 'Casa');
+  app.api.guardarBorradorAhora();
+  const habiaBorrador = CLAVE_BORRADOR in almacen;
+  app.escribir('#ubicacionReferencia', '');
+  app.api.guardarBorradorAhora();
+  check('Escribir y luego borrar lo escrito elimina el borrador', habiaBorrador && !(CLAVE_BORRADOR in almacen));
+
   app.escribir('#divisionTerritorial', 'Vereda La Buitrera');
   app.escribir('#personasEnVivienda', '5');
   app.api.guardarBorradorAhora();

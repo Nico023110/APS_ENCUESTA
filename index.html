@@ -10,8 +10,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@phosphor-icons/web"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Iconos: sólo el peso regular, que es el único que usa la aplicación. El
+     cargador de @phosphor-icons/web traía los seis pesos (~640 KB de CSS) y
+     bloqueaba el primer pintado. Versiones fijas con integridad (SRI): el
+     navegador rechaza el archivo si el CDN lo entrega alterado. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"
+      integrity="sha384-6p9AefaqUhEVheRlj1mpAkbngHXy9mbYMrIdcIt4Jlc9lOLIablJq3bBsLOjGwZ7" crossorigin="anonymous">
+<!-- Avisos: con defer no detiene el pintado; se usa sólo dentro de funciones
+     (y con respaldo si no cargó), y defer corre antes de DOMContentLoaded. -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"
+        integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="styles.css">
 <!-- La sesión va antes del cuerpo: sin perfil en caché redirige a /login
      antes de pintar nada, y envuelve fetch para todo lo que sigue. -->
@@ -79,29 +88,133 @@
           <span class="marcador__valor" id="totalFichas">0</span>
           <span class="marcador__etiqueta">fichas registradas en este equipo</span>
         </div>
-        <!-- Píldora de sincronización pintada por JS: verde si no queda nada
-             por subir, ámbar y pulsable si hay fichas sólo en este equipo. -->
-        <div class="hero-welcome__estado" id="estadoSync"></div>
+        <!-- Sincronización: el estado y la acción que lo resuelve, juntos y a
+             la vista al abrir. renderizarEstadoSync() cambia data-estado
+             (pendiente, listo, subiendo, sin-red), los textos y el botón. -->
+        <div class="sincronia" id="sincronia" data-estado="listo">
+          <div class="sincronia__estado" role="status" aria-live="polite">
+            <span class="sincronia__icono" aria-hidden="true">
+              <i class="ph ph-cloud-check"></i>
+              <span class="sincronia__latido"></span>
+            </span>
+            <span class="sincronia__textos">
+              <span class="sincronia__titulo">Nada por subir</span>
+              <span class="sincronia__detalle"></span>
+            </span>
+          </div>
+          <span class="sincronia__barra" aria-hidden="true" hidden><span class="sincronia__avance"></span></span>
+          <button type="button" class="btn-sync" id="btnSincronizar" onclick="sincronizarEncuestas()">
+            <span class="btn-sync__texto">Sincronizar ahora</span>
+            <span class="btn-sync__icono" aria-hidden="true"><i class="ph ph-arrows-clockwise"></i></span>
+          </button>
+        </div>
       </section>
 
-      <div class="indicators-grid" id="indicatorsGrid">
-        <!-- Tejas de estado generadas por JS -->
-      </div>
+      <!-- Población caracterizada: la vivienda alberga hogares, el hogar
+           familias y la familia personas, y la cadena se lee en ese orden.
+           Las cifras y los detalles los pinta renderizarComposicion(). -->
+      <section class="panel-inicio composicion entra" style="--orden: 2" aria-labelledby="composicionTitulo">
+        <header class="panel-inicio__cabecera">
+          <h3 class="panel-inicio__titulo" id="composicionTitulo">Población caracterizada</h3>
+          <p class="panel-inicio__nota">Según la última visita a cada vivienda</p>
+        </header>
+        <ol class="cadena">
+          <li class="cadena__nivel" data-nivel="viviendas">
+            <span class="cadena__icono" aria-hidden="true"><i class="ph ph-house-line"></i></span>
+            <span class="cadena__valor">0</span>
+            <span class="cadena__etiqueta">Viviendas</span>
+            <span class="cadena__detalle"></span>
+          </li>
+          <li class="cadena__nivel" data-nivel="hogares">
+            <span class="cadena__conector" aria-hidden="true"><i class="ph ph-caret-right"></i></span>
+            <span class="cadena__icono" aria-hidden="true"><i class="ph ph-door-open"></i></span>
+            <span class="cadena__valor">0</span>
+            <span class="cadena__etiqueta">Hogares</span>
+            <span class="cadena__detalle"></span>
+            <span class="cadena__aviso" id="hogaresSinCaracterizar" hidden>
+              <span class="cadena__aviso-punto" aria-hidden="true"></span>
+              <span class="cadena__aviso-texto"></span>
+            </span>
+          </li>
+          <li class="cadena__nivel" data-nivel="familias">
+            <span class="cadena__conector" aria-hidden="true"><i class="ph ph-caret-right"></i></span>
+            <span class="cadena__icono" aria-hidden="true"><i class="ph ph-users-three"></i></span>
+            <span class="cadena__valor">0</span>
+            <span class="cadena__etiqueta">Familias</span>
+            <span class="cadena__detalle"></span>
+          </li>
+          <li class="cadena__nivel" data-nivel="personas">
+            <span class="cadena__conector" aria-hidden="true"><i class="ph ph-caret-right"></i></span>
+            <span class="cadena__icono" aria-hidden="true"><i class="ph ph-user"></i></span>
+            <span class="cadena__valor">0</span>
+            <span class="cadena__etiqueta">Personas</span>
+            <span class="cadena__detalle"></span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- Viviendas por territorio: barras pintadas por renderizarTerritorios(). -->
+      <section class="panel-inicio territorios entra" style="--orden: 3" aria-labelledby="territoriosTitulo">
+        <header class="panel-inicio__cabecera">
+          <h3 class="panel-inicio__titulo" id="territoriosTitulo">Viviendas por territorio</h3>
+          <p class="panel-inicio__nota" id="notaTerritorios"></p>
+        </header>
+        <ul class="barras" id="barrasTerritorio"></ul>
+      </section>
+
+      <!-- Lo que pide atención, por ficha. Las dos filas que el historial
+           sabe filtrar llevan allí; la situación inminente no tiene filtro
+           propio y por eso no es un botón. -->
+      <section class="panel-inicio atencion entra" style="--orden: 4" aria-labelledby="atencionTitulo">
+        <header class="panel-inicio__cabecera">
+          <h3 class="panel-inicio__titulo" id="atencionTitulo">Fichas que requieren atención</h3>
+        </header>
+        <ul class="atencion__lista">
+          <li>
+            <div class="atencion__fila" id="atencionInminente">
+              <span class="atencion__icono" aria-hidden="true"><i class="ph ph-warning-circle"></i></span>
+              <span class="atencion__texto">
+                <span class="atencion__titulo">Situación inminente</span>
+                <span class="atencion__desc">Requieren atención prioritaria</span>
+              </span>
+              <span class="atencion__cifra"><span class="atencion__punto" aria-hidden="true"></span><span class="atencion__valor">0</span></span>
+            </div>
+          </li>
+          <li>
+            <button type="button" class="atencion__fila" id="atencionHacinamiento"
+                    data-filtro-historial="filtroHacinamiento" data-valor="si"
+                    title="Ver en el historial las fichas con hacinamiento">
+              <span class="atencion__icono" aria-hidden="true"><i class="ph ph-bed"></i></span>
+              <span class="atencion__texto">
+                <span class="atencion__titulo">Hacinamiento</span>
+                <span class="atencion__desc">Más de 2 personas por cuarto</span>
+              </span>
+              <span class="atencion__cifra"><span class="atencion__punto" aria-hidden="true"></span><span class="atencion__valor">0</span></span>
+              <span class="atencion__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="atencion__fila" id="atencionPlan"
+                    data-filtro-historial="filtroPlanCuidado" data-valor="pendiente"
+                    title="Ver en el historial las fichas con el plan de cuidado pendiente">
+              <span class="atencion__icono" aria-hidden="true"><i class="ph ph-clock-countdown"></i></span>
+              <span class="atencion__texto">
+                <span class="atencion__titulo">Plan de cuidado pendiente</span>
+                <span class="atencion__desc">Se completa desde Historial</span>
+              </span>
+              <span class="atencion__cifra"><span class="atencion__punto" aria-hidden="true"></span><span class="atencion__valor">0</span></span>
+              <span class="atencion__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <div class="bento__acciones">
-        <button class="accion-ancha entra" style="--orden: 6" data-goto="historial">
+        <button class="accion-ancha entra" style="--orden: 5" data-goto="historial">
           <span class="accion-ancha__icono" aria-hidden="true"><i class="ph ph-list-dashes"></i></span>
           <span class="accion-ancha__texto">
             <span class="accion-ancha__titulo">Ver historial</span>
             <span class="accion-ancha__desc">Consultar, corregir o eliminar fichas registradas</span>
-          </span>
-          <span class="accion-ancha__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
-        </button>
-        <button class="accion-ancha entra" style="--orden: 7" onclick="sincronizarEncuestas()">
-          <span class="accion-ancha__icono" aria-hidden="true"><i class="ph ph-cloud-arrow-up"></i></span>
-          <span class="accion-ancha__texto">
-            <span class="accion-ancha__titulo">Sincronizar a la nube</span>
-            <span class="accion-ancha__desc">Subir a la base las fichas que siguen en este equipo</span>
           </span>
           <span class="accion-ancha__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
         </button>
@@ -136,6 +249,17 @@
         <label class="form-nav__toggle" title="Revela los campos que normalmente aparecen sólo al cumplirse su condición">
           <input type="checkbox" id="modoRevision"> Ver campos condicionados
         </label>
+        <!-- Pre-guardado en el equipo (captura_local.js): la ficha se guarda
+             sola poco después de cada cambio; esto lo hace ya y lo dice. -->
+        <span class="form-nav__avance">
+          <button type="button" class="btn btn--ghost btn--icon" id="btnGuardarAvance"
+                  title="Guarda lo diligenciado en este equipo, aunque no haya señal. Queda en el historial como sin terminar hasta «Guardar todo».">
+            <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
+          <button type="button" class="btn btn--ghost btn--icon" id="btnEmpezarOtraFicha"
+                  title="Deja esta ficha sin terminar en el historial y empieza otra">
+            <i class="ph ph-plus" aria-hidden="true"></i> Empezar otra</button>
+          <span class="form-nav__estado" id="estadoAvance" role="status"></span>
+        </span>
       </nav>
 
       <p class="revision-aviso" id="avisoRevision" hidden>
@@ -296,6 +420,8 @@
             </div>
             <div class="field field--md" data-campo="codigoFicha">
               <label for="codigoFicha"><span class="item-num">15.</span> Código de la ficha: <span class="field-auto">(generado)</span></label>
+              <span class="field-hint field-hint--inline">Código interno de la visita. El código CF de la ficha técnica
+                (CF001, CF002…) es por familia y se ve en la sección 4, en cada familia.</span>
               <input type="text" id="codigoFicha" name="codigoFicha" class="mono" readonly placeholder="Se genera al iniciar la ficha">
             </div>
             <div class="field field--sm" data-campo="fechaDiligenciamiento">
@@ -474,7 +600,8 @@
             <label>Coordenadas geográficas del lugar de aplicación</label>
             <span class="field-hint field-hint--inline">
               Se calculan automáticamente a partir de la dirección del ítem 21 y del barrio del ítem 9.
-              Puede calcularlas desde la dirección o tomarlas del GPS del dispositivo.
+              También puede tomarlas del GPS del dispositivo o, con «Digitar coordenadas», escribirlas
+              (por ejemplo, copiadas de Google Maps: 3.451647, -76.531985).
             </span>
             <div class="form-grid coordenadas">
               <div class="field field--sm" data-campo="latitud">
@@ -488,6 +615,8 @@
               <div class="geo-acciones">
                 <button type="button" class="btn btn--ghost btn--icon" id="btnGeocodificar"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Buscar dir.</button>
                 <button type="button" class="btn btn--ghost btn--icon" id="btnCapturarGps"><i class="ph ph-crosshair" aria-hidden="true"></i> Usar GPS</button>
+                <button type="button" class="btn btn--ghost btn--icon" id="btnDigitarCoordenadas" aria-pressed="false"
+                        title="Habilita la latitud y la longitud para escribirlas"><i class="ph ph-pencil-simple-line" aria-hidden="true"></i> Digitar coordenadas</button>
               </div>
             </div>
             <span class="geo-estado" id="geoEstado"></span>
@@ -806,6 +935,11 @@
                     <label>N.° de ID de la familia <span class="field-auto">(automático)</span></label>
                     <input type="text" name="familias[0].idFamilia" class="mono" readonly placeholder="Se asigna al guardar">
                   </div>
+                  <div class="field field--sm" data-campo="codigoCf">
+                    <label>Código de la ficha <span class="field-auto">(CF, automático)</span></label>
+                    <span class="field-hint field-hint--inline">Visita número tantos a esta familia: CF001, CF002…</span>
+                    <input type="text" name="familias[0].codigoCf" class="mono" readonly placeholder="Se asigna al guardar">
+                  </div>
                 </div>
 
                 <div class="field field--full field--block" data-campo="cuidadorPrincipal">
@@ -877,7 +1011,11 @@
 
                   <div class="bloque__cuerpo">
                     <div class="bloque__acciones">
-                      <button type="button" class="btn btn--ghost btn--icon" data-accion="quitarIntegrante">Eliminar este integrante</button>
+                      <button type="button" class="btn btn--ghost btn--icon" data-accion="guardarAvance"
+                              title="Guarda lo diligenciado hasta aquí en este equipo">
+                        <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
+                      <button type="button" class="btn btn--ghost btn--icon" data-accion="quitarIntegrante"
+                              title="Quita este bloque sin cambiar el ítem 51. Si la persona no estaba en la visita, se agrega después desde Historial → Completar integrantes.">No estaba en la visita · quitar</button>
                     </div>
 
                     <!-- ---------- 5.1 Identificación (58-72) ---------- -->
@@ -1310,12 +1448,22 @@
           <i class="ph ph-clock-countdown" aria-hidden="true"></i>
           <div>
             <strong>Puede diligenciarse ahora o después.</strong>
-            La ficha se guarda aunque el plan de cuidado quede vacío: aparecerá en el historial
-            marcada como <em>plan de cuidado pendiente</em> y podrá completarse desde
-            <strong>Historial → Corregir</strong> sin afectar lo ya registrado. Las filas que se dejen
-            en blanco no cuentan; las que se empiecen a llenar sí deben completarse.
+            Nada del plan de cuidado es obligatorio: la ficha se guarda con la caracterización y
+            aparece en el historial marcada como <em>plan de cuidado pendiente</em>. Lo que deje a
+            medias también se guarda, y se completa después desde
+            <strong>Historial → Evolucionar plan de cuidado</strong> sin afectar lo ya registrado.
           </div>
         </div>
+
+        <!-- Alertas de la ficha, recalculadas mientras se diligencia: el
+             apoyo para estructurar el plan. Lo pinta renderizarResumenAlertasPlan(). -->
+        <section class="resumen-alertas" id="resumenAlertasPlan" aria-live="polite" aria-labelledby="resumenAlertasTitulo">
+          <header class="resumen-alertas__cabecera">
+            <h3 class="resumen-alertas__titulo" id="resumenAlertasTitulo">Alertas de esta ficha</h3>
+            <span class="resumen-alertas__riesgo" id="resumenAlertasRiesgo"></span>
+          </header>
+          <div id="resumenAlertasCuerpo"></div>
+        </section>
 
         <div class="card card--plan" id="seccion-6-1">
           <div class="card__header">
@@ -1362,7 +1510,11 @@
                     </div>
                   </td>
                   <td data-label="Procedimiento realizado"><input type="text" name="planVivienda.acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                  <td data-label="115. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planVivienda.acciones[0].tipoRespuesta"></div></td>
+                  <td data-label="115. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planVivienda.acciones[0].tipoRespuesta"></div>
+                        <div class="derivacion" data-rol="derivacion" hidden>
+                          <input type="text" name="planVivienda.acciones[0].institucionDestino" maxlength="200" placeholder="Institución a la que se deriva" aria-label="Institución a la que se deriva">
+                          <label class="derivacion__fecha">Fecha de la cita <input type="date" name="planVivienda.acciones[0].fechaCita"></label>
+                        </div></td>
                   <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                 </tr>
               </tbody>
@@ -1391,9 +1543,11 @@
                   <td data-label="Número"><input type="text" name="planVivienda.seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
                   <td data-label="117. Acción de cuidado concertada"><input type="text" name="planVivienda.seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
                   <td data-label="118. Fecha seguimiento 1"><input type="date" name="planVivienda.seguimientos[0].seg1Fecha"></td>
-                  <td data-label="Estado seguimiento 1"><select name="planVivienda.seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                  <td data-label="Estado seguimiento 1"><select name="planVivienda.seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planVivienda.seguimientos[0].seg1MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                   <td data-label="119. Fecha seguimiento 2"><input type="date" name="planVivienda.seguimientos[0].seg2Fecha"></td>
-                  <td data-label="Estado seguimiento 2"><select name="planVivienda.seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                  <td data-label="Estado seguimiento 2"><select name="planVivienda.seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planVivienda.seguimientos[0].seg2MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                   <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                 </tr>
               </tbody>
@@ -1471,7 +1625,11 @@
                         </div>
                       </td>
                       <td data-label="Procedimiento realizado"><input type="text" name="planesFamilia[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                      <td data-label="125. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesFamilia[0].acciones[0].tipoRespuesta"></div></td>
+                      <td data-label="125. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesFamilia[0].acciones[0].tipoRespuesta"></div>
+                        <div class="derivacion" data-rol="derivacion" hidden>
+                          <input type="text" name="planesFamilia[0].acciones[0].institucionDestino" maxlength="200" placeholder="Institución a la que se deriva" aria-label="Institución a la que se deriva">
+                          <label class="derivacion__fecha">Fecha de la cita <input type="date" name="planesFamilia[0].acciones[0].fechaCita"></label>
+                        </div></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                     </tr>
                   </tbody>
@@ -1500,9 +1658,11 @@
                       <td data-label="Número"><input type="text" name="planesFamilia[0].seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
                       <td data-label="127. Acción de cuidado concertada"><input type="text" name="planesFamilia[0].seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
                       <td data-label="128. Fecha seguimiento 1"><input type="date" name="planesFamilia[0].seguimientos[0].seg1Fecha"></td>
-                      <td data-label="Estado seguimiento 1"><select name="planesFamilia[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Estado seguimiento 1"><select name="planesFamilia[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planesFamilia[0].seguimientos[0].seg1MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                       <td data-label="129. Fecha seguimiento 2"><input type="date" name="planesFamilia[0].seguimientos[0].seg2Fecha"></td>
-                      <td data-label="Estado seguimiento 2"><select name="planesFamilia[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Estado seguimiento 2"><select name="planesFamilia[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planesFamilia[0].seguimientos[0].seg2MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                     </tr>
                   </tbody>
@@ -1598,7 +1758,11 @@
                         </div>
                       </td>
                       <td data-label="Procedimiento realizado"><input type="text" name="planesPersona[0].acciones[0].procedimientoRealizado" maxlength="500" placeholder="Describa el procedimiento que realizó"></td>
-                      <td data-label="136. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesPersona[0].acciones[0].tipoRespuesta"></div></td>
+                      <td data-label="136. Respuesta"><div class="radio-group radio-group--compacto" data-catalogo="CAT_TIPO_RESPUESTA" data-name="planesPersona[0].acciones[0].tipoRespuesta"></div>
+                        <div class="derivacion" data-rol="derivacion" hidden>
+                          <input type="text" name="planesPersona[0].acciones[0].institucionDestino" maxlength="200" placeholder="Institución a la que se deriva" aria-label="Institución a la que se deriva">
+                          <label class="derivacion__fecha">Fecha de la cita <input type="date" name="planesPersona[0].acciones[0].fechaCita"></label>
+                        </div></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                     </tr>
                   </tbody>
@@ -1627,9 +1791,11 @@
                       <td data-label="Número"><input type="text" name="planesPersona[0].seguimientos[0].seguimientoNumeroId" placeholder="Ej. 12345678"></td>
                       <td data-label="138. Acción de cuidado concertada"><input type="text" name="planesPersona[0].seguimientos[0].accionConcertada" placeholder="Compromiso acordado..."></td>
                       <td data-label="139. Fecha seguimiento 1"><input type="date" name="planesPersona[0].seguimientos[0].seg1Fecha"></td>
-                      <td data-label="Estado seguimiento 1"><select name="planesPersona[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Estado seguimiento 1"><select name="planesPersona[0].seguimientos[0].seg1Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planesPersona[0].seguimientos[0].seg1MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                       <td data-label="140. Fecha seguimiento 2"><input type="date" name="planesPersona[0].seguimientos[0].seg2Fecha"></td>
-                      <td data-label="Estado seguimiento 2"><select name="planesPersona[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select></td>
+                      <td data-label="Estado seguimiento 2"><select name="planesPersona[0].seguimientos[0].seg2Estado" data-catalogo="CAT_ESTADO_SEGUIMIENTO"></select>
+                        <input type="text" class="motivo-nc" data-rol="motivoNc" name="planesPersona[0].seguimientos[0].seg2MotivoNc" maxlength="300" placeholder="Motivo del No cumple" aria-label="Motivo del No cumple" hidden></td>
                       <td><button type="button" class="fila-quitar" data-accion="quitarFila" aria-label="Quitar fila"><i class="ph ph-x" aria-hidden="true"></i></button></td>
                     </tr>
                   </tbody>
@@ -1730,7 +1896,10 @@
 
       <div class="form-actions" id="accionesFormulario">
         <button type="reset" class="btn btn--ghost" id="btnLimpiar">Limpiar formulario</button>
-        <button type="submit" class="btn btn--primary" id="btnGuardar">Guardar encuesta</button>
+        <button type="button" class="btn btn--ghost btn--icon" data-accion="guardarAvance"
+                title="Guarda lo diligenciado en este equipo sin cargarlo todavía a la base">
+          <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
+        <button type="submit" class="btn btn--primary" id="btnGuardar">Guardar todo</button>
       </div>
     </form>
 
@@ -1785,6 +1954,12 @@
         </select>
         <button class="btn btn--ghost" id="btnLimpiarFiltros">Limpiar filtros</button>
       </div>
+      <!-- Fichas empezadas y guardadas sólo en este equipo, que todavía no se
+           cargan a la base: las pinta renderizarFichasEnCurso(). -->
+      <section class="en-curso" id="fichasEnCurso" aria-labelledby="enCursoTitulo" hidden>
+        <h3 class="en-curso__titulo" id="enCursoTitulo">Sin terminar · no cargadas a la base</h3>
+        <ul class="en-curso__lista" id="listaEnCurso"></ul>
+      </section>
       <div class="table-wrapper">
         <table class="data-table" id="historialTable">
           <thead>

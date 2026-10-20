@@ -62,7 +62,11 @@ function fichaBase() {
     materialTecho: 'concreto',
     riesgosAccidente: ['ninguno'],
     vectores: 'no',
-    factoresContaminacion: ['ninguno']
+    factoresContaminacion: ['ninguno'],
+    // ítems 39-49: el motor los exige siempre
+    actividadEconomica: 'no', animales: ['ninguno'], carnetAntirrabico: 'no_aplica',
+    fuenteAgua: ['acueducto_esp'], disposicionExcretas: ['alcantarillado'],
+    aguasResiduales: ['alcantarillado'], residuosSolidos: ['servicio_aseo']
   });
 }
 
@@ -119,12 +123,24 @@ errores = validarReglas(incompleta);
 verificar('Faltan estrato y habitaciones => 2 bloqueos', errores.length === 2,
   JSON.stringify(errores.map(e => e.codigo)));
 
-console.log('\n=== 2. Activación por sección: las reglas nuevas no bloquean antes de tiempo ===');
-verificar('Ítems 39-49 ausentes => no se evalúan', validarReglas(fichaBase()).length === 0);
-const conSaneamiento = Object.assign(fichaBase(), { actividadEconomica: 'no' });
-errores = validarReglas(conSaneamiento);
-verificar('Al aparecer el ítem 39 se activa el bloque 4', errores.length > 0 &&
-  errores.some(e => e.codigo === 'RN-046'), JSON.stringify(errores.map(e => e.codigo)));
+console.log('\n=== 2. Bloque 4 (ítems 39-49): se exige siempre ===');
+/* El formulario omite los campos vacíos: sin los ítems 39 y 46 el bloque
+   entero se saltaba y la ficha se guardaba sin agua ni saneamiento. */
+const sinAguaNiActividad = fichaBase();
+delete sinAguaNiActividad.fuenteAgua;
+delete sinAguaNiActividad.actividadEconomica;
+errores = validarReglas(sinAguaNiActividad);
+verificar('Sin fuente de agua ni actividad económica => bloquea RN-039 y RN-046',
+  errores.length === 2 && errores.some(e => e.codigo === 'RN-039') && errores.some(e => e.codigo === 'RN-046'),
+  JSON.stringify(errores.map(e => e.codigo)));
+verificar('…y la ficha no puede cerrarse', validarCierre(sinAguaNiActividad).puedeCerrar === false);
+
+const sinSaneamiento = fichaBase();
+['actividadEconomica', 'animales', 'carnetAntirrabico', 'fuenteAgua',
+ 'disposicionExcretas', 'aguasResiduales', 'residuosSolidos'].forEach(c => { delete sinSaneamiento[c]; });
+const codigosSinSaneamiento = validarReglas(sinSaneamiento).map(e => e.codigo).sort().join(',');
+verificar('Bloque 4 vacío => exige RN-039, RN-040 y RN-046 a RN-049',
+  codigosSinSaneamiento === 'RN-039,RN-040,RN-046,RN-047,RN-048,RN-049', codigosSinSaneamiento);
 
 console.log('\n=== 3. RN-032 / RN-033 — Umbrales DANE de hacinamiento ===');
 verificar('4 personas / 2 hab = 2.0 => sin hacinamiento', evaluarHacinamiento(4, 2).hacinamiento === 'no');
@@ -418,9 +434,12 @@ verificar('Fila vacía del plan => no genera incumplimientos', errores.length ==
 const filaAMedias = Object.assign(fichaBase(), { planVivienda: Object.assign({}, planVacio, {
   acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: null }]
 }) });
+/* RN-222: nada del plan bloquea el guardado; lo que falte se advierte. */
 errores = validarReglas(filaAMedias);
-verificar('Fila del plan a medias => sí se exige completarla', errores.some(e => e.codigo === 'RN-114'),
+verificar('Fila del plan a medias => no bloquea el guardado', !errores.some(e => e.codigo === 'RN-114'),
   JSON.stringify(errores.map(e => e.codigo)));
+verificar('  pero se advierte que falta el código (RN-114)',
+  evaluarAdvertencias(filaAMedias).some(e => e.codigo === 'RN-114'));
 
 const conPlan = Object.assign(fichaBase(), { familias: [familiaValida([adultaValida()])], planVivienda: Object.assign({}, planVacio, {
   acciones: [{ ejecutorTipoId: 'CC', ejecutorNumeroId: '1144012345', codigoAccion: '890201', tipoRespuesta: 'en_sitio' }],
@@ -513,9 +532,9 @@ const datosPlanErrado = Object.assign(fichaBase(), {
   familias: [conPlanErrado],
   planVivienda: { codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
 });
-errores = validarReglas(datosPlanErrado);
-verificar('Plan que apunta a un documento inexistente => bloqueo RN-134',
-  errores.some(e => e.codigo === 'RN-134'),
+errores = evaluarAdvertencias(datosPlanErrado);
+verificar('Plan que apunta a un documento inexistente => advertencia RN-134 (no bloquea)',
+  errores.some(e => e.codigo === 'RN-134') && !validarReglas(datosPlanErrado).some(e => e.codigo === 'RN-134'),
   JSON.stringify(errores.map(e => e.codigo)));
 
 const conPlanCorrecto = familiaValida([Object.assign(adultaValida(), {
@@ -536,8 +555,9 @@ const llaveViviendaErrada = Object.assign(fichaBase(), {
   familias: [familiaValida([adultaValida()])],
   planVivienda: { codigoEbs: 'OTRO-EBS', codigoVivienda: 'HOG-001', acciones: [], seguimientos: [] }
 });
-verificar('Código de EBS divergente en el plan => bloqueo RN-111',
-  validarReglas(llaveViviendaErrada).some(e => e.codigo === 'RN-111'));
+verificar('Código de EBS divergente en el plan => advertencia RN-111 (no bloquea)',
+  evaluarAdvertencias(llaveViviendaErrada).some(e => e.codigo === 'RN-111') &&
+  !validarReglas(llaveViviendaErrada).some(e => e.codigo === 'RN-111'));
 
 console.log('\n=== 12. Variables del anexo técnico SI-APS (anexo.js) ===');
 const codigos = (datos) => validarReglas(datos).map(e => e.codigo);

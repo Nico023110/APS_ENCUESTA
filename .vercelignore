@@ -10,3 +10,5 @@ pruebas/
 *.md
 playwright.config*.js
 skills-lock.json
+
+respaldos/

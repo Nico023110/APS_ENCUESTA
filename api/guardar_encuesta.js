@@ -38,9 +38,11 @@ require.resolve('../reglas.js');
 const { obtenerPool } = require('./_db');
 const { validar, obtenerMotor } = require('./_validacion');
 const anexoBd = require('./_anexo_bd');
+const { reemplazarPuentes } = require('./_puentes');
 const { requerirSesion } = require('./_auth');
 const { leerFichaCompleta } = require('./_ficha_completa');
 const { cambiosEnPlanRegistrado, esDelPlan } = require('./_plan_bloqueo');
+const { revisarIntegrantesNuevos, esDeIntegranteNuevo, cuentaAlCompletar } = require('./_integrantes_nuevos');
 const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
@@ -165,56 +167,42 @@ const PUENTES_INTEGRANTE = [
    que la sección no se capturó, y entonces no se toca la tabla.
 
    Los nombres de tabla salen de las constantes de arriba, nunca del cuerpo
-   de la petición: no hay concatenación de datos del usuario en el SQL. */
-async function sincronizarPuente(cliente, definicion, columnaPadre, padreId, contenedor) {
+   de la petición: no hay concatenación de datos del usuario en el SQL.
+
+   Todas las tablas del mismo dueño se escriben en una sola consulta
+   (_puentes.js): antes era un DELETE por campo y un INSERT por opción, y
+   cada una es una ida y vuelta a la base. */
+function cambioDePuente(definicion, columnaPadre, contenedor) {
   /* Ítem 102: el anexo lo volvió respuesta única, pero sigue en su puente;
      llega como texto y se escribe como lista de uno. */
   const valores = definicion.unica
     ? anexoBd.comoLista(contenedor[definicion.campo])
     : contenedor[definicion.campo];
-  if (definicion.unica && contenedor[definicion.campo] === undefined) return 0;
-  if (!Array.isArray(valores)) return 0;
+  if (definicion.unica && contenedor[definicion.campo] === undefined) return null;
+  if (!Array.isArray(valores)) return null;
 
-  await cliente.query(
-    'DELETE FROM ' + definicion.tabla + ' WHERE ' + columnaPadre + ' = $1',
-    [padreId]
-  );
+  const cambio = {
+    tabla: definicion.tabla,
+    columnaDueno: columnaPadre,
+    codigos: valores.map(texto).filter(function (codigo) { return codigo !== null; }),
+    sinConflicto: true
+  };
 
   /* El aclaratorio de "Otro" es uno por pregunta, no uno por opción: el
      esquema exige que no esté vacío cuando el código es 'otro'. */
-  const otroCual = definicion.otroCual ? texto(contenedor[definicion.otroCual]) : null;
+  if (definicion.otroCual) cambio.otroCual = texto(contenedor[definicion.otroCual]);
 
-  let escritas = 0;
-
-  for (const valor of valores) {
-    const codigo = texto(valor);
-    if (codigo === null) continue;
-
-    if (definicion.otroCual) {
-      await cliente.query(
-        'INSERT INTO ' + definicion.tabla + ' (' + columnaPadre + ', codigo, otro_cual) ' +
-        'VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-        [padreId, codigo, codigo === 'otro' ? otroCual : null]
-      );
-    } else {
-      await cliente.query(
-        'INSERT INTO ' + definicion.tabla + ' (' + columnaPadre + ', codigo) ' +
-        'VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [padreId, codigo]
-      );
-    }
-    escritas++;
-  }
-
-  return escritas;
+  return cambio;
 }
 
 async function sincronizarPuentes(cliente, definiciones, columnaPadre, padreId, contenedor) {
-  let total = 0;
-  for (const definicion of definiciones) {
-    total += await sincronizarPuente(cliente, definicion, columnaPadre, padreId, contenedor);
-  }
-  return total;
+  const cambios = definiciones
+    .map(function (definicion) { return cambioDePuente(definicion, columnaPadre, contenedor); })
+    .filter(Boolean);
+
+  await reemplazarPuentes(cliente, padreId, cambios);
+
+  return cambios.reduce(function (total, cambio) { return total + cambio.codigos.length; }, 0);
 }
 
 /* =========================================================================
@@ -229,12 +217,27 @@ async function sincronizarPuentes(cliente, definiciones, columnaPadre, padreId, 
    coinciden con su origen, así que lo que llega es lo que el encuestador vio.
    ========================================================================= */
 
+/* Funcionarios ya resueltos en la transacción en curso, por conexión. Se
+   crea al abrir la transacción del guardado y se descarta al terminarla
+   (ver el manejador): nunca pasa de una petición a otra, ni sobrevive a un
+   ROLLBACK. El mismo profesional suele ser ejecutor y responsable de varias
+   filas del plan, y cada búsqueda era una ida y vuelta a la base. */
+const funcionariosDeLaTransaccion = new WeakMap();
+
 /* Los ejecutores y responsables del plan son funcionarios del EBS. Se
    registran por documento igual que el responsable de la ficha. */
 async function obtenerFuncionario(cliente, tipoId, numeroId) {
   const tipo = texto(tipoId);
   const numero = texto(numeroId);
   if (tipo === null || numero === null) return null;
+  /* Un documento mal formado sólo se advierte en el plan (RN-222): no se
+     intenta registrar —func_formato_documento lo rechazaría y tumbaría el
+     guardado entero— y la fila queda sin ejecutor, para completarla. */
+  if (!documentoDeFuncionarioValido(tipo, numero)) return null;
+
+  const resueltos = funcionariosDeLaTransaccion.get(cliente);
+  const clave = tipo + '|' + numero;
+  if (resueltos && resueltos.has(clave)) return resueltos.get(clave);
 
   const res = await cliente.query(`
     INSERT INTO aps.funcionario (tipo_id, numero_id, nombre_completo, activo)
@@ -243,7 +246,39 @@ async function obtenerFuncionario(cliente, tipoId, numeroId) {
     RETURNING id
   `, [tipo, numero, 'Integrante del EBS ' + numero]);
 
-  return res.rows[0].id;
+  const id = res.rows[0].id;
+  if (resueltos) resueltos.set(clave, id);
+  return id;
+}
+
+/* Lo que el plan guarda a medias sólo entra si la base lo puede tomar: una
+   opción fuera de su dominio o una fecha mal escrita quedan vacías (el
+   motor ya las advirtió en pantalla) en vez de tumbar el guardado. */
+function opcionDe(validas, valor) {
+  const t = texto(valor);
+  return t !== null && validas.indexOf(t) !== -1 ? t : null;
+}
+
+function fechaValida(valor) {
+  const t = texto(valor);
+  return t !== null && /^\d{4}-\d{2}-\d{2}$/.test(t) && !isNaN(Date.parse(t)) ? t : null;
+}
+
+/* Mismo criterio que la restricción func_formato_documento (RN-013). */
+function documentoDeFuncionarioValido(tipo, numero) {
+  if (tipo === 'CC') return /^[0-9]{6,10}$/.test(numero);
+  if (tipo === 'CD' || tipo === 'CE' || tipo === 'PT') return /^[A-Za-z0-9]{5,16}$/.test(numero);
+  return false;
+}
+
+/* Una acción o un seguimiento en los que no se escribió nada (mismo
+   criterio que filaDePlanVacia en reglas.js). */
+function filaDelPlanVacia(fila) {
+  if (!fila || typeof fila !== 'object') return true;
+  return Object.keys(fila).every(function (campo) {
+    const valor = fila[campo];
+    return Array.isArray(valor) ? valor.length === 0 : texto(valor) === null;
+  });
 }
 
 /* Escribe un plan y sus acciones y seguimientos. Devuelve cuántas filas dejó.
@@ -335,13 +370,15 @@ async function guardarPlan(cliente, fichaId, ambito, plan, llaves) {
   let filas = 1;
 
   /* --- Acciones (ítems 113-115 / 123-125 / 135-136) --- */
+  /* RN-222: nada del plan es obligatorio. Una fila con algo escrito se
+     guarda tal como está —sin ejecutor, sin código o sin tipo de respuesta—
+     para completarla al evolucionar el plan; sólo la fila vacía se omite. */
   for (const accion of (Array.isArray(plan.acciones) ? plan.acciones : [])) {
-    if (texto(accion.codigoAccion) === null) continue;
+    if (filaDelPlanVacia(accion)) continue;
 
     const ejecutorId = await obtenerFuncionario(
       cliente, accion.ejecutorTipoId, accion.ejecutorNumeroId
     );
-    if (ejecutorId === null) continue;
 
     await cliente.query(`
       INSERT INTO aps.plan_accion (
@@ -356,21 +393,20 @@ async function guardarPlan(cliente, fichaId, ambito, plan, llaves) {
          Complementa al código, no lo reemplaza —de él dependen la llave
          foránea a cat.cups y el cruce alerta ↔ acción de RN-220—. */
       texto(accion.procedimientoRealizado),
-      texto(accion.tipoRespuesta),
+      opcionDe(['en_sitio', 'derivada'], accion.tipoRespuesta),
       texto(accion.institucionDestino),
-      texto(accion.fechaCita)
+      fechaValida(accion.fechaCita)
     ]);
     filas++;
   }
 
   /* --- Seguimientos (ítems 116-119 / 126-129 / 137-140) --- */
   for (const seg of (Array.isArray(plan.seguimientos) ? plan.seguimientos : [])) {
-    if (texto(seg.accionConcertada) === null) continue;
+    if (filaDelPlanVacia(seg)) continue;
 
     const responsableId = await obtenerFuncionario(
       cliente, seg.seguimientoTipoId, seg.seguimientoNumeroId
     );
-    if (responsableId === null) continue;
 
     await cliente.query(`
       INSERT INTO aps.plan_seguimiento (
@@ -385,11 +421,11 @@ async function guardarPlan(cliente, fichaId, ambito, plan, llaves) {
       /* El instrumento no pide fecha de concertación aparte: se concierta
          durante la visita, así que es la fecha de diligenciamiento. */
       llaves.fechaConcertacion,
-      texto(seg.seg1Fecha),
-      texto(seg.seg1Estado),
+      fechaValida(seg.seg1Fecha),
+      opcionDe(['C', 'CP', 'NC'], seg.seg1Estado),
       texto(seg.seg1MotivoNc),
-      texto(seg.seg2Fecha),
-      texto(seg.seg2Estado),
+      fechaValida(seg.seg2Fecha),
+      opcionDe(['C', 'CP', 'NC'], seg.seg2Estado),
       texto(seg.seg2MotivoNc)
     ]);
     filas++;
@@ -445,7 +481,11 @@ async function guardarAlertas(cliente, fichaId, alertas, indices) {
   /* Se reemplazan: al reenviar la ficha, las alertas son las que el motor
      deduce de los datos actuales, no la unión con las de la vez anterior. */
   await cliente.query('DELETE FROM aps.alerta WHERE ficha_id = $1', [fichaId]);
+  return insertarAlertas(cliente, fichaId, alertas, indices);
+}
 
+/* Escribe las alertas sin tocar las que ya hay. */
+async function insertarAlertas(cliente, fichaId, alertas, indices) {
   let escritas = 0;
   const sinResolver = [];
 
@@ -530,7 +570,8 @@ async function autorizacionVigente(cliente, fichaId, usuarioId) {
    diligenciamiento que quedó guardado. Se acepta sin autorización, como
    antes; lo registrado en el plan sigue protegido igual. */
 function esReenvioDeLaCaptura(existente, cuerpo, usuario) {
-  if (!existente || cuerpo.esCorreccion === true || cuerpo.soloPlan === true) return false;
+  if (!existente || cuerpo.esCorreccion === true || cuerpo.soloPlan === true ||
+      cuerpo.completarIntegrantes === true) return false;
   if (Number(existente.responsable_id) !== Number(usuario.funcionarioId)) return false;
   const enviado = typeof cuerpo.fechaRegistro === 'string' ? Date.parse(cuerpo.fechaRegistro) : NaN;
   return Number.isFinite(enviado) && existente.diligenciada_en instanceof Date &&
@@ -627,6 +668,65 @@ async function guardarSoloPlanes(cliente, fichaId, encuesta) {
   }
 
   return filas;
+}
+
+/* RN-051 — «Completar integrantes» desde el historial: se escriben sólo los
+   integrantes que no estaban en la visita, el ítem 51 si subió, los planes
+   (con el mismo criterio de «Evolucionar plan», ahora que los nuevos tienen
+   dónde colgar el suyo) y las alertas de los nuevos. Lo registrado —vivienda,
+   familias, integrantes que ya estaban y sus alertas— no se vuelve a escribir,
+   llegue como llegue en el cuerpo: reescribir las alertas reiniciaría sus
+   plazos (RN-200). `revision` sale de revisarIntegrantesNuevos. */
+async function guardarIntegrantesNuevos(cliente, motor, fichaId, encuesta, revision, alertas) {
+  const familiasDb = (await cliente.query(`
+    SELECT ff.id, fa.consecutivo,
+           (SELECT coalesce(max(i.orden), 0) FROM aps.integrante i WHERE i.familia_ficha_id = ff.id) AS ultimo_orden
+      FROM aps.familia_ficha ff
+      JOIN aps.familia fa ON fa.id = ff.familia_id
+     WHERE ff.ficha_id = $1
+  `, [fichaId])).rows;
+  const familiaDb = function (fi) {
+    return familiasDb.find(function (f) { return Number(f.consecutivo) === fi + 1; }) || null;
+  };
+
+  for (const aumento of revision.aumentos) {
+    const registrada = familiaDb(aumento.familia);
+    if (!registrada) continue;
+    await cliente.query('UPDATE aps.familia_ficha SET numero_integrantes = $2 WHERE id = $1',
+      [registrada.id, aumento.numeroIntegrantes]);
+  }
+
+  const indices = { familias: {}, integrantes: {} };
+  let agregados = 0;
+
+  for (const tramo of revision.nuevos) {
+    const registrada = familiaDb(tramo.familia);
+    if (!registrada) throw new Error('La familia ' + (tramo.familia + 1) + ' de la ficha no está en la base.');
+    const familia = encuesta.familias[tramo.familia];
+    indices.familias[tramo.familia] = registrada.id;
+    indices.integrantes[tramo.familia] = {};
+
+    /* El orden sigue al último que ya tiene la familia: (familia, orden) es
+       único y los registrados no se renumeran. */
+    let orden = Number(registrada.ultimo_orden) || 0;
+    for (let ii = tramo.desde; ii < tramo.hasta; ii++) {
+      orden++;
+      const escrito = await escribirIntegrante(cliente, motor, {
+        familiaFichaId: registrada.id, familia: familia, encuesta: encuesta, integrante: familia.integrantes[ii], orden: orden
+      });
+      indices.integrantes[tramo.familia][ii] = escrito.integranteId;
+      agregados++;
+    }
+  }
+
+  await guardarSoloPlanes(cliente, fichaId, encuesta);
+
+  const deLosNuevos = (Array.isArray(alertas) ? alertas : []).filter(function (alerta) {
+    return esDeIntegranteNuevo(alerta.ruta, revision.nuevos);
+  });
+  const escritas = await insertarAlertas(cliente, fichaId, deLosNuevos, indices);
+
+  return { agregados: agregados, alertas: escritas };
 }
 
 /* Una visita nueva no puede pisar la ficha de otra persona.
@@ -747,6 +847,178 @@ function fijarLlavesDelPlan(plan, codigoVivienda, codigoFamiliaDelPlan) {
   if (codigoFamiliaDelPlan !== undefined && plan.codigoFamilia !== undefined) plan.codigoFamilia = codigoFamiliaDelPlan;
 }
 
+/* Escribe un integrante de una familia caracterizada en esta visita: su
+   persona (deduplicada por documento, RN-063), su caracterización, las tablas
+   puente de los ítems 77 a 106 y sus variables del anexo. El plan de la
+   persona lo escribe quien llama. Lo usan el guardado completo y el de
+   «Completar integrantes», que sólo agrega los que faltaban. */
+async function escribirIntegrante(cliente, motor, contexto) {
+  const { familiaFichaId, familia, encuesta, integrante, orden } = contexto;
+
+  /* 6c-i. Persona — identidad deduplicada por tipo + número (RN-063). */
+  const personaRes = await cliente.query(`
+    INSERT INTO aps.persona (
+      tipo_id, numero_id, primer_nombre, segundo_nombre,
+      primer_apellido, segundo_apellido, fecha_nacimiento, sexo,
+      nacionalidad, nacionalidad_otra
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (tipo_id, numero_id) DO UPDATE SET
+      primer_nombre     = EXCLUDED.primer_nombre,
+      segundo_nombre    = EXCLUDED.segundo_nombre,
+      primer_apellido   = EXCLUDED.primer_apellido,
+      segundo_apellido  = EXCLUDED.segundo_apellido,
+      fecha_nacimiento  = EXCLUDED.fecha_nacimiento,
+      sexo              = EXCLUDED.sexo,
+      nacionalidad      = EXCLUDED.nacionalidad,
+      nacionalidad_otra = EXCLUDED.nacionalidad_otra
+    RETURNING id
+  `, [
+    texto(integrante.tipoId),
+    texto(integrante.numeroId),
+    texto(integrante.primerNombre),
+    texto(integrante.segundoNombre),
+    texto(integrante.primerApellido),
+    texto(integrante.segundoApellido),
+    texto(integrante.fechaNacimiento),
+    texto(integrante.sexo),
+    /* Ítem 65. Antes no se escribía y toda persona quedaba como 'CO' por
+       defecto, que es justo lo contrario de lo que pide el seguimiento a
+       población extranjera. «Otra» (OT) lleva el país escrito en 65.1. */
+    texto(integrante.nacionalidad) || 'CO',
+    texto(integrante.nacionalidad) === 'OT' ? texto(integrante.nacionalidadOtra) : null
+  ]);
+  const personaId = personaRes.rows[0].id;
+
+  /* 6c-ii. Caracterización del integrante en esta visita.
+     El régimen y la EAPB van tal como se capturaron: la validación ya
+     comprobó la equivalencia que exige int_eapb_condicionada. */
+  const integranteRes = await cliente.query(`
+    INSERT INTO aps.integrante (
+      familia_ficha_id, persona_id, orden,
+      genero, autoidentificacion_genero, autoidentificacion_genero_otro,
+      orientacion_sexual, orientacion_sexual_otro,
+      telefono1, telefono2, rol_familiar,
+      ocupacion_codigo, ocupacion_texto, nivel_educativo,
+      regimen_afiliacion, eapb_codigo,
+      pertenencia_etnica, pueblo_etnico, certificacion_rlcpd,
+      intencion_reproductiva, gestacion_actual, lactancia_exclusiva,
+      peso, talla, circunferencia_cintura, clasificacion_antropometrica,
+      tension_sistolica, tension_diastolica, clasificacion_tension,
+      adherencia_tratamiento, consumo_spa,
+      puntaje_crafft, puntaje_audit, puntaje_assist,
+      ideacion_suicida, limitacion_cotidiana
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+              $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36)
+    /* La caracterización clínica es justo lo que más se corrige —un peso
+       mal tecleado, una tensión, el régimen de afiliación—. Con DO
+       NOTHING la corrección se aceptaba con un 200 y la base seguía
+       mostrando el dato viejo. */
+    ON CONFLICT (familia_ficha_id, persona_id) DO UPDATE SET
+      orden                          = EXCLUDED.orden,
+      genero                         = EXCLUDED.genero,
+      autoidentificacion_genero      = EXCLUDED.autoidentificacion_genero,
+      autoidentificacion_genero_otro = EXCLUDED.autoidentificacion_genero_otro,
+      orientacion_sexual             = EXCLUDED.orientacion_sexual,
+      orientacion_sexual_otro        = EXCLUDED.orientacion_sexual_otro,
+      telefono1                      = EXCLUDED.telefono1,
+      telefono2                      = EXCLUDED.telefono2,
+      rol_familiar                   = EXCLUDED.rol_familiar,
+      ocupacion_codigo               = EXCLUDED.ocupacion_codigo,
+      ocupacion_texto               = EXCLUDED.ocupacion_texto,
+      nivel_educativo                = EXCLUDED.nivel_educativo,
+      regimen_afiliacion             = EXCLUDED.regimen_afiliacion,
+      eapb_codigo                    = EXCLUDED.eapb_codigo,
+      pertenencia_etnica             = EXCLUDED.pertenencia_etnica,
+      pueblo_etnico                  = EXCLUDED.pueblo_etnico,
+      certificacion_rlcpd            = EXCLUDED.certificacion_rlcpd,
+      intencion_reproductiva         = EXCLUDED.intencion_reproductiva,
+      gestacion_actual               = EXCLUDED.gestacion_actual,
+      lactancia_exclusiva            = EXCLUDED.lactancia_exclusiva,
+      peso                           = EXCLUDED.peso,
+      talla                          = EXCLUDED.talla,
+      circunferencia_cintura         = EXCLUDED.circunferencia_cintura,
+      clasificacion_antropometrica   = EXCLUDED.clasificacion_antropometrica,
+      tension_sistolica              = EXCLUDED.tension_sistolica,
+      tension_diastolica             = EXCLUDED.tension_diastolica,
+      clasificacion_tension          = EXCLUDED.clasificacion_tension,
+      adherencia_tratamiento         = EXCLUDED.adherencia_tratamiento,
+      consumo_spa                    = EXCLUDED.consumo_spa,
+      puntaje_crafft                 = EXCLUDED.puntaje_crafft,
+      puntaje_audit                  = EXCLUDED.puntaje_audit,
+      puntaje_assist                 = EXCLUDED.puntaje_assist,
+      ideacion_suicida               = EXCLUDED.ideacion_suicida,
+      limitacion_cotidiana           = EXCLUDED.limitacion_cotidiana
+    RETURNING id
+  `, [
+    familiaFichaId,
+    personaId,
+    orden,
+    texto(integrante.genero),
+    texto(integrante.autoidentificacionGenero),
+    texto(integrante.autoidentificacionGeneroOtro),
+    texto(integrante.orientacionSexual),
+    texto(integrante.orientacionSexualOtro),
+    texto(integrante.telefono1),
+    texto(integrante.telefono2),
+    texto(integrante.rolFamiliar),
+    /* Ítem 73: código CIUO de la tabla de SISPRO (llave foránea a
+       cat.ocupacion_ciuo). Lo que no sea un código —las fichas de
+       cuando la ocupación era texto libre— va a ocupacion_texto. */
+    motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
+      ? texto(integrante.ocupacion) : null,
+    motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
+      ? null : texto(integrante.ocupacion),
+    texto(integrante.nivelEducativo),
+    texto(integrante.regimenAfiliacion),
+    texto(integrante.eapb),
+    texto(integrante.pertenenciaEtnica),
+    texto(integrante.puebloEtnico),
+    texto(integrante.certificacionRlcpd),
+    booleano(integrante.intencionReproductiva),
+    booleano(integrante.gestacionActual),
+    texto(integrante.lactanciaExclusiva),
+    decimal(integrante.peso),
+    decimal(integrante.talla),
+    decimal(integrante.circunferenciaCintura),
+    /* El IMC no se envía: es columna generada. La base lo deriva de
+       peso y talla, igual que el hacinamiento en vivienda (RN-095). */
+    texto(integrante.clasificacionAntropometrica),
+    entero(integrante.tensionSistolica),
+    entero(integrante.tensionDiastolica),
+    texto(integrante.clasificacionTension),
+    texto(integrante.adherenciaTratamiento),
+    texto(integrante.consumoSpa),
+    entero(integrante.puntajeCrafft),
+    entero(integrante.puntajeAudit),
+    entero(integrante.puntajeAssist),
+    /* La columna es booleana y el ítem 107 es un catálogo de tres
+       opciones: sólo "ha pensado" marca riesgo (metadata.riesgo). */
+    integrante.ideacionSuicida === undefined || integrante.ideacionSuicida === null
+      ? null
+      : integrante.ideacionSuicida === 'ha_pensado',
+    booleano(integrante.limitacionCotidiana)
+  ]);
+
+  /* De este id cuelgan las 16 tablas puente del integrante. */
+  const integranteId = integranteRes.rows[0].id;
+
+  /* Ítems 77 a 106. */
+  let filasPuente = await sincronizarPuentes(
+    cliente, PUENTES_INTEGRANTE, 'integrante_id', integranteId, integrante
+  );
+
+  /* Variables del anexo del integrante: su visibilidad depende de la
+     edad, el sexo y la gestación, igual que en el formulario. */
+  const contextoIntegrante = motor.contextoIntegrante(integrante, encuesta);
+  filasPuente += await anexoBd.escribirAnexo(cliente, motor, 'integrante', integranteId, integrante,
+    motor.lectorDeRespuestas([integrante, familia, encuesta], {
+      edadMeses: contextoIntegrante.edadMeses, sexo: contextoIntegrante.sexo,
+      gestante: contextoIntegrante.gestante, fechaFicha: texto(encuesta.fechaDiligenciamiento)
+    }));
+
+  return { integranteId: integranteId, filasPuente: filasPuente };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -768,6 +1040,9 @@ module.exports = async (req, res) => {
     const existente = await fichaExistente(cliente, texto(req.body.codigoFicha));
     let tipoEvento;
     const soloPlan = req.body.soloPlan === true;
+    /* RN-051 — «Completar integrantes»: sólo se agregan los integrantes que no
+       estaban en la visita, y su plan de cuidado. */
+    const completarIntegrantes = req.body.completarIntegrantes === true && !soloPlan;
     /* RN-228: la autorización vigente con que este usuario vuelve a guardar
        la ficha, cuando su rol no le alcanza. Se gasta al guardar. */
     let autorizacion = null;
@@ -791,16 +1066,18 @@ module.exports = async (req, res) => {
          de la coordinación o del maestro (RN-228). */
       const fichaRef = { equipoSaludId: Number(existente.equipo_salud_id), responsableId: Number(existente.responsable_id) };
       const sinAutorizacion = roles.puedeCorregir(usuario, fichaRef) ||
-        (soloPlan && roles.puedeEvolucionar(usuario, fichaRef)) ||
+        ((soloPlan || completarIntegrantes) && roles.puedeEvolucionar(usuario, fichaRef)) ||
         esReenvioDeLaCaptura(existente, req.body, usuario);
       if (!sinAutorizacion) autorizacion = await autorizacionVigente(cliente, existente.id, usuario.id);
       if (!sinAutorizacion && !autorizacion) {
         const laVe = roles.puedeVerFicha(usuario, fichaRef);
-        console.error('  ' + (soloPlan ? 'Evolución' : 'Corrección') + ' rechazada: ' + texto(req.body.codigoFicha) +
+        console.error('  ' + (soloPlan ? 'Evolución' : completarIntegrantes ? 'Completar integrantes' : 'Corrección') +
+          ' rechazada: ' + texto(req.body.codigoFicha) +
           (laVe ? ' sin autorización de ' : ' fuera del alcance de ') + usuario.documento + ' (' + usuario.rol + ')');
         return res.status(403).json({
           error: !laVe ? 'No puede corregir esta ficha: pertenece a otro equipo.'
             : soloPlan ? 'Su rol no permite evolucionar el plan de esta ficha: la diligenció otra persona.'
+              : completarIntegrantes ? 'Su rol no permite completar los integrantes de esta ficha: la diligenció otra persona.'
               : 'Esta ficha ya está guardada: para corregirla necesita la autorización de la coordinación del EBS ' +
                 'o del usuario maestro.',
           codigo: laVe ? 'requiere_autorizacion' : 'sin_permiso'
@@ -855,6 +1132,32 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Sólo se puede evolucionar el plan de cuidado de una ficha ya guardada.',
         codigo: 'sin_ficha' });
     }
+    if (completarIntegrantes && !existente) {
+      return res.status(400).json({ error: 'Sólo se pueden completar los integrantes de una ficha ya guardada.',
+        codigo: 'sin_ficha' });
+    }
+
+    /* La ficha tal como está en la base: de ella salen lo registrado del plan
+       (RN-228) y los integrantes que ya tiene (RN-051). */
+    const guardada = existente ? await leerFichaCompleta(cliente, existente.id) : null;
+
+    /* RN-051 — Al completar integrantes, lo registrado no cambia: las mismas
+       familias, los mismos integrantes en su orden, el ítem 51 sólo sube. */
+    let revisionIntegrantes = null;
+    if (completarIntegrantes) {
+      revisionIntegrantes = revisarIntegrantesNuevos(guardada, req.body);
+      if (revisionIntegrantes.bloqueos.length > 0) {
+        console.error('  Completar integrantes rechazado: ' + texto(req.body.codigoFicha) + ' — ' +
+          revisionIntegrantes.bloqueos.map(function (b) { return b.ruta; }).join(', '));
+        return res.status(409).json({
+          error: 'Al completar integrantes sólo se agregan los que faltaban; lo ya registrado no cambia.',
+          codigo: 'integrantes_registrados',
+          total: revisionIntegrantes.bloqueos.length,
+          bloqueos: revisionIntegrantes.bloqueos,
+          advertencias: []
+        });
+      }
+    }
 
     /* RN-228 — Lo registrado en el plan de cuidado sólo se completa. Cambiarlo
        o quitarlo exige una autorización vigente de la coordinación o del
@@ -864,7 +1167,7 @@ module.exports = async (req, res) => {
        reenviarla al sincronizar. */
     let modificaPlanRegistrado = false;
     if (existente) {
-      const cambios = cambiosEnPlanRegistrado(await leerFichaCompleta(cliente, existente.id), req.body);
+      const cambios = cambiosEnPlanRegistrado(guardada, req.body);
       if (cambios.length > 0) {
         if (!roles.puede(usuario.rol, 'plan.modificar_registrado')) {
           autorizacion = autorizacion || await autorizacionVigente(cliente, existente.id, usuario.id);
@@ -899,7 +1202,9 @@ module.exports = async (req, res) => {
        la ficha ya está registrado y no se vuelve a escribir. */
     const bloqueos = soloPlan
       ? validacion.bloqueos.filter(function (b) { return esDelPlan(b.ruta); })
-      : validacion.bloqueos;
+      : completarIntegrantes
+        ? validacion.bloqueos.filter(function (b) { return cuentaAlCompletar(b, revisionIntegrantes.nuevos, esDelPlan); })
+        : validacion.bloqueos;
 
     if (bloqueos.length > 0) {
       /* El detalle viaja en la respuesta, pero el rechazo sólo se veía
@@ -924,6 +1229,7 @@ module.exports = async (req, res) => {
        recompuesta desde sus componentes. */
     const encuesta = validacion.ficha;
     await cliente.query('BEGIN');
+    funcionariosDeLaTransaccion.set(cliente, new Map());
 
     if (soloPlan) {
       const filasSoloPlan = await guardarSoloPlanes(cliente, existente.id, encuesta);
@@ -942,6 +1248,34 @@ module.exports = async (req, res) => {
         soloPlan: true,
         filasPlanCuidado: filasSoloPlan,
         advertencias: advertencias.filter(function (a) { return esDelPlan(a.ruta); }),
+        planCuidado: planCuidado
+      });
+    }
+
+    if (completarIntegrantes) {
+      const resultado = await guardarIntegrantesNuevos(cliente, obtenerMotor(), existente.id, encuesta,
+        revisionIntegrantes, alertas);
+      await cliente.query(`
+        INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_nuevo, funcionario_id, dispositivo_id)
+        VALUES ($1, 'ficha', $1, 'modificacion', 'integrantes', $2, $3, $4)
+      `, [existente.id, 'completados: ' + resultado.agregados + ' integrante(s) agregado(s)',
+        usuario.funcionarioId, texto(encuesta.dispositivoId)]);
+      if (modificaPlanRegistrado) {
+        await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, autorizacion, true);
+      }
+      if (autorizacion) await gastarAutorizacion(cliente, existente.id, usuario, encuesta, autorizacion);
+      await cliente.query('COMMIT');
+
+      console.log('  Integrantes completados: ' + texto(encuesta.codigoFicha) + ' (id ' + existente.id + ') — ' +
+        resultado.agregados + ' integrante(s), ' + resultado.alertas + ' alerta(s) nuevas');
+
+      return res.status(200).json({
+        mensaje: 'Integrantes agregados',
+        fichaId: existente.id,
+        codigo: texto(encuesta.codigoFicha),
+        completarIntegrantes: true,
+        integrantesAgregados: resultado.agregados,
+        advertencias: advertencias.filter(function (a) { return cuentaAlCompletar(a, revisionIntegrantes.nuevos, esDelPlan); }),
         planCuidado: planCuidado
       });
     }
@@ -1271,10 +1605,17 @@ module.exports = async (req, res) => {
       const familiaFichaRes = await cliente.query(`
         INSERT INTO aps.familia_ficha (
           ficha_id, familia_id, tipo_familia, numero_integrantes,
-          cuidador_principal, zarit, redes_apoyo, sin_contacto_telefonico, hogar_numero
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          cuidador_principal, zarit, redes_apoyo, sin_contacto_telefonico, hogar_numero,
+          codigo_cf
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+          /* Pregunta 19 de la ficha técnica: CF + la visita número tantos a
+             esta familia (14_codigo_cf.sql). */
+          (SELECT 'CF' || lpad((count(*) + 1)::text, 3, '0')
+             FROM aps.familia_ficha otra
+            WHERE otra.familia_id = $2 AND otra.ficha_id <> $1))
         /* Igual que la vivienda: la caracterización de la familia se corrige,
-           no se congela en la primera versión enviada. */
+           no se congela en la primera versión enviada. El CF sí: corregir no
+           es otra visita. */
         ON CONFLICT (ficha_id, familia_id) DO UPDATE SET
           tipo_familia            = EXCLUDED.tipo_familia,
           numero_integrantes      = EXCLUDED.numero_integrantes,
@@ -1282,8 +1623,9 @@ module.exports = async (req, res) => {
           zarit                   = EXCLUDED.zarit,
           redes_apoyo             = EXCLUDED.redes_apoyo,
           sin_contacto_telefonico = EXCLUDED.sin_contacto_telefonico,
-          hogar_numero            = EXCLUDED.hogar_numero
-        RETURNING id
+          hogar_numero            = EXCLUDED.hogar_numero,
+          codigo_cf               = coalesce(aps.familia_ficha.codigo_cf, EXCLUDED.codigo_cf)
+        RETURNING id, codigo_cf
       `, [
         fichaId,
         familiaId,
@@ -1302,6 +1644,7 @@ module.exports = async (req, res) => {
       ]);
 
       const familiaFichaId = familiaFichaRes.rows[0].id;
+      familia.codigoCf = familiaFichaRes.rows[0].codigo_cf || null;
 
       indices.familias[fi] = familiaFichaId;
       indices.integrantes[fi] = {};
@@ -1319,168 +1662,12 @@ module.exports = async (req, res) => {
       for (let ii = 0; ii < integrantes.length; ii++) {
         const integrante = integrantes[ii];
 
-        /* 6c-i. Persona — identidad deduplicada por tipo + número (RN-063). */
-        const personaRes = await cliente.query(`
-          INSERT INTO aps.persona (
-            tipo_id, numero_id, primer_nombre, segundo_nombre,
-            primer_apellido, segundo_apellido, fecha_nacimiento, sexo,
-            nacionalidad, nacionalidad_otra
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          ON CONFLICT (tipo_id, numero_id) DO UPDATE SET
-            primer_nombre     = EXCLUDED.primer_nombre,
-            segundo_nombre    = EXCLUDED.segundo_nombre,
-            primer_apellido   = EXCLUDED.primer_apellido,
-            segundo_apellido  = EXCLUDED.segundo_apellido,
-            fecha_nacimiento  = EXCLUDED.fecha_nacimiento,
-            sexo              = EXCLUDED.sexo,
-            nacionalidad      = EXCLUDED.nacionalidad,
-            nacionalidad_otra = EXCLUDED.nacionalidad_otra
-          RETURNING id
-        `, [
-          texto(integrante.tipoId),
-          texto(integrante.numeroId),
-          texto(integrante.primerNombre),
-          texto(integrante.segundoNombre),
-          texto(integrante.primerApellido),
-          texto(integrante.segundoApellido),
-          texto(integrante.fechaNacimiento),
-          texto(integrante.sexo),
-          /* Ítem 65. Antes no se escribía y toda persona quedaba como 'CO' por
-             defecto, que es justo lo contrario de lo que pide el seguimiento a
-             población extranjera. «Otra» (OT) lleva el país escrito en 65.1. */
-          texto(integrante.nacionalidad) || 'CO',
-          texto(integrante.nacionalidad) === 'OT' ? texto(integrante.nacionalidadOtra) : null
-        ]);
-        const personaId = personaRes.rows[0].id;
-
-        /* 6c-ii. Caracterización del integrante en esta visita.
-           El régimen y la EAPB van tal como se capturaron: la validación ya
-           comprobó la equivalencia que exige int_eapb_condicionada. */
-        const integranteRes = await cliente.query(`
-          INSERT INTO aps.integrante (
-            familia_ficha_id, persona_id, orden,
-            genero, autoidentificacion_genero, autoidentificacion_genero_otro,
-            orientacion_sexual, orientacion_sexual_otro,
-            telefono1, telefono2, rol_familiar,
-            ocupacion_codigo, ocupacion_texto, nivel_educativo,
-            regimen_afiliacion, eapb_codigo,
-            pertenencia_etnica, pueblo_etnico, certificacion_rlcpd,
-            intencion_reproductiva, gestacion_actual, lactancia_exclusiva,
-            peso, talla, circunferencia_cintura, clasificacion_antropometrica,
-            tension_sistolica, tension_diastolica, clasificacion_tension,
-            adherencia_tratamiento, consumo_spa,
-            puntaje_crafft, puntaje_audit, puntaje_assist,
-            ideacion_suicida, limitacion_cotidiana
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-                    $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36)
-          /* La caracterización clínica es justo lo que más se corrige —un peso
-             mal tecleado, una tensión, el régimen de afiliación—. Con DO
-             NOTHING la corrección se aceptaba con un 200 y la base seguía
-             mostrando el dato viejo. */
-          ON CONFLICT (familia_ficha_id, persona_id) DO UPDATE SET
-            orden                          = EXCLUDED.orden,
-            genero                         = EXCLUDED.genero,
-            autoidentificacion_genero      = EXCLUDED.autoidentificacion_genero,
-            autoidentificacion_genero_otro = EXCLUDED.autoidentificacion_genero_otro,
-            orientacion_sexual             = EXCLUDED.orientacion_sexual,
-            orientacion_sexual_otro        = EXCLUDED.orientacion_sexual_otro,
-            telefono1                      = EXCLUDED.telefono1,
-            telefono2                      = EXCLUDED.telefono2,
-            rol_familiar                   = EXCLUDED.rol_familiar,
-            ocupacion_codigo               = EXCLUDED.ocupacion_codigo,
-            ocupacion_texto               = EXCLUDED.ocupacion_texto,
-            nivel_educativo                = EXCLUDED.nivel_educativo,
-            regimen_afiliacion             = EXCLUDED.regimen_afiliacion,
-            eapb_codigo                    = EXCLUDED.eapb_codigo,
-            pertenencia_etnica             = EXCLUDED.pertenencia_etnica,
-            pueblo_etnico                  = EXCLUDED.pueblo_etnico,
-            certificacion_rlcpd            = EXCLUDED.certificacion_rlcpd,
-            intencion_reproductiva         = EXCLUDED.intencion_reproductiva,
-            gestacion_actual               = EXCLUDED.gestacion_actual,
-            lactancia_exclusiva            = EXCLUDED.lactancia_exclusiva,
-            peso                           = EXCLUDED.peso,
-            talla                          = EXCLUDED.talla,
-            circunferencia_cintura         = EXCLUDED.circunferencia_cintura,
-            clasificacion_antropometrica   = EXCLUDED.clasificacion_antropometrica,
-            tension_sistolica              = EXCLUDED.tension_sistolica,
-            tension_diastolica             = EXCLUDED.tension_diastolica,
-            clasificacion_tension          = EXCLUDED.clasificacion_tension,
-            adherencia_tratamiento         = EXCLUDED.adherencia_tratamiento,
-            consumo_spa                    = EXCLUDED.consumo_spa,
-            puntaje_crafft                 = EXCLUDED.puntaje_crafft,
-            puntaje_audit                  = EXCLUDED.puntaje_audit,
-            puntaje_assist                 = EXCLUDED.puntaje_assist,
-            ideacion_suicida               = EXCLUDED.ideacion_suicida,
-            limitacion_cotidiana           = EXCLUDED.limitacion_cotidiana
-          RETURNING id
-        `, [
-          familiaFichaId,
-          personaId,
-          ii + 1,
-          texto(integrante.genero),
-          texto(integrante.autoidentificacionGenero),
-          texto(integrante.autoidentificacionGeneroOtro),
-          texto(integrante.orientacionSexual),
-          texto(integrante.orientacionSexualOtro),
-          texto(integrante.telefono1),
-          texto(integrante.telefono2),
-          texto(integrante.rolFamiliar),
-          /* Ítem 73: código CIUO de la tabla de SISPRO (llave foránea a
-             cat.ocupacion_ciuo). Lo que no sea un código —las fichas de
-             cuando la ocupación era texto libre— va a ocupacion_texto. */
-          motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
-            ? texto(integrante.ocupacion) : null,
-          motor.CAT_OCUPACION_CIUO.some(function (o) { return o.valor === texto(integrante.ocupacion); })
-            ? null : texto(integrante.ocupacion),
-          texto(integrante.nivelEducativo),
-          texto(integrante.regimenAfiliacion),
-          texto(integrante.eapb),
-          texto(integrante.pertenenciaEtnica),
-          texto(integrante.puebloEtnico),
-          texto(integrante.certificacionRlcpd),
-          booleano(integrante.intencionReproductiva),
-          booleano(integrante.gestacionActual),
-          texto(integrante.lactanciaExclusiva),
-          decimal(integrante.peso),
-          decimal(integrante.talla),
-          decimal(integrante.circunferenciaCintura),
-          /* El IMC no se envía: es columna generada. La base lo deriva de
-             peso y talla, igual que el hacinamiento en vivienda (RN-095). */
-          texto(integrante.clasificacionAntropometrica),
-          entero(integrante.tensionSistolica),
-          entero(integrante.tensionDiastolica),
-          texto(integrante.clasificacionTension),
-          texto(integrante.adherenciaTratamiento),
-          texto(integrante.consumoSpa),
-          entero(integrante.puntajeCrafft),
-          entero(integrante.puntajeAudit),
-          entero(integrante.puntajeAssist),
-          /* La columna es booleana y el ítem 107 es un catálogo de tres
-             opciones: sólo "ha pensado" marca riesgo (metadata.riesgo). */
-          integrante.ideacionSuicida === undefined || integrante.ideacionSuicida === null
-            ? null
-            : integrante.ideacionSuicida === 'ha_pensado',
-          booleano(integrante.limitacionCotidiana)
-        ]);
-
-        /* De este id cuelgan las 16 tablas puente del integrante. */
-        const integranteId = integranteRes.rows[0].id;
-
+        const escrito = await escribirIntegrante(cliente, motor, {
+          familiaFichaId: familiaFichaId, familia: familia, encuesta: encuesta, integrante: integrante, orden: ii + 1
+        });
+        const integranteId = escrito.integranteId;
+        filasPuente += escrito.filasPuente;
         indices.integrantes[fi][ii] = integranteId;
-
-        /* Ítems 77 a 106. */
-        filasPuente += await sincronizarPuentes(
-          cliente, PUENTES_INTEGRANTE, 'integrante_id', integranteId, integrante
-        );
-
-        /* Variables del anexo del integrante: su visibilidad depende de la
-           edad, el sexo y la gestación, igual que en el formulario. */
-        const contextoIntegrante = motor.contextoIntegrante(integrante, encuesta);
-        filasPuente += await anexoBd.escribirAnexo(cliente, motor, 'integrante', integranteId, integrante,
-          motor.lectorDeRespuestas([integrante, familia, encuesta], {
-            edadMeses: contextoIntegrante.edadMeses, sexo: contextoIntegrante.sexo,
-            gestante: contextoIntegrante.gestante, fechaFicha: texto(encuesta.fechaDiligenciamiento)
-          }));
 
         /* Plan de cuidado de la persona (ítems 130 a 140). */
         filasPlan += await guardarPlan(cliente, fichaId, 'persona', integrante.planPersona, {
@@ -1536,7 +1723,9 @@ module.exports = async (req, res) => {
         nuv: encuesta.nuv,
         idHogar: codigoHogar,
         idFamilia: encuesta.idFamilia,
-        familias: familias.map(function (familia) { return familia.idFamilia; })
+        familias: familias.map(function (familia) { return familia.idFamilia; }),
+        /* Pregunta 19 de la ficha técnica, por familia: CF001, CF002… */
+        codigosCf: familias.map(function (familia) { return familia.codigoCf || null; })
       }
     });
   } catch (error) {
@@ -1555,6 +1744,9 @@ module.exports = async (req, res) => {
       restriccion: error.constraint || null
     });
   } finally {
-    if (cliente) cliente.release();
+    if (cliente) {
+      funcionariosDeLaTransaccion.delete(cliente);
+      cliente.release();
+    }
   }
 };

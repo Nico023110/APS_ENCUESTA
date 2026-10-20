@@ -22,6 +22,7 @@ require('dotenv').config({ path: ['.env.local', '.env'] });
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const PUERTO = Number(process.env.PUERTO) || 5173;
 const RAIZ = __dirname;
@@ -39,8 +40,19 @@ const TIPOS = {
   '.json': 'application/json; charset=utf-8',
   '.csv': 'text/csv; charset=utf-8',
   '.pdf': 'application/pdf',
-  '.md': 'text/plain; charset=utf-8'
+  '.md': 'text/plain; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2'
 };
+
+/* Tipos de texto: se comprimen con gzip si el navegador lo acepta. El JS y
+   el CSS de la aplicación suman ~1,2 MB y bajan a ~300 KB; en un teléfono
+   con datos móviles es la diferencia que más se nota. */
+const COMPRIMIBLES = ['.html', '.js', '.css', '.json', '.csv', '.md', '.svg'];
 
 /* Nunca se sirven por HTTP, aunque estén en la carpeta del proyecto. */
 const VETADOS = [/^\.env/, /^\.git/, /^node_modules/, /^bd\//, /^pruebas\//, /^\.claude/, /^\.impeccable/];
@@ -48,7 +60,8 @@ const VETADOS = [/^\.env/, /^\.git/, /^node_modules/, /^bd\//, /^pruebas\//, /^\
 /* Cabeceras de seguridad. Las mismas que declara vercel.json para producción;
    aquí se aplican en desarrollo para que lo que rompa la CSP rompa antes de
    desplegar. Los orígenes permitidos son exactamente los CDN que index.html
-   ya carga: iconos (unpkg), SweetAlert2 (jsdelivr) y Google Fonts. */
+   ya carga: iconos y SweetAlert2 (jsdelivr) y Google Fonts. unpkg salió en
+   octubre de 2026, cuando los iconos pasaron a una hoja fija de jsdelivr. */
 const CABECERAS_SEGURIDAD = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
@@ -56,11 +69,11 @@ const CABECERAS_SEGURIDAD = {
   'Permissions-Policy': 'camera=(), microphone=(), payment=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net",
-    "font-src 'self' https://fonts.gstatic.com https://unpkg.com https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+    "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
     "img-src 'self' data:",
-    "connect-src 'self' https://nominatim.openstreetmap.org https://unpkg.com https://cdn.jsdelivr.net",
+    "connect-src 'self' https://nominatim.openstreetmap.org https://cdn.jsdelivr.net",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
@@ -229,7 +242,19 @@ async function atenderApi(peticion, respuesta, nombre) {
    2. ARCHIVOS ESTÁTICOS
    ========================================================= */
 
-function atenderEstatico(respuesta, relativa) {
+/* Copias comprimidas por archivo y fecha de modificación: se comprime una
+   vez por versión del archivo, no en cada petición. */
+const comprimidos = new Map();
+
+function comprimido(absoluta, version, contenido) {
+  const guardado = comprimidos.get(absoluta);
+  if (guardado && guardado.version === version) return guardado.datos;
+  const datos = zlib.gzipSync(contenido, { level: 6 });
+  comprimidos.set(absoluta, { version: version, datos: datos });
+  return datos;
+}
+
+function atenderEstatico(peticion, respuesta, relativa) {
   if (VETADOS.some(function (patron) { return patron.test(relativa); })) {
     respuesta.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     respuesta.end('Acceso denegado');
@@ -246,18 +271,54 @@ function atenderEstatico(respuesta, relativa) {
     return;
   }
 
-  fs.readFile(absoluta, function (error, contenido) {
-    if (error) {
+  fs.stat(absoluta, function (errorStat, datos) {
+    if (errorStat || !datos.isFile()) {
       respuesta.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       respuesta.end('No se encontró ' + relativa);
       return;
     }
 
-    respuesta.writeHead(200, Object.assign({
-      'Content-Type': TIPOS[path.extname(absoluta).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-cache'
-    }, CABECERAS_SEGURIDAD));
-    respuesta.end(contenido);
+    /* `no-cache` obliga al navegador a preguntar siempre —un archivo editado
+       se ve en la siguiente recarga—, pero sin validador cada pregunta bajaba
+       el archivo entero. Con la ETag, lo que no cambió responde 304 sin
+       cuerpo. */
+    const extension = path.extname(absoluta).toLowerCase();
+    const version = datos.size + '-' + Math.floor(datos.mtimeMs);
+    const etiqueta = 'W/"' + version + '"';
+    const cabeceras = Object.assign({
+      'Content-Type': TIPOS[extension] || 'application/octet-stream',
+      'Cache-Control': 'no-cache',
+      'ETag': etiqueta,
+      'Last-Modified': datos.mtime.toUTCString()
+    }, CABECERAS_SEGURIDAD);
+
+    const comprimible = COMPRIMIBLES.indexOf(extension) !== -1;
+    if (comprimible) cabeceras['Vary'] = 'Accept-Encoding';
+
+    if (peticion.headers['if-none-match'] === etiqueta) {
+      respuesta.writeHead(304, cabeceras);
+      respuesta.end();
+      return;
+    }
+
+    fs.readFile(absoluta, function (error, contenido) {
+      if (error) {
+        respuesta.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        respuesta.end('No se encontró ' + relativa);
+        return;
+      }
+
+      const aceptaGzip = /\bgzip\b/.test(String(peticion.headers['accept-encoding'] || ''));
+      if (comprimible && aceptaGzip && contenido.length > 1024) {
+        cabeceras['Content-Encoding'] = 'gzip';
+        respuesta.writeHead(200, cabeceras);
+        respuesta.end(comprimido(absoluta, version, contenido));
+        return;
+      }
+
+      respuesta.writeHead(200, cabeceras);
+      respuesta.end(contenido);
+    });
   });
 }
 
@@ -282,11 +343,11 @@ const servidor = http.createServer(function (peticion, respuesta) {
   }
 
   if (ruta === '/login' || ruta === '/login/') {
-    atenderEstatico(respuesta, 'login.html');
+    atenderEstatico(peticion, respuesta, 'login.html');
     return;
   }
 
-  atenderEstatico(respuesta, ruta === '/' ? 'index.html' : ruta.replace(/^\/+/, ''));
+  atenderEstatico(peticion, respuesta, ruta === '/' ? 'index.html' : ruta.replace(/^\/+/, ''));
 });
 
 servidor.listen(PUERTO, function () {

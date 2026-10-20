@@ -204,15 +204,23 @@ async function buscarCupsEnServidor(termino, entrada) {
  * Lo que se puede ofrecer sin red: el catálogo de acciones de APS que ya está
  * descargado y los códigos resueltos en visitas anteriores.
  */
+/* Minúsculas y sin tildes: «Odontología» y «odontologia» son lo mismo. */
+function sinTildes(texto) {
+  return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 function buscarCupsEnElDispositivo(termino) {
-  const buscado = termino.toLowerCase();
+  const buscado = sinTildes(termino).trim();
+  /* Todas las palabras, en cualquier orden (mismo criterio que el servidor). */
+  const palabras = buscado.split(/[^a-z0-9]+/).filter(function (p) { return p.length >= 2; });
   const vistos = new Set();
   const filas = [];
 
   function considerar(codigo, nombre, aptoAps) {
     if (vistos.has(codigo)) return;
-    const coincide = codigo.toLowerCase().indexOf(buscado) === 0 ||
-                     String(nombre).toLowerCase().indexOf(buscado) !== -1;
+    const nombreNormal = sinTildes(nombre);
+    const coincide = sinTildes(codigo).indexOf(buscado) === 0 ||
+                     (palabras.length > 0 && palabras.every(function (p) { return nombreNormal.indexOf(p) !== -1; }));
     if (!coincide) return;
     vistos.add(codigo);
     filas.push({ codigo: codigo, nombre: nombre, apto_aps: aptoAps });
@@ -272,6 +280,7 @@ function pintarListaCups(combo, filas, aviso) {
         ' data-nombre="' + escaparHtml(fila.nombre) + '">' +
         '<span class="combo-cups__codigo">' + escaparHtml(fila.codigo) + '</span>' +
         '<span class="combo-cups__etiqueta">' + escaparHtml(fila.nombre) + '</span>' +
+        (fila.en_portafolio ? '<span class="combo-cups__marca combo-cups__marca--portafolio">Portafolio</span>' : '') +
         (fila.apto_aps ? '<span class="combo-cups__marca">APS</span>' : '') +
       '</li>'
     );

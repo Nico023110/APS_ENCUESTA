@@ -81,6 +81,11 @@ module.exports = async (req, res) => {
         h.direccion_normalizada   AS direccion,
         v.personas_por_habitacion,
         v.hacinamiento,
+        v.hogares_en_vivienda,
+        comp.hogares,
+        comp.familias,
+        comp.personas,
+        comp.integrantes_pendientes,
         EXISTS (SELECT 1 FROM aps.permiso_plan pp
                  WHERE pp.ficha_id = f.id AND pp.usuario_id = ${parametroUsuario}
                    AND pp.usado_en IS NULL AND pp.revocado_en IS NULL) AS permiso_plan,
@@ -90,6 +95,22 @@ module.exports = async (req, res) => {
       JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
       JOIN aps.funcionario r   ON r.id = f.responsable_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
+      /* Composición de la vivienda en esta visita, para los indicadores de
+         Inicio: sólo cuentas, sin un dato personal. Una familia sin hogar
+         (fichas anteriores al ítem) cuenta como un hogar propio, igual que
+         en el detalle de la ficha. */
+      LEFT JOIN LATERAL (
+        SELECT count(*) AS familias,
+               count(DISTINCT coalesce(ff.hogar_numero::text, 'f' || ff.id)) AS hogares,
+               coalesce(sum((SELECT count(*) FROM aps.integrante i
+                              WHERE i.familia_ficha_id = ff.id)), 0) AS personas,
+               /* RN-051: declarados en el ítem 51 que no estaban en la visita. */
+               coalesce(sum(greatest(ff.numero_integrantes - (SELECT count(*) FROM aps.integrante i
+                                                               WHERE i.familia_ficha_id = ff.id), 0)), 0)
+                 AS integrantes_pendientes
+          FROM aps.familia_ficha ff
+         WHERE ff.ficha_id = f.id
+      ) comp ON true
       ${filtro}
       ORDER BY COALESCE(f.diligenciada_en, f.capturada_en) DESC
       LIMIT ${LIMITE}
@@ -126,6 +147,18 @@ module.exports = async (req, res) => {
         /* La base la guarda boolean; el resto de la app —badgeHacinamiento,
            los filtros del historial— habla en 'si'/'no', como en el formulario. */
         hacinamiento: fila.hacinamiento === null ? null : (fila.hacinamiento ? 'si' : 'no'),
+        /* Hogares, familias y personas de la vivienda en esta visita. Va
+           aparte y no como hogaresEnVivienda/familias para que nadie tome la
+           fila por una ficha completa. count() llega como texto (bigint). */
+        /* RN-051: integrantes declarados que no estaban en la visita; el
+           historial ofrece «Completar integrantes» mientras haya alguno. */
+        integrantesPendientes: Number(fila.integrantes_pendientes) || 0,
+        composicion: {
+          hogaresDeclarados: fila.hogares_en_vivienda === null ? null : Number(fila.hogares_en_vivienda),
+          hogares: Number(fila.hogares),
+          familias: Number(fila.familias),
+          personas: Number(fila.personas)
+        },
         /* RN-220 (plan diferido): el historial distingue las fichas cuyo plan
            de cuidado sigue pendiente. */
         planCuidado: resumenPlanDesdeFila(fila),

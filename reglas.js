@@ -23,11 +23,10 @@
        plan         1 por nivel         valida(d)
 
    ACTIVACIÓN POR SECCIÓN
-     El formulario actual sólo captura los ítems 1 a 38. Para que
-     las reglas de los ítems 39 a 140 no bloqueen la captura antes
-     de que la interfaz los incorpore, el motor evalúa únicamente
-     las secciones presentes en los datos (ver `seccionesPresentes`).
-     A medida que la UI crezca, las reglas entran en vigor solas.
+     La ficha, la vivienda y el saneamiento (ítems 1 a 49) se evalúan
+     siempre. Las familias y el plan, sólo cuando llegan en los datos
+     (ver `seccionesPresentes`); lo del plan, además, sólo advierte
+     (RN-222).
 
    MODELO DE DATOS ESPERADO
      datos = {
@@ -1051,7 +1050,8 @@ const REGLAS_FAMILIA = [
     mensaje: function (f) {
       const capturados = Array.isArray(f.integrantes) ? f.integrantes.length : 0;
       return 'Declaró ' + f.numeroIntegrantes + ' integrantes y hay ' + capturados +
-             ' caracterizado(s). Si alguno no estaba, puede guardar así y completarlo después.';
+             ' caracterizado(s). Si alguno no estaba, puede guardar así y agregarlo después desde ' +
+             'Historial → Completar integrantes.';
     }
   },
   {
@@ -1936,6 +1936,14 @@ function reglasDeAcciones(codigos) {
       campo: 'tipoRespuesta',
       valida: function (accion) { return perteneceA(CAT_TIPO_RESPUESTA, accion.tipoRespuesta); },
       mensaje: 'Indique si la acción se ejecutó "En sitio" o fue "Derivada".'
+    },
+    {
+      /* Sin destino, RN-210 no puede hacerle seguimiento a la derivación. */
+      codigo: codigos.respuesta,
+      campo: 'institucionDestino',
+      aplica: function (accion) { return accion.tipoRespuesta === 'derivada'; },
+      valida: function (accion) { return !esVacio(accion.institucionDestino); },
+      mensaje: 'Registre la institución a la que se deriva la acción.'
     }
   ];
 }
@@ -1969,12 +1977,29 @@ function reglasDeSeguimientos(codigos) {
       mensaje: 'Documente la acción de cuidado concertada.'
     },
     {
+      /* El primer seguimiento ocurre después de la visita: vacío es lo
+         normal al guardar la ficha. Sólo se revisa cuando ya tiene algo. */
       codigo: codigos.primero,
       campo: 'seg1',
+      aplica: function (s) { return !esVacio(s.seg1Fecha) || !esVacio(s.seg1Estado); },
       valida: function (s) {
         return esFechaValida(s.seg1Fecha) && perteneceA(CAT_ESTADO_SEGUIMIENTO, s.seg1Estado);
       },
       mensaje: 'Registre la fecha del primer seguimiento y su estado (C, CP o NC).'
+    },
+    {
+      codigo: 'RN-226',
+      campo: 'seg1MotivoNc',
+      aplica: function (s) { return s.seg1Estado === 'NC'; },
+      valida: function (s) { return !esVacio(s.seg1MotivoNc); },
+      mensaje: 'Registre el motivo del primer seguimiento "No cumple" (RN-226.4).'
+    },
+    {
+      codigo: 'RN-226',
+      campo: 'seg2MotivoNc',
+      aplica: function (s) { return s.seg2Estado === 'NC'; },
+      valida: function (s) { return !esVacio(s.seg2MotivoNc); },
+      mensaje: 'Registre el motivo del segundo seguimiento "No cumple" (RN-226.4).'
     },
     {
       codigo: codigos.segundo,
@@ -2035,13 +2060,18 @@ const PLANES = [
    ========================================================= */
 
 /* Detecta qué secciones del instrumento están presentes en los datos.
-   Evita que las reglas de los ítems aún no capturados por la interfaz
-   bloqueen la captura de los que sí lo están. */
+
+   El saneamiento (ítems 39 a 49) se evalúa siempre. Antes se activaba sólo
+   si llegaba el ítem 39 o el 46 —un resto de cuando la interfaz no capturaba
+   el bloque—, y como `recolectarDatosFormulario` omite los campos vacíos,
+   una ficha con esos dos en blanco se guardaba sin exigir nada del bloque.
+   «Evolucionar plan» y «Completar integrantes» no lo vuelven a exigir:
+   filtran los bloqueos por ruta, en el navegador y en el servidor. */
 function seccionesPresentes(datos) {
   return {
     ficha: true,
     vivienda: true,
-    saneamiento: datos.fuenteAgua !== undefined || datos.actividadEconomica !== undefined,
+    saneamiento: true,
     familia: Array.isArray(datos.familias) && datos.familias.length > 0,
     plan: datos.planVivienda !== undefined
   };
@@ -2074,7 +2104,21 @@ function evaluarConjunto(reglas, args, contexto, salida) {
   });
 }
 
-function evaluarPlan(plan, contenedor, datos, contexto, salida) {
+/* RN-222 (plan diferido): nada del plan de cuidado es obligatorio para
+   guardar la ficha. La ficha se guarda con la caracterización y el plan se
+   completa después con «Evolucionar plan». Lo que el plan incumpla —una fila
+   a medias, una llave, un seguimiento sin fecha— llega como ADVERTENCIA:
+   se ve junto al campo y en el cierre, pero no detiene el guardado. */
+function evaluarPlan(plan, contenedor, datos, contexto, salidaGeneral) {
+  const salida = [];
+  evaluarPlanEn(plan, contenedor, datos, contexto, salida);
+  salida.forEach(function (item) {
+    item.severidad = SEVERIDAD.ADVERTENCIA;
+    salidaGeneral.push(item);
+  });
+}
+
+function evaluarPlanEn(plan, contenedor, datos, contexto, salida) {
   const instancia = contenedor[plan.nombre];
   if (!instancia) return;
 

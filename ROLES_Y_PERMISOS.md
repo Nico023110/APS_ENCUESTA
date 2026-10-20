@@ -130,6 +130,16 @@ Consecuencias en la interfaz:
   equipo; para el técnico, en las suyas; para la coordinación y el maestro, en
   todas. Sólo deja completar el plan: la visita queda intocable y el servidor
   escribe únicamente los planes (RN‑228).
+- **Completar integrantes** aparece en el historial cuando una familia tiene
+  menos integrantes caracterizados que los declarados en el ítem 51 —quien no
+  estaba en la visita—, con el mismo alcance que Evolucionar plan y sin pedir
+  autorización: sólo agrega. Lo registrado queda intocable; se diligencian los
+  integrantes que faltaban y su plan de cuidado, y el ítem 51 puede subir
+  (apareció alguien que no se declaró), no bajar. El servidor compara con la
+  base y escribe sólo los integrantes nuevos, su plan y sus alertas: cambiar o
+  quitar un integrante registrado, o bajar el ítem 51, responde 409
+  `integrantes_registrados`. Queda en `aud.evento` (campo `integrantes`). Una
+  ficha que todavía no sube se completa como corrección libre (RN‑051).
 - **Autorizar** (coordinación y maestro) aparece en las fichas de la base:
   elige a la persona —entre quienes ven la ficha en su historial y no pueden
   corregirla por sí mismos— y un motivo. La autorización le deja corregir la
@@ -214,7 +224,7 @@ máximo 128, y al cambiarla debe ser distinta de la anterior.
 | Fuerza bruta | 5 fallos seguidos bloquean la cuenta 15 minutos; más de 30 fallos desde una misma IP en 15 minutos responden 429. Ambos contadores viven en la base (`aps.usuario`, `aps.intento_acceso`), no en memoria: en Vercel cada petición puede caer en un proceso distinto. |
 | Token de sesión | 32 bytes aleatorios; en la base sólo su SHA‑256 (`aps.sesion.id`). Cookie `aps_sesion` con `HttpOnly`, `SameSite=Strict`, `Path=/` y `Secure` fuera de localhost. |
 | Vigencia | Tope absoluto 12 h; caduca a las 4 h sin uso de la API. Cerrar sesión y cambiar la contraseña revocan en la base (la segunda cierra además las otras sesiones del usuario). |
-| Bloqueo por inactividad (RN‑223.6) | A los 15 minutos sin actividad la aplicación se cubre y pide la contraseña de nuevo; la ficha en curso no se pierde. |
+| Bloqueo por inactividad (RN‑223.6) | A los 20 minutos sin actividad la aplicación se cubre y pide la contraseña de nuevo; la ficha en curso no se pierde. |
 | Sin red (RN‑223) | El perfil público (nombre, rol, equipo; nunca el token) queda en `localStorage` para abrir la aplicación sin señal; el servidor confirma o cierra la sesión cuando vuelve la red. |
 | CSRF | Toda petición que muta exige la cabecera `X-Requested-With: fetch`; con `SameSite=Strict` la cookie no viaja desde otro origen. |
 | Cabeceras | CSP restringida a los CDN que la aplicación usa, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`, HSTS en producción, `Cache-Control: no-store` en la API (`servidor.js` y `vercel.json`). |

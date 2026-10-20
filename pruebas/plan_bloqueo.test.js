@@ -94,6 +94,7 @@ check('planVivienda, planFamilia y planPersona son del plan',
   esDelPlan('planVivienda.acciones[0].codigoAccion') && esDelPlan('familias[0].planFamilia.acciones[0].x') &&
   esDelPlan('familias[0].integrantes[1].planPersona.seguimientos[0].seg1Fecha'));
 check('El resto de la ficha no', !esDelPlan('estrato') && !esDelPlan('familias[0].integrantes[0].peso') && !esDelPlan(null));
+check('  ni el saneamiento: evolucionar el plan no exige el bloque 4', !esDelPlan('fuenteAgua') && !esDelPlan('actividadEconomica'));
 
 console.log('\n---------------------------------------------');
 console.log('Pasadas: ' + ok + '   Fallidas: ' + fail);

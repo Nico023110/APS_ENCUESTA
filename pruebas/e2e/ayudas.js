@@ -129,6 +129,10 @@ function vigilar(page, diario) {
   page.on('response', async function (respuesta) {
     const url = respuesta.url();
     if (respuesta.status() < 400 || esRuido(url)) return;
+    /* La pantalla de inicio de sesión pregunta si ya hay una sesión abierta;
+       sin ella, el 401 es la respuesta esperada, no una falla. */
+    if (respuesta.status() === 401 && /\/api\/sesion$/.test(new URL(url).pathname) &&
+        /login/.test(new URL(page.url()).pathname)) return;
     let cuerpo = '';
     try { cuerpo = (await respuesta.text()).slice(0, 700); } catch (error) { /* ya se cerró */ }
     const registro = {
@@ -453,12 +457,20 @@ async function marcar(page, diario, nombre, valores, etiqueta, opciones) {
 
 /** Avisos flotantes (`mostrarNotificacion`). */
 async function leerAvisos(page) {
-  return page.locator('#toastContainer .toast').evaluateAll(function (els) {
-    return els.map(function (el) {
-      const clase = el.className || '';
-      const tipo = (clase.match(/toast--(\w+)/) || [])[1] || 'info';
-      return { tipo: tipo, texto: (el.textContent || '').trim() };
+  /* Los avisos de la aplicación son diálogos de SweetAlert (mostrarNotificacion);
+     el tipo sale de la clase del ícono. Se leen también los toasts, si hubiera. */
+  return page.evaluate(function () {
+    const salida = [];
+    document.querySelectorAll('.swal2-popup').forEach(function (el) {
+      const tipo = ((el.className || '').match(/swal2-icon-(\w+)/) || [])[1] || 'info';
+      const texto = el.querySelector('.swal2-html-container');
+      salida.push({ tipo: tipo, texto: ((texto || el).textContent || '').trim() });
     });
+    document.querySelectorAll('#toastContainer .toast').forEach(function (el) {
+      const tipo = ((el.className || '').match(/toast--(\w+)/) || [])[1] || 'info';
+      salida.push({ tipo: tipo, texto: (el.textContent || '').trim() });
+    });
+    return salida;
   });
 }
 

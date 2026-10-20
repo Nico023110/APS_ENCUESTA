@@ -19,3 +19,6 @@ pruebas/e2e/resultados/
 *.dylib
 *.node
 .claude/skills/**/scripts/bin/
+
+# Respaldos de la base: datos personales y de salud, nunca al repositorio
+respaldos/

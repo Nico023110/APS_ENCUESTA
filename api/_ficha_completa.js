@@ -145,7 +145,7 @@ async function leerPlanes(cliente, fichaIds) {
            pa.institucion_destino, to_char(pa.fecha_cita, 'YYYY-MM-DD') AS fecha_cita,
            fu.tipo_id, fu.numero_id
       FROM aps.plan_accion pa
-      JOIN aps.funcionario fu ON fu.id = pa.ejecutor_id
+      LEFT JOIN aps.funcionario fu ON fu.id = pa.ejecutor_id
      WHERE pa.plan_id = ANY($1::bigint[])
      ORDER BY pa.id
   `, [ids])).rows, 'plan_id');
@@ -156,7 +156,7 @@ async function leerPlanes(cliente, fichaIds) {
            to_char(ps.seg2_fecha, 'YYYY-MM-DD') AS seg2_fecha, ps.seg2_estado, ps.seg2_motivo_nc,
            fu.tipo_id, fu.numero_id
       FROM aps.plan_seguimiento ps
-      JOIN aps.funcionario fu ON fu.id = ps.responsable_id
+      LEFT JOIN aps.funcionario fu ON fu.id = ps.responsable_id
      WHERE ps.plan_id = ANY($1::bigint[])
      ORDER BY ps.id
   `, [ids])).rows, 'plan_id');
@@ -302,7 +302,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
   /* --- Familias, en su orden de captura --- */
   const familias = (await cliente.query(`
     SELECT ff.id, ff.ficha_id, fa.codigo, fa.consecutivo, ff.tipo_familia, ff.numero_integrantes,
-           ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico, ff.hogar_numero
+           ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico, ff.hogar_numero, ff.codigo_cf
       FROM aps.familia_ficha ff
       JOIN aps.familia fa ON fa.id = ff.familia_id
      WHERE ff.ficha_id = ANY($1::bigint[])
@@ -429,6 +429,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
       const familia = {
         idFamilia: fila.codigo,
         hogarNumero: fila.hogar_numero,
+        codigoCf: fila.codigo_cf,
         tipoFamilia: fila.tipo_familia,
         numeroIntegrantes: fila.numero_integrantes,
         cuidadorPrincipal: siNo(fila.cuidador_principal),

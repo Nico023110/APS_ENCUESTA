@@ -111,7 +111,7 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   await page.reload();
   await esperarCatalogos(page);
   await page.getByRole('button', { name: 'Inicio' }).click();
-  await page.getByRole('button', { name: 'Sincronizar a la Nube' }).click();
+  await page.getByRole('button', { name: 'Sincronizar ahora' }).click();
   await page.waitForTimeout(1500);
 
   const avisosRechazo = await ayudas.leerAvisos(page);

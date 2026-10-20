@@ -267,9 +267,21 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
 - Contenedor 1180 px, guardia lateral 40 px (16 en celular), aire superior 48.
 - Cabecera fija de 74 px con cristal esmerilado; se eleva al desplazar.
 - **Inicio: bento de 12 columnas.** Panel principal `span 8` (versalita, título,
-  subtítulo, CTA), marcador de total `span 4`, cuatro tejas de estado `span 3`,
-  dos acciones anchas `span 6`. Bajo 1040 px todo cae a `span 12`; bajo 680, a
-  una columna.
+  subtítulo, CTA), bandeja del total `span 4` con el marcador y, debajo, el
+  **módulo de sincronización** (icono teñido por estado, título y detalle, barra
+  de avance mientras sube, y el botón «Sincronizar ahora» con la anatomía del
+  CTA: azul lleno con fichas pendientes, fantasma con todo en la base, ocupado
+  al subir, apagado sin señal); la **cadena de población**
+  `span 12` (viviendas → hogares → familias → personas, separadas por un pelo
+  con un conector circular a la altura de los iconos y la razón «1,2 por
+  vivienda» bajo cada cifra); **viviendas por territorio** `span 7` (barras de
+  10 px en azul de marca, cuadradas en la base, 4 px de radio en el extremo,
+  cifra escrita en tinta, crecen por recorte sólo en la primera pintura) y
+  **fichas que requieren atención** `span 5` (filas sobre lienzo; las que el
+  historial filtra son botones con flecha); «Ver historial» a lo ancho. Bajo
+  1040 px todo cae a `span 12` y el módulo de sincronización va al lado del
+  marcador; bajo 680, la cadena va de a dos sin pelos ni
+  conectores y el resto a una columna.
 - **Formulario: una sola página larga** en el orden del instrumento, con el
   índice pegajoso bajo la cabecera y `scroll-margin-top` compensando ambos.
 - **Historial: nunca se pinta como tabla.** Doce columnas no caben ni en
@@ -368,6 +380,29 @@ Fondo teñido + pelo de la misma familia. El aviso flotante dice su estado con u
 punto de color a la izquierda, no con franja lateral ni fondo teñido: el texto
 se lee sobre blanco puro, que es donde mejor contrasta a pleno sol.
 
+### Resumen de alertas del plan (`.resumen-alertas`)
+Tarjeta al comienzo de la sección 6, antes de 6.1: el riesgo familiar en
+píldora a la derecha del título, una línea de recuentos (por prioridad y «sin
+conducta») y las alertas agrupadas por plan (6.1 / 6.2 / 6.3), cada una en un
+subpanel apagado con su prioridad como punto de color y «Sin conducta» en
+ámbar. Se repinta mientras se diligencia (600 ms después de la última tecla),
+no al guardar: es la respuesta a «¿qué tengo que atender en el plan?».
+
+### Campos que se habilitan a mano (`.btn--activo`)
+Las coordenadas son de sólo lectura y se abren con un botón de fila entera
+bajo ellas («Digitar coordenadas»). Pulsado, el botón queda en tinte azul con
+pelo, cambia a «Coordenadas habilitadas» con un visto y `aria-pressed="true"`;
+los campos pasan al blanco del campo activo. El estado se lee en el botón,
+no en un interruptor aparte.
+
+### Fichas sin terminar (`.en-curso`)
+Bloque ámbar en la cabeza del historial —ámbar porque es trabajo que no está
+en la base, no un error—: cada ficha en su tarjeta blanca con el distintivo
+«Sin terminar», el código en mono, qué tiene y cuándo se guardó, y «Continuar»
+(fantasma azul) y «Descartar». «Guardar avance» y «Empezar otra» viven en la
+isla del índice del formulario, con el estado («Avance guardado… a las 10:42»)
+en verde debajo.
+
 ### Cinta tricolor (firma)
 `.app-header::after`: **2 px**, tres segmentos iguales verde · rojo · azul. Los
 tres colores juntos aparecen **una sola vez en toda la aplicación**. A 2 px lee
@@ -380,6 +415,12 @@ la entidad: se volvió transparente el blanco con una rampa de alfa (opaco hasta
 215, transparente desde 250 en el canal mínimo), se recuperó el color puro del
 borde y se erosionó el alfa 1 px para retirar el halo del JPG. Si la entidad
 entrega un vector oficial, reemplaza este PNG.
+
+Desde el 20-10-2026 el archivo publicado es esa misma imagen reducida a
+261×240 (Lanczos) y cuantizada a 256 colores con transparencia: 15 KB en vez
+de 175 KB, sin diferencia visible. Se muestra a 52 px de alto en la cabecera
+y a 84 px en el acceso, así que 240 px cubre pantallas de densidad ~3×. La
+versión de 400×368 queda en el historial de git.
 
 ## Motion
 
@@ -403,8 +444,10 @@ revelación de dato y hay que poder leerla.
 - **Nada de listeners de scroll para revelar.** `IntersectionObserver` avisa al
   cruzar el umbral; un listener mide posiciones en cada fotograma y tumba los
   fps en las tablets del terreno.
-- **Una sola cosa se mueve sola**: el anillo del punto ámbar de sincronización,
-  y sólo mientras haya fichas sin subir.
+- **Una sola cosa se mueve sola**: el anillo del punto ámbar en la esquina del
+  icono de sincronización, y sólo mientras haya fichas sin subir. Las flechas
+  que giran mientras sube no cuentan: es trabajo en curso y se detienen al
+  terminar.
 - `prefers-reduced-motion` se respeta como **menos y más suave, no cero**: se
   conservan fundidos y cambios de color (comunican estado) y se retira todo
   desplazamiento, escala y latido.

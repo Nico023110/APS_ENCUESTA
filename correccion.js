@@ -53,6 +53,63 @@ function enEvolucionDePlan() {
   return modoEvolucionPlan === true;
 }
 
+/* RN-051 — «Completar integrantes» desde el historial: se agregan los
+   integrantes que no estaban en la visita (y su plan de cuidado). Lo
+   registrado queda intocable y al guardar el servidor escribe sólo lo nuevo
+   (api/_integrantes_nuevos.js). `integrantesRegistrados` dice, por familia,
+   cuántos integrantes ya están en la base y cuántos declaraba el ítem 51:
+   los bloques desde `capturados` en adelante son los nuevos. */
+let modoCompletarIntegrantes = false;
+let integrantesRegistrados = null;
+
+function enCompletarIntegrantes() {
+  return modoCompletarIntegrantes === true;
+}
+
+function registrosDeIntegrantes(encuesta) {
+  return (encuesta && Array.isArray(encuesta.familias) ? encuesta.familias : []).map(function (familia) {
+    const capturados = Array.isArray(familia.integrantes) ? familia.integrantes.length : 0;
+    return { capturados: capturados, declarados: Number(familia.numeroIntegrantes) || capturados };
+  });
+}
+
+/* ¿La ruta es de un integrante agregado ahora? (`familias[0].integrantes[2].peso`) */
+function esRutaDeIntegranteNuevo(ruta) {
+  const coincidencia = /^familias\[(\d+)\]\.integrantes\[(\d+)\]/.exec(String(ruta || ''));
+  if (!coincidencia || !integrantesRegistrados) return false;
+  const registro = integrantesRegistrados[Number(coincidencia[1])];
+  return Boolean(registro) && Number(coincidencia[2]) >= registro.capturados;
+}
+
+/* Lo que cuenta al completar integrantes, con el mismo criterio que el
+   servidor: el plan, los integrantes nuevos, el ítem 51 y RN-029. */
+function esRutaDeCompletar(item) {
+  const ruta = item && item.ruta;
+  return esRutaDelPlan(ruta) || esRutaDeIntegranteNuevo(ruta) ||
+    /^familias\[\d+\]\.numeroIntegrantes$/.test(String(ruta || '')) ||
+    Boolean(item && item.codigo === 'RN-029');
+}
+
+/* El ítem 51 de una familia no baja de lo que ya declaraba al completar
+   integrantes: bajarlo es corregir la ficha. Fuera de ese modo, 1. */
+function minimoDeIntegrantes(bloqueFamilia) {
+  if (!enCompletarIntegrantes() || !integrantesRegistrados || !bloqueFamilia) return 1;
+  const familias = Array.prototype.slice.call(
+    document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]'));
+  const registro = integrantesRegistrados[familias.indexOf(bloqueFamilia)];
+  return registro ? Math.max(registro.declarados, registro.capturados, 1) : 1;
+}
+
+/* Cuántos integrantes nuevos trae la ficha en pantalla. */
+function integrantesNuevosEn(datos) {
+  if (!integrantesRegistrados) return 0;
+  return (datos && Array.isArray(datos.familias) ? datos.familias : []).reduce(function (total, familia, fi) {
+    const registro = integrantesRegistrados[fi] || { capturados: 0 };
+    const ahora = Array.isArray(familia.integrantes) ? familia.integrantes.length : 0;
+    return total + Math.max(0, ahora - registro.capturados);
+  }, 0);
+}
+
 /* Las rutas del plan dentro de la ficha enrutada (mismo criterio que
    api/_plan_bloqueo.js): al evolucionar el plan sólo cuentan sus pendientes. */
 const RUTA_DEL_PLAN = /^planVivienda\b|\.planFamilia\b|\.planPersona\b/;
@@ -167,6 +224,85 @@ async function abrirEvolucionDePlan(id) {
   });
 }
 
+/* RN-051 — «Completar integrantes». Una ficha que todavía no sube se corrige
+   entera: se abre como corrección con los bloques que faltaban ya puestos.
+   Una que está en la base se trae de ella —lo bloqueado es lo registrado
+   allí—, así que necesita red, igual que «Evolucionar plan». */
+async function abrirCompletarIntegrantes(id) {
+  if (!confirmarAntesDeReemplazarBorrador(id, function () { abrirCompletarIntegrantes(id); })) return;
+
+  const fila = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
+  if (!fila) {
+    mostrarNotificacion('No se encontró la ficha cuyos integrantes se quieren completar.', 'error');
+    return;
+  }
+
+  const local = obtenerEncuestas().find(function (e) { return e.id === id; });
+  if (local && local.sincronizada !== true) {
+    entrarEnCorreccion(id, local, null, { completarSinBloqueos: true });
+    return;
+  }
+
+  let respuesta;
+  let cuerpo;
+  try {
+    respuesta = await fetch('/api/ficha_completa?codigo=' + encodeURIComponent(fila.codigoFicha));
+    cuerpo = await respuesta.json().catch(function () { return {}; });
+  } catch (error) {
+    mostrarNotificacion('Sin conexión: para completar los integrantes hace falta red, porque se parte de lo ' +
+      'que está registrado en la base.', 'warning');
+    return;
+  }
+
+  if (!respuesta.ok || !cuerpo.encuesta) {
+    mostrarNotificacion(cuerpo.error || 'No fue posible traer la ficha para completar sus integrantes.', 'error');
+    return;
+  }
+
+  entrarEnCorreccion(id, cuerpo.encuesta, cuerpo.encuesta, {
+    completarIntegrantes: true,
+    bloquearPlanRegistrado: true,
+    planRegistradoEditable: cuerpo.planRegistradoEditable === true
+  });
+}
+
+/* Agrega a cada familia los bloques de integrante que le faltan para llegar
+   a lo que declara su ítem 51. Devuelve el primero que agregó. */
+function agregarBloquesFaltantes(encuesta) {
+  let primero = null;
+  const familias = Array.isArray(encuesta.familias) ? encuesta.familias : [];
+  document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').forEach(function (bloque, fi) {
+    const familia = familias[fi] || {};
+    const contenedor = bloque.querySelector('[data-rol="contenedorIntegrantes"]');
+    if (!contenedor) return;
+    const actuales = contenedor.querySelectorAll(':scope > [data-bloque="integrante"]').length;
+    const declarados = Number(familia.numeroIntegrantes) || actuales;
+    for (let i = actuales; i < declarados; i++) {
+      const clon = crearDesdePrototipo('integrante');
+      if (!clon) continue;
+      contenedor.appendChild(clon);
+      if (!primero) primero = clon;
+    }
+  });
+  if (primero) finalizarSincronizacion();
+  return primero;
+}
+
+/* El primer bloque de integrante que no está en la ficha guardada. Se busca
+   por posición y no por quién lo creó: al cargar la ficha, el ítem 51 ya
+   puede haber generado los bloques que faltaban (sincronizarIntegrantes). */
+function primerIntegranteNuevo(encuesta) {
+  const registros = registrosDeIntegrantes(encuesta);
+  let primero = null;
+  document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').forEach(function (bloque, fi) {
+    if (primero) return;
+    const capturados = (registros[fi] || { capturados: 0 }).capturados;
+    const bloques = bloque.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]');
+    if (bloques.length > capturados) primero = bloques[capturados];
+  });
+  return primero;
+}
+
 /* La coordinación y el maestro modifican lo registrado; los demás, sólo con
    su autorización vigente sobre la ficha, que llega en la fila del historial. */
 function planRegistradoEditablePara(codigoFicha) {
@@ -195,13 +331,33 @@ function entrarEnCorreccion(id, encuesta, desdeServidor, opciones) {
   encuestaEnCorreccion = id;
   correccionDesdeServidor = desdeServidor;
   modoEvolucionPlan = o.evolucionPlan === true;
+  modoCompletarIntegrantes = o.completarIntegrantes === true;
+  integrantesRegistrados = modoCompletarIntegrantes ? registrosDeIntegrantes(encuesta) : null;
   bloqueoPlanActivo = {
     evolucionPlan: modoEvolucionPlan,
+    completarIntegrantes: modoCompletarIntegrantes,
     registrado: o.bloquearPlanRegistrado === true && o.planRegistradoEditable !== true,
     autorizado: o.bloquearPlanRegistrado === true && o.planRegistradoEditable === true
   };
 
+  /* Los bloques de los integrantes que faltaban van antes de bloquear: los
+     nuevos son los que quedan abiertos. */
+  const completar = modoCompletarIntegrantes || o.completarSinBloqueos === true;
+  if (completar) agregarBloquesFaltantes(encuesta);
+  const primerNuevo = completar ? primerIntegranteNuevo(encuesta) : null;
+
   reponerBloqueosDePlan(encuesta, encuesta);
+
+  if (completar) {
+    mostrarNotificacion(primerNuevo
+      ? 'Ficha ' + (encuesta.codigoFicha || '') + ' lista para completar sus integrantes. Diligencie los que ' +
+        'faltaban y guarde.'
+      : 'La ficha ' + (encuesta.codigoFicha || '') + ' no tiene integrantes pendientes. Si apareció alguien más, ' +
+        'aumente el ítem 51 de su familia.', 'info');
+    const destino = primerNuevo || document.getElementById('seccion-4');
+    if (destino) destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
 
   if (modoEvolucionPlan) {
     mostrarNotificacion(
@@ -224,10 +380,15 @@ function reponerBloqueosDePlan(original, datos) {
   const b = bloqueoPlanActivo || {};
   quitarBloqueosDePlan();
   const bloqueados = original
-    ? aplicarBloqueosDePlan(original, { secciones: b.evolucionPlan === true, registrado: b.registrado === true })
+    ? aplicarBloqueosDePlan(original, {
+      secciones: b.evolucionPlan === true,
+      integrantes: b.completarIntegrantes === true,
+      registrado: b.registrado === true
+    })
     : 0;
   mostrarAvisoDeCorreccion(datos || original || {}, {
     evolucionPlan: b.evolucionPlan === true,
+    completarIntegrantes: b.completarIntegrantes === true,
     registradosBloqueados: bloqueados,
     autorizado: b.autorizado === true
   });
@@ -237,6 +398,8 @@ function salirDeCorreccion() {
   encuestaEnCorreccion = null;
   correccionDesdeServidor = null;
   modoEvolucionPlan = false;
+  modoCompletarIntegrantes = false;
+  integrantesRegistrados = null;
   bloqueoPlanActivo = null;
   quitarBloqueosDePlan();
   const aviso = document.getElementById('avisoCorreccion');
@@ -298,6 +461,10 @@ function mostrarAvisoDeCorreccion(encuesta, opciones) {
   if (o.evolucionPlan) {
     texto = 'Evolucionando el plan de cuidado de la ficha ' + (encuesta.codigoFicha || encuesta.id) +
       '. Sólo se completa lo que falta: lo registrado en la visita no se modifica.';
+  } else if (o.completarIntegrantes) {
+    texto = 'Completando los integrantes de la ficha ' + (encuesta.codigoFicha || encuesta.id) +
+      '. Sólo se agregan los que no estaban en la visita, y su plan de cuidado: lo registrado no se modifica. ' +
+      'Si apareció alguien que no se declaró, aumente el ítem 51 de su familia.';
   } else {
     texto = 'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +
       '. Al guardar se reemplaza el registro existente, no se crea uno nuevo.';
@@ -321,7 +488,10 @@ function mostrarAvisoDeCorreccion(encuesta, opciones) {
 
   document.getElementById('avisoCorreccionTexto').textContent = texto;
   const cancelar = aviso.querySelector('button');
-  if (cancelar) cancelar.textContent = o.evolucionPlan ? 'Cancelar evolución' : 'Cancelar corrección';
+  if (cancelar) {
+    cancelar.textContent = o.evolucionPlan ? 'Cancelar evolución'
+      : o.completarIntegrantes ? 'Cancelar' : 'Cancelar corrección';
+  }
   aviso.hidden = false;
 }
 
@@ -362,13 +532,25 @@ function hayValor() {
 }
 
 /* Lo que la base guarda de un plan, con el mismo criterio que el servidor. */
+/* RN-222: nada del plan es obligatorio, así que la base guarda toda fila con
+   algo escrito, aunque esté a medias (mismo criterio que api/_plan_bloqueo.js).
+   De una fila registrada se bloquea lo que ya tiene valor; lo vacío queda
+   abierto para completarlo. */
+const CAMPOS_ACCION_PLAN = ['ejecutorTipoId', 'ejecutorNumeroId', 'codigoAccion', 'procedimientoRealizado',
+  'tipoRespuesta', 'institucionDestino', 'fechaCita'];
+const CAMPOS_SEGUIMIENTO_PLAN = ['seguimientoTipoId', 'seguimientoNumeroId', 'accionConcertada',
+  'seg1Fecha', 'seg1Estado', 'seg1MotivoNc', 'seg2Fecha', 'seg2Estado', 'seg2MotivoNc'];
+
+function filaRegistrada(fila, campos) {
+  return Boolean(fila) && campos.some(function (campo) { return hayValor(fila[campo]); });
+}
+
 function accionRegistrada(accion) {
-  return Boolean(accion) && hayValor(accion.codigoAccion, accion.ejecutorTipoId, accion.ejecutorNumeroId);
+  return filaRegistrada(accion, CAMPOS_ACCION_PLAN);
 }
 
 function seguimientoRegistrado(seguimiento) {
-  return Boolean(seguimiento) &&
-    hayValor(seguimiento.accionConcertada, seguimiento.seguimientoTipoId, seguimiento.seguimientoNumeroId);
+  return filaRegistrada(seguimiento, CAMPOS_SEGUIMIENTO_PLAN);
 }
 
 function filaDe(nombreBase) {
@@ -386,34 +568,27 @@ function bloquearPlanRegistrado(prefijo, plan) {
   let filas = 0;
   if (!plan) return filas;
 
+  /* Lo escrito de cada fila registrada queda bloqueado; lo vacío, abierto. */
+  function bloquearLoEscrito(base, item, campos) {
+    const fila = filaDe(base);
+    if (!fila) return false;
+    fila.classList.add('plan-registrado');
+    campos.forEach(function (campo) {
+      if (hayValor(item[campo])) bloquearCelda(fila, base + '.' + campo);
+    });
+    const quitar = fila.querySelector('[data-accion="quitarFila"]');
+    bloquearElemento(quitar ? quitar.closest('td') : null, 'registrado');
+    return true;
+  }
+
   (Array.isArray(plan.acciones) ? plan.acciones : []).forEach(function (accion, i) {
     if (!accionRegistrada(accion)) return;
-    const fila = filaDe(prefijo + '.acciones[' + i + ']');
-    if (!fila) return;
-    fila.classList.add('plan-registrado');
-    bloquearElemento(fila, 'registrado');
-    filas++;
+    if (bloquearLoEscrito(prefijo + '.acciones[' + i + ']', accion, CAMPOS_ACCION_PLAN)) filas++;
   });
 
   (Array.isArray(plan.seguimientos) ? plan.seguimientos : []).forEach(function (seguimiento, j) {
     if (!seguimientoRegistrado(seguimiento)) return;
-    const base = prefijo + '.seguimientos[' + j + ']';
-    const fila = filaDe(base);
-    if (!fila) return;
-    fila.classList.add('plan-registrado');
-    ['seguimientoTipoId', 'seguimientoNumeroId', 'accionConcertada'].forEach(function (campo) {
-      bloquearCelda(fila, base + '.' + campo);
-    });
-    /* Un seguimiento vacío es lo que falta: se deja abierto para completarlo. */
-    if (hayValor(seguimiento.seg1Fecha)) {
-      ['seg1Fecha', 'seg1Estado', 'seg1MotivoNc'].forEach(function (campo) { bloquearCelda(fila, base + '.' + campo); });
-    }
-    if (hayValor(seguimiento.seg2Fecha)) {
-      ['seg2Fecha', 'seg2Estado', 'seg2MotivoNc'].forEach(function (campo) { bloquearCelda(fila, base + '.' + campo); });
-    }
-    const quitar = fila.querySelector('[data-accion="quitarFila"]');
-    bloquearElemento(quitar ? quitar.closest('td') : null, 'registrado');
-    filas++;
+    if (bloquearLoEscrito(prefijo + '.seguimientos[' + j + ']', seguimiento, CAMPOS_SEGUIMIENTO_PLAN)) filas++;
   });
 
   /* Un plan de familia o de persona con algo registrado no cambia de dueño
@@ -432,7 +607,65 @@ function bloquearPlanRegistrado(prefijo, plan) {
   return filas;
 }
 
+/* Bloquea todo lo que hay bajo `raiz` salvo los elementos `abiertos`: baja
+   por los que contienen alguno (o un `recorrido`) y bloquea entero el resto.
+   Un elemento inerte deja inerte todo lo que tiene dentro, así que lo
+   abierto no puede quedar debajo de algo bloqueado. */
+function llevaAbiertos(elemento, abiertos, recorridos) {
+  return abiertos.some(function (a) { return elemento.contains(a); }) ||
+    recorridos.some(function (r) { return elemento.contains(r); });
+}
+
+function bloquearMenos(raiz, abiertos, recorridos) {
+  Array.prototype.forEach.call(raiz.children, function (hijo) {
+    if (abiertos.indexOf(hijo) !== -1) return;
+    if (llevaAbiertos(hijo, abiertos, recorridos)) bloquearMenos(hijo, abiertos, recorridos);
+    else bloquearElemento(hijo, 'ficha');
+  });
+}
+
+/* RN-051 — Completar integrantes: de la visita quedan abiertos sólo el
+   ítem 51 de cada familia y los bloques de los integrantes nuevos. El
+   contenedor de integrantes no se bloquea entero, para que los que nazcan al
+   subir el ítem 51 queden abiertos. El plan (sección 6) queda como al
+   evolucionarlo. */
+function bloquearMenosIntegrantesNuevos(formulario, capturas, seccionPlan) {
+  const abiertos = [];
+  const recorridos = [];
+  document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').forEach(function (bloque, fi) {
+    const campo = bloque.querySelector('[data-rol="numeroIntegrantes"]');
+    if (campo) abiertos.push(campo.closest('.field') || campo);
+    const contenedor = bloque.querySelector('[data-rol="contenedorIntegrantes"]');
+    if (!contenedor) return;
+    recorridos.push(contenedor);
+    const registro = (integrantesRegistrados || [])[fi] || { capturados: 0 };
+    contenedor.querySelectorAll(':scope > [data-bloque="integrante"]').forEach(function (integrante, ii) {
+      if (ii >= registro.capturados) abiertos.push(integrante);
+    });
+  });
+
+  let antesDelFieldset = true;
+  Array.prototype.forEach.call(formulario.children, function (hijo) {
+    if (hijo === capturas) antesDelFieldset = false;
+    else if (antesDelFieldset) bloquearElemento(hijo, 'ficha');
+  });
+
+  let antesDelPlan = true;
+  Array.prototype.forEach.call(capturas.children, function (hijo) {
+    if (hijo === seccionPlan) antesDelPlan = false;
+    if (!antesDelPlan) return;
+    if (llevaAbiertos(hijo, abiertos, recorridos)) bloquearMenos(hijo, abiertos, recorridos);
+    else bloquearElemento(hijo, 'ficha');
+  });
+
+  const cierre = formulario.querySelector('[data-campo="visitaIncompleta"]');
+  bloquearElemento(cierre ? cierre.closest('.card') : null, 'ficha');
+}
+
 /**
+ * @param opciones.integrantes completar integrantes: de la visita sólo
+ *                             quedan abiertos los integrantes nuevos y el
+ *                             ítem 51
  * @param opciones.secciones  evolución del plan: todo lo que no es la sección
  *                            6 queda intocable
  * @param opciones.registrado lo registrado del plan queda intocable
@@ -443,6 +676,10 @@ function aplicarBloqueosDePlan(encuesta, opciones) {
   const formulario = document.getElementById('encuestaForm');
   const capturas = document.getElementById('bloquesCaptura');
   const seccionPlan = document.getElementById('seccion-6');
+
+  if (o.integrantes && formulario && capturas && seccionPlan) {
+    bloquearMenosIntegrantesNuevos(formulario, capturas, seccionPlan);
+  }
 
   if (o.secciones && formulario && capturas && seccionPlan) {
     let antesDelFieldset = true;

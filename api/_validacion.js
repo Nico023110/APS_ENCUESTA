@@ -111,14 +111,31 @@ let catalogos = null;
 async function obtenerCatalogos(cliente) {
   if (catalogos) return catalogos;
 
-  const [opciones, uzpe, eapb, territorios, micros, prestadores] = await Promise.all([
-    cliente.query('SELECT dominio_codigo, codigo FROM cat.opcion'),
-    cliente.query('SELECT codigo FROM cat.uzpe WHERE vigente'),
-    cliente.query('SELECT codigo, regimen FROM cat.eapb WHERE vigente'),
-    cliente.query('SELECT codigo FROM cat.territorio'),
-    cliente.query('SELECT territorio_codigo, codigo FROM cat.microterritorio'),
-    cliente.query('SELECT codigo FROM cat.prestador WHERE vigente')
-  ]);
+  /* Una sola consulta con las seis listas. Antes eran seis en Promise.all,
+     pero sobre una misma conexión pg las ejecuta una tras otra: seis idas y
+     vueltas a la base en cada arranque en frío del servidor. */
+  const listas = (await cliente.query(`
+    SELECT
+      (SELECT coalesce(json_agg(json_build_object('dominio_codigo', dominio_codigo, 'codigo', codigo)), '[]')
+         FROM cat.opcion) AS opciones,
+      (SELECT coalesce(json_agg(json_build_object('codigo', codigo)), '[]')
+         FROM cat.uzpe WHERE vigente) AS uzpe,
+      (SELECT coalesce(json_agg(json_build_object('codigo', codigo, 'regimen', regimen)), '[]')
+         FROM cat.eapb WHERE vigente) AS eapb,
+      (SELECT coalesce(json_agg(json_build_object('codigo', codigo)), '[]')
+         FROM cat.territorio) AS territorios,
+      (SELECT coalesce(json_agg(json_build_object('territorio_codigo', territorio_codigo, 'codigo', codigo)), '[]')
+         FROM cat.microterritorio) AS micros,
+      (SELECT coalesce(json_agg(json_build_object('codigo', codigo)), '[]')
+         FROM cat.prestador WHERE vigente) AS prestadores
+  `)).rows[0];
+  const filas = function (lista) { return { rows: lista }; };
+  const opciones = filas(listas.opciones);
+  const uzpe = filas(listas.uzpe);
+  const eapb = filas(listas.eapb);
+  const territorios = filas(listas.territorios);
+  const micros = filas(listas.micros);
+  const prestadores = filas(listas.prestadores);
 
   const porDominio = new Map();
   opciones.rows.forEach(function (fila) {
@@ -163,6 +180,11 @@ function fallo(ruta, mensaje, recibido) {
     severidad: 'bloqueo',
     recibido: recibido === undefined ? null : recibido
   };
+}
+
+/* Lo mismo, pero no impide guardar: lo usa el plan de cuidado (RN-222). */
+function aviso(ruta, mensaje, recibido) {
+  return Object.assign(fallo(ruta, mensaje, recibido), { severidad: 'advertencia' });
 }
 
 function vacio(valor) {
@@ -324,12 +346,10 @@ async function validarIntegridad(cliente, encuesta) {
   revisarAnexo(cat, ['ficha', 'vivienda'], encuesta, '', errores);
 
   /* --- Saneamiento básico, ítems 39 a 49 ---
-     `aps.vivienda` declara estas columnas NOT NULL, pero `seccionesPresentes`
-     de reglas.js todavía trata el bloque como opcional: era un andamio para
-     que las reglas no bloquearan antes de que la interfaz incorporara la
-     sección. La interfaz ya la tiene (3.3 en index.html), así que una ficha
-     sin saneamiento pasa el motor y la rechaza la base con un error de
-     columna nula. Se comprueba aquí hasta que el andamio se retire. */
+     `aps.vivienda` declara estas columnas NOT NULL. El motor ya exige el
+     bloque en toda ficha (RN-039 a RN-049), pero admite el carné antirrábico
+     vacío cuando no hay perros ni gatos (RN-045), y la base no: se comprueba
+     aquí para que llegue un mensaje claro y no un error de columna nula. */
   [
     ['actividadEconomica', 'la actividad económica en la vivienda (ítem 39)'],
     ['carnetAntirrabico', 'el carné de vacunación antirrábica (ítem 43)'],
@@ -516,21 +536,29 @@ async function validarPlanes(cliente, encuesta, errores) {
       const rutaA = ruta + '.acciones[' + i + ']';
       const codigo = texto(accion.codigoAccion);
 
+      /* El código es llave foránea contra cat.cups: uno que no está no se
+         puede guardar como código. Como nada del plan bloquea el guardado
+         (RN-222), la acción se guarda sin código y lo digitado se conserva
+         al comienzo del procedimiento realizado, para corregirlo después con
+         «Evolucionar plan». */
       if (codigo !== null && !existentes.has(codigo)) {
-        errores.push(fallo(
+        errores.push(aviso(
           rutaA + '.codigoAccion',
-          'El código no existe en el catálogo CUPS ni en los NoCUPS. Los NoCUPS ' +
-            'tienen la forma NC-AMB-01, NC-EDU-03, etc.',
+          'El código «' + codigo + '» no existe en el catálogo CUPS ni en los NoCUPS: la acción se guarda ' +
+            'sin código. Corríjalo después desde Historial → Evolucionar plan.',
           codigo
         ));
+        accion.procedimientoRealizado = 'Código digitado no reconocido: ' + codigo +
+          (texto(accion.procedimientoRealizado) ? '. ' + texto(accion.procedimientoRealizado) : '');
+        accion.codigoAccion = null;
       }
 
-      /* accion_derivada_destino: derivar sin decir a dónde deja la acción sin
-         destinatario y RN-210 no puede hacerle seguimiento. */
+      /* Derivar sin decir a dónde deja la acción sin destinatario y RN-210 no
+         puede hacerle seguimiento. Se advierte; se completa al evolucionar. */
       if (accion.tipoRespuesta === 'derivada' && vacio(accion.institucionDestino)) {
-        errores.push(fallo(
+        errores.push(aviso(
           rutaA + '.institucionDestino',
-          'Una acción derivada exige registrar la institución de destino.',
+          'Registre la institución a la que se deriva la acción.',
           null
         ));
       }
@@ -542,12 +570,12 @@ async function validarPlanes(cliente, encuesta, errores) {
       /* seg1_nc_motivado / seg2_nc_motivado: "No cumple" sin motivo impide
          aplicar RN-226.4, que escala al gestor de la EAPB. */
       if (seg.seg1Estado === 'NC' && vacio(seg.seg1MotivoNc)) {
-        errores.push(fallo(rutaS + '.seg1MotivoNc',
-          'Un primer seguimiento "No cumple" exige registrar el motivo (RN-226.4).', null));
+        errores.push(aviso(rutaS + '.seg1MotivoNc',
+          'Registre el motivo del primer seguimiento "No cumple" (RN-226.4).', null));
       }
       if (seg.seg2Estado === 'NC' && vacio(seg.seg2MotivoNc)) {
-        errores.push(fallo(rutaS + '.seg2MotivoNc',
-          'Un segundo seguimiento "No cumple" exige registrar el motivo (RN-226.4).', null));
+        errores.push(aviso(rutaS + '.seg2MotivoNc',
+          'Registre el motivo del segundo seguimiento "No cumple" (RN-226.4).', null));
       }
     });
   });
@@ -704,8 +732,12 @@ async function validar(cliente, encuesta) {
   }
 
   const integridad = await validarIntegridad(cliente, ficha);
-  await validarPlanes(cliente, ficha, integridad);
   integridad.forEach(function (error) { bloqueos.push(error); });
+
+  /* RN-222: lo del plan de cuidado sólo advierte. */
+  const avisosPlan = [];
+  await validarPlanes(cliente, ficha, avisosPlan);
+  avisosPlan.forEach(function (item) { advertencias.push(item); });
 
   const avisos = await evaluarAdvertenciasIntegridad(cliente, ficha);
   avisos.forEach(function (aviso) { advertencias.push(aviso); });

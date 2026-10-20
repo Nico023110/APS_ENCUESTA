@@ -165,9 +165,9 @@ grupos.forEach(function (grupo) {
 
 console.log('\n=== 4. Campos que la base exige NOT NULL y el motor no vigila ===');
 
-/* El bloque de saneamiento (ítems 39-49) es NOT NULL en aps.vivienda pero
-   `seccionesPresentes` de reglas.js lo trata como opcional. La validación
-   debe cubrir el hueco; si alguien retira esa comprobación, esto avisa. */
+/* El bloque de saneamiento (ítems 39-49) es NOT NULL en aps.vivienda. El
+   motor lo exige, pero admite vacío el carné antirrábico sin perros ni gatos
+   (RN-045). La validación cubre la columna; si alguien la retira, esto avisa. */
 [
   'actividadEconomica', 'carnetAntirrabico', 'fuenteAgua',
   'disposicionExcretas', 'aguasResiduales', 'residuosSolidos'

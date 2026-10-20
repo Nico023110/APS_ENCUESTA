@@ -172,6 +172,12 @@ function bloqueoEn(cuerpo, fragmentoRuta) {
   });
 }
 
+function advertenciaEn(cuerpo, fragmentoRuta) {
+  return (cuerpo.advertencias || []).some(function (a) {
+    return String(a.ruta || '').indexOf(fragmentoRuta) !== -1;
+  });
+}
+
 /* ---------------------------------------------------------
    Casos
    --------------------------------------------------------- */
@@ -1286,9 +1292,14 @@ async function correrPruebas() {
         ambitos.rows.map(function (x) { return x.ambito + ':' + x.acciones + '/' + x.seguimientos; }).join(' '));
     }
 
-    console.log('\n=== 11. Restricciones del plan que se rechazan con 400 ===');
+    console.log('\n=== 11. Restricciones del plan: se advierten, no impiden guardar (RN-222) ===');
 
-    /* Fichas nuevas, cada una con su código: reenviar la de la sección 6
+    /* Nada del plan bloquea el guardado (observaciones de la E.S.E.,
+       19-10-2026): la ficha entra con 200 y lo que le falta o sobra al plan
+       vuelve como advertencia sobre el campo exacto, para completarlo con
+       «Evolucionar plan».
+
+       Fichas nuevas, cada una con su código: reenviar la de la sección 6
        cambiaría la acción que ya tiene registrada, y eso se rechaza antes
        por el bloqueo del plan (RN-228, sección 14), no por estas reglas. */
     const derivadaSinDestino = fichaValida(sello + 'r1');
@@ -1302,9 +1313,9 @@ async function correrPruebas() {
       seguimientos: []
     };
     let rp = await enviar(derivadaSinDestino);
-    verificar('Acción derivada sin institución de destino => 400', rp.estado === 400,
+    verificar('Acción derivada sin institución de destino => 200', rp.estado === 200,
       'estado ' + rp.estado);
-    verificar('  señala institucionDestino', bloqueoEn(rp.cuerpo, 'institucionDestino'));
+    verificar('  advierte institucionDestino', advertenciaEn(rp.cuerpo, 'institucionDestino'));
 
     const cupsInexistente = fichaValida(sello + 'r2');
     cupsInexistente.planVivienda = {
@@ -1317,8 +1328,22 @@ async function correrPruebas() {
       seguimientos: []
     };
     rp = await enviar(cupsInexistente);
-    verificar('Código de acción inexistente => 400', rp.estado === 400, 'estado ' + rp.estado);
-    verificar('  señala codigoAccion', bloqueoEn(rp.cuerpo, 'codigoAccion'));
+    verificar('Código de acción inexistente => 200', rp.estado === 200, 'estado ' + rp.estado);
+    verificar('  advierte codigoAccion', advertenciaEn(rp.cuerpo, 'codigoAccion'));
+    if (rp.estado === 200) {
+      /* El código que no existe no llega a la llave foránea: se guarda la
+         acción sin código y lo digitado queda como texto, para no perderlo. */
+      const guardada = await cliente.query(`
+        SELECT a.codigo_accion, a.procedimiento_realizado
+          FROM aps.plan_accion a
+          JOIN aps.plan_cuidado p ON p.id = a.plan_id
+          JOIN aps.ficha f        ON f.id = p.ficha_id
+         WHERE f.codigo = $1`, [cupsInexistente.codigoFicha]);
+      const fila = guardada.rows[0] || {};
+      verificar('  la acción queda sin código y con lo digitado como texto',
+        fila.codigo_accion === null && /NoCUPS-AMB07/.test(fila.procedimiento_realizado || ''),
+        JSON.stringify(fila));
+    }
 
     /* El ejecutor del plan acaba en `aps.funcionario`, la misma tabla que el
        responsable de la ficha, y la restricción `func_formato_documento` le
@@ -1337,9 +1362,9 @@ async function correrPruebas() {
       seguimientos: []
     };
     rp = await enviar(ejecutorConDocumentoMalo);
-    verificar('Documento inválido del ejecutor => 400, no 500', rp.estado === 400,
+    verificar('Documento inválido del ejecutor => 200, no 500', rp.estado === 200,
       'estado ' + rp.estado + ' ' + JSON.stringify(rp.cuerpo).slice(0, 200));
-    verificar('  señala ejecutorNumeroId', bloqueoEn(rp.cuerpo, 'ejecutorNumeroId'));
+    verificar('  advierte ejecutorNumeroId', advertenciaEn(rp.cuerpo, 'ejecutorNumeroId'));
 
     const seguimientoConDocumentoMalo = fichaValida(sello + 'r4');
     seguimientoConDocumentoMalo.planVivienda = {
@@ -1352,9 +1377,9 @@ async function correrPruebas() {
       }]
     };
     rp = await enviar(seguimientoConDocumentoMalo);
-    verificar('Documento inválido del responsable del seguimiento => 400, no 500',
-      rp.estado === 400, 'estado ' + rp.estado);
-    verificar('  señala seguimientoNumeroId', bloqueoEn(rp.cuerpo, 'seguimientoNumeroId'));
+    verificar('Documento inválido del responsable del seguimiento => 200, no 500',
+      rp.estado === 200, 'estado ' + rp.estado);
+    verificar('  advierte seguimientoNumeroId', advertenciaEn(rp.cuerpo, 'seguimientoNumeroId'));
 
     console.log('\n=== 12. Plan de cuidado diferido (RN-220 / RN-222) ===');
 

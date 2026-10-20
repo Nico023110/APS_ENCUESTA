@@ -13,19 +13,14 @@
    una visita domiciliaria, muchas veces sobre datos móviles. Así que la
    búsqueda se hace aquí, contra la tabla, y viaja sólo lo que se pidió.
 
-   QUÉ BUSCA
+   QUÉ BUSCA Y EN QUÉ ORDEN
 
-   Lo que se escribe se contrasta contra el código y contra el nombre, de modo
-   que sirvan las dos formas de buscar que usa un profesional: «876» para ir
-   al código que ya conoce, «curación» para encontrarlo por lo que hizo.
-
-   ORDEN DE LOS RESULTADOS
-
-     1. Los que empiezan por lo escrito, antes que los que sólo lo contienen:
-        quien teclea «876» busca 876110, no un nombre que mencione 876.
-     2. Entre iguales, primero lo apto para APS. Un equipo en campo elige mil
-        veces la visita domiciliaria y una vez la arteriografía coronaria.
-     3. Y por código, para que el orden sea estable entre dos búsquedas.
+   Se contrasta contra el código y contra el nombre, de modo que sirvan las
+   dos formas de buscar que usa un profesional: «876» para ir al código que ya
+   conoce, «curación» para encontrarlo por lo que hizo. La búsqueda por nombre
+   tolera tildes, palabras en otro orden y errores de digitación (ver la
+   consulta). Primero el portafolio de la E.S.E., después por código, por
+   palabras y por parecido, lo apto para APS y el código.
    ========================================================================= */
 
 'use strict';
@@ -38,6 +33,24 @@ const { requerirSesion } = require('./_auth');
 const MINIMO_TERMINO = 2;
 const LIMITE_POR_DEFECTO = 20;
 const LIMITE_MAXIMO = 50;
+
+/* Cuánto debe parecerse el nombre a lo escrito para contar con errores de
+   digitación (word_similarity de pg_trgm, de 0 a 1). 0,45 admite una o dos
+   letras cambiadas en una palabra larga sin traer nombres sin relación. */
+const PARECIDO_MINIMO = 0.45;
+
+/* Palabras que no ayudan a buscar un procedimiento. */
+const PALABRAS_VACIAS = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'por', 'para', 'con', 'en', 'y',
+  'o', 'a', 'al', 'un', 'una']);
+
+/* Lo escrito en minúsculas, sin tildes y partido en palabras de dos o más
+   letras o dígitos. Sólo quedan [a-z0-9]: así viajan seguras a to_tsquery. */
+function palabrasDeBusqueda(termino) {
+  return String(termino).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(function (p) { return p.length >= 2 && !PALABRAS_VACIAS.has(p); })
+    .slice(0, 8);
+}
 
 function entero(valor, porDefecto, maximo) {
   const n = parseInt(valor, 10);
@@ -87,18 +100,41 @@ module.exports = async (req, res) => {
        de LIKE que traiga escritos se escapan: sin esto, un `%` tecleado por
        descuido devuelve el catálogo entero. */
     const patron = termino.replace(/([\\%_])/g, '\\$1');
+    const palabras = palabrasDeBusqueda(termino);
 
+    /* Búsqueda tolerante (observación de la E.S.E., 19-10-2026). Antes era
+       «el nombre contiene el texto tal cual»: «consulta odontologia» no
+       encontraba «CONSULTA DE PRIMERA VEZ POR ODONTOLOGÍA GENERAL» —palabras
+       en medio y una tilde—. Ahora cuenta cualquiera de tres caminos:
+
+         por código     el código empieza por lo escrito (876 → 876110);
+         por palabras   todas las palabras, en cualquier orden y sin tildes,
+                        como comienzo de palabra (columna `busqueda`, índice
+                        de texto en español sin acentos);
+         por parecido   el nombre se parece a lo escrito aunque tenga errores
+                        de digitación («odontolojia») — trigramas.
+
+       Orden: primero el portafolio de la E.S.E. (15_portafolio_cups.sql),
+       luego por código, por palabras, por parecido, lo apto para APS y el
+       código, para que el orden sea estable. */
     const resultado = await consultar(`
       SELECT codigo, nombre, tipo::text AS tipo, ambito::text AS ambito,
-             (apto_aps OR codigo LIKE 'NC-%') AS apto_aps
-        FROM cat.cups
-       WHERE habilitado
-         AND (codigo ILIKE $1 || '%' ESCAPE '\\' OR nombre ILIKE '%' || $1 || '%' ESCAPE '\\')
-       ORDER BY (codigo ILIKE $1 || '%' ESCAPE '\\') DESC,
-                (apto_aps OR codigo LIKE 'NC-%') DESC,
-                codigo
-       LIMIT $2
-    `, [patron, limite]);
+             (apto_aps OR codigo LIKE 'NC-%') AS apto_aps,
+             en_portafolio
+        FROM (
+          SELECT c.*,
+                 (c.codigo ILIKE $1 || '%' ESCAPE '\\') AS por_codigo,
+                 ($2 <> '' AND c.busqueda @@ to_tsquery('espanol_sin_acentos', $2)) AS por_palabras,
+                 CASE WHEN $3 = '' THEN 0 ELSE word_similarity($3, unaccent(lower(c.nombre))) END AS parecido
+            FROM cat.cups c
+           WHERE c.habilitado
+        ) candidatos
+       WHERE por_codigo OR por_palabras OR parecido >= $4
+       ORDER BY en_portafolio DESC, por_codigo DESC, por_palabras DESC, parecido DESC,
+                (apto_aps OR codigo LIKE 'NC-%') DESC, codigo
+       LIMIT $5
+    `, [patron, palabras.map(function (p) { return p + ':*'; }).join(' & '), palabras.join(' '),
+      PARECIDO_MINIMO, limite]);
 
     /* El catálogo cambia con cada actualización oficial, no durante la visita:
        una hora de caché ahorra viajes sin servir nada viejo. */

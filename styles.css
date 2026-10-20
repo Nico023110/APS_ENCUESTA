@@ -496,137 +496,434 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   border-top: 1px solid var(--ink-100);
 }
 
-/* ================= INDICATORS =================
-   Cinco tejas en columna (icono arriba, cifra, etiqueta). El apilado vertical
-   existe por una razón concreta: con el icono al lado, etiquetas como
-   «Situaciones inminentes detectadas» sólo disponían de la mitad del ancho y
-   caían a tres renglones desiguales. En vertical la etiqueta usa la teja
-   entera y las cinco quedan a la misma altura.
-   Las tejas NO reaccionan al hover: no se pueden pulsar, y una teja que se
-   levanta al pasar el cursor promete un clic que no existe. */
-.indicators-grid {
-  grid-column: 1 / -1;
+/* ================= PANELES DE INICIO =================
+   Bajo el encabezado del bento, tres paneles en lugar de cuatro tejas
+   iguales: la población caracterizada (la cadena vivienda → hogar →
+   familia → persona), las viviendas por territorio y lo que pide atención.
+   Cada panel es una carcasa blanca con su título; nada se levanta al pasar
+   el cursor salvo lo que se puede pulsar. */
+.panel-inicio {
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  padding: var(--s-6) var(--s-6) var(--s-5);
+  min-width: 0;
+}
+
+.panel-inicio__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--s-4);
+  row-gap: var(--s-1);
+  margin-bottom: var(--s-6);
+}
+
+.panel-inicio__titulo {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ink-900);
+  text-wrap: balance;
+}
+
+.panel-inicio__nota {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.composicion { grid-column: 1 / -1; }
+.territorios { grid-column: span 7; }
+.atencion { grid-column: span 5; }
+
+/* ---- Cadena: vivienda → hogar → familia → persona ----------------------
+   Cuatro niveles separados por un pelo vertical; sobre cada pelo, a la
+   altura de los iconos, un conector con el ángulo que dice «contiene». La
+   cifra manda (40 px, 800); la razón que la sigue («1,2 por vivienda») es
+   lo que convierte cuatro números en una sola población. */
+.cadena {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-4);
-  align-items: stretch;
 }
 
-/* Medio: la teja principal ocupa la fila y las cuatro restantes van de a dos.
-   Aquí la teja vuelve a ser una fila (icono a la izquierda, cifra y etiqueta
-   a la derecha): con menos columnas hay ancho de sobra para la etiqueta, y el
-   apilado vertical sólo serviría para triplicar el alto de la pantalla —en un
-   celular las cinco tejas en columna obligaban a desplazarse para ver la
-   quinta. */
-@media (max-width: 1000px) {
-  .indicators-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  /* Se califica con .indicators-grid a propósito: las reglas base de la teja
-     están declaradas más abajo en la hoja y, a igual especificidad, ganarían
-     por orden aunque la consulta de medios coincida. */
-  .indicators-grid .indicator-card {
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    padding: 16px 18px;
-  }
-  .indicators-grid .indicator-card__datos { margin-top: 0; flex: 1; }
-  .indicators-grid .indicator-card__label { min-height: 0; margin-top: 2px; }
-}
-
-@media (max-width: 420px) {
-  .indicators-grid { grid-template-columns: 1fr; }
-}
-
-.indicator-card {
+.cadena__nivel {
   position: relative;
-  background: #fff;
-  border-radius: var(--r-card);
-  box-shadow: var(--sh-hair), var(--sh-1);
-  padding: var(--s-5);
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  align-items: flex-start;
   min-width: 0;
-  transition: box-shadow var(--dur-hover) var(--ease-out);
+  padding: 0 var(--s-6);
+}
+.cadena__nivel:first-child { padding-left: 0; }
+.cadena__nivel:last-child { padding-right: 0; }
+
+.cadena__nivel + .cadena__nivel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink-150);
 }
 
-/* El icono va en su propia placa, con un pelo interior de su misma familia
-   de color. Es la misma arquitectura anidada del marcador, a escala de 40 px. */
-.indicator-card__icon {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  border-radius: var(--r-control);
+.cadena__conector {
+  position: absolute;
+  left: 0;
+  top: 20px;
+  z-index: 1;
   display: grid;
   place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink-400);
+  font-size: 13px;
+  box-shadow: var(--sh-hair), var(--sh-1);
+  transform: translate(-50%, -50%);
+}
+
+.cadena__icono {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  color: var(--brand-600);
   font-size: 20px;
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1);
+  margin-bottom: var(--s-4);
 }
 
-.indicator-card__icon--teal { background: var(--brand-50); color: var(--brand-600); box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1); }
-.indicator-card__icon--red { background: var(--alert-50); color: var(--alert-700); box-shadow: inset 0 0 0 1px rgba(212, 35, 35, 0.1); }
-.indicator-card__icon--amber { background: var(--warn-50); color: var(--warn-700); box-shadow: inset 0 0 0 1px rgba(194, 112, 10, 0.12); }
-.indicator-card__icon--blue { background: var(--brand-50); color: var(--brand-600); box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1); }
-
-/* La cifra y su etiqueta se pegan al fondo de la teja (margin-top: auto), de
-   modo que los cinco iconos quedan alineados arriba y las cinco cifras
-   abajo, sin importar que una etiqueta ocupe uno o dos renglones. */
-.indicator-card__datos {
-  margin-top: auto;
-  min-width: 0;
-}
-
-.indicator-card__value {
-  font-size: 28px;
+.cadena__valor {
+  font-size: 40px;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: var(--color-primary-deep);
-  display: block;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--ink-900);
   transition: color var(--dur-enter) var(--ease-out);
 }
 
-/* Dos renglones reservados siempre. Sin esta reserva, una etiqueta de un
-   renglón y otra de dos dejan sus cifras a alturas distintas y la fila de
-   números deja de leerse como una fila. */
-.indicator-card__label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.35;
-  margin-top: 5px;
-  min-height: calc(2 * 1.35em);
-  display: flex;
-  align-items: baseline;
+.cadena__etiqueta {
+  margin-top: var(--s-2);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink-800);
+}
+
+/* Un renglón reservado: con la razón vacía (cero viviendas) la fila de
+   etiquetas no debe moverse cuando llega la primera ficha. */
+.cadena__detalle {
+  margin-top: 2px;
+  min-height: 1.45em;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--ink-500);
+}
+
+/* El cero se apaga: la ausencia de dato no compite con el dato. */
+.cadena__nivel--cero .cadena__valor { color: var(--text-secondary); }
+
+/* RN-028: hogares declarados sin caracterizar. Distintivo de pendiente
+   (ámbar, con punto); el color nunca va solo. */
+.cadena__aviso {
+  display: inline-flex;
+  align-items: center;
   gap: 7px;
+  margin-top: var(--s-3);
+  padding: 4px 12px 4px 10px;
+  border-radius: var(--r-chip);
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 1.35;
 }
+.cadena__aviso[hidden] { display: none; }
 
-/* Cero no es un dato: es la ausencia de uno. Se apaga a texto secundario para
-   que la vista se vaya sola a las cifras que sí tienen algo que contar
-   (contraste 6.4:1, sigue siendo legible en pantalla a pleno sol). */
-.indicator-card--cero .indicator-card__value { color: var(--text-secondary); }
-
-/* Estados: rojo cuando hay algo que atender hoy, ámbar cuando queda
-   pendiente. El color nunca va solo — lo acompaña el punto de 6 px, que es
-   como este sistema marca prioridad. */
-.indicator-card--alerta {
-  box-shadow: inset 0 0 0 1px var(--alert-100), var(--sh-1);
-}
-.indicator-card--alerta .indicator-card__value { color: var(--alert-700); }
-.indicator-card--aviso {
-  box-shadow: inset 0 0 0 1px var(--warn-100), var(--sh-1);
-}
-.indicator-card--aviso .indicator-card__value { color: var(--warn-700); }
-
-.indicator-card__punto {
+.cadena__aviso-punto {
   width: 6px;
   height: 6px;
   min-width: 6px;
   border-radius: 50%;
-  align-self: center;
-  margin-left: auto;
+  background: var(--color-warning);
 }
-.indicator-card--alerta .indicator-card__punto { background: var(--color-danger); }
-.indicator-card--aviso .indicator-card__punto { background: var(--color-warning); }
+
+/* ---- Viviendas por territorio ------------------------------------------
+   Una sola serie: barras de 10 px en el azul de la marca, cuadradas en la
+   base y con 4 px de radio en el extremo del dato. Las cifras van escritas
+   en tinta, nunca en el color de la barra. */
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-4);
+}
+
+.barra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s-3);
+  row-gap: 7px;
+}
+
+.barra__nombre {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.barra__codigo {
+  margin-right: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+.barra__cifras {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+.barra__cifras strong {
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.barra__carril {
+  grid-column: 1 / -1;
+  display: block;
+  height: 10px;
+}
+
+.barra__relleno {
+  display: block;
+  height: 100%;
+  width: calc(var(--proporcion, 0) * 100%);
+  min-width: 6px;
+  border-radius: 0 4px 4px 0;
+  background: var(--brand-600);
+}
+
+/* Las barras crecen desde la base al pintarse por primera vez. Es una
+   revelación de dato, como el conteo de cifras, y por eso dura más que el
+   movimiento de interfaz. Recorte, no anchura: no recalcula el layout. */
+.barras--crece .barra__relleno {
+  animation: barraCrece 0.7s var(--ease-out) backwards;
+  animation-delay: calc(220ms + var(--orden, 0) * 45ms);
+}
+
+@keyframes barraCrece {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.barras__vacio {
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.barras__resto {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* ---- Fichas que requieren atención -------------------------------------
+   Tres filas sobre lienzo apagado. Las que el historial sabe filtrar son
+   botones y llevan su flecha; la de situación inminente no tiene filtro y
+   no promete un clic. En cero la fila queda en tinta y sin punto; con algo
+   que contar se tiñe del estado (rojo hoy, ámbar pendiente). */
+.atencion__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+
+.atencion__fila {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto 28px;
+  align-items: center;
+  column-gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3);
+  border: none;
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  transition: background var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+
+button.atencion__fila { cursor: pointer; }
+
+.atencion__icono {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-control);
+  background: #fff;
+  color: var(--ink-500);
+  font-size: 18px;
+  box-shadow: var(--sh-hair);
+  transition: background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
+}
+
+.atencion__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.atencion__titulo {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.atencion__desc {
+  font-size: var(--fs-micro);
+  line-height: 1.4;
+  color: var(--ink-500);
+}
+
+.atencion__cifra {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.atencion__valor {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text-secondary);
+  transition: color var(--dur-enter) var(--ease-out);
+}
+
+.atencion__punto {
+  display: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.atencion__flecha {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink-500);
+  font-size: 14px;
+  box-shadow: var(--sh-hair);
+  transition: transform var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
+}
+
+.atencion__fila--alerta .atencion__icono {
+  background: var(--alert-50);
+  color: var(--alert-700);
+  box-shadow: inset 0 0 0 1px var(--alert-100);
+}
+.atencion__fila--alerta .atencion__valor { color: var(--alert-700); }
+.atencion__fila--alerta .atencion__punto { display: block; background: var(--color-danger); }
+
+.atencion__fila--aviso .atencion__icono {
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+.atencion__fila--aviso .atencion__valor { color: var(--warn-700); }
+.atencion__fila--aviso .atencion__punto { display: block; background: var(--color-warning); }
+
+@media (hover: hover) and (pointer: fine) {
+  button.atencion__fila:hover { background: var(--brand-50); }
+  button.atencion__fila:hover .atencion__flecha {
+    background: var(--brand-600);
+    color: #fff;
+    transform: translateX(2px);
+  }
+}
+
+button.atencion__fila:active { transform: scale(0.99); }
+
+button.atencion__fila:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+/* ---- Derrumbe responsivo de los paneles -------------------------------- */
+@media (max-width: 1040px) {
+  .territorios,
+  .atencion { grid-column: 1 / -1; }
+
+  .cadena__nivel { padding: 0 var(--s-4); }
+  .cadena__valor { font-size: 34px; }
+}
+
+/* En celular la cadena va de a dos: cuatro columnas de 80 px no dejan leer
+   la razón. Sin pelos ni conectores (un conector entre filas no diría nada);
+   el aire separa los niveles. */
+@media (max-width: 680px) {
+  .panel-inicio { padding: var(--s-5) var(--s-4) var(--s-4); }
+  .panel-inicio__cabecera { margin-bottom: var(--s-5); }
+
+  .cadena {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--s-4);
+    row-gap: var(--s-6);
+  }
+  .cadena__nivel,
+  .cadena__nivel:first-child,
+  .cadena__nivel:last-child { padding: 0; }
+  .cadena__nivel + .cadena__nivel::before,
+  .cadena__conector { display: none; }
+  .cadena__icono { margin-bottom: var(--s-3); }
+  .cadena__valor { font-size: 32px; }
+}
+
+/* En los celulares más angostos la barra conserva su cifra, que es lo que
+   mide; las familias del territorio ceden el sitio al nombre. */
+@media (max-width: 380px) {
+  .barra__secundaria { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barras--crece .barra__relleno { animation: none; }
+  button.atencion__fila:active,
+  button.atencion__fila:hover .atencion__flecha { transform: none; }
+}
 
 /* ================= FORMS ================= */
 .field-hint {
@@ -1673,7 +1970,20 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   gap: var(--s-2);
 }
 
-.geo-acciones .btn { flex: 1; min-height: 42px; }
+.geo-acciones .btn { flex: 1 1 auto; min-height: 42px; }
+.geo-acciones { flex-wrap: wrap; }
+
+/* «Digitar coordenadas» encendido: el botón lo dice con tinte y pelo azul, y
+   las dos cajas pasan a fondo blanco, como cualquier campo que se escribe. */
+.geo-acciones .btn--activo {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: inset 0 0 0 1.5px var(--brand-600);
+}
+.coordenadas input:not([readonly]) {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--brand-300);
+}
 
 /* Con las cajas de latitud y longitud en subgrid (cinco pistas), los botones
    se colocan en la pista del control: a la altura de las cajas, no de las
@@ -2006,13 +2316,73 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 }
 #historialTable td:nth-child(2)::before { display: none; }
 
-#historialTable td:nth-child(7) { /* Dirección */
+#historialTable td:nth-child(8) { /* Dirección */
   grid-column: 1 / -1;
 }
 
-#historialTable td:nth-child(10) { /* Situación inminente */
+#historialTable td:nth-child(11) { /* Situación inminente */
   grid-column: 1 / -1;
 }
+
+/* ---- Plan de cuidado en la tarjeta --------------------------------------
+   Va a lo ancho, justo debajo del número de ficha: el estado y, si algo
+   sigue sin conducta, su plazo. El detalle está en «Ver». */
+#historialTable td.celda-plan { grid-column: 1 / -1; }
+
+.plan-resumen__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* El plazo de lo que sigue sin conducta: rojo vencido, ámbar a tres días o
+   menos, tinta con tiempo. Lleva su texto: el color nunca va solo. */
+.plan-resumen__plazo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--r-chip);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.plan-resumen__plazo i { font-size: 13px; }
+.plan-resumen__plazo--vencido {
+  background: var(--alert-50);
+  color: var(--alert-700);
+  box-shadow: inset 0 0 0 1px var(--alert-100);
+}
+.plan-resumen__plazo--cerca {
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+.plan-resumen__plazo--a-tiempo {
+  background: var(--ink-100);
+  color: var(--ink-600);
+}
+
+/* Prioridad de las alertas (RN-200): punto de color y la palabra. */
+.prioridad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--ink-700);
+  white-space: nowrap;
+}
+.prioridad-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-400);
+}
+.prioridad-chip--inmediata::before { background: var(--alert-600); }
+.prioridad-chip--prioritaria::before { background: var(--warn-600); }
+
 
 #historialTable td.actions-cell {
   grid-column: 1 / -1;
@@ -2069,6 +2439,19 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   background: var(--brand-50);
   color: var(--brand-700);
   box-shadow: inset 0 0 0 1px var(--brand-100);
+}
+
+/* RN-051: cuántos integrantes faltan, en el ámbar de lo pendiente y al
+   extremo derecho del botón. */
+.acciones-ficha__conteo {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: var(--r-chip);
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+  font-size: var(--fs-micro);
+  font-weight: 600;
 }
 
 .acciones-ficha__boton {
@@ -2294,6 +2677,183 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   margin: 0 0 var(--s-3);
   font-size: var(--fs-label);
   color: var(--ink-600);
+}
+
+/* ---- Plan de cuidado en el detalle --------------------------------------
+   Arriba el estado, el plazo y las cuentas; debajo las alertas una por una y
+   cada plan (vivienda, familia, persona) como un núcleo con sus acciones y
+   seguimientos. La misma arquitectura anidada de hogares y familias. */
+.detalle-plan__resumen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: var(--s-4);
+}
+
+.detalle-plan__cuentas {
+  font-size: var(--fs-small);
+  color: var(--ink-600);
+}
+
+.detalle-plan__bloque {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+.detalle-plan__vacio {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* Alertas: prioridad, qué y a quién, y si ya tienen conducta. */
+.detalle-plan__alertas,
+.detalle-plan__planes,
+.detalle-plan__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+
+.detalle-plan__alerta {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--s-3);
+  row-gap: var(--s-1);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+  background: #fff;
+  box-shadow: var(--sh-hair);
+}
+.detalle-plan__alerta .prioridad-chip { margin-top: 2px; font-size: var(--fs-small); }
+
+.detalle-plan__alerta-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detalle-plan__alerta-titulo {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalle-plan__alerta-meta {
+  font-size: var(--fs-micro);
+  color: var(--ink-500);
+}
+
+.detalle-plan__alerta-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* Cada plan: carcasa apagada con su nombre, y sus acciones y seguimientos
+   como renglones blancos dentro. */
+.detalle-plan__plan {
+  padding: var(--s-3) var(--s-2) var(--s-2);
+  border-radius: var(--r-shell);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+}
+
+.detalle-plan__plan-titulo {
+  margin: 0 var(--s-2) var(--s-1);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.detalle-plan__subtitulo {
+  margin: var(--s-2) var(--s-2) 6px;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+.detalle-plan__item {
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: var(--sh-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detalle-plan__accion {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalle-plan__codigo {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--ink-100);
+  font-size: 12px;
+  color: var(--ink-700);
+}
+
+.detalle-plan__texto {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-700);
+}
+.detalle-plan__texto--fuerte {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalle-plan__meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: var(--fs-micro);
+  color: var(--ink-500);
+}
+
+.detalle-plan__respuesta,
+.detalle-plan__control {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--r-chip);
+  font-weight: 600;
+}
+.detalle-plan__respuesta--sitio { background: var(--ink-100); color: var(--ink-700); }
+.detalle-plan__respuesta--derivada { background: var(--brand-50); color: var(--brand-700); box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.12); }
+.detalle-plan__control--cumple { background: var(--ok-50); color: var(--ok-700); }
+.detalle-plan__control--parcial { background: var(--warn-50); color: var(--warn-700); }
+.detalle-plan__control--pendiente { background: var(--ink-100); color: var(--ink-500); font-weight: 500; }
+
+.detalle-plan__motivo { flex-basis: 100%; color: var(--warn-700); }
+
+@media (max-width: 560px) {
+  .detalle-plan__alerta { grid-template-columns: minmax(0, 1fr); }
+  .detalle-plan__alerta-estado { flex-direction: row; flex-wrap: wrap; align-items: center; }
 }
 
 .detalle-hogares {
@@ -2564,6 +3124,85 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   .form-nav__toggle:hover { outline-color: var(--brand-300); color: var(--brand-800); }
 }
 .form-nav__toggle input { accent-color: var(--brand-600); }
+
+/* Pre-guardado en el índice fijo: siempre a mano, en cualquier sección. */
+.form-nav__avance {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.form-nav__avance .btn { padding: 6px var(--s-3); min-height: 34px; font-size: var(--fs-small); }
+.form-nav__estado {
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  color: var(--ok-700);
+}
+.form-nav__estado:empty { display: none; }
+
+/* El botón que acaba de guardar lo dice un momento, en verde. */
+[data-accion="guardarAvance"].is-guardado,
+#btnGuardarAvance.is-guardado {
+  background: var(--ok-50);
+  color: var(--ok-700);
+  box-shadow: inset 0 0 0 1.5px var(--ok-600);
+}
+
+/* ---- Fichas sin terminar en el historial ---------------------------------
+   Arriba de la lista: en ámbar, porque están sólo en el equipo y falta
+   completarlas. Cada una con «Continuar» a la vista. */
+.en-curso {
+  margin-bottom: var(--s-5);
+  padding: var(--s-4);
+  border-radius: var(--r-shell);
+  background: var(--warn-50);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+.en-curso[hidden] { display: none; }
+
+.en-curso__titulo {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--warn-700);
+}
+
+.en-curso__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+
+.en-curso__ficha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+  background: #fff;
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+
+.en-curso__datos { min-width: 0; flex: 1 1 320px; }
+.en-curso__codigo {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+.en-curso__lugar { margin: 4px 0 0; font-size: var(--fs-small); color: var(--ink-700); }
+.en-curso__meta { margin: 2px 0 0; font-size: var(--fs-micro); color: var(--ink-500); }
+
+.en-curso__acciones { display: flex; gap: var(--s-2); }
+.en-curso__acciones .acciones-ficha__destacada { width: auto; }
 
 .revelar-condicionados [hidden] {
   display: block !important;
@@ -3002,6 +3641,13 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   letter-spacing: 0.03em;
 }
 
+/* Servicio del portafolio de la E.S.E.: sale primero y lo dice. */
+.combo-cups__marca--portafolio {
+  background: var(--ok-50);
+  color: var(--ok-700);
+  box-shadow: inset 0 0 0 1px var(--ok-100);
+}
+
 .combo-cups__aviso {
   padding: 7px 9px;
   color: var(--text-secondary);
@@ -3073,6 +3719,36 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 /* La celda de la acción CUPS lleva debajo el nombre del procedimiento: se
    alinea arriba para que su control quede en la línea de los vecinos. */
 .plan-table td:has(.combo-cups) { align-self: start; }
+
+/* «Derivada» abre a dónde y la fecha de la cita: la celda de la respuesta
+   pasa a la fila entera y los dos campos van lado a lado. */
+.plan-table--acciones td:has(.derivacion:not([hidden])) { grid-column: span 12; }
+
+.derivacion {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: end;
+  padding: var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.12);
+}
+.derivacion[hidden],
+.motivo-nc[hidden] { display: none; }
+
+.derivacion__fecha {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+@media (max-width: 480px) {
+  .derivacion { grid-template-columns: 1fr; }
+}
 
 .plan-table td:last-child {
   position: absolute;
@@ -3292,6 +3968,115 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 }
 
 .aviso-plan-diferido i { font-size: 22px; color: var(--color-warning); flex-shrink: 0; margin-top: 1px; }
+
+/* ---- Alertas de esta ficha (al comienzo del plan) -------------------------
+   Carcasa blanca con el riesgo familiar a la derecha del título; las alertas
+   agrupadas por a quién le toca la conducta (6.1, 6.2, 6.3), cada una con su
+   prioridad y si ya tiene conducta. Se recalcula mientras se diligencia. */
+.resumen-alertas {
+  margin-bottom: var(--s-5);
+  padding: var(--s-5);
+  border-radius: var(--r-shell);
+  background: #fff;
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+
+.resumen-alertas__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-3);
+}
+
+.resumen-alertas__titulo {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.resumen-alertas__riesgo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 12px 3px 10px;
+  border-radius: var(--r-chip);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+.resumen-alertas__riesgo:empty { display: none; }
+.resumen-alertas__riesgo::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-300);
+}
+.resumen-alertas__riesgo--verde::before { background: var(--ok-600); }
+.resumen-alertas__riesgo--amarillo::before { background: #e0a90b; }
+.resumen-alertas__riesgo--naranja::before { background: #e07a15; }
+.resumen-alertas__riesgo--rojo::before { background: var(--alert-600); }
+
+.resumen-alertas__vacio {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.resumen-alertas__conteo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-small);
+}
+
+.resumen-alertas__pendientes { font-weight: 700; color: var(--warn-700); }
+
+.resumen-alertas__grupo + .resumen-alertas__grupo { margin-top: var(--s-3); }
+
+.resumen-alertas__destino {
+  margin: 0 0 6px;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+.resumen-alertas__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.resumen-alertas__item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-3);
+  padding: 10px var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--ink-50);
+  box-shadow: var(--sh-hair);
+}
+.resumen-alertas__item .prioridad-chip { margin-top: 2px; font-size: var(--fs-small); }
+
+.resumen-alertas__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.resumen-alertas__alerta { font-size: var(--fs-label); font-weight: 600; color: var(--ink-900); }
+.resumen-alertas__descripcion { font-size: var(--fs-micro); line-height: 1.45; color: var(--ink-500); }
+
+@media (max-width: 560px) {
+  .resumen-alertas { padding: var(--s-4); }
+  .resumen-alertas__item { grid-template-columns: minmax(0, 1fr) auto; }
+  .resumen-alertas__item .prioridad-chip { grid-column: 1 / -1; }
+}
 .aviso-plan-diferido strong { display: inline; }
 
 .estado-plan {
@@ -3634,9 +4419,6 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 }
 
 @media (max-width: 480px) {
-  .indicator-card { padding: 12px 14px; }
-  .indicator-card__icon { width: 42px; height: 42px; min-width: 42px; font-size: 19px; }
-  .indicator-card__value { font-size: 24px; }
   .llaves-heredadas { grid-template-columns: 1fr; }
 }
 
@@ -3861,63 +4643,90 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 
 
-/* ---- Píldora de estado de sincronización -------------------------------
-   Verde cuando no queda nada por subir; ámbar y pulsable cuando sí. El ámbar
-   es un botón de verdad: la acción que resuelve el estado está en el mismo
-   sitio donde se lee el estado. */
-.estado-sync {
-  display: inline-flex;
+/* ---- Módulo de sincronización ------------------------------------------
+   Vive en la bandeja del total, a la vista al abrir Inicio: arriba el estado
+   (icono teñido, qué pasa y desde cuándo) y debajo la acción que lo
+   resuelve. Antes la acción era la última tarjeta de la pantalla y el
+   estado una píldora aparte; quien tenía fichas sin subir veía el aviso en
+   un sitio y tenía que ir a buscar el botón a otro.
+
+   El botón cambia de peso con el estado: azul lleno cuando hay fichas sin
+   subir, fantasma cuando todo está en la base, ocupado mientras sube y
+   apagado sin señal. */
+.sincronia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-1) var(--s-3) 0;
+  min-width: 0;
+}
+
+.sincronia__estado {
+  display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid transparent;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  flex-shrink: 0;
+  gap: var(--s-3);
+  min-width: 0;
 }
 
-.estado-sync__punto {
+.sincronia__icono {
   position: relative;
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
-  border-radius: 50%;
-}
-
-.estado-sync--listo {
-  background: var(--color-success-light);
-  border-color: #b6e3cd;
-  color: var(--color-success-text);
-}
-.estado-sync--listo .estado-sync__punto { background: var(--color-success); }
-
-.estado-sync--pendiente {
-  background: var(--color-warning-light);
-  border-color: var(--warn-100);
-  color: var(--color-warning-text);
-  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: var(--r-control);
+  font-size: 21px;
+  background: var(--ok-50);
+  color: var(--ok-700);
+  box-shadow: inset 0 0 0 1px var(--ok-100);
   transition: background var(--dur-hover) var(--ease-out),
-              border-color var(--dur-hover) var(--ease-out),
-              transform var(--dur-press) var(--ease-out);
-}
-.estado-sync--pendiente .estado-sync__punto { background: var(--color-warning); }
-.estado-sync--pendiente:active { transform: scale(0.97); }
-
-@media (hover: hover) and (pointer: fine) {
-  .estado-sync--pendiente:hover {
-    background: var(--warn-100);
-    border-color: var(--color-warning);
-  }
+              color var(--dur-hover) var(--ease-out);
 }
 
-/* El anillo del punto ámbar late una vez cada 2,4 s. Es la única cosa que se
-   mueve sola en la pantalla, y sólo existe mientras haya trabajo sin subir:
-   cuando todo está sincronizado el punto es verde y está quieto. */
-.estado-sync--pendiente .estado-sync__punto::after {
+.sincronia[data-estado="pendiente"] .sincronia__icono {
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+}
+.sincronia[data-estado="subiendo"] .sincronia__icono {
+  background: var(--brand-50);
+  color: var(--brand-600);
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1);
+}
+.sincronia[data-estado="sin-red"] .sincronia__icono {
+  background: var(--ink-100);
+  color: var(--ink-500);
+  box-shadow: var(--sh-hair);
+}
+
+/* Mientras sube, las flechas giran: es trabajo en curso, no adorno, y se
+   detiene en cuanto termina. */
+.sincronia[data-estado="subiendo"] .sincronia__icono i {
+  animation: girarSincronia 1.1s linear infinite;
+}
+
+@keyframes girarSincronia {
+  to { transform: rotate(360deg); }
+}
+
+/* El punto ámbar en la esquina del icono late una vez cada 2,4 s. Es la
+   única cosa que se mueve sola en la pantalla, y sólo existe mientras haya
+   fichas sin subir. */
+.sincronia__latido {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  box-shadow: 0 0 0 2px #fff;
+}
+.sincronia[data-estado="pendiente"] .sincronia__latido { display: block; }
+
+.sincronia__latido::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -3931,9 +4740,156 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   55%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
-.estado-sync__contador {
-  font-variant-numeric: tabular-nums;
+.sincronia__textos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
+
+.sincronia__titulo {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: var(--ink-900);
+}
+
+.sincronia__detalle {
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--ink-500);
+}
+
+/* Avance real de la subida: una ficha por tramo. */
+.sincronia__barra {
+  display: block;
+  height: 4px;
+  border-radius: var(--r-chip);
+  background: var(--brand-100);
+  overflow: hidden;
+}
+.sincronia__barra[hidden] { display: none; }
+
+.sincronia__avance {
+  display: block;
+  height: 100%;
+  background: var(--brand-600);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-enter) var(--ease-out);
+}
+
+/* ---- Botón de sincronizar -----------------------------------------------
+   La misma anatomía que la acción principal (píldora con el icono en su
+   propia isla, a ras del borde derecho) para que se lea como acción y no
+   como tarjeta. 48 px de alto: se pulsa con el pulgar, a veces con guante. */
+.btn-sync {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 7px 7px var(--s-5);
+  border: none;
+  border-radius: var(--r-chip);
+  background: #fff;
+  color: var(--ink-700);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+
+.btn-sync__icono {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--ink-600);
+  font-size: 16px;
+  transition: transform var(--dur-hover) var(--ease-out),
+              background var(--dur-hover) var(--ease-out),
+              color var(--dur-hover) var(--ease-out);
+}
+.btn-sync__icono[hidden] { display: none; }
+
+/* Fichas sin subir: el botón pasa a ser la acción de la pantalla. */
+.sincronia[data-estado="pendiente"] .btn-sync,
+.sincronia[data-estado="listo"] .btn-sync {
+  background: var(--brand-600);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.3),
+              0 10px 24px -8px rgba(0, 54, 90, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.sincronia[data-estado="pendiente"] .btn-sync__icono,
+.sincronia[data-estado="listo"] .btn-sync__icono {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* Subiendo o sin señal el botón no se puede pulsar y lo dice con su texto
+   («Sincronizando…», «Esperando señal»), centrado y sin isla. */
+.btn-sync:disabled {
+  justify-content: center;
+  padding: 7px var(--s-5);
+  box-shadow: none;
+  cursor: default;
+}
+.sincronia[data-estado="subiendo"] .btn-sync {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.12);
+  cursor: progress;
+}
+.sincronia[data-estado="sin-red"] .btn-sync {
+  background: var(--ink-100);
+  color: var(--ink-500);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-sync:not(:disabled):hover {
+    background: var(--brand-50);
+    color: var(--brand-700);
+  }
+  .btn-sync:not(:disabled):hover .btn-sync__icono {
+    background: var(--brand-600);
+    color: #fff;
+    transform: rotate(90deg);
+  }
+  .sincronia[data-estado="pendiente"] .btn-sync:hover,
+  .sincronia[data-estado="listo"] .btn-sync:hover {
+    background: var(--brand-700);
+    color: #fff;
+  }
+  .sincronia[data-estado="listo"] .btn-sync:hover .btn-sync__icono {
+    background: rgba(255, 255, 255, 0.26);
+    color: #fff;
+  }
+  .sincronia[data-estado="pendiente"] .btn-sync:hover .btn-sync__icono {
+    background: rgba(255, 255, 255, 0.26);
+    transform: translateX(2px);
+  }
+}
+
+.btn-sync:not(:disabled):active { transform: scale(0.975); }
+
+.btn-sync:focus-visible {
+  outline: none;
+  box-shadow: var(--sh-1), 0 0 0 3px var(--brand-ring);
+}
+
 
 
 /* ================= ESTADO VACÍO DE INICIO =================
@@ -3986,8 +4942,11 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
    Se conservan los cambios de color y opacidad (comunican estado) y se
    retira todo lo que se desplaza o escala. */
 @media (prefers-reduced-motion: reduce) {
-  .estado-sync--pendiente .estado-sync__punto::after { animation: none; }
-  .estado-sync--pendiente:active { transform: none; }
+  .sincronia__latido::after,
+  .sincronia[data-estado="subiendo"] .sincronia__icono i { animation: none; }
+  .sincronia__avance { transition: none; }
+  .btn-sync:not(:disabled):active,
+  .btn-sync:not(:disabled):hover .btn-sync__icono { transform: none; }
   .accion-ancha:hover,
   .accion-ancha:active,
   .btn:active,
@@ -4004,12 +4963,10 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 @media (max-width: 720px) {
   .app-main { padding: var(--s-6) var(--s-4) var(--s-12); }
   .app-header { padding: var(--s-3) var(--s-4); }
-  /* En terreno se toca con el pulgar y a veces con guante: en celular la
-     píldora pasa a ocupar el ancho completo para ser un blanco grande. */
-  .hero-welcome__estado { width: 100%; }
-  .estado-sync { width: 100%; justify-content: center; }
   .inicio-vacio { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
   .bento__titulo { font-size: 23px; }
+  /* En terreno se toca con el pulgar y a veces con guante: en celular la
+     acción principal ocupa el ancho completo para ser un blanco grande. */
   .btn-cta { width: 100%; justify-content: space-between; }
   .section-banner { font-size: var(--fs-h3); margin-top: var(--s-8); }
   .card { padding: var(--s-5) var(--s-4) var(--s-4); }
@@ -4123,9 +5080,6 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   max-width: 22ch;
 }
 
-.bento__total .hero-welcome__estado { padding: 0 var(--s-3); }
-.bento__total .estado-sync { width: 100%; justify-content: center; }
-
 /* ---- Acción principal: píldora con el icono en su propia isla ----------
    La flecha nunca va desnuda al lado del texto: vive en su propio círculo,
    a ras del padding derecho. Al pulsar, la píldora entera se comprime y el
@@ -4181,11 +5135,12 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 
 .btn-cta:active { transform: scale(0.975); }
 
-/* ---- Acciones secundarias: dos tarjetas anchas ------------------------- */
+/* ---- Acción secundaria: el historial, a lo ancho ------------------------
+   Sincronizar subió a la bandeja del total; aquí queda sólo el historial. */
 .bento__acciones {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--s-4);
 }
 
@@ -4305,18 +5260,19 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   .marcador__valor { margin-top: var(--s-1); }
   .marcador__etiqueta { max-width: none; margin-top: 0; }
 
-  .bento__total .hero-welcome__estado {
-    display: flex;
-    align-items: center;
-    padding: 0;
+  .bento__total { padding: 6px; }
+  .bento__total .sincronia {
+    flex: 1;
+    justify-content: center;
+    padding: var(--s-3) var(--s-4) var(--s-3) var(--s-2);
   }
 }
 
 @media (max-width: 680px) {
   .bento { gap: var(--s-3); }
   .bento__principal { padding: var(--s-6) var(--s-5); }
-  .bento__total { flex-direction: column; }
-  .bento__acciones { grid-template-columns: 1fr; }
+  .bento__total { flex-direction: column; padding: 6px 6px var(--s-4); }
+  .bento__total .sincronia { padding: var(--s-1) var(--s-3) 0; }
   .marcador__valor { font-size: 44px; }
 }
 
@@ -4404,9 +5360,7 @@ html.sin-sesion body { visibility: hidden; }
    la sincronización desaparecen; el resto del bento se reacomoda solo. */
 html.nivel-administrador .app-tabs__btn[data-view="nueva"],
 html.nivel-administrador .btn-cta[data-goto="nueva"],
-html.nivel-administrador .accion-ancha[onclick*="sincronizar"],
-html.nivel-administrador #estadoSync { display: none; }
-html.nivel-administrador .bento__acciones { grid-template-columns: 1fr; }
+html.nivel-administrador #sincronia { display: none; }
 
 /* ---- Puerta: dos hojas que se solapan ------------------------------------
    Referencia del cliente: un panel azul profundo con formas orgánicas y,

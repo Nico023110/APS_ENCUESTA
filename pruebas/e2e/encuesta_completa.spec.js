@@ -142,7 +142,7 @@ const PERSONAS = [
     sexo: 'hombre', genero: 'masculino', autoidentificacion: 'masculino',
     orientacion: 'heterosexual',
     telefono: '3155559876', rol: 'conyuge',
-    ocupacion: '8322', nivelEducativo: 'basica_secundaria',
+    ocupacion: '8324', nivelEducativo: 'basica_secundaria',
     peso: '78', talla: '172', cintura: '92',
     sistolica: '124', diastolica: '80',
     /* Sin gestación: el formulario esconde la pregunta por sexo (RN-085). */
@@ -184,6 +184,30 @@ async function limpiarBase() {
 
   await cliente.connect();
   try {
+    /* Los códigos de ficha y de hogar ya no los fija la prueba (RN-015 y el
+       anexo SI-APS los generan): las fichas de prueba se reconocen por los
+       documentos de sus integrantes. */
+    const propias = await cliente.query(`
+      SELECT DISTINCT f.id, f.hogar_id
+        FROM aps.ficha f
+        JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
+        JOIN aps.integrante i     ON i.familia_ficha_id = ff.id
+        JOIN aps.persona p        ON p.id = i.persona_id
+       WHERE p.numero_id = ANY($1)
+    `, [DOCUMENTOS]);
+    const fichas = propias.rows.map(function (r) { return r.id; });
+    const hogares = propias.rows.map(function (r) { return r.hogar_id; });
+    await cliente.query('DELETE FROM aps.ficha WHERE id = ANY($1::bigint[])', [fichas]);
+    await cliente.query(`
+      DELETE FROM aps.familia f
+       WHERE f.hogar_id = ANY($1::bigint[])
+         AND NOT EXISTS (SELECT 1 FROM aps.familia_ficha ff WHERE ff.familia_id = f.id)
+    `, [hogares]);
+    await cliente.query(`
+      DELETE FROM aps.hogar h
+       WHERE h.id = ANY($1::bigint[])
+         AND NOT EXISTS (SELECT 1 FROM aps.ficha f WHERE f.hogar_id = h.id)
+    `, [hogares]);
     await cliente.query("DELETE FROM aps.ficha WHERE codigo LIKE 'F-PW-%'");
     await cliente.query(`
       DELETE FROM aps.familia
@@ -198,10 +222,15 @@ async function limpiarBase() {
 
 test.describe.configure({ mode: 'serial' });
 
-/* Antes y después: antes por si una corrida anterior se interrumpió a mitad
-   de camino y dejó la ficha a medio escribir. */
-test.beforeAll(limpiarBase);
-test.afterAll(limpiarBase);
+/* La ficha diligenciada se conserva en la base para poder revisarla en el
+   historial. Para que la prueba se recoja sola, como antes, se corre con
+   PW_LIMPIAR=1: limpia antes (por si una corrida anterior quedó a medias) y
+   después. Ojo: con las fichas de prueba en la base, endpoint.test.js puede
+   chocar contra las personas que referencian. */
+if (process.env.PW_LIMPIAR === '1') {
+  test.beforeAll(limpiarBase);
+  test.afterAll(limpiarBase);
+}
 
 /* ---------------------------------------------------------
    La prueba
