@@ -25,6 +25,9 @@ const path = require('path');
 const zlib = require('zlib');
 
 const PUERTO = Number(process.env.PUERTO) || 5173;
+/* Detrás de Apache (XAMPP) se fija HOST=127.0.0.1: Node sólo atiende al
+   proxy de la misma máquina y nadie de la red le llega sin pasar por Apache. */
+const HOST = process.env.HOST || undefined;
 const RAIZ = __dirname;
 const DIR_API = path.join(RAIZ, 'api');
 
@@ -350,7 +353,15 @@ const servidor = http.createServer(function (peticion, respuesta) {
   atenderEstatico(peticion, respuesta, ruta === '/' ? 'index.html' : ruta.replace(/^\/+/, ''));
 });
 
-servidor.listen(PUERTO, function () {
+/* Bajo xampp/servicio_api.js el proceso nace con canal IPC. Si el supervisor
+   muere (se detuvo la tarea programada), Windows no mata a los hijos: sin
+   esto Node quedaría huérfano ocupando el puerto y el siguiente arranque
+   fallaría. */
+if (process.send) {
+  process.on('disconnect', function () { process.exit(0); });
+}
+
+servidor.listen(PUERTO, HOST, function () {
   const endpoints = fs.existsSync(DIR_API)
     ? fs.readdirSync(DIR_API).filter(function (a) {
       return a.endsWith('.js') && a.charAt(0) !== '_';

@@ -22,3 +22,5 @@ pruebas/e2e/resultados/
 
 # Respaldos de la base: datos personales y de salud, nunca al repositorio
 respaldos/
+# Registros de la API cuando corre bajo XAMPP (xampp/servicio_api.js)
+logs/

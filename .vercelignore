@@ -12,3 +12,5 @@ playwright.config*.js
 skills-lock.json
 
 respaldos/
+xampp/
+logs/
