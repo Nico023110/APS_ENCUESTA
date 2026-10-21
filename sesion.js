@@ -109,6 +109,20 @@
     });
   };
 
+  /* El listado de fichas se pide ya, desde la cabecera, y no cuando el
+     navegador termina de descargar y procesar el resto de los scripts: Inicio
+     lo necesita primero, y así la red trabaja mientras tanto. app.js lo toma
+     en su primera lectura (refrescarFichasDelServidor); pasa por el fetch de
+     arriba, con su cabecera anti-CSRF y su manejo del 401. */
+  let listadoAnticipado = navigator.onLine === false ? null : window.fetch('/api/listar_fichas');
+  if (listadoAnticipado) listadoAnticipado.catch(function () { /* app.js lo atiende al tomarlo */ });
+
+  function tomarListadoAnticipado() {
+    const pedido = listadoAnticipado;
+    listadoAnticipado = null;
+    return pedido;
+  }
+
   function cerrarLocalmente(motivo) {
     borrarCache();
     irAlInicioDeSesion(motivo);
@@ -398,6 +412,7 @@
     puede: puede,
     aplicarEnFormulario: aplicarEnFormulario,
     cerrar: cerrarSesion,
-    bloquear: bloquear
+    bloquear: bloquear,
+    tomarListadoAnticipado: tomarListadoAnticipado
   };
 })();

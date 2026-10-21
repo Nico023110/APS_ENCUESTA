@@ -41,11 +41,20 @@ function obtenerPool() {
   }
 
   if (!pool) {
+    /* max: la lectura de una ficha completa lanza ~20 consultas a la vez
+       (aLaVez); con 10 conexiones la mitad esperaba turno.
+       idleTimeoutMillis: abrir una conexión a Neon desde Cali cuesta ~600 ms.
+       Un servidor que sigue corriendo (local o propio) conserva las suyas 5
+       minutos, lo mismo que Neon tarda en dormir la base por inactividad, para
+       no mantenerla despierta más de la cuenta; en Vercel, donde la función
+       se congela entre peticiones, se mantiene el medio minuto de antes.
+       keepAlive detecta las que el otro lado haya cerrado. */
     pool = new Pool({
       connectionString: CADENA,
       ssl: esLocal(CADENA) ? false : { rejectUnauthorized: false },
-      max: 10,
-      idleTimeoutMillis: 30000,
+      max: 20,
+      idleTimeoutMillis: process.env.VERCEL ? 30000 : 300000,
+      keepAlive: true,
       connectionTimeoutMillis: 10000
     });
 

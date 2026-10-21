@@ -83,19 +83,36 @@ function agruparPor(filas, columna) {
   return grupos;
 }
 
-/* Lee las tablas puente de un nivel para varios padres, en una sola
-   consulta, y las agrupa por tabla y por padre. Los nombres de tabla y de
-   columna salen de las constantes de arriba, nunca de la petición. */
-async function leerPuentes(cliente, definiciones, columnaPadre, ids) {
+/* Filtros de las lecturas, todos sobre los ids de las fichas ($1). Leer lo
+   de las familias y los integrantes por su ficha, y no por sus ids, permite
+   lanzar todas las consultas a la vez en lugar de esperar nivel por nivel. */
+function deLasFichas(columna) {
+  return columna + ' = ANY($1::bigint[])';
+}
+function deSusHogares(columna) {
+  return columna + ' IN (SELECT f.hogar_id FROM aps.ficha f WHERE f.id = ANY($1::bigint[]))';
+}
+function deSusFamilias(columna) {
+  return columna + ' IN (SELECT ff.id FROM aps.familia_ficha ff WHERE ff.ficha_id = ANY($1::bigint[]))';
+}
+function deSusIntegrantes(columna) {
+  return columna + ' IN (SELECT i.id FROM aps.integrante i JOIN aps.familia_ficha ff ON ff.id = i.familia_ficha_id' +
+    ' WHERE ff.ficha_id = ANY($1::bigint[]))';
+}
+
+/* Lee las tablas puente de un nivel, en una sola consulta, y las agrupa por
+   tabla y por padre. `condicion` es uno de los filtros de arriba. Los
+   nombres de tabla y de columna salen de las constantes, nunca de la
+   petición. */
+async function leerPuentes(cliente, definiciones, columnaPadre, condicion, parametros) {
   const lecturas = definiciones.map(function () { return new Map(); });
-  if (ids.length === 0) return lecturas;
 
   const partes = definiciones.map(function (definicion, i) {
     return 'SELECT ' + i + ' AS n, ' + columnaPadre + ' AS padre, codigo, ' +
       (definicion.otroCual ? 'otro_cual' : 'NULL::text') + ' AS otro_cual FROM ' + definicion.tabla +
-      ' WHERE ' + columnaPadre + ' = ANY($1::bigint[])';
+      ' WHERE ' + condicion(columnaPadre);
   });
-  const r = await cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', [ids.map(String)]);
+  const r = await cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', parametros);
 
   r.rows.forEach(function (fila) {
     const porPadre = lecturas[fila.n];
@@ -267,52 +284,52 @@ async function leerFichasCompletas(cliente, fichaIds) {
   const ids = Array.from(new Set((fichaIds || []).map(String)));
   if (ids.length === 0) return [];
 
-  const filas = (await cliente.query(`
-    SELECT f.id, f.codigo, f.consentimiento, f.situacion_inminente,
-           f.departamento_codigo, f.municipio_codigo, f.uzpe_codigo, f.prestador_codigo,
-           to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha_diligenciamiento,
-           f.entorno_abordaje, f.nombre_institucion, f.lider_entorno, f.jovenes_en_paz,
-           f.estado, f.motivo_cierre_incompleto, f.referencia_familia,
-           f.fechas_modificacion, f.capturada_en,
-           COALESCE(f.diligenciada_en, f.capturada_en) AS diligenciada_en,
-           eq.codigo AS equipo_codigo,
-           r.tipo_id AS responsable_tipo_id, r.numero_id AS responsable_numero_id,
-           r.perfil_profesional, r.perfil_otro,
-           h.id AS hogar_id, h.codigo AS hogar_codigo, h.consecutivo_sispro, h.nuv,
-           h.area_ubicacion, h.territorio_codigo, h.microterritorio_codigo,
-           h.division_territorial, h.direccion_normalizada, h.direccion_componentes,
-           h.latitud, h.longitud, h.punto_referencia, h.geo_motivo_imposibilidad,
-           v.estrato, v.hogares_en_vivienda, v.personas_en_vivienda, v.habitaciones_vivienda,
-           v.personas_por_habitacion, v.hacinamiento,
-           v.elementos_para_dormir, v.tipo_vivienda, v.material_techo, v.vectores,
-           v.actividad_economica, v.perros, v.perros_vacunados, v.gatos, v.gatos_vacunados,
-           v.carnet_antirrabico, v.fuente_agua, v.disposicion_excretas, v.aguas_residuales,
-           v.residuos_solidos
-      FROM aps.ficha f
-      JOIN aps.hogar h         ON h.id = f.hogar_id
-      JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
-      JOIN aps.funcionario r   ON r.id = f.responsable_id
-      LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
-     WHERE f.id = ANY($1::bigint[])
-  `, [ids])).rows;
-
-  if (filas.length === 0) return [];
-
-  const idsFicha = filas.map(function (f) { return String(f.id); });
-  const idsHogar = Array.from(new Set(filas.map(function (f) { return String(f.hogar_id); })));
   const motor = obtenerMotor();
+  const parametros = [ids];
 
-  /* Lo que cuelga de la ficha se lee a la vez cuando `cliente` es el pool
-     (ver aLaVez en _db.js); con el cliente de una transacción, en serie como
-     siempre. Las familias y sus integrantes se buscan por la ficha, así que
-     tampoco esperan una a la otra. */
-  const [puentesVivienda, listas, anexoFicha, anexoHogar, anexoVivienda, filasFamilias, filasIntegrantes,
-    planesPorFicha] = await aLaVez(cliente, [
-    function () { return leerPuentes(cliente, PUENTES_VIVIENDA, 'ficha_id', idsFicha); },
-    function () { return anexoBd.leerListasConvertidas(cliente, idsFicha); },
-    function () { return anexoBd.leerAnexo(cliente, motor, 'ficha', idsFicha); },
-    function () { return anexoBd.leerAnexo(cliente, motor, 'hogar', idsHogar); },
-    function () { return anexoBd.leerAnexo(cliente, motor, 'vivienda', idsFicha); },
+  /* Todo se lee a la vez cuando `cliente` es el pool (ver aLaVez en _db.js):
+     cada consulta filtra por las fichas pedidas, así que ninguna espera a
+     otra. Con el cliente de una transacción (guardar, reporte) van una tras
+     otra, como siempre. Lo del hogar, las familias y los integrantes se arma
+     después con los ids que trajeron la ficha y sus familias. */
+  const [filasFicha, puentesVivienda, listas, consultaAnexoFicha, consultaAnexoHogar, consultaAnexoVivienda,
+    filasFamilias, filasIntegrantes, planesPorFicha, puentesFamilia, consultaAnexoFamilia, puentesIntegrante,
+    consultaAnexoIntegrante] = await aLaVez(cliente, [
+    function () {
+      return cliente.query(`
+        SELECT f.id, f.codigo, f.consentimiento, f.situacion_inminente,
+               f.departamento_codigo, f.municipio_codigo, f.uzpe_codigo, f.prestador_codigo,
+               to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha_diligenciamiento,
+               f.entorno_abordaje, f.nombre_institucion, f.lider_entorno, f.jovenes_en_paz,
+               f.estado, f.motivo_cierre_incompleto, f.referencia_familia,
+               f.fechas_modificacion, f.capturada_en,
+               COALESCE(f.diligenciada_en, f.capturada_en) AS diligenciada_en,
+               eq.codigo AS equipo_codigo,
+               r.tipo_id AS responsable_tipo_id, r.numero_id AS responsable_numero_id,
+               r.perfil_profesional, r.perfil_otro,
+               h.id AS hogar_id, h.codigo AS hogar_codigo, h.consecutivo_sispro, h.nuv,
+               h.area_ubicacion, h.territorio_codigo, h.microterritorio_codigo,
+               h.division_territorial, h.direccion_normalizada, h.direccion_componentes,
+               h.latitud, h.longitud, h.punto_referencia, h.geo_motivo_imposibilidad,
+               v.estrato, v.hogares_en_vivienda, v.personas_en_vivienda, v.habitaciones_vivienda,
+               v.personas_por_habitacion, v.hacinamiento,
+               v.elementos_para_dormir, v.tipo_vivienda, v.material_techo, v.vectores,
+               v.actividad_economica, v.perros, v.perros_vacunados, v.gatos, v.gatos_vacunados,
+               v.carnet_antirrabico, v.fuente_agua, v.disposicion_excretas, v.aguas_residuales,
+               v.residuos_solidos
+          FROM aps.ficha f
+          JOIN aps.hogar h         ON h.id = f.hogar_id
+          JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id
+          JOIN aps.funcionario r   ON r.id = f.responsable_id
+          LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
+         WHERE f.id = ANY($1::bigint[])
+      `, parametros);
+    },
+    function () { return leerPuentes(cliente, PUENTES_VIVIENDA, 'ficha_id', deLasFichas, parametros); },
+    function () { return anexoBd.leerListasConvertidas(cliente, ids); },
+    function () { return anexoBd.consultarAnexo(cliente, motor, 'ficha', deLasFichas, parametros); },
+    function () { return anexoBd.consultarAnexo(cliente, motor, 'hogar', deSusHogares, parametros); },
+    function () { return anexoBd.consultarAnexo(cliente, motor, 'vivienda', deLasFichas, parametros); },
     /* --- Familias, en su orden de captura --- */
     function () {
       return cliente.query(`
@@ -322,7 +339,7 @@ async function leerFichasCompletas(cliente, fichaIds) {
           JOIN aps.familia fa ON fa.id = ff.familia_id
          WHERE ff.ficha_id = ANY($1::bigint[])
          ORDER BY ff.ficha_id, fa.consecutivo, ff.id
-      `, [idsFicha]);
+      `, parametros);
     },
     function () {
       return cliente.query(`
@@ -332,24 +349,32 @@ async function leerFichasCompletas(cliente, fichaIds) {
                p.sexo, p.nacionalidad, p.nacionalidad_otra
           FROM aps.integrante i
           JOIN aps.persona p ON p.id = i.persona_id
-         WHERE i.familia_ficha_id IN (SELECT ff.id FROM aps.familia_ficha ff WHERE ff.ficha_id = ANY($1::bigint[]))
+         WHERE ${deSusFamilias('i.familia_ficha_id')}
          ORDER BY i.familia_ficha_id, i.orden, i.id
-      `, [idsFicha]);
+      `, parametros);
     },
-    function () { return leerPlanes(cliente, idsFicha); }
+    function () { return leerPlanes(cliente, ids); },
+    function () { return leerPuentes(cliente, PUENTES_FAMILIA, 'familia_ficha_id', deSusFamilias, parametros); },
+    function () { return anexoBd.consultarAnexo(cliente, motor, 'familia_ficha', deSusFamilias, parametros); },
+    function () { return leerPuentes(cliente, PUENTES_INTEGRANTE, 'integrante_id', deSusIntegrantes, parametros); },
+    function () { return anexoBd.consultarAnexo(cliente, motor, 'integrante', deSusIntegrantes, parametros); }
   ]);
 
+  const filas = filasFicha.rows;
+  if (filas.length === 0) return [];
+
+  const idsFicha = filas.map(function (f) { return String(f.id); });
+  const idsHogar = Array.from(new Set(filas.map(function (f) { return String(f.hogar_id); })));
   const familias = filasFamilias.rows;
   const integrantes = filasIntegrantes.rows;
   const idsFamilia = familias.map(function (x) { return String(x.id); });
   const idsIntegrante = integrantes.map(function (x) { return String(x.id); });
 
-  const [puentesFamilia, anexoFamilia, puentesIntegrante, anexoIntegrante] = await aLaVez(cliente, [
-    function () { return leerPuentes(cliente, PUENTES_FAMILIA, 'familia_ficha_id', idsFamilia); },
-    function () { return anexoBd.leerAnexo(cliente, motor, 'familia_ficha', idsFamilia); },
-    function () { return leerPuentes(cliente, PUENTES_INTEGRANTE, 'integrante_id', idsIntegrante); },
-    function () { return anexoBd.leerAnexo(cliente, motor, 'integrante', idsIntegrante); }
-  ]);
+  const anexoFicha = anexoBd.armarAnexo(motor, 'ficha', idsFicha, consultaAnexoFicha);
+  const anexoHogar = anexoBd.armarAnexo(motor, 'hogar', idsHogar, consultaAnexoHogar);
+  const anexoVivienda = anexoBd.armarAnexo(motor, 'vivienda', idsFicha, consultaAnexoVivienda);
+  const anexoFamilia = anexoBd.armarAnexo(motor, 'familia_ficha', idsFamilia, consultaAnexoFamilia);
+  const anexoIntegrante = anexoBd.armarAnexo(motor, 'integrante', idsIntegrante, consultaAnexoIntegrante);
 
   const familiasPorFicha = agruparPor(familias, 'ficha_id');
   const integrantesPorFamilia = agruparPor(integrantes, 'familia_ficha_id');

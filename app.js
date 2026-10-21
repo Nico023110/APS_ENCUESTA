@@ -1120,6 +1120,10 @@ function eliminarEncuestaPorId(id) {
    filtro no dispare una petición de red en cada tecla. */
 let cacheFichasDelServidor = null;
 
+/* Mientras la base no ha contestado por primera vez, Inicio no puede decir
+   cuántas fichas hay: lo muestra cargando en lugar de «0». */
+let esperandoPrimeraLectura = false;
+
 /**
  * Vuelve a pedir el listado a la base y lo deja en la caché. Se llama al
  * entrar a Inicio o Historial, no en cada render: son las dos vistas que
@@ -1127,8 +1131,12 @@ let cacheFichasDelServidor = null;
  * inútil, porque el filtro no cambia lo que hay en la base.
  */
 async function refrescarFichasDelServidor() {
+  if (cacheFichasDelServidor === null) esperandoPrimeraLectura = true;
   try {
-    const respuesta = await fetch('/api/listar_fichas');
+    /* La primera vez, el pedido que sesion.js hizo desde la cabecera. */
+    const anticipado = typeof SESION !== 'undefined' && typeof SESION.tomarListadoAnticipado === 'function'
+      ? SESION.tomarListadoAnticipado() : null;
+    const respuesta = await (anticipado || fetch('/api/listar_fichas'));
     if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
 
     const filas = await respuesta.json();
@@ -1164,6 +1172,8 @@ async function refrescarFichasDelServidor() {
        y no interrumpe con un aviso; es exactamente el caso para el que
        existe la cola de sincronización. */
     console.warn('No fue posible traer las fichas de la base:', error);
+  } finally {
+    esperandoPrimeraLectura = false;
   }
 
   return cacheFichasDelServidor || [];
@@ -1708,10 +1718,11 @@ function animarCifra(elemento, destino, retardo) {
     return;
   }
 
-  /* 90 ms por unidad con techo de 900: contar tres fichas no puede tardar lo
-     mismo que contar trescientas. */
+  /* 45 ms por unidad con techo de 400: contar tres fichas no puede tardar lo
+     mismo que contar trescientas, y la cifra final no debe hacerse esperar
+     (con 900 ms el inicio parecía tardar en consultar). */
   const distancia = Math.abs(destino - actual);
-  const duracion = Math.min(900, 320 + distancia * 90);
+  const duracion = Math.min(400, 180 + distancia * 45);
   const arranque = performance.now() + (retardo || 0);
 
   function paso(ahora) {
@@ -2169,11 +2180,19 @@ function renderizarInicio() {
   renderizarIndicadores(encuestas);
   renderizarEstadoSync();
 
+  /* Mientras llega la primera respuesta de la base, las cifras se ven
+     cargando y no se afirma que no hay fichas. */
+  const bento = document.querySelector('#view-inicio .bento');
+  if (bento) {
+    if (esperandoPrimeraLectura) bento.setAttribute('aria-busy', 'true');
+    else bento.removeAttribute('aria-busy');
+  }
+
   /* El panel de «todavía no hay fichas» sólo tiene sentido cuando de verdad
      no hay ninguna: en cuanto entra la primera, los indicadores ya cuentan la
      historia y el panel estorba. */
   const vacio = document.getElementById('inicioVacio');
-  if (vacio) vacio.hidden = encuestas.length > 0;
+  if (vacio) vacio.hidden = encuestas.length > 0 || esperandoPrimeraLectura;
 }
 
 /* ---------------------------------------------------------
@@ -2861,6 +2880,9 @@ function construirSeccionHogares(encuesta) {
   );
 }
 
+/* Turno de la última apertura del detalle (abrirModalDetalle). */
+let turnoDelDetalle = 0;
+
 async function abrirModalDetalle(id) {
   let encuesta = obtenerEncuestasParaMostrar().find(function (e) { return e.id === id; });
   if (!encuesta) {
@@ -2873,40 +2895,75 @@ async function abrirModalDetalle(id) {
      aquí, en el momento de abrirlo, para no traer el detalle de cientos de
      filas que nadie va a mirar. El plan completo se pide a la vez: son dos
      lecturas independientes y en serie sumaban sus tiempos. */
-  let planCompleto = null;
-  if (encuesta.soloEnServidor) {
-    planCompleto = fichaConPlanCompleto(encuesta);
-    try {
-      const respuesta = await fetch('/api/obtener_ficha?codigo=' + encodeURIComponent(encuesta.codigoFicha));
-      if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+  const turno = ++turnoDelDetalle;
+  const modal = document.getElementById('modalDetalle');
+  const cuerpo = document.getElementById('modalDetalleBody');
+  /* Una respuesta que llega después de cerrar el modal, o de abrir otra
+     ficha, ya no le corresponde: no lo pinta ni lo vuelve a abrir. */
+  const sigueAbierto = function () { return turno === turnoDelDetalle && !modal.hidden; };
 
-      /* El endpoint trae los códigos, no los nombres: departamento y
-         municipio son fijos en toda la aplicación —esta ficha es de un solo
-         municipio— y el navegador ya los tiene como constantes. Es lo mismo
-         que hace `recolectarDatosFormulario` con lo que sale del formulario;
-         sin esto el modal mostraba «76 — undefined». */
-      encuesta = Object.assign({}, encuesta, await respuesta.json(), {
-        departamento: CAT_DEPARTAMENTO.nombre,
-        municipio: CAT_MUNICIPIO.nombre
-      });
-    } catch (error) {
-      console.error('No fue posible traer el detalle de la ficha:', error);
-      mostrarNotificacion(
-        'No fue posible traer el detalle de esta ficha. Verifique la conexión e intente de nuevo.',
-        'error');
-      return;
-    }
+  if (!encuesta.soloEnServidor) {
+    cuerpo.innerHTML = htmlSeccionesDelDetalle(encuesta) +
+      construirSeccionPlan(encuesta, await fichaConPlanCompleto(encuesta));
+    modal.hidden = false;
+    return;
   }
 
-  const fichaConPlan = await (planCompleto || fichaConPlanCompleto(encuesta));
+  /* De la base: el modal se abre ya, con la ficha cargando, en lugar de
+     quedarse sin respuesta hasta que llega todo. Se pinta en cuanto llega
+     el detalle, y el plan, que pide la ficha completa, cuando llega él. */
+  cuerpo.innerHTML = htmlDetalleCargando('Cargando la ficha ' + (encuesta.codigoFicha || '') + '…');
+  modal.hidden = false;
 
+  const planCompleto = fichaConPlanCompleto(encuesta);
+  try {
+    const respuesta = await fetch('/api/obtener_ficha?codigo=' + encodeURIComponent(encuesta.codigoFicha));
+    if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
+    /* El endpoint trae los códigos, no los nombres: departamento y
+       municipio son fijos en toda la aplicación —esta ficha es de un solo
+       municipio— y el navegador ya los tiene como constantes. Es lo mismo
+       que hace `recolectarDatosFormulario` con lo que sale del formulario;
+       sin esto el modal mostraba «76 — undefined». */
+    encuesta = Object.assign({}, encuesta, await respuesta.json(), {
+      departamento: CAT_DEPARTAMENTO.nombre,
+      municipio: CAT_MUNICIPIO.nombre
+    });
+  } catch (error) {
+    console.error('No fue posible traer el detalle de la ficha:', error);
+    if (turno !== turnoDelDetalle) return;
+    modal.hidden = true;
+    mostrarNotificacion(
+      'No fue posible traer el detalle de esta ficha. Verifique la conexión e intente de nuevo.',
+      'error');
+    return;
+  }
+  if (!sigueAbierto()) return;
+
+  cuerpo.innerHTML = htmlSeccionesDelDetalle(encuesta) +
+    '<div class="detail-section detalle-plan" data-plan-cargando>' +
+      '<h3>Plan de cuidado (RN-220)</h3>' + htmlDetalleCargando('Cargando el plan de cuidado…') +
+    '</div>';
+
+  const fichaConPlan = await planCompleto;
+  if (!sigueAbierto()) return;
+  const pendiente = cuerpo.querySelector('[data-plan-cargando]');
+  if (pendiente) pendiente.outerHTML = construirSeccionPlan(encuesta, fichaConPlan);
+}
+
+function htmlDetalleCargando(texto) {
+  return '<div class="detalle-cargando" role="status">' +
+    '<span class="detalle-cargando__anillo" aria-hidden="true"></span>' + escaparHtml(texto) + '</div>';
+}
+
+/* Las secciones del detalle, sin la del plan de cuidado. */
+function htmlSeccionesDelDetalle(encuesta) {
   const microterritorio = buscarMicroterritorio(encuesta.territorio, encuesta.microterritorio);
   const perfil = encuesta.perfilProfesional === 'otro'
     ? 'Otro: ' + (encuesta.perfilProfesionalOtro || '')
     : etiquetaDeCatalogo(CAT_PERFIL_PROFESIONAL, encuesta.perfilProfesional);
 
-  const cuerpo = document.getElementById('modalDetalleBody');
-  cuerpo.innerHTML =
+  return (
     construirSeccionDetalle('Consentimiento y situación inminente', [
       { etiqueta: 'Consentimiento informado (RN-001)', valor: textoSiNo(encuesta.consentimiento) },
       { etiqueta: 'Situación inminente (RN-002)', valor: etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, comoLista(encuesta.situacionInminente)) },
@@ -2970,10 +3027,8 @@ async function abrirModalDetalle(id) {
       { etiqueta: 'Criaderos o reservorios de vectores', valor: textoSiNo(encuesta.vectores) },
       { etiqueta: 'Factores de contaminación', valor: etiquetasDeCatalogo(CAT_FACTORES_CONTAMINACION, encuesta.factoresContaminacion) }
     ]) +
-    construirSeccionHogares(encuesta) +
-    construirSeccionPlan(encuesta, fichaConPlan);
-
-  document.getElementById('modalDetalle').hidden = false;
+    construirSeccionHogares(encuesta)
+  );
 }
 
 /**

@@ -104,25 +104,34 @@ async function escribirAnexo(cliente, m, tabla, id, objeto, lector) {
   return filas;
 }
 
-/**
- * Lee las respuestas del anexo de varias filas de una tabla a la vez.
- * @returns Map id → { clave: valor } con listas para la selección múltiple.
- */
-async function leerAnexo(cliente, m, tabla, ids) {
-  const resultado = new Map();
-  const lista = (ids || []).map(String);
-  lista.forEach(function (id) { resultado.set(id, {}); });
-  if (lista.length === 0) return resultado;
-
+function preguntasDeTabla(m, tabla) {
   const preguntas = m.PREGUNTAS_ANEXO.filter(function (p) { return m.tablaDePregunta(p) === tabla; });
-  const simples = preguntas.filter(function (p) { return p.tipo !== 'multiple'; });
-  const multiples = preguntas.filter(function (p) { return p.tipo === 'multiple'; });
+  return {
+    simples: preguntas.filter(function (p) { return p.tipo !== 'multiple'; }),
+    multiples: preguntas.filter(function (p) { return p.tipo === 'multiple'; })
+  };
+}
+
+/* Condición «columna = ANY($1)» sobre una lista de ids. */
+function porIds(columna) {
+  return columna + ' = ANY($1::bigint[])';
+}
+
+/**
+ * Las consultas de leerAnexo, sin armar el resultado. `condicion(columna)`
+ * devuelve el filtro SQL sobre la llave de la tabla o sobre la columna padre
+ * de cada puente, con sus valores en `parametros` ($1…): por ids (porIds) o
+ * por una subconsulta, para leer las filas de una ficha sin conocer aún sus
+ * ids. La condición sale siempre del código, nunca de la petición.
+ * Las respuestas únicas y las de selección múltiple se leen a la vez cuando
+ * `cliente` es el pool (ver aLaVez en _db.js). Todas las tablas puente del
+ * nivel van en una sola consulta: el archivo plano lee cientos de fichas y
+ * una consulta por pregunta no escala.
+ */
+async function consultarAnexo(cliente, m, tabla, condicion, parametros) {
+  const { simples, multiples } = preguntasDeTabla(m, tabla);
   const llave = LLAVE_POR_TABLA[tabla];
 
-  /* Las respuestas únicas y las de selección múltiple se leen a la vez
-     cuando `cliente` es el pool (ver aLaVez en _db.js). Todas las tablas
-     puente del nivel van en una sola consulta: el archivo plano lee cientos
-     de fichas y una consulta por pregunta no escala. */
   const [filasSimples, filasMultiples] = await aLaVez(cliente, [
     function () {
       if (simples.length === 0) return null;
@@ -132,18 +141,36 @@ async function leerAnexo(cliente, m, tabla, ids) {
       });
       return cliente.query(
         'SELECT ' + llave + ' AS id, ' + columnas.join(', ') + ' FROM aps.' + tabla +
-        ' WHERE ' + llave + ' = ANY($1::bigint[])', [lista]);
+        ' WHERE ' + condicion(llave), parametros);
     },
     function () {
       if (multiples.length === 0) return null;
       const partes = multiples.map(function (pregunta, i) {
         const padre = m.columnaPadreDePregunta(pregunta);
         return 'SELECT ' + i + ' AS n, ' + padre + ' AS id, codigo FROM ' + m.tablaPuenteDePregunta(pregunta) +
-          ' WHERE ' + padre + ' = ANY($1::bigint[])';
+          ' WHERE ' + condicion(padre);
       });
-      return cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', [lista]);
+      return cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', parametros);
     }
   ]);
+  return { filasSimples: filasSimples, filasMultiples: filasMultiples };
+}
+
+/**
+ * Arma, con lo que trajo consultarAnexo, el resultado de leerAnexo para los
+ * `ids` dados: cada uno con sus respuestas, y listas vacías en la selección
+ * múltiple que no tenga filas.
+ * @returns Map id → { clave: valor } con listas para la selección múltiple.
+ */
+function armarAnexo(m, tabla, ids, consulta) {
+  const resultado = new Map();
+  const lista = (ids || []).map(String);
+  lista.forEach(function (id) { resultado.set(id, {}); });
+  if (lista.length === 0) return resultado;
+
+  const { simples, multiples } = preguntasDeTabla(m, tabla);
+  const filasSimples = consulta.filasSimples;
+  const filasMultiples = consulta.filasMultiples;
 
   if (filasSimples) {
     filasSimples.rows.forEach(function (fila) {
@@ -167,6 +194,16 @@ async function leerAnexo(cliente, m, tabla, ids) {
   }
 
   return resultado;
+}
+
+/**
+ * Lee las respuestas del anexo de varias filas de una tabla a la vez.
+ * @returns Map id → { clave: valor } con listas para la selección múltiple.
+ */
+async function leerAnexo(cliente, m, tabla, ids) {
+  const lista = (ids || []).map(String);
+  if (lista.length === 0) return armarAnexo(m, tabla, lista, {});
+  return armarAnexo(m, tabla, lista, await consultarAnexo(cliente, m, tabla, porIds, [lista]));
 }
 
 /* =========================================================================
@@ -240,6 +277,8 @@ async function leerListasConvertidas(cliente, fichaIds) {
 module.exports = {
   escribirAnexo,
   leerAnexo,
+  consultarAnexo,
+  armarAnexo,
   escribirListasConvertidas,
   leerListasConvertidas,
   opcionPrincipal,

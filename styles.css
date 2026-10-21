@@ -2662,6 +2662,33 @@ button.atencion__fila:focus-visible {
   margin-bottom: 18px;
 }
 
+/* Mientras llega de la base la ficha, o su plan (abrirModalDetalle). */
+.detalle-cargando {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-4);
+  color: var(--ink-500);
+  font-size: var(--fs-small);
+}
+
+.detalle-plan .detalle-cargando { justify-content: flex-start; padding: var(--s-3) 0; }
+
+.detalle-cargando__anillo {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-300);
+  border-right-color: transparent;
+  animation: giraOcupado 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detalle-cargando__anillo { animation: none; border-right-color: var(--brand-300); opacity: 0.6; }
+}
+
 .detail-section h3 {
   font-size: 13px;
   text-transform: uppercase;
@@ -5106,6 +5133,26 @@ button.atencion__fila:focus-visible {
   color: var(--ink-500);
   margin-top: var(--s-1);
   max-width: 22ch;
+}
+
+/* Inicio esperando la primera respuesta de la base (renderizarInicio): las
+   cifras todavía no son las del equipo y laten tenues en lugar de afirmar
+   un 0. */
+.bento[aria-busy="true"] .marcador__valor,
+.bento[aria-busy="true"] .cadena__valor,
+.bento[aria-busy="true"] .atencion__valor {
+  opacity: 0.35;
+  animation: cifraCargando 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes cifraCargando {
+  to { opacity: 0.12; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bento[aria-busy="true"] .marcador__valor,
+  .bento[aria-busy="true"] .cadena__valor,
+  .bento[aria-busy="true"] .atencion__valor { animation: none; }
 }
 
 /* ---- Acción principal: píldora con el icono en su propia isla ----------

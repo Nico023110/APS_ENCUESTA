@@ -41,31 +41,46 @@ const roles = require('../roles.js');
 const LARGO_MINIMO_MOTIVO = 10;
 const LARGO_MAXIMO_MOTIVO = 300;
 
-async function leer(req, res, usuario) {
+function codigoPedido(req) {
+  return req.query && req.query.codigo ? String(req.query.codigo).trim() : '';
+}
+
+/* Lo que hace falta para decidir si se entrega la ficha: su equipo, quién la
+   diligenció y quiénes tienen una autorización vigente sobre ella. Se busca a
+   la vez que se verifica la sesión (ver el manejador, al final) y no sale de
+   aquí: sólo se usa si la sesión es válida. El contenido de la ficha se lee
+   después, con el permiso ya decidido. */
+async function buscarFicha(pool, codigo) {
+  return (await pool.query(`
+    SELECT f.id, f.equipo_salud_id, f.responsable_id,
+           ARRAY(SELECT pp.usuario_id FROM aps.permiso_plan pp
+                  WHERE pp.ficha_id = f.id AND pp.usado_en IS NULL AND pp.revocado_en IS NULL) AS autorizados
+      FROM aps.ficha f
+     WHERE f.codigo = $1
+  `, [codigo])).rows[0] || null;
+}
+
+async function leer(req, res, usuario, busqueda) {
   const alcance = roles.alcanceDeLectura(usuario.rol);
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
 
-  const codigo = req.query && req.query.codigo ? String(req.query.codigo).trim() : '';
+  const codigo = codigoPedido(req);
   if (codigo === '') return res.status(400).json({ error: 'Falta el parámetro «codigo».' });
 
   /* Todo por el pool y no por un cliente apartado: así leerFichaCompleta
      lanza a la vez las lecturas que no dependen entre sí (ver aLaVez en
-     _db.js). La ficha y la autorización vigente salen en una consulta. */
+     _db.js). */
   const pool = obtenerPool();
   try {
-    const fila = (await pool.query(`
-      SELECT f.id, f.equipo_salud_id, f.responsable_id,
-             EXISTS (SELECT 1 FROM aps.permiso_plan pp
-                      WHERE pp.ficha_id = f.id AND pp.usuario_id = $2
-                        AND pp.usado_en IS NULL AND pp.revocado_en IS NULL) AS autorizado
-        FROM aps.ficha f
-       WHERE f.codigo = $1 ${alcance === 'todas' ? '' : 'AND f.equipo_salud_id = $3'}
-    `, alcance === 'todas' ? [codigo, usuario.id] : [codigo, usuario.id, usuario.equipoSaludId || -1])).rows[0];
+    let fila = await busqueda;
+    /* RN-224.3: fuera del equipo la ficha «no existe», igual que antes cuando
+       el equipo iba en el WHERE. */
+    if (fila && alcance !== 'todas' && Number(fila.equipo_salud_id) !== (usuario.equipoSaludId || -1)) fila = null;
 
     if (!fila) return res.status(404).json({ error: 'No existe ninguna ficha con ese código.' });
 
     const fichaRef = { equipoSaludId: Number(fila.equipo_salud_id), responsableId: Number(fila.responsable_id) };
-    const autorizado = fila.autorizado === true;
+    const autorizado = (fila.autorizados || []).map(String).indexOf(String(usuario.id)) !== -1;
     const corregible = roles.puedeCorregir(usuario, fichaRef) || autorizado;
     if (!corregible && !roles.puedeEvolucionar(usuario, fichaRef)) {
       return res.status(403).json({ error: 'Puede ver esta ficha, pero no corregirla ni evolucionar su plan: ' +
@@ -170,10 +185,19 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
+  /* GET: la ficha se busca mientras se verifica la sesión; contra Neon cada
+     consulta en serie suma ~125 ms. Si la sesión no vale, lo encontrado se
+     descarta sin usarlo. Un error de la búsqueda se informa en leer(). */
+  const codigo = req.method === 'GET' ? codigoPedido(req) : '';
+  const busqueda = codigo
+    ? (async function () { return buscarFicha(obtenerPool(), codigo); })()
+    : Promise.resolve(null);
+  busqueda.catch(function () { /* se atiende en leer(); evita el aviso de promesa sin atender */ });
+
   const usuario = await requerirSesion(req, res);
   if (!usuario) return;
 
-  if (req.method === 'GET') return leer(req, res, usuario);
+  if (req.method === 'GET') return leer(req, res, usuario, busqueda);
 
   const accion = req.body && typeof req.body === 'object' ? String(req.body.accion || '') : '';
   if (accion === 'eliminar') return eliminar(req, res, usuario);

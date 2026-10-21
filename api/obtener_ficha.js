@@ -51,7 +51,12 @@ module.exports = async (req, res) => {
   const parametros = alcance === 'todas' ? [codigo] : [codigo, usuario.equipoSaludId || -1];
 
   try {
-    const resultado = await consultar(`
+    /* La ficha, sus familias y sus integrantes se leen a la vez, cada
+       consulta por su conexión del pool: las familias y los integrantes se
+       buscan por el código de la ficha y no esperan a la primera. Si la
+       ficha queda fuera del alcance, lo leído de ellas se descarta. */
+    const [resultado, filasFamilias, filasIntegrantes] = await Promise.all([
+      consultar(`
       SELECT
         f.id                        AS ficha_id,
         f.codigo                    AS codigo_ficha,
@@ -108,7 +113,29 @@ module.exports = async (req, res) => {
       JOIN aps.funcionario r   ON r.id = f.responsable_id
       LEFT JOIN aps.vivienda v ON v.ficha_id = f.id
       WHERE f.codigo = $1 ${filtroAlcance}
-    `, parametros);
+    `, parametros),
+      /* Una vivienda tiene uno o varios hogares y un hogar, una o varias
+         familias (RN-028): todas, en su orden de captura, con el hogar al
+         que pertenecen y sus integrantes. */
+      consultar(`
+        SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes
+          FROM aps.familia_ficha ff
+          JOIN aps.familia fa ON fa.id = ff.familia_id
+         WHERE ff.ficha_id = (SELECT id FROM aps.ficha WHERE codigo = $1)
+         ORDER BY fa.consecutivo, ff.id
+      `, [codigo]),
+      consultar(`
+        SELECT i.familia_ficha_id, i.rol_familiar,
+               p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
+               p.primer_apellido, p.segundo_apellido,
+               to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.sexo
+          FROM aps.integrante i
+          JOIN aps.persona p ON p.id = i.persona_id
+         WHERE i.familia_ficha_id IN (SELECT ff.id FROM aps.familia_ficha ff
+                                       WHERE ff.ficha_id = (SELECT id FROM aps.ficha WHERE codigo = $1))
+         ORDER BY i.familia_ficha_id, i.orden, i.id
+      `, [codigo])
+    ]);
 
     const fila = resultado.rows[0];
     if (!fila) {
@@ -124,31 +151,6 @@ module.exports = async (req, res) => {
       console.warn('No se pudo registrar el acceso en auditoría:', error.message);
     });
 
-    /* Una vivienda tiene uno o varios hogares y un hogar, una o varias
-       familias (RN-028): todas, en su orden de captura, con el hogar al que
-       pertenecen y sus integrantes. */
-    /* Los integrantes se buscan por la ficha, no por los ids de las
-       familias: las dos consultas van a la vez (cada una por su conexión
-       del pool) en lugar de esperar una a la otra. */
-    const [filasFamilias, filasIntegrantes] = await Promise.all([
-      consultar(`
-        SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes
-          FROM aps.familia_ficha ff
-          JOIN aps.familia fa ON fa.id = ff.familia_id
-         WHERE ff.ficha_id = $1
-         ORDER BY fa.consecutivo, ff.id
-      `, [fila.ficha_id]),
-      consultar(`
-        SELECT i.familia_ficha_id, i.rol_familiar,
-               p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
-               p.primer_apellido, p.segundo_apellido,
-               to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.sexo
-          FROM aps.integrante i
-          JOIN aps.persona p ON p.id = i.persona_id
-         WHERE i.familia_ficha_id IN (SELECT ff.id FROM aps.familia_ficha ff WHERE ff.ficha_id = $1)
-         ORDER BY i.familia_ficha_id, i.orden, i.id
-      `, [fila.ficha_id])
-    ]);
     const familias = filasFamilias.rows;
     const integrantes = filasIntegrantes.rows;
 
