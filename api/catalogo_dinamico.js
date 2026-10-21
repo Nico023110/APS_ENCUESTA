@@ -32,7 +32,10 @@ module.exports = async (req, res) => {
         /* Los EBS registrados: la coordinación, que lidera zonas con varios
            EBS, elige en el ítem 10 el de cada visita. Sólo códigos. */
         (SELECT coalesce(json_agg(codigo ORDER BY codigo), '[]')
-           FROM aps.equipo_salud WHERE activo) AS equipos
+           FROM aps.equipo_salud WHERE activo) AS equipos,
+        /* Ítem 9: los barrios de Cali, que el formulario ofrece al escribir. */
+        (SELECT coalesce(json_agg(json_build_object('nombre', nombre, 'comuna', comuna) ORDER BY nombre), '[]')
+           FROM cat.barrio WHERE vigente) AS barrios
     `)).rows[0];
     const eapbRes = { rows: listas.eapb };
     const prestadorRes = { rows: listas.prestador };
@@ -55,7 +58,8 @@ module.exports = async (req, res) => {
       prestador: prestadorRes.rows,
       uzpe: uzpeRes.rows,
       territorios: territorios,
-      equipos: equiposRes.rows.map(function (fila) { return fila.codigo; })
+      equipos: equiposRes.rows.map(function (fila) { return fila.codigo; }),
+      barrios: listas.barrios
     };
 
     res.setHeader('Cache-Control', 'public, max-age=3600');

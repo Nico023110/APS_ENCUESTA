@@ -1496,6 +1496,11 @@ const CAT_REGIMEN_AFILIACION = [
    elige en el ítem 10 el de cada visita. */
 const CAT_EQUIPOS_EBS = [];
 
+/* Ítem 9 — Barrios de Cali ({ nombre, comuna }). Llegan de la base
+   (cat.barrio, vía catalogo_dinamico) y se ofrecen al escribir; el campo
+   sigue siendo libre para veredas, corregimientos y resguardos. */
+const CAT_BARRIOS = [];
+
 /* Red pública de Santiago de Cali. */
 /* RN-011 — Único prestador que diligencia la ficha con esta herramienta. */
 const PRESTADOR_FIJO = { valor: 'PROV-ESE-LADERA', etiqueta: 'E.S.E. Red de Salud de Ladera', nit: '805027289' };
@@ -2003,6 +2008,10 @@ function fijarCatalogosDinamicos(data) {
   if (Array.isArray(data.equipos)) {
     CAT_EQUIPOS_EBS.length = 0;
     data.equipos.forEach(function (codigo) { CAT_EQUIPOS_EBS.push(codigo); });
+  }
+  if (Array.isArray(data.barrios)) {
+    CAT_BARRIOS.length = 0;
+    data.barrios.forEach(function (barrio) { CAT_BARRIOS.push(barrio); });
   }
   if (data.eapb) {
     CAT_EAPB.length = 0;

@@ -291,6 +291,7 @@ async function cargarCatalogoDeAcciones() {
     if (cacheCatalogos) {
       fijarCatalogosDinamicos(JSON.parse(cacheCatalogos));
       pintarListaDeEquipos();
+      pintarListaDeBarrios();
     }
   } catch (error) {
     console.warn('No fue posible leer los catálogos dinámicos guardados:', error);
@@ -315,6 +316,7 @@ async function cargarCatalogoDeAcciones() {
       const dataCatalogos = await resCatalogos.json();
       fijarCatalogosDinamicos(dataCatalogos);
       pintarListaDeEquipos();
+      pintarListaDeBarrios();
       localStorage.setItem('aps_catalogos_dinamicos', JSON.stringify(dataCatalogos));
       /* El select del ítem 7 se llenó al arrancar con el catálogo que hubiera
          (el estático o la copia guardada); si la base trae territorios nuevos
@@ -351,6 +353,17 @@ function pintarListaDeEquipos() {
   if (!lista || typeof CAT_EQUIPOS_EBS === 'undefined') return;
   lista.innerHTML = CAT_EQUIPOS_EBS.map(function (codigo) {
     return '<option value="' + escaparHtml(codigo) + '"></option>';
+  }).join('');
+}
+
+/* Ítem 9 — Barrios de Cali: el navegador filtra la lista mientras se
+   escribe y deja en el campo el nombre; la comuna va como ayuda. */
+function pintarListaDeBarrios() {
+  const lista = document.getElementById('listaBarrios');
+  if (!lista || typeof CAT_BARRIOS === 'undefined') return;
+  lista.innerHTML = CAT_BARRIOS.map(function (barrio) {
+    return '<option value="' + escaparHtml(barrio.nombre) + '" label="Comuna ' +
+      escaparHtml(barrio.comuna) + '"></option>';
   }).join('');
 }
 
