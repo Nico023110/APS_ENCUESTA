@@ -41,13 +41,6 @@ const roles = require('../roles.js');
 const LARGO_MINIMO_MOTIVO = 10;
 const LARGO_MAXIMO_MOTIVO = 300;
 
-async function autorizacionVigente(cliente, fichaId, usuarioId) {
-  return (await cliente.query(`
-    SELECT 1 FROM aps.permiso_plan
-     WHERE ficha_id = $1 AND usuario_id = $2 AND usado_en IS NULL AND revocado_en IS NULL
-  `, [fichaId, usuarioId])).rows.length > 0;
-}
-
 async function leer(req, res, usuario) {
   const alcance = roles.alcanceDeLectura(usuario.rol);
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
@@ -55,32 +48,38 @@ async function leer(req, res, usuario) {
   const codigo = req.query && req.query.codigo ? String(req.query.codigo).trim() : '';
   if (codigo === '') return res.status(400).json({ error: 'Falta el parámetro «codigo».' });
 
-  let cliente;
+  /* Todo por el pool y no por un cliente apartado: así leerFichaCompleta
+     lanza a la vez las lecturas que no dependen entre sí (ver aLaVez en
+     _db.js). La ficha y la autorización vigente salen en una consulta. */
+  const pool = obtenerPool();
   try {
-    cliente = await obtenerPool().connect();
-
-    const fila = (await cliente.query(`
-      SELECT f.id, f.equipo_salud_id, f.responsable_id
+    const fila = (await pool.query(`
+      SELECT f.id, f.equipo_salud_id, f.responsable_id,
+             EXISTS (SELECT 1 FROM aps.permiso_plan pp
+                      WHERE pp.ficha_id = f.id AND pp.usuario_id = $2
+                        AND pp.usado_en IS NULL AND pp.revocado_en IS NULL) AS autorizado
         FROM aps.ficha f
-       WHERE f.codigo = $1 ${alcance === 'todas' ? '' : 'AND f.equipo_salud_id = $2'}
-    `, alcance === 'todas' ? [codigo] : [codigo, usuario.equipoSaludId || -1])).rows[0];
+       WHERE f.codigo = $1 ${alcance === 'todas' ? '' : 'AND f.equipo_salud_id = $3'}
+    `, alcance === 'todas' ? [codigo, usuario.id] : [codigo, usuario.id, usuario.equipoSaludId || -1])).rows[0];
 
     if (!fila) return res.status(404).json({ error: 'No existe ninguna ficha con ese código.' });
 
     const fichaRef = { equipoSaludId: Number(fila.equipo_salud_id), responsableId: Number(fila.responsable_id) };
-    const autorizado = await autorizacionVigente(cliente, fila.id, usuario.id);
+    const autorizado = fila.autorizado === true;
     const corregible = roles.puedeCorregir(usuario, fichaRef) || autorizado;
     if (!corregible && !roles.puedeEvolucionar(usuario, fichaRef)) {
       return res.status(403).json({ error: 'Puede ver esta ficha, pero no corregirla ni evolucionar su plan: ' +
         'la diligenció otra persona de su equipo.', codigo: 'sin_permiso' });
     }
 
-    const encuesta = await leerFichaCompleta(cliente, fila.id);
-
-    await cliente.query(`
-      INSERT INTO aud.acceso_sensible (ficha_id, funcionario_id, grupo_dato)
-      VALUES ($1, $2, 'ficha_completa')
-    `, [fila.id, usuario.funcionarioId]);
+    /* El registro del acceso no depende de la lectura: van a la vez. */
+    const [encuesta] = await Promise.all([
+      leerFichaCompleta(pool, fila.id),
+      pool.query(`
+        INSERT INTO aud.acceso_sensible (ficha_id, funcionario_id, grupo_dato)
+        VALUES ($1, $2, 'ficha_completa')
+      `, [fila.id, usuario.funcionarioId])
+    ]);
 
     /* RN-228: lo registrado en el plan sólo se completa, salvo para los roles
        que lo modifican (coordinación y maestro) o para quien tenga una
@@ -95,8 +94,6 @@ async function leer(req, res, usuario) {
   } catch (error) {
     console.error('Error al leer la ficha completa:', error.message);
     return res.status(500).json({ error: 'No fue posible leer la ficha.' });
-  } finally {
-    if (cliente) cliente.release();
   }
 }
 

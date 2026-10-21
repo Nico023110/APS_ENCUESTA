@@ -2480,6 +2480,34 @@ button.atencion__fila:focus-visible {
   cursor: not-allowed;
 }
 
+/* Mientras trae la ficha de la base (conBotonOcupado en app.js): el ícono
+   cede su lugar a un anillo que gira, y el botón no atiende otro clic. */
+.acciones-ficha .btn[aria-busy="true"] {
+  cursor: progress;
+  pointer-events: none;
+}
+
+.acciones-ficha .btn[aria-busy="true"] i { display: none; }
+
+.acciones-ficha .btn[aria-busy="true"]::before {
+  content: "";
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: giraOcupado 0.7s linear infinite;
+}
+
+@keyframes giraOcupado {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acciones-ficha .btn[aria-busy="true"]::before { animation: none; border-right-color: currentColor; opacity: 0.5; }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .acciones-ficha__destacada:not(:disabled):hover { background: var(--brand-100); }
   .acciones-ficha__boton:not(:disabled):hover { color: var(--brand-700); box-shadow: inset 0 0 0 1px var(--brand-300); }

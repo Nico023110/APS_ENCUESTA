@@ -83,4 +83,19 @@ async function consultar(texto, parametros) {
   return obtenerPool().query(texto, parametros);
 }
 
-module.exports = { obtenerPool, enTransaccion, consultar, esLocal };
+/* Corre lecturas que no dependen entre sí (`tareas`: funciones que devuelven
+   una promesa) y devuelve sus resultados en orden. Con el pool van a la vez,
+   cada una por su conexión: contra Neon cada ida y vuelta cuesta ~125 ms y
+   en serie se suman. Con un cliente —una transacción, como la de
+   guardar_encuesta— van una tras otra: pg no admite dos consultas a la vez
+   sobre la misma conexión. */
+async function aLaVez(ejecutor, tareas) {
+  if (ejecutor instanceof Pool) {
+    return Promise.all(tareas.map(function (tarea) { return tarea(); }));
+  }
+  const resultados = [];
+  for (const tarea of tareas) resultados.push(await tarea());
+  return resultados;
+}
+
+module.exports = { obtenerPool, enTransaccion, consultar, esLocal, aLaVez };

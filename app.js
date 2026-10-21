@@ -2366,23 +2366,46 @@ function renderizarHistorial() {
   }).join('');
 
   cuerpoTabla.querySelectorAll('[data-ver]').forEach(function (boton) {
-    boton.addEventListener('click', function () { abrirModalDetalle(boton.dataset.ver); });
+    boton.addEventListener('click', function () {
+      conBotonOcupado(boton, function () { return abrirModalDetalle(boton.dataset.ver); });
+    });
   });
   cuerpoTabla.querySelectorAll('[data-corregir]').forEach(function (boton) {
-    boton.addEventListener('click', function () { abrirCorreccionDeEncuesta(boton.dataset.corregir); });
+    boton.addEventListener('click', function () {
+      conBotonOcupado(boton, function () { return abrirCorreccionDeEncuesta(boton.dataset.corregir); });
+    });
   });
   cuerpoTabla.querySelectorAll('[data-eliminar]').forEach(function (boton) {
     boton.addEventListener('click', function () { abrirModalConfirmarEliminacion(boton.dataset.eliminar); });
   });
   cuerpoTabla.querySelectorAll('[data-evolucionar]').forEach(function (boton) {
-    boton.addEventListener('click', function () { abrirEvolucionDePlan(boton.dataset.evolucionar); });
+    boton.addEventListener('click', function () {
+      conBotonOcupado(boton, function () { return abrirEvolucionDePlan(boton.dataset.evolucionar); });
+    });
   });
   cuerpoTabla.querySelectorAll('[data-completar]').forEach(function (boton) {
-    boton.addEventListener('click', function () { abrirCompletarIntegrantes(boton.dataset.completar); });
+    boton.addEventListener('click', function () {
+      conBotonOcupado(boton, function () { return abrirCompletarIntegrantes(boton.dataset.completar); });
+    });
   });
   cuerpoTabla.querySelectorAll('[data-autorizar]').forEach(function (boton) {
-    boton.addEventListener('click', function () { abrirAutorizacionDePlan(boton.dataset.autorizar); });
+    boton.addEventListener('click', function () {
+      conBotonOcupado(boton, function () { return abrirAutorizacionDePlan(boton.dataset.autorizar); });
+    });
   });
+}
+
+/* Mientras un botón del historial trae la ficha de la base, se ve ocupado y
+   no atiende un segundo clic: antes no pasaba nada visible durante la espera
+   y cada clic de más lanzaba otra lectura completa de la ficha. */
+async function conBotonOcupado(boton, tarea) {
+  if (boton.getAttribute('aria-busy') === 'true') return;
+  boton.setAttribute('aria-busy', 'true');
+  try {
+    await tarea();
+  } finally {
+    boton.removeAttribute('aria-busy');
+  }
 }
 
 /* ---------------------------------------------------------
@@ -2848,8 +2871,11 @@ async function abrirModalDetalle(id) {
   /* Una fila de la base sólo trae lo que necesita la tabla del historial
      (`listar_fichas`); lo que pinta este modal es bastante más. Se completa
      aquí, en el momento de abrirlo, para no traer el detalle de cientos de
-     filas que nadie va a mirar. */
+     filas que nadie va a mirar. El plan completo se pide a la vez: son dos
+     lecturas independientes y en serie sumaban sus tiempos. */
+  let planCompleto = null;
   if (encuesta.soloEnServidor) {
+    planCompleto = fichaConPlanCompleto(encuesta);
     try {
       const respuesta = await fetch('/api/obtener_ficha?codigo=' + encodeURIComponent(encuesta.codigoFicha));
       if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
@@ -2872,7 +2898,7 @@ async function abrirModalDetalle(id) {
     }
   }
 
-  const fichaConPlan = await fichaConPlanCompleto(encuesta);
+  const fichaConPlan = await (planCompleto || fichaConPlanCompleto(encuesta));
 
   const microterritorio = buscarMicroterritorio(encuesta.territorio, encuesta.microterritorio);
   const perfil = encuesta.perfilProfesional === 'otro'

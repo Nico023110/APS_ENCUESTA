@@ -127,24 +127,30 @@ module.exports = async (req, res) => {
     /* Una vivienda tiene uno o varios hogares y un hogar, una o varias
        familias (RN-028): todas, en su orden de captura, con el hogar al que
        pertenecen y sus integrantes. */
-    const familias = (await consultar(`
-      SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes
-        FROM aps.familia_ficha ff
-        JOIN aps.familia fa ON fa.id = ff.familia_id
-       WHERE ff.ficha_id = $1
-       ORDER BY fa.consecutivo, ff.id
-    `, [fila.ficha_id])).rows;
-
-    const integrantes = familias.length === 0 ? [] : (await consultar(`
-      SELECT i.familia_ficha_id, i.rol_familiar,
-             p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
-             p.primer_apellido, p.segundo_apellido,
-             to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.sexo
-        FROM aps.integrante i
-        JOIN aps.persona p ON p.id = i.persona_id
-       WHERE i.familia_ficha_id = ANY($1::bigint[])
-       ORDER BY i.familia_ficha_id, i.orden, i.id
-    `, [familias.map(function (f) { return f.id; })])).rows;
+    /* Los integrantes se buscan por la ficha, no por los ids de las
+       familias: las dos consultas van a la vez (cada una por su conexión
+       del pool) en lugar de esperar una a la otra. */
+    const [filasFamilias, filasIntegrantes] = await Promise.all([
+      consultar(`
+        SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes
+          FROM aps.familia_ficha ff
+          JOIN aps.familia fa ON fa.id = ff.familia_id
+         WHERE ff.ficha_id = $1
+         ORDER BY fa.consecutivo, ff.id
+      `, [fila.ficha_id]),
+      consultar(`
+        SELECT i.familia_ficha_id, i.rol_familiar,
+               p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
+               p.primer_apellido, p.segundo_apellido,
+               to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, p.sexo
+          FROM aps.integrante i
+          JOIN aps.persona p ON p.id = i.persona_id
+         WHERE i.familia_ficha_id IN (SELECT ff.id FROM aps.familia_ficha ff WHERE ff.ficha_id = $1)
+         ORDER BY i.familia_ficha_id, i.orden, i.id
+      `, [fila.ficha_id])
+    ]);
+    const familias = filasFamilias.rows;
+    const integrantes = filasIntegrantes.rows;
 
     res.status(200).json({
       codigoFicha: fila.codigo_ficha,

@@ -29,6 +29,7 @@
 
 const { obtenerMotor } = require('./_validacion');
 const anexoBd = require('./_anexo_bd');
+const { aLaVez } = require('./_db');
 
 const PUENTES_VIVIENDA = [
   { campo: 'riesgosAccidente', tabla: 'aps.vivienda_riesgo_accidente' },
@@ -130,36 +131,44 @@ function planDesdeFila(fila) {
   };
 }
 
-/** @returns Map fichaId → [{ ambito, familiaFichaId, integranteId, plan }] */
+/** @returns Map fichaId → [{ ambito, familiaFichaId, integranteId, plan }]
+    Las acciones y los seguimientos se buscan por la ficha de su plan, no por
+    los ids del plan: así las tres lecturas no esperan una a la otra. */
 async function leerPlanes(cliente, fichaIds) {
   const porFicha = new Map();
-  const planes = (await cliente.query(
-    'SELECT * FROM aps.plan_cuidado WHERE ficha_id = ANY($1::bigint[]) ORDER BY id', [fichaIds]
-  )).rows;
+  const [filasPlanes, filasAcciones, filasSeguimientos] = await aLaVez(cliente, [
+    function () {
+      return cliente.query('SELECT * FROM aps.plan_cuidado WHERE ficha_id = ANY($1::bigint[]) ORDER BY id', [fichaIds]);
+    },
+    function () {
+      return cliente.query(`
+        SELECT pa.plan_id, pa.codigo_accion, pa.procedimiento_realizado, pa.tipo_respuesta,
+               pa.institucion_destino, to_char(pa.fecha_cita, 'YYYY-MM-DD') AS fecha_cita,
+               fu.tipo_id, fu.numero_id
+          FROM aps.plan_accion pa
+          LEFT JOIN aps.funcionario fu ON fu.id = pa.ejecutor_id
+         WHERE pa.plan_id IN (SELECT pc.id FROM aps.plan_cuidado pc WHERE pc.ficha_id = ANY($1::bigint[]))
+         ORDER BY pa.id
+      `, [fichaIds]);
+    },
+    function () {
+      return cliente.query(`
+        SELECT ps.plan_id, ps.accion_concertada,
+               to_char(ps.seg1_fecha, 'YYYY-MM-DD') AS seg1_fecha, ps.seg1_estado, ps.seg1_motivo_nc,
+               to_char(ps.seg2_fecha, 'YYYY-MM-DD') AS seg2_fecha, ps.seg2_estado, ps.seg2_motivo_nc,
+               fu.tipo_id, fu.numero_id
+          FROM aps.plan_seguimiento ps
+          LEFT JOIN aps.funcionario fu ON fu.id = ps.responsable_id
+         WHERE ps.plan_id IN (SELECT pc.id FROM aps.plan_cuidado pc WHERE pc.ficha_id = ANY($1::bigint[]))
+         ORDER BY ps.id
+      `, [fichaIds]);
+    }
+  ]);
+
+  const planes = filasPlanes.rows;
   if (planes.length === 0) return porFicha;
-
-  const ids = planes.map(function (p) { return p.id; });
-
-  const acciones = agruparPor((await cliente.query(`
-    SELECT pa.plan_id, pa.codigo_accion, pa.procedimiento_realizado, pa.tipo_respuesta,
-           pa.institucion_destino, to_char(pa.fecha_cita, 'YYYY-MM-DD') AS fecha_cita,
-           fu.tipo_id, fu.numero_id
-      FROM aps.plan_accion pa
-      LEFT JOIN aps.funcionario fu ON fu.id = pa.ejecutor_id
-     WHERE pa.plan_id = ANY($1::bigint[])
-     ORDER BY pa.id
-  `, [ids])).rows, 'plan_id');
-
-  const seguimientos = agruparPor((await cliente.query(`
-    SELECT ps.plan_id, ps.accion_concertada,
-           to_char(ps.seg1_fecha, 'YYYY-MM-DD') AS seg1_fecha, ps.seg1_estado, ps.seg1_motivo_nc,
-           to_char(ps.seg2_fecha, 'YYYY-MM-DD') AS seg2_fecha, ps.seg2_estado, ps.seg2_motivo_nc,
-           fu.tipo_id, fu.numero_id
-      FROM aps.plan_seguimiento ps
-      LEFT JOIN aps.funcionario fu ON fu.id = ps.responsable_id
-     WHERE ps.plan_id = ANY($1::bigint[])
-     ORDER BY ps.id
-  `, [ids])).rows, 'plan_id');
+  const acciones = agruparPor(filasAcciones.rows, 'plan_id');
+  const seguimientos = agruparPor(filasSeguimientos.rows, 'plan_id');
 
   planes.forEach(function (fila) {
     const plan = planDesdeFila(fila);
@@ -293,42 +302,55 @@ async function leerFichasCompletas(cliente, fichaIds) {
   const idsHogar = Array.from(new Set(filas.map(function (f) { return String(f.hogar_id); })));
   const motor = obtenerMotor();
 
-  const puentesVivienda = await leerPuentes(cliente, PUENTES_VIVIENDA, 'ficha_id', idsFicha);
-  const listas = await anexoBd.leerListasConvertidas(cliente, idsFicha);
-  const anexoFicha = await anexoBd.leerAnexo(cliente, motor, 'ficha', idsFicha);
-  const anexoHogar = await anexoBd.leerAnexo(cliente, motor, 'hogar', idsHogar);
-  const anexoVivienda = await anexoBd.leerAnexo(cliente, motor, 'vivienda', idsFicha);
+  /* Lo que cuelga de la ficha se lee a la vez cuando `cliente` es el pool
+     (ver aLaVez en _db.js); con el cliente de una transacción, en serie como
+     siempre. Las familias y sus integrantes se buscan por la ficha, así que
+     tampoco esperan una a la otra. */
+  const [puentesVivienda, listas, anexoFicha, anexoHogar, anexoVivienda, filasFamilias, filasIntegrantes,
+    planesPorFicha] = await aLaVez(cliente, [
+    function () { return leerPuentes(cliente, PUENTES_VIVIENDA, 'ficha_id', idsFicha); },
+    function () { return anexoBd.leerListasConvertidas(cliente, idsFicha); },
+    function () { return anexoBd.leerAnexo(cliente, motor, 'ficha', idsFicha); },
+    function () { return anexoBd.leerAnexo(cliente, motor, 'hogar', idsHogar); },
+    function () { return anexoBd.leerAnexo(cliente, motor, 'vivienda', idsFicha); },
+    /* --- Familias, en su orden de captura --- */
+    function () {
+      return cliente.query(`
+        SELECT ff.id, ff.ficha_id, fa.codigo, fa.consecutivo, ff.tipo_familia, ff.numero_integrantes,
+               ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico, ff.hogar_numero, ff.codigo_cf
+          FROM aps.familia_ficha ff
+          JOIN aps.familia fa ON fa.id = ff.familia_id
+         WHERE ff.ficha_id = ANY($1::bigint[])
+         ORDER BY ff.ficha_id, fa.consecutivo, ff.id
+      `, [idsFicha]);
+    },
+    function () {
+      return cliente.query(`
+        SELECT i.*, p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
+               p.primer_apellido, p.segundo_apellido,
+               to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento_texto,
+               p.sexo, p.nacionalidad, p.nacionalidad_otra
+          FROM aps.integrante i
+          JOIN aps.persona p ON p.id = i.persona_id
+         WHERE i.familia_ficha_id IN (SELECT ff.id FROM aps.familia_ficha ff WHERE ff.ficha_id = ANY($1::bigint[]))
+         ORDER BY i.familia_ficha_id, i.orden, i.id
+      `, [idsFicha]);
+    },
+    function () { return leerPlanes(cliente, idsFicha); }
+  ]);
 
-  /* --- Familias, en su orden de captura --- */
-  const familias = (await cliente.query(`
-    SELECT ff.id, ff.ficha_id, fa.codigo, fa.consecutivo, ff.tipo_familia, ff.numero_integrantes,
-           ff.cuidador_principal, ff.zarit, ff.redes_apoyo, ff.sin_contacto_telefonico, ff.hogar_numero, ff.codigo_cf
-      FROM aps.familia_ficha ff
-      JOIN aps.familia fa ON fa.id = ff.familia_id
-     WHERE ff.ficha_id = ANY($1::bigint[])
-     ORDER BY ff.ficha_id, fa.consecutivo, ff.id
-  `, [idsFicha])).rows;
-
+  const familias = filasFamilias.rows;
+  const integrantes = filasIntegrantes.rows;
   const idsFamilia = familias.map(function (x) { return String(x.id); });
-  const puentesFamilia = await leerPuentes(cliente, PUENTES_FAMILIA, 'familia_ficha_id', idsFamilia);
-  const anexoFamilia = await anexoBd.leerAnexo(cliente, motor, 'familia_ficha', idsFamilia);
-
-  const integrantes = idsFamilia.length === 0 ? [] : (await cliente.query(`
-    SELECT i.*, p.tipo_id, p.numero_id, p.primer_nombre, p.segundo_nombre,
-           p.primer_apellido, p.segundo_apellido,
-           to_char(p.fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento_texto,
-           p.sexo, p.nacionalidad, p.nacionalidad_otra
-      FROM aps.integrante i
-      JOIN aps.persona p ON p.id = i.persona_id
-     WHERE i.familia_ficha_id = ANY($1::bigint[])
-     ORDER BY i.familia_ficha_id, i.orden, i.id
-  `, [idsFamilia])).rows;
-
   const idsIntegrante = integrantes.map(function (x) { return String(x.id); });
-  const puentesIntegrante = await leerPuentes(cliente, PUENTES_INTEGRANTE, 'integrante_id', idsIntegrante);
-  const anexoIntegrante = await anexoBd.leerAnexo(cliente, motor, 'integrante', idsIntegrante);
 
-  const planesPorFicha = await leerPlanes(cliente, idsFicha);
+  const [puentesFamilia, anexoFamilia, puentesIntegrante, anexoIntegrante] = await aLaVez(cliente, [
+    function () { return leerPuentes(cliente, PUENTES_FAMILIA, 'familia_ficha_id', idsFamilia); },
+    function () { return anexoBd.leerAnexo(cliente, motor, 'familia_ficha', idsFamilia); },
+    function () { return leerPuentes(cliente, PUENTES_INTEGRANTE, 'integrante_id', idsIntegrante); },
+    function () { return anexoBd.leerAnexo(cliente, motor, 'integrante', idsIntegrante); }
+  ]);
+
   const familiasPorFicha = agruparPor(familias, 'ficha_id');
   const integrantesPorFamilia = agruparPor(integrantes, 'familia_ficha_id');
 

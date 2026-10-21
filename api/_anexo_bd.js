@@ -21,6 +21,7 @@
 'use strict';
 
 const { reemplazarPuentes } = require('./_puentes');
+const { aLaVez } = require('./_db');
 
 const LLAVE_POR_TABLA = {
   ficha: 'id',
@@ -115,17 +116,37 @@ async function leerAnexo(cliente, m, tabla, ids) {
 
   const preguntas = m.PREGUNTAS_ANEXO.filter(function (p) { return m.tablaDePregunta(p) === tabla; });
   const simples = preguntas.filter(function (p) { return p.tipo !== 'multiple'; });
+  const multiples = preguntas.filter(function (p) { return p.tipo === 'multiple'; });
   const llave = LLAVE_POR_TABLA[tabla];
 
-  if (simples.length > 0) {
-    const columnas = simples.map(function (p) {
-      const col = m.columnaDePregunta(p);
-      return p.tipo === 'fecha' ? "to_char(" + col + ", 'YYYY-MM-DD') AS " + col : col;
-    });
-    const filas = await cliente.query(
-      'SELECT ' + llave + ' AS id, ' + columnas.join(', ') + ' FROM aps.' + tabla +
-      ' WHERE ' + llave + ' = ANY($1::bigint[])', [lista]);
-    filas.rows.forEach(function (fila) {
+  /* Las respuestas únicas y las de selección múltiple se leen a la vez
+     cuando `cliente` es el pool (ver aLaVez en _db.js). Todas las tablas
+     puente del nivel van en una sola consulta: el archivo plano lee cientos
+     de fichas y una consulta por pregunta no escala. */
+  const [filasSimples, filasMultiples] = await aLaVez(cliente, [
+    function () {
+      if (simples.length === 0) return null;
+      const columnas = simples.map(function (p) {
+        const col = m.columnaDePregunta(p);
+        return p.tipo === 'fecha' ? "to_char(" + col + ", 'YYYY-MM-DD') AS " + col : col;
+      });
+      return cliente.query(
+        'SELECT ' + llave + ' AS id, ' + columnas.join(', ') + ' FROM aps.' + tabla +
+        ' WHERE ' + llave + ' = ANY($1::bigint[])', [lista]);
+    },
+    function () {
+      if (multiples.length === 0) return null;
+      const partes = multiples.map(function (pregunta, i) {
+        const padre = m.columnaPadreDePregunta(pregunta);
+        return 'SELECT ' + i + ' AS n, ' + padre + ' AS id, codigo FROM ' + m.tablaPuenteDePregunta(pregunta) +
+          ' WHERE ' + padre + ' = ANY($1::bigint[])';
+      });
+      return cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', [lista]);
+    }
+  ]);
+
+  if (filasSimples) {
+    filasSimples.rows.forEach(function (fila) {
       const destino = resultado.get(String(fila.id));
       if (!destino) return;
       simples.forEach(function (p) {
@@ -135,20 +156,11 @@ async function leerAnexo(cliente, m, tabla, ids) {
     });
   }
 
-  /* Todas las tablas puente del nivel en una sola consulta: el archivo plano
-     lee cientos de fichas y una consulta por pregunta no escala. */
-  const multiples = preguntas.filter(function (p) { return p.tipo === 'multiple'; });
-  if (multiples.length > 0) {
+  if (filasMultiples) {
     resultado.forEach(function (destino) {
       multiples.forEach(function (p) { destino[p.clave] = []; });
     });
-    const partes = multiples.map(function (pregunta, i) {
-      const padre = m.columnaPadreDePregunta(pregunta);
-      return 'SELECT ' + i + ' AS n, ' + padre + ' AS id, codigo FROM ' + m.tablaPuenteDePregunta(pregunta) +
-        ' WHERE ' + padre + ' = ANY($1::bigint[])';
-    });
-    const filas = await cliente.query(partes.join(' UNION ALL ') + ' ORDER BY n, codigo', [lista]);
-    filas.rows.forEach(function (fila) {
+    filasMultiples.rows.forEach(function (fila) {
       const destino = resultado.get(String(fila.id));
       if (destino) destino[multiples[fila.n].clave].push(fila.codigo);
     });

@@ -93,19 +93,23 @@ module.exports = async (req, res) => {
 
   let cliente;
   try {
-    cliente = await obtenerPool().connect();
-
+    /* La consulta no abre transacción: va por el pool, y las autorizaciones
+       vigentes y los candidatos se leen a la vez. */
     if (req.method === 'GET') {
+      const pool = obtenerPool();
       const codigo = req.query && req.query.codigo ? String(req.query.codigo).trim() : '';
       if (!codigo) return res.status(400).json({ error: 'Falta el parámetro «codigo».' });
-      const ficha = await fichaPorCodigo(cliente, codigo);
+      const ficha = await fichaPorCodigo(pool, codigo);
       if (!ficha) return res.status(404).json({ error: 'No existe ninguna ficha con ese código.' });
+      const [permisos, elegibles] = await Promise.all([vigentes(pool, ficha.id), candidatos(pool, ficha)]);
       return res.status(200).json({
         ficha: { codigo: ficha.codigo },
-        permisos: await vigentes(cliente, ficha.id),
-        candidatos: await candidatos(cliente, ficha)
+        permisos: permisos,
+        candidatos: elegibles
       });
     }
+
+    cliente = await obtenerPool().connect();
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
