@@ -69,6 +69,13 @@ async function principal() {
   verificar('la coordinación autoriza correcciones, modifica lo registrado del plan y genera el reporte',
     roles.puede('lider_ebs', 'ficha.autorizar') && roles.puede('lider_ebs', 'plan.modificar_registrado') &&
     roles.puede('lider_ebs', 'reporte.generar'));
+  verificar('la coordinación, el administrador y el maestro ven los reportes de productividad',
+    ['coordinador_ebs', 'lider_ebs', 'administrador', 'maestro'].every(function (rol) {
+      return roles.puede(rol, 'productividad.ver');
+    }));
+  verificar('el personal asistencial no los ve',
+    ['medicina', 'enfermeria', 'psicologia', 'trabajo_social', 'auxiliar_enfermeria', 'gestor_comunitario', 'otro']
+      .every(function (rol) { return !roles.puede(rol, 'productividad.ver'); }));
   verificar('la coordinación ve y crea cuentas',
     roles.puede('coordinador_ebs', 'usuarios.ver') && roles.puede('coordinador_ebs', 'usuarios.crear'));
   verificar('pero no modifica cuentas ni restablece claves',

@@ -86,6 +86,7 @@ sesión.
 | `equipos.gestionar` — equipos y su composición | — | — | — | Sí | Sí |
 | `auditoria.ver` — `aud.evento`, `aud.acceso_sensible`, `aps.intento_acceso` | — | — | Sí | Sí | Sí |
 | `reporte.generar` — archivo plano APS124CCFP para PISIS (RN‑227) | — | — | Sí | Sí | Sí |
+| `productividad.ver` — reportes de productividad: cuentas por EBS, comuna, persona y fecha | — | — | Sí | Sí | Sí |
 
 El maestro tiene además `ficha.corregir.propias` y `ficha.corregir.equipo`,
 que hoy no tiene ningún otro rol.
@@ -182,6 +183,17 @@ enlace o una imagen de otro sitio no pueden dispararlo), valida el período (un
 año como máximo) y deja cada generación en `aud.evento` con el período, el
 formato y el número de registros. El resumen previo a la descarga sólo trae
 códigos de ficha, no datos personales.
+
+Los **Reportes de productividad** (`productividad.ver`) también se abren desde
+el menú, para la coordinación (la coordinadora y los líderes de zona), el
+administrador y el maestro. `/api/productividad` (`GET`, con sesión) devuelve
+sólo cuentas —fichas, viviendas, hogares, familias, personas, plan pendiente—
+agrupadas por EBS, comuna, territorio, barrio, persona que diligenció o fecha,
+en un período de un año como máximo. El único nombre que trae es el del
+personal que diligenció, que es lo que la coordinación necesita ver; ningún
+dato de la población. La agrupación sale de una lista fija del código y los
+filtros van como parámetros. Por EBS y por persona aparecen en cero los
+equipos y las cuentas activas sin fichas en el período.
 
 ## 3. Cómo se crean los usuarios
 

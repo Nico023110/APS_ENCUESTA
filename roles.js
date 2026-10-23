@@ -31,6 +31,9 @@
    datos de todas las fichas del período, sensibles incluidos, así que sólo
    lo generan los perfiles institucionales y la coordinación del EBS.
 
+   «productividad.ver» son los reportes de productividad: cuentas por EBS,
+   comuna, persona y fecha, sin datos de la población. Los ven los mismos.
+
    «ficha.autorizar» (RN-228): una ficha guardada sólo se completa —con
    «Evolucionar plan»—. Corregirla, o cambiar lo registrado en su plan de
    cuidado, exige que la coordinación o el maestro lo autoricen para un
@@ -91,7 +94,8 @@ const PERMISOS_POR_NIVEL = {
     'usuarios.ver',
     'usuarios.crear',
     'auditoria.ver',
-    'reporte.generar'
+    'reporte.generar',
+    'productividad.ver'
   ],
   administrador: [
     'ficha.ver.todas',
@@ -103,7 +107,8 @@ const PERMISOS_POR_NIVEL = {
     'usuarios.restablecer',
     'equipos.gestionar',
     'auditoria.ver',
-    'reporte.generar'
+    'reporte.generar',
+    'productividad.ver'
   ],
   maestro: [
     'ficha.crear',
@@ -125,7 +130,8 @@ const PERMISOS_POR_NIVEL = {
     'usuarios.restablecer',
     'equipos.gestionar',
     'auditoria.ver',
-    'reporte.generar'
+    'reporte.generar',
+    'productividad.ver'
   ]
 };
 

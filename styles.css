@@ -6122,6 +6122,232 @@ html.nivel-administrador #sincronia { display: none; }
 .reporte__casos { font-variant-numeric: tabular-nums; text-align: right; }
 .reporte__firma { margin-top: var(--s-4); }
 
+/* ---- Reportes de productividad (productividad.js) -----------------------
+   Reusa las cifras del Reporte SI-APS. El período rápido son píldoras como
+   las opciones del formulario; el gráfico, columnas finas en azul de marca
+   (cuadradas en la base, 4 px de radio en la punta) sobre ejes recesivos; la
+   tabla lleva su barra por fila, y lo que está en cero se apaga. */
+.productividad__rapidos { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-4); }
+
+.opcion-periodo {
+  padding: 7px var(--s-4);
+  border: none;
+  border-radius: var(--r-chip);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  background: #fff;
+  color: var(--ink-700);
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  cursor: pointer;
+  transition: box-shadow var(--dur-hover) var(--ease-out), background var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+.opcion-periodo[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--brand-600);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-weight: 600;
+}
+.opcion-periodo:focus-visible { outline: none; box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring); }
+.opcion-periodo:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .opcion-periodo:not([aria-pressed="true"]):hover { box-shadow: inset 0 0 0 1px var(--brand-300); background: var(--brand-50); }
+}
+
+.productividad__filtros { --ancho: 4; }
+
+/* Filtros con búsqueda (crearCombo en productividad.js): el campo de texto
+   a lo ancho, con la «x» para quitar el filtro dentro, a la derecha. La
+   lista es la del buscador de CUPS, del ancho del campo para no salirse de
+   la tarjeta en la última columna. */
+.combo-filtro__entrada { width: 100%; box-sizing: border-box; padding-right: 40px !important; }
+.combo-filtro__limpiar {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--ink-400);
+  cursor: pointer;
+}
+.combo-filtro__limpiar[hidden] { display: none; }
+.combo-filtro__flecha {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  margin-top: -8px;
+  font-size: 16px;
+  color: var(--ink-400);
+  pointer-events: none;
+}
+.combo-filtro__flecha[hidden] { display: none; }
+.combo-filtro__limpiar:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
+@media (hover: hover) and (pointer: fine) { .combo-filtro__limpiar:hover { background: var(--ink-100); color: var(--ink-700); } }
+.combo-filtro__lista { min-width: 100%; }
+.combo-filtro__opcion { font-size: var(--fs-label); }
+.combo-filtro__opcion[aria-selected="true"] { font-weight: 600; color: var(--brand-800); }
+.combo-filtro__todos { color: var(--ink-500); }
+
+/* Buscador de la tabla, en la fila de su título. */
+.productividad__cabecera-tabla {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  margin: 0 0 var(--s-3);
+}
+.productividad__cabecera-tabla .reporte__subtitulo { margin: 0; }
+.productividad__buscador {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+.productividad__buscador i { position: absolute; left: 11px; font-size: 16px; color: var(--ink-400); pointer-events: none; }
+.productividad__buscador input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px var(--s-3) 8px 34px;
+  border: none;
+  border-radius: var(--r-chip);
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  background: var(--ink-50);
+  font: inherit;
+  font-size: var(--fs-label);
+  color: var(--ink-900);
+}
+.productividad__buscador input:focus { outline: none; background: #fff; box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring); }
+@media (max-width: 720px) { .productividad__buscador input { font-size: 16px; } .productividad__buscador { flex-basis: 100%; } }
+.productividad__cuenta { flex: none; font-size: var(--fs-micro); font-weight: 600; color: var(--ink-500); white-space: nowrap; }
+.productividad__cuenta:empty { display: none; }
+.productividad__tabla tr[hidden] { display: none; }
+.productividad__sin-coincidencias td { padding: var(--s-4); text-align: center; color: var(--ink-500); }
+@container campos (max-width: 620px) { .productividad__filtros { --ancho: 6; } }
+@container campos (max-width: 380px) { .productividad__filtros { --ancho: 12; } }
+
+/* Mientras se vuelve a pedir, lo anterior queda a la vista, atenuado. */
+.productividad__resultado { transition: opacity var(--dur-hover) var(--ease-out); }
+.productividad__resultado.is-actualizando { opacity: 0.5; }
+
+.productividad__alcance { margin: 0 0 var(--s-4); font-size: var(--fs-small); font-weight: 600; color: var(--ink-500); }
+/* Ocho cifras: dos filas de cuatro (de dos en el celular), sin huecos. */
+.productividad__resultado .reporte__cifras { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 680px) { .productividad__resultado .reporte__cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.productividad__notas { margin-top: 0; }
+.reporte__cifra.is-cero .reporte__cifra-valor { color: var(--ink-400); }
+
+.productividad__bloque { margin-top: var(--s-5); }
+.productividad__vacio { margin: 0; padding: var(--s-4); border-radius: var(--r-core); background: var(--ink-50); color: var(--ink-500); font-size: var(--fs-small); }
+
+.productividad__grafico { position: relative; }
+.productividad__grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
+.productividad__barra { fill: var(--brand-600); }
+.productividad__zona { fill: transparent; }
+.productividad__columna { outline: none; cursor: default; }
+.productividad__columna.is-activa .productividad__barra,
+.productividad__columna:focus-visible .productividad__barra { fill: var(--brand-800); }
+.productividad__columna:focus-visible .productividad__zona { fill: var(--brand-ring); }
+.productividad__guia { stroke: var(--ink-100); stroke-width: 1; }
+.productividad__base { stroke: var(--ink-200); stroke-width: 1; }
+.productividad__eje { fill: var(--ink-400); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.productividad__tooltip {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -110%);
+  padding: 6px var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--sh-2);
+  z-index: 2;
+}
+.productividad__tooltip[hidden] { display: none; }
+
+.productividad__ceros {
+  margin-left: var(--s-3);
+  padding: 2px 9px;
+  border-radius: var(--r-chip);
+  background: var(--warn-50);
+  color: var(--warn-700);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.productividad__tabla { min-width: 860px; }
+.productividad__tabla thead th { padding: 0; }
+.productividad__orden {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: var(--s-3);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.productividad__num .productividad__orden { justify-content: flex-end; }
+.productividad__orden:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--brand-ring); border-radius: var(--r-control); }
+.productividad__orden i { font-size: 12px; color: var(--brand-600); }
+@media (hover: hover) and (pointer: fine) { .productividad__orden:hover { color: var(--ink-700); } }
+
+/* La primera celda de cada fila es encabezado de fila: sin el estilo de las
+   cabeceras de columna (versalita, fondo, pegajosa). */
+.productividad__tabla tbody th {
+  position: static;
+  padding: var(--s-3);
+  background: none;
+  border-bottom: 1px solid var(--ink-100);
+  color: var(--ink-900);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+}
+.productividad__tabla tbody tr:last-child th { border-bottom: none; }
+.productividad__nombre { display: block; }
+.productividad__detalle { display: block; margin-top: 2px; font-weight: 500; color: var(--ink-500); font-size: var(--fs-micro); }
+.productividad__num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.productividad__fichas { min-width: 120px; }
+.productividad__fichas > span:first-child { font-weight: 700; color: var(--ink-900); }
+.productividad__carril { display: block; height: 6px; margin-top: 5px; }
+.productividad__relleno {
+  display: block;
+  height: 100%;
+  width: calc(var(--proporcion, 0) * 100%);
+  margin-left: auto;
+  border-radius: 4px 0 0 4px;
+  background: var(--brand-600);
+}
+
+/* El cero se apaga: quien no tiene fichas se lee, pero no compite. */
+.productividad__tabla tr.is-cero th,
+.productividad__tabla tr.is-cero td { color: var(--ink-400); }
+.productividad__tabla tr.is-cero .productividad__fichas > span:first-child { color: var(--ink-400); font-weight: 600; }
+
 .app-usuario__avatar {
   display: grid;
   place-items: center;

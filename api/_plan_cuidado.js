@@ -13,8 +13,9 @@
    en reglas.js: una alerta de un ámbito está atendida si hay al menos una
    acción registrada en un plan de ese mismo ámbito.
 
-   Se comparte entre listar_fichas.js y obtener_ficha.js para que el historial
-   y el detalle no puedan decir cosas distintas de la misma ficha.
+   Se comparte entre listar_fichas.js, obtener_ficha.js y productividad.js
+   para que el historial, el detalle y los reportes no puedan decir cosas
+   distintas de la misma ficha.
    ========================================================================= */
 
 'use strict';
@@ -90,4 +91,4 @@ function resumenPlanDesdeFila(fila) {
   };
 }
 
-module.exports = { COLUMNAS_PLAN, resumenPlanDesdeFila };
+module.exports = { COLUMNAS_PLAN, SIN_CONDUCTA, resumenPlanDesdeFila };

@@ -284,6 +284,11 @@
         if (window.USUARIOS) window.USUARIOS.abrir();
       } });
     }
+    if (puede('productividad.ver')) {
+      opciones.push({ icono: 'ph-chart-bar', texto: 'Reportes de productividad', accion: function () {
+        if (window.PRODUCTIVIDAD) window.PRODUCTIVIDAD.abrir();
+      } });
+    }
     if (puede('reporte.generar')) {
       opciones.push({ icono: 'ph-file-arrow-down', texto: 'Reporte SI-APS', accion: function () {
         if (window.REPORTE_SISPRO) window.REPORTE_SISPRO.abrir();
