@@ -29,6 +29,9 @@ module.exports = async (req, res) => {
            FROM cat.territorio t
            JOIN cat.microterritorio m ON t.codigo = m.territorio_codigo
           WHERE t.vigente = true AND m.vigente = true) AS territorios,
+        /* El nombre del territorio (Montebello 1, Comuna 18.1…). */
+        (SELECT coalesce(json_object_agg(codigo, nombre), '{}')
+           FROM cat.territorio WHERE vigente = true) AS nombres_territorios,
         /* Los EBS registrados: la coordinación, que lidera zonas con varios
            EBS, elige en el ítem 10 el de cada visita. Sólo códigos. */
         (SELECT coalesce(json_agg(codigo ORDER BY codigo), '[]')
@@ -58,6 +61,7 @@ module.exports = async (req, res) => {
       prestador: prestadorRes.rows,
       uzpe: uzpeRes.rows,
       territorios: territorios,
+      nombresTerritorios: listas.nombres_territorios,
       equipos: equiposRes.rows.map(function (fila) { return fila.codigo; }),
       barrios: listas.barrios
     };

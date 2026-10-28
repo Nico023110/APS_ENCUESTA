@@ -26,7 +26,8 @@ let src = [
    añade un module.exports al vuelo para poder leerlos desde node. */
 const nombres = [...new Set([...src.matchAll(/^const (CAT_[A-Z0-9_]+)\s*=/gm)].map(m => m[1]))];
 const wrapped = src + '\nmodule.exports = {' + nombres.map(n => n + ':' + n).join(',') +
-  ', PREGUNTAS_ANEXO: PREGUNTAS_ANEXO, UZPE_PREDETERMINADA: UZPE_PREDETERMINADA, codigoDePregunta: codigoDePregunta};\n';
+  ', PREGUNTAS_ANEXO: PREGUNTAS_ANEXO, UZPE_PREDETERMINADA: UZPE_PREDETERMINADA, codigoDePregunta: codigoDePregunta, ' +
+  'NOMBRES_TERRITORIOS: NOMBRES_TERRITORIOS};\n';
 const tmp = nodePath.join(fs.mkdtempSync(nodePath.join(os.tmpdir(), 'aps-seed-')), '_cat.js');
 fs.writeFileSync(tmp, wrapped);
 const C = require(tmp);
@@ -229,15 +230,19 @@ ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;\n`)
 if (C.CAT_TERRITORIOS) {
   const terrs = Object.keys(C.CAT_TERRITORIOS);
   const esRural = t => C.CAT_TERRITORIOS[t].every(m => String(m.comuna).toLowerCase() === 'rural');
+  /* El nombre es el del listado de la E.S.E. (NOMBRES_TERRITORIOS); los
+     territorios que no atiende no lo tienen y quedan con el código. */
+  const nombreDe = t => (C.NOMBRES_TERRITORIOS && C.NOMBRES_TERRITORIOS[t]) || t;
   const tv = terrs.map(t =>
-    `  (${q(t)}, ${q(t)}, ${q(UZPE_ACTIVA)}, ${esRural(t)})`).join(',\n');
+    `  (${q(t)}, ${q(nombreDe(t))}, ${q(UZPE_ACTIVA)}, ${esRural(t)})`).join(',\n');
   const nRur = terrs.filter(esRural).length;
   out.push(`/* --- Territorios y microterritorios (RN-007, RN-008, Anexo A) -----------
    ${terrs.length} territorios: ${nRur} rurales, ${terrs.length - nRur} urbanos.
-   El instrumento no asigna nombre propio al territorio: su código lo identifica. */
+   El Anexo A identifica el territorio por código; el nombre (Montebello 1,
+   Comuna 18.1…) es el del listado de territorios de la E.S.E. */
 INSERT INTO cat.territorio (codigo, nombre, uzpe_codigo, es_rural) VALUES\n${tv}
 ON CONFLICT (codigo) DO UPDATE
-  SET es_rural = EXCLUDED.es_rural, uzpe_codigo = EXCLUDED.uzpe_codigo;\n`);
+  SET nombre = EXCLUDED.nombre, es_rural = EXCLUDED.es_rural, uzpe_codigo = EXCLUDED.uzpe_codigo;\n`);
   const mv = [];
   terrs.forEach(t => C.CAT_TERRITORIOS[t].forEach(m =>
     mv.push(`  (${q(t)}, ${q(m.codigo)}, ${q(m.nombre)}, ${q(m.comuna)})`)));

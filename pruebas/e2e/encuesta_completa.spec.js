@@ -160,7 +160,8 @@ const PERSONAS = [
     ocupacion: '0000', nivelEducativo: 'basica_primaria',
     peso: '26', talla: '128', cintura: null,
     sistolica: null, diastolica: null,
-    gestacion: 'no'
+    /* Sin gestación ni intención reproductiva: desde los 10 años (RN-084, RN-085). */
+    gestacion: null
   }
 ];
 

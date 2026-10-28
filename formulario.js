@@ -827,13 +827,25 @@ function actualizarCondicionalesIntegrante(bloque) {
   const edad = actualizarEdad(bloque);
   const meses = edad ? edad.totalMeses : null;
   const sexo = valorSeleccionado(bloque, '.sexo');
-  const gestante = valorSeleccionado(bloque, '.gestacionActual') === 'si' ||
-                   seleccionados(bloque, '.sujetoEspecialProteccion').indexOf(SUJETO_GESTANTE) !== -1;
 
   const tieneEdad = meses !== null;
   const entre = function (min, max) {
     return tieneEdad && meses >= min && (max === null || meses <= max);
   };
+
+  /* ---- Por edad y sexo (RN-084, RN-085) ----
+     Antes que `gestante`: ocultar el ítem 85 borra su respuesta, y lo que
+     depende de la gestación debe leerla ya sin ella. */
+  const edadReproductiva = entre(EDAD_MINIMA_REPRODUCTIVA_MESES, null);
+  const grupoReproductivo = bloque.querySelector('[data-rol="grupoReproductivo"]');
+  if (grupoReproductivo) grupoReproductivo.hidden = !edadReproductiva;
+  mostrarCampo(bloque.querySelector('[data-rol="campoIntencion"]'), edadReproductiva);
+  mostrarCampo(
+    bloque.querySelector('[data-rol="campoGestacion"]'),
+    edadReproductiva && SEXOS_CON_CAPACIDAD_GESTAR.indexOf(sexo) !== -1
+  );
+  const gestante = valorSeleccionado(bloque, '.gestacionActual') === 'si' ||
+                   seleccionados(bloque, '.sujetoEspecialProteccion').indexOf(SUJETO_GESTANTE) !== -1;
 
   // ---- Por edad ----
   mostrarCampo(bloque.querySelector('[data-rol="campoOrientacion"]'), entre(13 * 12, null));
@@ -862,12 +874,6 @@ function actualizarCondicionalesIntegrante(bloque) {
       ? 'Pregunte si ha consumido alguna vez en su vida.'
       : 'Pregunte por el consumo en los últimos tres meses.';
   }
-
-  // ---- Por sexo (RN-085) ----
-  mostrarCampo(
-    bloque.querySelector('[data-rol="campoGestacion"]'),
-    SEXOS_CON_CAPACIDAD_GESTAR.indexOf(sexo) !== -1
-  );
 
   // ---- Por respuesta previa ----
   mostrarCampo(

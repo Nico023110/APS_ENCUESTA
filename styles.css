@@ -950,6 +950,8 @@ button.atencion__fila:focus-visible {
   --ancho: 4;
 }
 
+.form-grid[hidden] { display: none; }
+
 .form-grid--2col { --ancho: 6; }
 
 .form-grid .field { grid-column: span var(--ancho); min-width: 0; }
@@ -6097,7 +6099,60 @@ html.nivel-administrador #sincronia { display: none; }
 .usuarios__acciones-espacio { flex: 1; }
 #usuarioError { margin-top: var(--s-4); }
 #formUsuario .field input.mono { font-family: var(--font-mono); }
-.usuarios__ayuda { margin: -8px 0 0; }
+.usuarios__ayuda { margin: 0; }
+
+/* Formulario de usuario en tres grupos (identificación, rol y equipo,
+   contacto). Cada uno con su título e icono, separados por una regla fina:
+   se lee de arriba abajo sin que todos los campos pesen lo mismo. */
+.usuarios__grupo { border: none; margin: 0; padding: 0; min-width: 0; }
+.usuarios__grupo + .usuarios__grupo {
+  margin-top: var(--s-5);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--ink-100);
+}
+/* El legend flota para salir del borde del fieldset: si no, la regla de
+   separación lo atraviesa y deja un hueco desigual debajo. */
+.usuarios__grupo-titulo {
+  float: left;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--ink-800);
+}
+.usuarios__grupo-titulo i { font-size: 18px; color: var(--brand-600); }
+.usuarios__grupo-titulo + * { clear: both; }
+.usuarios__opcional {
+  margin-left: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ink-100);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-500);
+}
+
+/* Qué implica el rol elegido: una frase que cambia con la selección. */
+.usuarios__rol-ayuda {
+  margin: var(--s-4) 0 0;
+  padding: 10px 14px;
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--brand-800);
+}
+.usuarios__rol-ayuda:empty { display: none; }
+
+.usuarios__estado {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--ink-100);
+}
 .usuarios__acciones .btn[hidden] { display: none; }
 
 /* ---- Vista Reporte SI-APS ------------------------------------------------ */

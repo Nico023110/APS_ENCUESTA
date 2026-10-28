@@ -405,13 +405,18 @@ async function diligenciarIntegrante(page, diario, indice, persona, seccion, api
   await marcar(P + 'discapacidad', 'sin_discapacidad', 'Discapacidad');
   await marcar(P + 'certificacionRlcpd', 'no_aplica', 'Certificación RLCPD');
   await marcar(P + 'practicasCuidado', 'alimentacion', 'Prácticas de cuidado');
-  await marcar(P + 'intencionReproductiva', persona.intencionReproductiva || 'no', 'Intención reproductiva');
+  /* Intención reproductiva: desde los 10 años (RN-084). */
+  if (isFinite(anios) && anios >= 10) {
+    await marcar(P + 'intencionReproductiva', persona.intencionReproductiva || 'no', 'Intención reproductiva');
+  } else {
+    diario.noAplica('Intención reproductiva', 'no se pregunta antes de los 10 años (RN-084)');
+  }
 
-  /* Gestación: sólo para sexos con capacidad de gestar (RN-085). */
+  /* Gestación: sexos con capacidad de gestar, desde los 10 años (RN-085). */
   if (persona.gestacion) {
     await marcar(P + 'gestacionActual', persona.gestacion, 'Gestación actual', SI_APLICA);
   } else {
-    diario.noAplica('Gestación actual', 'no se pregunta para este sexo (RN-085)');
+    diario.noAplica('Gestación actual', 'no se pregunta para este sexo ni antes de los 10 años (RN-085)');
   }
 
   /* Lactancia exclusiva: el formulario sólo la muestra a menores de 6 meses. */

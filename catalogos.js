@@ -57,7 +57,7 @@ const CAT_TIPO_UBICACION = [
    traen sus 4 microterritorios con nombre y comuna; el resto entra con
    MT01…MT04 sin nombre ni comuna, para que puedan seleccionarse mientras
    llega el detalle del anexo (no se inventan nombres). Sin comuna, un
-   territorio no se considera rural (RN-007 no advierte sobre él).
+   territorio cuenta como urbano para RN-007, igual que en la base.
    --------------------------------------------------------- */
 const CAT_TERRITORIOS = {
   T01: [
@@ -737,18 +737,51 @@ function territorioVigente(codigoTerritorio) {
   return TERRITORIOS_VIGENTES.indexOf(codigoTerritorio) !== -1;
 }
 
+/* Nombre de cada territorio vigente, del listado de la E.S.E. (Microterritorios
+   ESE LADERA.xlsx, columna «Comuna»). El Anexo A sólo los identifica por
+   código; la E.S.E. los nombra por la comuna o el corregimiento que cubren, y
+   así los reconoce el equipo en terreno. Sin el nombre, los 30 rurales se
+   veían iguales en el ítem 7 («T55 · Zona rural»). Con red, la base puede
+   actualizarlos (cat.territorio.nombre): ver fijarCatalogosDinamicos. */
+const NOMBRES_TERRITORIOS = {
+  T48: 'Comuna 3', T49: 'Comuna 1', T50: 'Comuna 1.1', T51: 'Comuna 18',
+  T52: 'Comuna 18.1', T53: 'Comuna 20', T54: 'Comuna 20.1',
+  T55: 'Montebello 1', T56: 'Montebello 2', T57: 'Montebello 3',
+  T58: 'Golondrinas 1', T59: 'Golondrinas 2', T60: 'La Paz 1', T61: 'La Paz 2',
+  T62: 'La Castilla 1', T63: 'La Castilla 2', T64: 'La Elvira 1', T65: 'La Elvira 2',
+  T66: 'Saladito 1', T67: 'Saladito 2', T68: 'Felidia 1', T69: 'Felidia 2',
+  T70: 'Leonera 1', T71: 'Leonera 2', T72: 'Pichindé 1', T73: 'Pichindé 2',
+  T74: 'Los Andes 1', T75: 'Los Andes 2', T76: 'Buitrera 1', T77: 'Buitrera 2',
+  T78: 'Hormiguero 1', T79: 'Hormiguero 2', T80: 'Hormiguero 3',
+  T81: 'Villa Carmelo 1', T82: 'Villa Carmelo 2', T83: 'Pance 1', T84: 'Pance 2'
+};
+
 // La comuna es homogénea dentro de cada territorio: se toma del primer microterritorio.
 function comunaDeTerritorio(codigoTerritorio) {
   const microterritorios = CAT_TERRITORIOS[codigoTerritorio];
   return microterritorios && microterritorios.length ? microterritorios[0].comuna : null;
 }
 
+/* RN-007 — El mismo criterio que `cat.territorio.es_rural` (bd/gen_seed.js):
+   rural cuando todos sus microterritorios llevan comuna «Rural». La base
+   rechaza la vivienda que lo contradiga, así que el motor no puede usar otro. */
+function esTerritorioRural(codigoTerritorio) {
+  const microterritorios = CAT_TERRITORIOS[codigoTerritorio];
+  return !!(microterritorios && microterritorios.length) && microterritorios.every(function (mt) {
+    return String(mt.comuna).toLowerCase() === 'rural';
+  });
+}
+
 function etiquetaMicroterritorio(mt) {
   return mt.nombre ? mt.codigo + ' — ' + mt.nombre : mt.codigo;
 }
 
+/* «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Un territorio sin nombre
+   se rotula por su comuna, y uno sin comuna (no vigente) sólo por el código. */
 function etiquetaTerritorio(codigoTerritorio) {
+  const nombre = NOMBRES_TERRITORIOS[codigoTerritorio];
   const comuna = comunaDeTerritorio(codigoTerritorio);
+  if (nombre) return codigoTerritorio + ' · ' + nombre + (comuna === 'Rural' ? ' (rural)' : '');
   if (!comuna) return codigoTerritorio;
   return codigoTerritorio + ' · ' + (comuna === 'Rural' ? 'Zona rural' : 'Comuna ' + comuna);
 }
@@ -1399,6 +1432,12 @@ const CAT_SEXO = [
 /* Sexos con capacidad de gestar para RN-085 y RN-205 */
 const SEXOS_CON_CAPACIDAD_GESTAR = ['mujer', 'intersexual'];
 
+/* RN-084 / RN-085 — La intención reproductiva y la gestación se preguntan
+   desde los 10 años, el inicio de la edad fértil que usa el Ministerio de
+   Salud (mujeres de 10 a 49 años). Antes se preguntaban a cualquier edad,
+   también a un bebé de meses. */
+const EDAD_MINIMA_REPRODUCTIVA_MESES = 10 * 12;
+
 const CAT_GENERO = [
   { valor: 'femenino', etiqueta: 'Femenino', sispro: '1' },
   { valor: 'masculino', etiqueta: 'Masculino', sispro: '2' }
@@ -1517,6 +1556,7 @@ const CAT_PRESTADOR = [
    RN-077 — Sujeto de especial protección constitucional
    --------------------------------------------------------- */
 const SUJETO_GESTANTE = 'gestante';
+const SUJETO_MIGRANTE = 'migrante';
 /* El anexo (variable 23) abre la modalidad de la violencia con la opción 10,
    «Víctima de violencia interpersonal». La opción de «violencia de género e
    intrafamiliar» del instrumento impreso no existe en el anexo: se leen las
@@ -2038,6 +2078,17 @@ function fijarCatalogosDinamicos(data) {
       if (Object.prototype.hasOwnProperty.call(data.territorios, key)) {
         CAT_TERRITORIOS[key] = data.territorios[key];
         TERRITORIOS_VIGENTES.push(key);
+      }
+    }
+  }
+  /* Sólo los nombres propios: una base sin migrar trae el código como nombre
+     y no debe borrar el que ya se conoce. */
+  if (data.nombresTerritorios) {
+    for (const codigo in data.nombresTerritorios) {
+      const nombre = data.nombresTerritorios[codigo];
+      if (Object.prototype.hasOwnProperty.call(data.nombresTerritorios, codigo) &&
+          typeof nombre === 'string' && nombre.trim() !== '' && nombre !== codigo) {
+        NOMBRES_TERRITORIOS[codigo] = nombre.trim();
       }
     }
   }

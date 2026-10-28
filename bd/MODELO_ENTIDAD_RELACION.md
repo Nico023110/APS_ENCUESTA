@@ -480,7 +480,7 @@ Tampoco se modelan como restricción las **habilitaciones condicionadas por edad
 | **Catálogo CUPS** | Cargado desde `TablaReferencia_CUPS.xlsx`: **10.024 procedimientos** con jerarquía oficial y búsqueda de texto. |
 | **Códigos NoCUPS** | 20 códigos creados en `05_nocups.sql`, limitados a lo que el catálogo oficial no cubre. Ver sección 3.3. |
 
-Sobre los nombres de territorio: el instrumento no les asigna denominación propia. El Anexo A los identifica sólo por código (`T48`–`T84`) y nombra los microterritorios, que es donde está el topónimo real —San Cayetano, Siloé, Kilómetro 18—. `cat.territorio.nombre` queda igual al código, que es lo que la fuente dice.
+Sobre los nombres de territorio: el instrumento no les asigna denominación propia y el Anexo A los identifica sólo por código (`T48`–`T84`); el topónimo de detalle está en los microterritorios —San Cayetano, Siloé, Kilómetro 18—. El listado de la E.S.E. (`Microterritorios ESE LADERA.xlsx`, columna «Comuna») sí nombra cada territorio por la comuna o el corregimiento que cubre —Comuna 18.1, Montebello 1, Pichindé 2—, y ése es el que queda en `cat.territorio.nombre` (`NOMBRES_TERRITORIOS` en `catalogos.js`). Los territorios que la E.S.E. no atiende conservan el código como nombre.
 
 ### 7.2 Abiertos
 

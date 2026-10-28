@@ -425,6 +425,12 @@ function esMayorDe(contexto, anios) {
   return contexto.edadMeses !== null && contexto.edadMeses >= anios * 12;
 }
 
+/* RN-084 / RN-085 — Sin fecha de nacimiento no se exigen: el formulario
+   tampoco las muestra hasta conocer la edad, y RN-064 ya bloquea la ficha. */
+function enEdadReproductiva(contexto) {
+  return edadEntre(contexto, EDAD_MINIMA_REPRODUCTIVA_MESES, null);
+}
+
 function nombreIntegrante(integrante, indice) {
   const nombre = [integrante.primerNombre, integrante.primerApellido]
     .filter(function (parte) { return !esVacio(parte); })
@@ -529,16 +535,26 @@ const REGLAS_BLOQUE_2 = [
     mensaje: 'Seleccione un territorio del catálogo.'
   },
   {
-    // Los territorios rurales no son coherentes con un área urbana.
+    /* Un territorio rural sólo admite «Área rural» o «Centro poblado», y uno
+       urbano no admite «Área rural». Antes sólo se advertía el primer caso:
+       la ficha pasaba el formulario y la base la rechazaba al guardar
+       (aps.trg_hogar_territorio_area) con un error que no decía qué campo
+       corregir. Bloquea igual que la base, en los dos sentidos. */
     codigo: 'RN-007',
     campo: 'territorio',
-    severidad: SEVERIDAD.ADVERTENCIA,
     aplica: function (d) { return !!CAT_TERRITORIOS[d.territorio] && !esVacio(d.areaUbicacion); },
     valida: function (d) {
-      if (comunaDeTerritorio(d.territorio) !== 'Rural') return true;
-      return d.areaUbicacion === 'rural' || d.areaUbicacion === 'centro_poblado';
+      return esTerritorioRural(d.territorio)
+        ? d.areaUbicacion === 'rural' || d.areaUbicacion === 'centro_poblado'
+        : d.areaUbicacion !== 'rural';
     },
-    mensaje: 'El territorio seleccionado es rural pero el área de ubicación es urbana. Verifique.'
+    mensaje: function (d) {
+      return esTerritorioRural(d.territorio)
+        ? 'El territorio ' + d.territorio + ' es rural y el área de ubicación (ítem 6) es urbana. ' +
+          'Elija «Área rural» o un territorio urbano.'
+        : 'El territorio ' + d.territorio + ' es urbano y el área de ubicación (ítem 6) es «Área rural». ' +
+          'Elija «Área urbana» o un territorio rural.';
+    }
   },
   {
     codigo: 'RN-008',
@@ -1430,13 +1446,14 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-084',
     campo: 'intencionReproductiva',
+    aplica: function (i, c) { return enEdadReproductiva(c); },
     valida: function (i) { return perteneceA(CAT_SI_NO, i.intencionReproductiva); },
     mensaje: 'Indique la intención reproductiva a corto plazo.'
   },
   {
     codigo: 'RN-085',
     campo: 'gestacionActual',
-    aplica: function (i, c) { return SEXOS_CON_CAPACIDAD_GESTAR.indexOf(c.sexo) !== -1; },
+    aplica: function (i, c) { return SEXOS_CON_CAPACIDAD_GESTAR.indexOf(c.sexo) !== -1 && enEdadReproductiva(c); },
     valida: function (i) { return perteneceA(CAT_SI_NO, i.gestacionActual); },
     mensaje: 'Indique si hay gestación actual confirmada.'
   },
@@ -1988,6 +2005,23 @@ function reglasDeSeguimientos(codigos) {
       mensaje: 'Registre la fecha del primer seguimiento y su estado (C, CP o NC).'
     },
     {
+      /* RN-226.1 — El seguimiento ocurre después de la visita. La base
+         rechaza la fila (aps.trg_seguimiento_fechas) y la ficha no se
+         guardaba, con un error que no señalaba el campo; por eso este aviso
+         bloquea aunque el resto del plan sólo advierta. */
+      codigo: 'RN-226',
+      campo: 'seg1Fecha',
+      noDiferible: true,
+      aplica: function (s, plan, datos) {
+        return esFechaValida(s.seg1Fecha) && !!datos && esFechaValida(datos.fechaDiligenciamiento);
+      },
+      valida: function (s, plan, datos) {
+        const dias = diferenciaEnDias(datos.fechaDiligenciamiento, s.seg1Fecha);
+        return dias === null || dias >= 0;
+      },
+      mensaje: 'La fecha del primer seguimiento no puede ser anterior a la de la visita.'
+    },
+    {
       codigo: 'RN-226',
       campo: 'seg1MotivoNc',
       aplica: function (s) { return s.seg1Estado === 'NC'; },
@@ -2092,7 +2126,7 @@ function evaluarConjunto(reglas, args, contexto, salida) {
     if (regla.aplica && !regla.aplica.apply(null, args)) return;
     if (regla.valida.apply(null, args)) return;
 
-    salida.push({
+    const incumplimiento = {
       codigo: regla.codigo,
       campo: regla.campo,
       ruta: contexto.ruta ? contexto.ruta + '.' + regla.campo : regla.campo,
@@ -2100,7 +2134,9 @@ function evaluarConjunto(reglas, args, contexto, salida) {
       severidad: severidadDe(regla),
       ambito: contexto.ambito,
       referencia: contexto.referencia || null
-    });
+    };
+    if (regla.noDiferible) incumplimiento.noDiferible = true;
+    salida.push(incumplimiento);
   });
 }
 
@@ -2108,12 +2144,14 @@ function evaluarConjunto(reglas, args, contexto, salida) {
    guardar la ficha. La ficha se guarda con la caracterización y el plan se
    completa después con «Evolucionar plan». Lo que el plan incumpla —una fila
    a medias, una llave, un seguimiento sin fecha— llega como ADVERTENCIA:
-   se ve junto al campo y en el cierre, pero no detiene el guardado. */
+   se ve junto al campo y en el cierre, pero no detiene el guardado.
+   La excepción son las reglas `noDiferible`: lo que la base no acepta
+   tumbaría el guardado entero, así que bloquea desde el formulario. */
 function evaluarPlan(plan, contenedor, datos, contexto, salidaGeneral) {
   const salida = [];
   evaluarPlanEn(plan, contenedor, datos, contexto, salida);
   salida.forEach(function (item) {
-    item.severidad = SEVERIDAD.ADVERTENCIA;
+    if (!item.noDiferible) item.severidad = SEVERIDAD.ADVERTENCIA;
     salidaGeneral.push(item);
   });
 }
@@ -2694,27 +2732,35 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
     ));
   }
 
-  /* RN-204 — Estado nutricional. */
+  /* RN-204 — Estado nutricional. Los signos físicos del ítem 97 alertan
+     «con independencia de la clasificación antropométrica»: antes la alerta
+     sólo nacía de una clasificación alterada, y un niño con edema y peso
+     adecuado para la talla quedaba sin ninguna. */
   const antropometria = opcionDe(CAT_CLASIFICACION_ANTROPOMETRICA, integrante.clasificacionAntropometrica);
-  if (antropometria && antropometria.prioridad) {
-    let prioridad = antropometria.prioridad;
-    let descripcion = antropometria.etiqueta;
+  const clasificacionAlterada = !!(antropometria && antropometria.prioridad);
+  const signosEnMenorDe5 = tieneHallazgo(integrante.signosDesnutricion, VALOR_NINGUNA) && edadEntre(contexto, 0, 60);
+  const hayEdema = contiene(integrante.signosDesnutricion, 'edema');
+
+  if (clasificacionAlterada || signosEnMenorDe5 || hayEdema) {
+    let prioridad = clasificacionAlterada ? antropometria.prioridad : PRIORIDAD.INMEDIATA;
+    const partes = clasificacionAlterada ? [antropometria.etiqueta] : [];
 
     // Cualquier signo físico en menores de 5 años eleva a inmediata.
-    const haySignos = tieneHallazgo(integrante.signosDesnutricion, VALOR_NINGUNA);
-    if (haySignos && edadEntre(contexto, 0, 60)) {
+    if (signosEnMenorDe5) {
       prioridad = PRIORIDAD.INMEDIATA;
-      descripcion += ' Con signos físicos de desnutrición aguda en menor de 5 años.';
+      partes.push(clasificacionAlterada
+        ? 'Con signos físicos de desnutrición aguda en menor de 5 años.'
+        : 'Signos físicos de desnutrición aguda en menor de 5 años.');
     }
-    if (contiene(integrante.signosDesnutricion, 'edema')) {
+    if (hayEdema) {
       prioridad = PRIORIDAD.INMEDIATA;
-      descripcion += ' El edema indica desnutrición aguda severa: remisión hospitalaria inmediata.';
+      partes.push('El edema indica desnutrición aguda severa: remisión hospitalaria inmediata.');
     }
 
     alertas.push(crearAlerta(
-      'RN-204', prioridad, 'Alteración del estado nutricional', descripcion,
+      'RN-204', prioridad, 'Alteración del estado nutricional', partes.join(' '),
       {
-        ruta: ruta + '.clasificacionAntropometrica',
+        ruta: ruta + (clasificacionAlterada ? '.clasificacionAntropometrica' : '.signosDesnutricion'),
         referencia: referencia,
         notificaSivigila: prioridad === PRIORIDAD.INMEDIATA && edadEntre(contexto, 0, 60)
       }
@@ -2850,6 +2896,36 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
       'RN-209', PRIORIDAD.PRIORITARIA, 'Barrera de identificación',
       'Persona sin documento de identidad (' + contexto.tipoId.valor + '). Canalice a Registraduría: es condición previa para la afiliación.',
       { ruta: ruta + '.tipoId', referencia: referencia }
+    ));
+  }
+
+  /* RN-062 / RN-065 — Población migrante: nacionalidad distinta de Colombia,
+     documento PE o PT, o «Migrantes» en el ítem 77. La condición migratoria
+     es la principal barrera de acceso a los servicios; sin autorización de
+     permanencia la persona no puede afiliarse y la prioridad sube. */
+  const extranjero = !esVacio(integrante.nacionalidad) && integrante.nacionalidad !== NACIONALIDAD_COLOMBIA;
+  const documentoMigrante = !!(contexto.tipoId && contexto.tipoId.migrante);
+  const marcadoMigrante = contiene(integrante.sujetoEspecialProteccion, SUJETO_MIGRANTE);
+  if (extranjero || documentoMigrante || marcadoMigrante) {
+    const sinAutorizacion = integrante.estatusMigratorio === 'sin_autorizacion';
+    const motivos = [];
+    if (extranjero) {
+      motivos.push(integrante.nacionalidad === NACIONALIDAD_OTRA
+        ? 'nacionalidad extranjera'
+        : 'nacionalidad ' + etiquetaDeCatalogo(CAT_PAIS, integrante.nacionalidad));
+    }
+    if (documentoMigrante) motivos.push('documento ' + contexto.tipoId.valor);
+    if (marcadoMigrante) motivos.push('«Migrantes» en el ítem 77');
+
+    let descripcion = 'Población migrante (' + motivos.join(', ') + '). ';
+    descripcion += sinAutorizacion
+      ? 'Sin autorización de permanencia: oriente la regularización (Permiso por Protección Temporal) antes de la afiliación al SGSSS.'
+      : 'Verifique la afiliación al SGSSS y oriente sobre los servicios a los que tiene derecho.';
+    if (!marcadoMigrante) descripcion += ' Marque «Migrantes» en el ítem 77.';
+
+    alertas.push(crearAlerta(
+      'RN-210', sinAutorizacion ? PRIORIDAD.PRIORITARIA : PRIORIDAD.REGULAR, 'Población migrante', descripcion,
+      { ruta: ruta + '.nacionalidad', referencia: referencia }
     ));
   }
 

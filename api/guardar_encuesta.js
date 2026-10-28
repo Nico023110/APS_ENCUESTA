@@ -1735,6 +1735,23 @@ module.exports = async (req, res) => {
 
     console.error('  Error al guardar la ficha:', error.message);
 
+    /* Un disparador que rechaza un dato con «RN-…» (RAISE EXCEPTION, código
+       P0001) describe algo que el encuestador puede corregir: se devuelve
+       como bloqueo, igual que la validación previa, y no como falla del
+       servidor. Que llegue aquí sigue siendo un hueco del motor de reglas. */
+    const reglaDeLaBase = error.code === 'P0001' && /^(RN-\d{3}(?:\.\d+)?): (.+)$/.exec(error.message || '');
+    if (reglaDeLaBase) {
+      return res.status(400).json({
+        error: 'La ficha no cumple las reglas de negocio',
+        total: 1,
+        bloqueos: [{
+          codigo: reglaDeLaBase[1], ruta: 'base', campo: 'base', severidad: 'bloqueo',
+          mensaje: reglaDeLaBase[2].charAt(0).toUpperCase() + reglaDeLaBase[2].slice(1)
+        }],
+        advertencias: []
+      });
+    }
+
     /* Un fallo de restricción que llegue hasta aquí es un hueco de la
        validación previa, no un error del encuestador: se registra como 500
        pero se nombra la restricción para poder cerrarlo. */

@@ -210,19 +210,52 @@
     $('usuarioClaveTemporal').hidden = !clave;
   }
 
+  /* Qué se le explica a quien crea la cuenta según el rol elegido. El rol
+     ya dice qué hace la persona; el cargo sólo aporta cuando el rol no lo
+     dice todo: la coordinación y los líderes no tienen EBS y lideran una
+     zona, y la administración o el maestro tienen un puesto institucional. */
+  const AYUDA_POR_NIVEL = {
+    profesional: 'Captura fichas y corrige las de su equipo. Su EBS firma el ítem 10 y su rol es el perfil del ítem 14.',
+    tecnico: 'Captura fichas y corrige las suyas. Su EBS firma el ítem 10 y su rol es el perfil del ítem 14.',
+    coordinacion: 'No pertenece a un EBS: al diligenciar una ficha indica el EBS de la visita. Anote la zona que lidera.',
+    administrador: 'No captura fichas: administra cuentas, equipos y reportes. No necesita EBS.',
+    maestro: 'Tiene todos los permisos. Firma sus fichas con el EBS y el perfil que elija.'
+  };
+
+  const PLACEHOLDER_CARGO = {
+    coordinacion: 'Ej. Líder Zona Norte',
+    administrador: 'Ej. Profesional de sistemas',
+    maestro: 'Ej. Coordinación APS'
+  };
+
+  function muestraCargo(rol) {
+    const nivel = nivelDe(rol);
+    return nivel === 'coordinacion' || nivel === 'administrador' || nivel === 'maestro';
+  }
+
   /* El maestro y la coordinación eligen el perfil del ítem 14 con que firman;
      para la coordinación, «Otro» toma el cargo como aclaración si se deja
-     vacía. El equipo es obligatorio sólo para quien lo necesita para firmar. */
+     vacía. El equipo sólo se pide a quien firma fichas con él. */
   function ajustarCamposSegunRol() {
     const rol = $('usuarioRol').value;
+    const nivel = nivelDe(rol);
     const elige = eligePerfil(rol);
     const perfil = elige ? $('usuarioPerfil').value : rol;
+
     $('usuarioCampoPerfil').hidden = !elige;
     $('usuarioCampoPerfilOtro').hidden = perfil !== 'otro';
     $('usuarioCampoPerfilOtro').querySelector('label').textContent =
       '¿Cuál?' + (elige ? '' : ' *');
-    $('usuarioEquipo').closest('.field').querySelector('label').textContent =
-      'Equipo Básico de Salud' + (requiereEquipo(rol) ? ' *' : '');
+
+    $('usuarioCampoEquipo').hidden = !requiereEquipo(rol);
+    $('usuarioCampoEquipo').querySelector('label').textContent = 'Equipo Básico de Salud *';
+
+    $('usuarioCampoCargo').hidden = !muestraCargo(rol);
+    $('usuarioCargo').placeholder = PLACEHOLDER_CARGO[nivel] || '';
+    $('usuarioCampoCargo').querySelector('label').textContent =
+      nivel === 'coordinacion' ? 'Zona que lidera' : 'Cargo';
+
+    $('usuarioRolAyuda').textContent = AYUDA_POR_NIVEL[nivel] || '';
   }
 
   function abrirFormulario(u) {
@@ -283,18 +316,29 @@
     editando = null;
   }
 
+  /* Un campo oculto por el rol no se manda vacío a ciegas: al modificar una
+     cuenta se conserva lo que tenía (el cargo siempre; el equipo, mientras
+     no cambie el rol), para no borrar datos al abrir y guardar. */
+  function valorSegunVisibilidad(campo, input, conservado) {
+    if (!$(campo).hidden) return input.value.trim() || null;
+    return conservado === undefined ? null : conservado;
+  }
+
   function leerFormulario() {
     const f = $('formUsuario');
+    const rol = $('usuarioRol').value;
+    const equipo = valorSegunVisibilidad('usuarioCampoEquipo', $('usuarioEquipo'),
+      editando && editando.rol === rol ? (editando.equipo || null) : null);
     return {
       id: f.id.value || undefined,
       tipoId: $('usuarioTipoId').value,
       documento: $('usuarioDocumento').value.trim(),
       nombre: $('usuarioNombre').value.trim(),
-      cargo: $('usuarioCargo').value.trim() || null,
+      cargo: valorSegunVisibilidad('usuarioCampoCargo', $('usuarioCargo'), editando ? (editando.cargo || null) : null),
       correo: $('usuarioCorreo').value.trim() || null,
       telefono: $('usuarioTelefono').value.trim() || null,
-      rol: $('usuarioRol').value,
-      equipo: $('usuarioEquipo').value.trim().toUpperCase() || null,
+      rol: rol,
+      equipo: equipo ? equipo.toUpperCase() : null,
       perfil: eligePerfil($('usuarioRol').value) ? $('usuarioPerfil').value : undefined,
       perfilOtro: $('usuarioPerfilOtro').value.trim() || null,
       activo: editando ? $('usuarioActivo').checked : true

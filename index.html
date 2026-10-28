@@ -1200,12 +1200,12 @@
                         <div class="radio-group" data-catalogo="CAT_SI_NO_NA" data-name="familias[0].integrantes[0].certificacionRlcpd"></div>
                       </div>
 
-                      <div class="form-grid">
-                        <div class="field field--lg field--block" data-campo="intencionReproductiva">
+                      <div class="form-grid" data-rol="grupoReproductivo" hidden>
+                        <div class="field field--lg field--block" data-campo="intencionReproductiva" data-rol="campoIntencion" hidden>
                           <label><span class="item-num">84.</span> Intención reproductiva a corto plazo: *</label>
                           <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].intencionReproductiva"></div>
                         </div>
-                        <div class="field field--lg field--block" data-campo="gestacionActual" data-rol="campoGestacion">
+                        <div class="field field--lg field--block" data-campo="gestacionActual" data-rol="campoGestacion" hidden>
                           <label><span class="item-num">85.</span> Gestación actual confirmada:</label>
                           <div class="radio-group" data-catalogo="CAT_SI_NO" data-name="familias[0].integrantes[0].gestacionActual"></div>
                         </div>
@@ -2174,56 +2174,77 @@
     <div class="modal__body">
       <form id="formUsuario" novalidate autocomplete="off">
         <input type="hidden" name="id">
-        <div class="form-grid form-grid--2col">
-          <div class="field" data-campo="tipoId">
-            <label for="usuarioTipoId">Tipo de documento *</label>
-            <select id="usuarioTipoId" name="tipoId"></select>
+
+        <!-- Tres grupos con su propio título: quién es, qué hace en la
+             aplicación y cómo ubicarlo. El cargo sólo aparece para los roles
+             sin EBS (coordinación, líderes, administración): para el personal
+             asistencial el rol ya dice su profesión (ver usuarios.js). -->
+        <fieldset class="usuarios__grupo">
+          <legend class="usuarios__grupo-titulo"><i class="ph ph-identification-card" aria-hidden="true"></i> Identificación</legend>
+          <div class="form-grid form-grid--2col">
+            <div class="field" data-campo="tipoId">
+              <label for="usuarioTipoId">Tipo de documento *</label>
+              <select id="usuarioTipoId" name="tipoId"></select>
+            </div>
+            <div class="field" data-campo="documento">
+              <label for="usuarioDocumento">Número de documento *</label>
+              <input type="text" id="usuarioDocumento" name="documento" class="mono" maxlength="16" autocapitalize="off" spellcheck="false" placeholder="Ej. 1144012345" aria-describedby="usuarioDocumentoAyuda">
+              <span class="field-hint usuarios__ayuda" id="usuarioDocumentoAyuda">Con él inicia sesión; no se puede cambiar después.</span>
+            </div>
+            <div class="field field--full" data-campo="nombre">
+              <label for="usuarioNombre">Nombre completo *</label>
+              <input type="text" id="usuarioNombre" name="nombre" maxlength="120" placeholder="Nombres y apellidos">
+            </div>
           </div>
-          <div class="field" data-campo="documento">
-            <label for="usuarioDocumento">Número de documento *</label>
-            <input type="text" id="usuarioDocumento" name="documento" class="mono" maxlength="16" autocapitalize="off" spellcheck="false" placeholder="Ej. 1144012345">
+        </fieldset>
+
+        <fieldset class="usuarios__grupo">
+          <legend class="usuarios__grupo-titulo"><i class="ph ph-shield-check" aria-hidden="true"></i> Rol y equipo</legend>
+          <div class="form-grid form-grid--2col">
+            <div class="field" data-campo="rol">
+              <label for="usuarioRol">Rol *</label>
+              <select id="usuarioRol" name="rol" aria-describedby="usuarioRolAyuda"></select>
+            </div>
+            <div class="field" data-campo="equipo" id="usuarioCampoEquipo">
+              <label for="usuarioEquipo">Equipo Básico de Salud</label>
+              <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
+            </div>
+            <div class="field" data-campo="cargo" id="usuarioCampoCargo" hidden>
+              <label for="usuarioCargo">Zona o cargo</label>
+              <input type="text" id="usuarioCargo" name="cargo" maxlength="80" placeholder="Ej. Líder Zona Norte">
+            </div>
+            <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
+              <label for="usuarioPerfil">Perfil con que firma (ítem 14) *</label>
+              <select id="usuarioPerfil" name="perfil"></select>
+            </div>
+            <div class="field" data-campo="perfilOtro" id="usuarioCampoPerfilOtro" hidden>
+              <label for="usuarioPerfilOtro">¿Cuál? *</label>
+              <input type="text" id="usuarioPerfilOtro" name="perfilOtro" maxlength="80" placeholder="Ej. Trabajador social">
+            </div>
           </div>
-          <p class="field-hint field--full usuarios__ayuda">Con el documento inicia sesión; no se puede cambiar después.</p>
-          <div class="field field--full" data-campo="nombre">
-            <label for="usuarioNombre">Nombre completo *</label>
-            <input type="text" id="usuarioNombre" name="nombre" maxlength="120" placeholder="Nombres y apellidos">
+          <p class="usuarios__rol-ayuda" id="usuarioRolAyuda" aria-live="polite"></p>
+        </fieldset>
+
+        <fieldset class="usuarios__grupo">
+          <legend class="usuarios__grupo-titulo"><i class="ph ph-address-book" aria-hidden="true"></i> Contacto <span class="usuarios__opcional">opcional</span></legend>
+          <div class="form-grid form-grid--2col">
+            <div class="field" data-campo="correo">
+              <label for="usuarioCorreo">Correo</label>
+              <input type="email" id="usuarioCorreo" name="correo" maxlength="120" autocapitalize="off" spellcheck="false" placeholder="nombre@dominio.com">
+            </div>
+            <div class="field" data-campo="telefono">
+              <label for="usuarioTelefono">Teléfono</label>
+              <input type="tel" id="usuarioTelefono" name="telefono" inputmode="tel" maxlength="16" placeholder="Ej. 3001234567">
+            </div>
           </div>
-          <div class="field field--full" data-campo="cargo">
-            <label for="usuarioCargo">Cargo o zona a cargo</label>
-            <input type="text" id="usuarioCargo" name="cargo" maxlength="80" placeholder="Ej. Líder Zona Norte">
-          </div>
-          <div class="field" data-campo="correo">
-            <label for="usuarioCorreo">Correo</label>
-            <input type="email" id="usuarioCorreo" name="correo" maxlength="120" autocapitalize="off" spellcheck="false" placeholder="nombre@dominio.com">
-          </div>
-          <div class="field" data-campo="telefono">
-            <label for="usuarioTelefono">Teléfono</label>
-            <input type="tel" id="usuarioTelefono" name="telefono" inputmode="tel" maxlength="16" placeholder="Ej. 3001234567">
-          </div>
-          <div class="field" data-campo="rol">
-            <label for="usuarioRol">Rol *</label>
-            <select id="usuarioRol" name="rol"></select>
-          </div>
-          <div class="field" data-campo="equipo">
-            <label for="usuarioEquipo">Equipo Básico de Salud</label>
-            <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
-          </div>
-          <p class="field-hint field--full usuarios__ayuda">El equipo es obligatorio para el personal asistencial: firma el ítem 10 de cada ficha. La coordinación y los líderes no pertenecen a un EBS (lideran zonas con varios): déjelo vacío y anote la zona en el cargo; al diligenciar una ficha indican el EBS de la visita. La ficha técnica lo estructura como EBS seguido de 3 dígitos (EBS001).</p>
-          <div class="field" data-campo="perfil" id="usuarioCampoPerfil" hidden>
-            <label for="usuarioPerfil">Perfil profesional (ítem 14) *</label>
-            <select id="usuarioPerfil" name="perfil"></select>
-          </div>
-          <div class="field" data-campo="perfilOtro" id="usuarioCampoPerfilOtro" hidden>
-            <label for="usuarioPerfilOtro">¿Cuál? *</label>
-            <input type="text" id="usuarioPerfilOtro" name="perfilOtro" maxlength="80" placeholder="Ej. Trabajador social">
-          </div>
-          <div class="field field--full" id="usuarioCampoActivo" hidden>
-            <label class="usuarios__activo">
-              <input type="checkbox" name="activo" id="usuarioActivo">
-              <span>Cuenta activa</span>
-              <span class="field-hint field-hint--inline">Al desactivarla se cierran sus sesiones y no puede volver a entrar hasta reactivarla.</span>
-            </label>
-          </div>
+        </fieldset>
+
+        <div class="field field--full usuarios__estado" id="usuarioCampoActivo" hidden>
+          <label class="usuarios__activo">
+            <input type="checkbox" name="activo" id="usuarioActivo">
+            <span>Cuenta activa</span>
+            <span class="field-hint field-hint--inline">Al desactivarla se cierran sus sesiones y no puede volver a entrar hasta reactivarla.</span>
+          </label>
         </div>
 
         <p class="acceso__error" id="usuarioError" hidden role="alert"></p>

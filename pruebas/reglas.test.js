@@ -459,9 +459,6 @@ verificar('Coordenadas de Bogotá => advertencia, no bloqueo',
   validarReglas(fueraDeCali).length === 0 &&
   evaluarAdvertencias(fueraDeCali).filter(a => a.codigo === 'RN-022' || a.codigo === 'RN-023').length === 2);
 
-const territorioRuralEnUrbano = Object.assign(fichaBase(), { territorio: 'T55', microterritorio: 'MT01' });
-verificar('Territorio rural con área urbana => advertencia RN-007',
-  evaluarAdvertencias(territorioRuralEnUrbano).some(a => a.codigo === 'RN-007'));
 
 console.log('\n=== 9b. RN-016 — registrar a tiempo vs. corregir lo ya registrado ===');
 const hace45 = new Date(HOY.getTime());
@@ -724,6 +721,85 @@ verificar('  y no se manda vía al geocodificador',
 verificar('  y la ficha sin dirección pasa RN-021',
   !contextoDireccion.validarReglas(Object.assign(fichaBase(), { direccionNormalizada: sinDireccion }))
     .some(e => e.codigo === 'RN-021'));
+
+console.log('\n=== 13. Fallos del plan de pruebas (B03, C01, C04, E09, P04) ===');
+
+/* B03 — RN-007 bloquea en los dos sentidos, como aps.trg_hogar_territorio_area. */
+const conRn007 = (cambios) => validarReglas(Object.assign(fichaBase(), cambios)).filter(e => e.codigo === 'RN-007');
+verificar('Territorio rural (T55) con área urbana => bloqueo RN-007 en el ítem 7',
+  conRn007({ territorio: 'T55', microterritorio: 'MT01' }).some(e => e.ruta === 'territorio'));
+verificar('Territorio urbano (T48) con área rural => bloqueo RN-007',
+  conRn007({ areaUbicacion: 'rural' }).length === 1);
+verificar('Territorio rural con área rural, o urbano con área urbana => sin RN-007',
+  conRn007({ territorio: 'T55', microterritorio: 'MT01', areaUbicacion: 'rural' }).length === 0 && conRn007({}).length === 0);
+
+/* C01 — Intención reproductiva y gestación desde los 10 años. */
+const haceAnios = (anios, meses) => iso(new Date(HOY.getFullYear() - anios, HOY.getMonth() - (meses || 0), HOY.getDate()));
+const sinReproductivas = (cambios) => {
+  const persona = Object.assign(adultaValida(), cambios);
+  delete persona.intencionReproductiva;
+  delete persona.gestacionActual;
+  return validarReglas(Object.assign(fichaBase(), { familias: [familiaValida([persona])] }))
+    .filter(e => e.campo === 'intencionReproductiva' || e.campo === 'gestacionActual').map(e => e.codigo);
+};
+verificar('Bebé de 4 meses sin intención reproductiva ni gestación => sin RN-084 ni RN-085',
+  sinReproductivas({ fechaNacimiento: haceAnios(0, 4), tipoId: 'RC', numeroId: '10203040506' }).length === 0);
+verificar('Niña de 12 años sin responderlas => RN-084 y RN-085',
+  sinReproductivas({ fechaNacimiento: haceAnios(12), tipoId: 'TI', numeroId: '1020304050' }).join() === 'RN-084,RN-085');
+
+/* C04 — El edema alerta aunque el peso para la talla sea adecuado. */
+const conEdema = familiaValida([Object.assign(adultaValida(), {
+  fechaNacimiento: haceAnios(3), tipoId: 'RC', numeroId: '10203040506',
+  clasificacionAntropometrica: 'peso_adecuado', signosDesnutricion: ['edema']
+})]);
+const alertaEdema = evaluarAlertas(Object.assign(fichaBase(), { familias: [conEdema] })).find(a => a.codigo === 'RN-204');
+verificar('Edema con peso adecuado => RN-204 INMEDIATA, notifica y señala el ítem 97',
+  !!alertaEdema && alertaEdema.prioridad === 'inmediata' && alertaEdema.notificaSivigila &&
+  /signosDesnutricion$/.test(alertaEdema.ruta), JSON.stringify(alertaEdema));
+
+/* E09 — Alerta de población migrante. */
+const migrante = (cambios) => evaluarAlertas(Object.assign(fichaBase(), {
+  familias: [familiaValida([Object.assign(adultaValida(), cambios)])]
+})).find(a => a.titulo === 'Población migrante');
+const venezolanaRegular = migrante({ nacionalidad: 'VE', tipoId: 'PT', numeroId: '1234567', estatusMigratorio: 'regular' });
+verificar('Venezolana con PT y estatus regular => alerta REGULAR que pide marcar el ítem 77',
+  !!venezolanaRegular && venezolanaRegular.prioridad === 'regular' && /ítem 77/.test(venezolanaRegular.descripcion),
+  JSON.stringify(venezolanaRegular));
+verificar('Sin autorización de permanencia => alerta PRIORITARIA',
+  (migrante({ nacionalidad: 'VE', tipoId: 'PT', numeroId: '1234567', estatusMigratorio: 'sin_autorizacion' }) || {}).prioridad === 'prioritaria');
+verificar('Colombiana con «Migrantes» en el ítem 77 => alerta',
+  !!migrante({ sujetoEspecialProteccion: ['migrante'] }));
+verificar('Colombiana sin marca de migrante => sin alerta', !migrante({}));
+
+/* P04 — Un seguimiento anterior a la visita bloquea aunque el plan sólo advierta. */
+const ayer = new Date(HOY.getTime()); ayer.setDate(ayer.getDate() - 1);
+const conSeguimiento = (fecha) => Object.assign(fichaBase(), { planVivienda: {
+  codigoEbs: 'EBS001', codigoVivienda: 'HOG-001', acciones: [],
+  seguimientos: [{ seguimientoTipoId: 'CC', seguimientoNumeroId: '1144012345', accionConcertada: 'Visita de control',
+                   seg1Fecha: fecha, seg1Estado: 'C' }]
+} });
+verificar('Primer seguimiento de ayer => bloqueo RN-226 en la fecha',
+  validarReglas(conSeguimiento(iso(ayer))).some(e => e.codigo === 'RN-226' && /seg1Fecha$/.test(e.ruta)));
+verificar('Primer seguimiento del día de la visita => sin ese bloqueo',
+  !validarReglas(conSeguimiento(iso(HOY))).some(e => e.codigo === 'RN-226'));
+
+console.log('\n=== 14. Nombres de los territorios (listado de la E.S.E.) ===');
+const { etiquetaTerritorio, fijarCatalogosDinamicos } = contexto;
+const sinNombre = [];
+for (let n = 48; n <= 84; n++) {
+  const etiqueta = etiquetaTerritorio('T' + n);
+  if (!/^T\d+ · \S/.test(etiqueta) || /Zona rural/.test(etiqueta)) sinNombre.push(etiqueta);
+}
+verificar('Los 37 territorios vigentes (T48 a T84) tienen nombre propio', sinNombre.length === 0, sinNombre.join(', '));
+verificar('Urbano: «T48 · Comuna 3»; rural: «T55 · Montebello 1 (rural)»',
+  etiquetaTerritorio('T48') === 'T48 · Comuna 3' && etiquetaTerritorio('T55') === 'T55 · Montebello 1 (rural)',
+  etiquetaTerritorio('T48') + ' / ' + etiquetaTerritorio('T55'));
+verificar('Un territorio no vigente y sin datos se rotula sólo con el código', etiquetaTerritorio('T20') === 'T20');
+/* Al final: cambia el catálogo compartido del contexto. */
+fijarCatalogosDinamicos({ nombresTerritorios: { T55: 'T55', T56: 'Montebello Dos' } });
+verificar('La base actualiza el nombre, pero no lo reemplaza por el código (base sin migrar)',
+  etiquetaTerritorio('T55') === 'T55 · Montebello 1 (rural)' && etiquetaTerritorio('T56') === 'T56 · Montebello Dos (rural)',
+  etiquetaTerritorio('T55') + ' / ' + etiquetaTerritorio('T56'));
 
 console.log('\n---------------------------------------------');
 console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);

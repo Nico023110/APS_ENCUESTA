@@ -118,7 +118,7 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 Los identificadores `T01`…`T47` y `T85`…`T110` permanecen en el catálogo marcados como no vigentes (`cat.territorio.vigente = false`, sin nombre ni comuna): no se eligen en una ficha nueva, pero una ficha antigua que los tenga se sigue leyendo, corrigiendo y aceptando en el servidor.
 
-El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado".
+El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado", y un territorio urbano no admite "Área rural". La incoherencia **bloquea** en los dos sentidos, igual que la base (`aps.trg_hogar_territorio_area`). Un territorio es rural cuando todos sus microterritorios llevan comuna "Rural" (hoy, `T55` a `T84`); sin comuna cuenta como urbano.
 
 ### RN-008 — Microterritorio
 
@@ -565,7 +565,7 @@ La opción «Otra» y el ítem 65.1 (país escrito) quedaron retirados: el anexo
 Cuando la nacionalidad es distinta de Colombia, el sistema debe:
 
 1. Exigir coherencia con el tipo de documento del ítem 62 (se esperan CE, PE, PT o CD; el uso de CC o TI genera advertencia).
-2. Activar la alerta de **población migrante**, que se cruza con el ítem 77 ("Migrantes") y con el régimen de afiliación del ítem 75, dado que la condición migratoria es la principal barrera de acceso efectivo a los servicios de salud.
+2. Activar la alerta de **población migrante**, que se cruza con el ítem 77 ("Migrantes") y con el régimen de afiliación del ítem 75, dado que la condición migratoria es la principal barrera de acceso efectivo a los servicios de salud. La alerta (código RN-210, barreras de acceso) nace de la nacionalidad extranjera, del documento PE o PT o de "Migrantes" en el ítem 77; es **REGULAR**, y **PRIORITARIA** cuando el estatus migratorio es "Sin autorización de permanencia", porque sin regularizarse la persona no puede afiliarse. Si el ítem 77 no tiene "Migrantes", la alerta pide marcarlo.
 
 ### RN-066 — Sexo
 
@@ -687,11 +687,11 @@ La respuesta "No" activa alerta de **barrera de acceso a certificación de disca
 
 ### RN-084 — Intención reproductiva a corto plazo
 
-**Ítem 84.** Selección única binaria obligatoria ("Sí" / "No") para orientar servicios de planificación familiar o ruta materno-perinatal.
+**Ítem 84.** Selección única binaria obligatoria ("Sí" / "No") para orientar servicios de planificación familiar o ruta materno-perinatal. Se pregunta **desde los 10 años**, el inicio de la edad fértil que usa el Ministerio de Salud; a menores no se muestra ni se exige, y la variable 32 del reporte va vacía (condicional).
 
 ### RN-085 — Gestación actual confirmada
 
-**Ítem 85.** Campo obligatorio para personas con capacidad de gestar. Selección binaria ("Sí" / "No"). Si se marca "Sí", el sistema activa obligatoriamente las alertas de la **Ruta Materno Perinatal** conforme a **RN-205**.
+**Ítem 85.** Campo obligatorio para personas con capacidad de gestar **desde los 10 años** (mismo umbral de RN-084). Selección binaria ("Sí" / "No"). Una gestación en una niña menor de esa edad se registra con "Gestante" en el ítem 77, que también activa RN-205 y RN-206. Si se marca "Sí", el sistema activa obligatoriamente las alertas de la **Ruta Materno Perinatal** conforme a **RN-205**.
 
 ### RN-086 — Prácticas rutinarias de cuidado integral
 
@@ -1327,7 +1327,7 @@ El sistema debe conservar un **registro de auditoría inalterable** de toda la v
 
 Los seguimientos de los ítems **118, 119, 128, 129, 139 y 140** se rigen por:
 
-1. La fecha del **primer seguimiento** debe ser posterior a la fecha de diligenciamiento (ítem 16) y **no exceder el plazo del nivel de prioridad** asignado por RN-200: 48 horas para INMEDIATA, 72 horas para PRIORITARIA, 30 días para REGULAR.
+1. La fecha del **primer seguimiento** debe ser posterior a la fecha de diligenciamiento (ítem 16) y **no exceder el plazo del nivel de prioridad** asignado por RN-200: 48 horas para INMEDIATA, 72 horas para PRIORITARIA, 30 días para REGULAR. Una fecha **anterior a la visita bloquea** el guardado aunque el resto del plan sólo advierta (RN-222): la base no la admite, y el aviso debe salir junto al campo y no como un fallo al guardar.
 2. La fecha del **segundo seguimiento** debe ser cronológicamente posterior a la del primero.
 3. El estado se registra como **C** (Cumple), **CP** (Cumple Parcial) o **NC** (No cumple), en selección única obligatoria por cada acción concertada.
 4. Un estado **NC en el primer seguimiento** obliga a registrar el motivo y a programar el segundo seguimiento; **NC en el segundo** obliga a reformular la acción concertada o a escalar el caso al gestor de la EAPB. El motivo se escribe en el campo que aparece junto al estado al elegir «No cumple» (y se oculta y vacía con otro estado); si falta, se advierte sin impedir guardar (RN-222).
@@ -1412,6 +1412,24 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 ## Anexo A — Catálogo de territorios y microterritorios
 
 Catálogo parametrizado que soporta las reglas **RN-007** (Territorio, ítem 7) y **RN-008** (Microterritorio, ítem 8). La selección del microterritorio se filtra en cascada a partir del territorio elegido. El campo `comuna` se hereda como dato derivado de sólo lectura.
+
+**Nombre de los territorios.** El anexo los identifica sólo por código. El listado de la E.S.E. (`Microterritorios ESE LADERA.xlsx`) nombra cada uno por la comuna o el corregimiento que cubre, y el ítem 7 los muestra así: «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Se guardan en `cat.territorio.nombre`.
+
+| Código | Territorio | Código | Territorio | Código | Territorio |
+|---|---|---|---|---|---|
+| T48 | Comuna 3 | T61 | La Paz 2 | T74 | Los Andes 1 |
+| T49 | Comuna 1 | T62 | La Castilla 1 | T75 | Los Andes 2 |
+| T50 | Comuna 1.1 | T63 | La Castilla 2 | T76 | Buitrera 1 |
+| T51 | Comuna 18 | T64 | La Elvira 1 | T77 | Buitrera 2 |
+| T52 | Comuna 18.1 | T65 | La Elvira 2 | T78 | Hormiguero 1 |
+| T53 | Comuna 20 | T66 | Saladito 1 | T79 | Hormiguero 2 |
+| T54 | Comuna 20.1 | T67 | Saladito 2 | T80 | Hormiguero 3 |
+| T55 | Montebello 1 | T68 | Felidia 1 | T81 | Villa Carmelo 1 |
+| T56 | Montebello 2 | T69 | Felidia 2 | T82 | Villa Carmelo 2 |
+| T57 | Montebello 3 | T70 | Leonera 1 | T83 | Pance 1 |
+| T58 | Golondrinas 1 | T71 | Leonera 2 | T84 | Pance 2 |
+| T59 | Golondrinas 2 | T72 | Pichindé 1 | | |
+| T60 | La Paz 1 | T73 | Pichindé 2 | | |
 
 ```json
 {
