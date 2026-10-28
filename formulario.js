@@ -407,9 +407,8 @@ function revisarLimiteDeFecha(campo) {
   aviso.className = 'field-error-msg';
   aviso.dataset.origen = 'fecha';
   aviso.textContent = campo.id === 'fechaDiligenciamiento'
-    ? 'RN-016: la ficha no puede fecharse después de hoy (' + campo.max + ').'
-    : 'RN-064: la fecha no puede ser posterior al día en que se diligencia la ficha (' +
-      campo.max + ').';
+    ? 'La ficha no puede fecharse después de hoy (' + campo.max + ').'
+    : 'La fecha no puede ser posterior al día en que se diligencia la ficha (' + campo.max + ').';
   contenedor.appendChild(aviso);
 }
 

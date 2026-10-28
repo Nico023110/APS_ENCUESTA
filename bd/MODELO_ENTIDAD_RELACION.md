@@ -475,7 +475,7 @@ Tampoco se modelan como restricción las **habilitaciones condicionadas por edad
 | Punto | Resolución |
 |---|---|
 | **UZPE** | El catálogo queda sólo con `UZPE006`, la del despliegue actual. Habilitar otra es un `INSERT` en `cat.uzpe`, sin cambio de esquema. |
-| **Ruralidad del territorio** | Se deriva del Anexo A: un territorio es rural cuando sus microterritorios llevan `comuna = "Rural"`. Resultado: **30 rurales (T55–T84), 7 urbanos (T48–T54)**. La coherencia con el ítem 6 la impone `aps.trg_hogar_territorio_area()`. |
+| **Ruralidad del territorio** | Se deriva del Anexo A: un territorio es rural cuando sus microterritorios llevan `comuna = "Rural"`. Resultado en la continuidad: **30 rurales (T55–T84), 7 urbanos (T48–T54)**; en la ampliación (T163–T224, tres microterritorios cada uno): **32 rurales y 30 urbanos**. La coherencia con el ítem 6 la impone `aps.trg_hogar_territorio_area()`. |
 | **Matriz edad/sexo de RN-087** | Ya estaba en `catalogos.js` como `rangos` (en meses), `sexos`, `gestante` y `mujerEdadFertil`, y el seed la había cargado en `cat.opcion.metadata`. Ahora se aplica: `cat.atencion_rpms_exigible()`, `aps.atenciones_rpms_exigibles()` y un disparador que rechaza pendientes fuera de perfil. |
 | **Catálogo CUPS** | Cargado desde `TablaReferencia_CUPS.xlsx`: **10.024 procedimientos** con jerarquía oficial y búsqueda de texto. |
 | **Códigos NoCUPS** | 20 códigos creados en `05_nocups.sql`, limitados a lo que el catálogo oficial no cubre. Ver sección 3.3. |

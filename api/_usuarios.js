@@ -64,7 +64,7 @@ function validarDatos(datos, paraCrear) {
     throw new ErrorDeCuenta('Un rol que captura fichas necesita su Equipo Básico de Salud.', 'equipo');
   }
   if (salida.equipo && !/^[A-Za-z0-9]{3,20}$/.test(salida.equipo)) {
-    throw new ErrorDeCuenta('El código del equipo lleva entre 3 y 20 letras o números (RN-010).', 'equipo');
+    throw new ErrorDeCuenta('El código del equipo lleva entre 3 y 20 letras o números.', 'equipo');
   }
 
   /* Cargo y contacto: opcionales, para ubicar a la persona. El teléfono se
@@ -104,7 +104,7 @@ function validarDatos(datos, paraCrear) {
   if (salida.perfil === 'otro' && !salida.perfilOtro) {
     if (salida.rol === 'maestro') salida.perfilOtro = 'Usuario maestro';
     else if (roles.nivelDe(salida.rol) === 'coordinacion') salida.perfilOtro = salida.cargo || roles.etiquetaDeRol(salida.rol);
-    else throw new ErrorDeCuenta('Con el perfil «Otro» hay que indicar cuál (RN-014).', 'perfilOtro');
+    else throw new ErrorDeCuenta('Con el perfil «Otro» hay que indicar cuál.', 'perfilOtro');
   }
   if (salida.perfil !== 'otro') salida.perfilOtro = null;
 
@@ -154,7 +154,7 @@ async function crearCuenta(cliente, datos, opciones) {
       RETURNING id
     `, [d.tipoId, d.documento, d.nombre, d.perfil, d.perfilOtro, equipoId, d.cargo, d.correo, d.telefono])).rows[0].id;
   } catch (error) {
-    if (error.code === '23514') throw new ErrorDeCuenta('El documento no tiene el formato de ese tipo (RN-013).', 'documento');
+    if (error.code === '23514') throw new ErrorDeCuenta('El documento no tiene el formato de ese tipo.', 'documento');
     throw error;
   }
 

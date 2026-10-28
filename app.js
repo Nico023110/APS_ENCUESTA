@@ -85,6 +85,20 @@ function textoSeguro(valor) {
   return texto === '—' ? texto : escaparHtml(texto);
 }
 
+/* Los códigos de regla (RN-007, RN-226.4…) sirven al equipo técnico, no a
+   quien diligencia: se quitan de lo que llega a la pantalla —el prefijo
+   «RN-007: » y las referencias entre paréntesis—, venga del motor o del
+   servidor. El código sigue en los datos, la consola y la auditoría. */
+const PATRON_REGLA_AL_INICIO = /^\s*RN-\d+[a-z]?(?:\.\d+)?\s*:\s*/;
+const PATRON_REGLA_ENTRE_PARENTESIS =
+  /\s*\((?:ver\s+)?RN-\d+[a-z]?(?:\.\d+)?(?:\s*(?:,|y|a|·|\/)\s*RN-\d+[a-z]?(?:\.\d+)?)*\)/g;
+
+function sinCodigoDeRegla(valor) {
+  if (valor === null || valor === undefined) return valor;
+  const texto = String(valor).replace(PATRON_REGLA_ENTRE_PARENTESIS, '').replace(PATRON_REGLA_AL_INICIO, '');
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 /* ---------------------------------------------------------
    3. CONSTRUCCIÓN DE CONTROLES A PARTIR DE CATÁLOGOS
    --------------------------------------------------------- */
@@ -512,7 +526,7 @@ function aplicarBloqueoPorConsentimiento() {
   document.getElementById('btnGuardar').disabled = bloqueado;
 
   if (bloqueado) {
-    mostrarNotificacion('Sin consentimiento informado no es posible capturar datos (RN-001).', 'warning');
+    mostrarNotificacion('Sin consentimiento informado no es posible capturar datos.', 'warning');
   }
 }
 
@@ -1445,7 +1459,7 @@ function mostrarNotificacion(mensaje, tipo, alCerrar) {
 
   Swal.fire({
     title: TITULOS_TOAST[tipo],
-    text: mensaje,
+    text: sinCodigoDeRegla(mensaje),
     icon: tipo,
     confirmButtonText: 'Entendido',
     confirmButtonColor: '#0060a0',
@@ -1486,7 +1500,7 @@ function mostrarAvisoBreve(mensaje, tipo, duracionMs) {
   const titulo = document.createElement('strong');
   titulo.textContent = TITULOS_TOAST[tipo] || TITULOS_TOAST.info;
   textos.appendChild(titulo);
-  textos.appendChild(document.createTextNode(mensaje));
+  textos.appendChild(document.createTextNode(sinCodigoDeRegla(mensaje)));
   aviso.appendChild(textos);
   contenedor.appendChild(aviso);
   aviso._temporizador = programarSalidaDeAviso(aviso, duracionMs);
@@ -2129,7 +2143,7 @@ function resumenPlanEnHistorial(encuesta) {
   return (
     '<div class="plan-resumen__cabecera">' + cabecera +
       '<span class="plan-resumen__plazo plan-resumen__plazo--' + plazo.nivel + '"' +
-      ' title="Plazo de atención (RN-200) de la alerta sin conducta más urgente: ' +
+      ' title="Plazo de atención de la alerta sin conducta más urgente: ' +
       escaparHtml(formatearFechaHora(detalle.venceSinConducta)) + '">' +
       '<i class="ph ph-timer" aria-hidden="true"></i>' + escaparHtml(plazo.texto) + '</span>' +
     '</div>'
@@ -2818,7 +2832,7 @@ function construirHogarDetalle(numero, familias, fechaReferencia) {
           '<span class="badge badge--warning">Sin caracterizar</span>' +
         '</div>' +
         '<p class="detalle-hogar__nota">Declarado en el ítem 28; no estaba en la visita. ' +
-          'Se caracteriza desde Historial → Corregir (RN-028).</p>' +
+          'Se caracteriza desde Historial → Corregir.</p>' +
       '</li>'
     );
   }
@@ -2942,7 +2956,7 @@ async function abrirModalDetalle(id) {
 
   cuerpo.innerHTML = htmlSeccionesDelDetalle(encuesta) +
     '<div class="detail-section detalle-plan" data-plan-cargando>' +
-      '<h3>Plan de cuidado (RN-220)</h3>' + htmlDetalleCargando('Cargando el plan de cuidado…') +
+      '<h3>Plan de cuidado</h3>' + htmlDetalleCargando('Cargando el plan de cuidado…') +
     '</div>';
 
   const fichaConPlan = await planCompleto;
@@ -2965,8 +2979,8 @@ function htmlSeccionesDelDetalle(encuesta) {
 
   return (
     construirSeccionDetalle('Consentimiento y situación inminente', [
-      { etiqueta: 'Consentimiento informado (RN-001)', valor: textoSiNo(encuesta.consentimiento) },
-      { etiqueta: 'Situación inminente (RN-002)', valor: etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, comoLista(encuesta.situacionInminente)) },
+      { etiqueta: 'Consentimiento informado', valor: textoSiNo(encuesta.consentimiento) },
+      { etiqueta: 'Situación inminente', valor: etiquetasDeCatalogo(CAT_SITUACION_INMINENTE, comoLista(encuesta.situacionInminente)) },
       { etiqueta: 'Observaciones de la situación', valor: encuesta.observacionesSituacion }
     ]) +
     construirSeccionDetalle('Identificación geográfica', [
@@ -3189,9 +3203,7 @@ function construirAlertasDetalle(completa) {
           escaparHtml(NOMBRE_PRIORIDAD[alerta.prioridad] || alerta.prioridad) + '</span>' +
         '<span class="detalle-plan__alerta-texto">' +
           '<span class="detalle-plan__alerta-titulo">' + escaparHtml(alerta.titulo) + '</span>' +
-          '<span class="detalle-plan__alerta-meta">' +
-            (alerta.codigo ? '<span class="mono">' + escaparHtml(alerta.codigo) + '</span> · ' : '') +
-            meta +
+          '<span class="detalle-plan__alerta-meta">' + meta +
           '</span>' +
         '</span>' +
         '<span class="detalle-plan__alerta-estado">' +
@@ -3273,7 +3285,7 @@ function construirSeccionPlan(encuesta, completa) {
 
   return (
     '<div class="detail-section detalle-plan">' +
-      '<h3>Plan de cuidado (RN-220)</h3>' +
+      '<h3>Plan de cuidado</h3>' +
       (cabecera.length > 0 || cuentas.length > 0
         ? '<div class="detalle-plan__resumen">' +
             cabecera.join('') +
@@ -3654,7 +3666,7 @@ function marcarIncumplimiento(formulario, incumplimiento) {
   contenedor.classList.add('has-error');
   const aviso = document.createElement('span');
   aviso.className = 'field-error-msg';
-  aviso.textContent = incumplimiento.codigo + ': ' + incumplimiento.mensaje;
+  aviso.textContent = sinCodigoDeRegla(incumplimiento.mensaje);
   contenedor.appendChild(aviso);
   return contenedor;
 }
@@ -3670,7 +3682,7 @@ function marcarAdvertencia(formulario, advertencia) {
   contenedor.classList.add('has-warning');
   const aviso = document.createElement('span');
   aviso.className = 'field-warning-msg';
-  aviso.textContent = advertencia.codigo + ': ' + advertencia.mensaje;
+  aviso.textContent = sinCodigoDeRegla(advertencia.mensaje);
   contenedor.appendChild(aviso);
   return contenedor;
 }
@@ -3770,7 +3782,6 @@ function renderizarAlertas(alertas, sinAccion) {
     const pendiente = codigosSinAccion.indexOf(alerta.codigo + '|' + (alerta.referencia || '')) !== -1;
     const pies = [];
 
-    pies.push('<span class="pill-meta">' + escaparHtml(alerta.codigo) + '</span>');
     pies.push('<span class="pill-meta">' + escaparHtml(ETIQUETA_PRIORIDAD[alerta.prioridad]) + '</span>');
     pies.push('<span class="pill-meta">Plan: ' + escaparHtml(alerta.plan) + '</span>');
     if (alerta.referencia) pies.push('<span class="pill-meta">' + escaparHtml(alerta.referencia) + '</span>');
@@ -3781,7 +3792,7 @@ function renderizarAlertas(alertas, sinAccion) {
     return '<div class="alerta-item alerta-item--' + alerta.prioridad + '">' +
       '<div class="alerta-item__cuerpo">' +
         '<span class="alerta-item__titulo">' + escaparHtml(alerta.titulo) + '</span>' +
-        '<span class="alerta-item__descripcion">' + escaparHtml(alerta.descripcion) + '</span>' +
+        '<span class="alerta-item__descripcion">' + escaparHtml(sinCodigoDeRegla(alerta.descripcion)) + '</span>' +
         '<div class="alerta-item__pies">' + pies.join('') + '</div>' +
       '</div>' +
     '</div>';
@@ -3859,7 +3870,7 @@ function renderizarResumenAlertasPlan(alertas, sinAccion, riesgo) {
                   escaparHtml(NOMBRE_PRIORIDAD[alerta.prioridad] || alerta.prioridad) + '</span>' +
                 '<span class="resumen-alertas__texto">' +
                   '<span class="resumen-alertas__alerta">' + escaparHtml(alerta.titulo) + '</span>' +
-                  '<span class="resumen-alertas__descripcion">' + escaparHtml(alerta.descripcion) + '</span>' +
+                  '<span class="resumen-alertas__descripcion">' + escaparHtml(sinCodigoDeRegla(alerta.descripcion)) + '</span>' +
                 '</span>' +
                 (pendiente
                   ? '<span class="badge badge--plan-pendiente">Sin conducta</span>'
@@ -3942,9 +3953,8 @@ function renderizarPlanCuidado(resumen) {
           ? '<span class="pill-meta">' + escaparHtml(ETIQUETA_PRIORIDAD[item.prioridad] || item.prioridad) + '</span>' : '';
         return '<div class="alerta-item alerta-item--pendiente-plan">' +
           '<div class="alerta-item__cuerpo">' +
-            '<span class="alerta-item__titulo">' + escaparHtml(item.mensaje) + '</span>' +
-            '<div class="alerta-item__pies">' +
-              '<span class="pill-meta">' + escaparHtml(item.codigo) + '</span>' + prioridad + referencia +
+            '<span class="alerta-item__titulo">' + escaparHtml(sinCodigoDeRegla(item.mensaje)) + '</span>' +
+            '<div class="alerta-item__pies">' + prioridad + referencia +
             '</div>' +
           '</div>' +
         '</div>';
@@ -3975,9 +3985,8 @@ function renderizarImpedimentos(impedimentos) {
     return '<div class="alerta-item alerta-item--inmediata alerta-item--enlace" role="button" tabindex="0" ' +
         'data-pendiente="' + indice + '" title="Ir al campo">' +
       '<div class="alerta-item__cuerpo">' +
-        '<span class="alerta-item__titulo">' + escaparHtml(item.mensaje) + '</span>' +
+        '<span class="alerta-item__titulo">' + escaparHtml(sinCodigoDeRegla(item.mensaje)) + '</span>' +
         '<div class="alerta-item__pies">' +
-          '<span class="pill-meta">' + escaparHtml(item.codigo) + '</span>' +
           (item.bloque ? '<span class="pill-meta">' + escaparHtml(item.bloque) + '</span>' : '') +
           referencia +
         '</div>' +
@@ -4207,12 +4216,12 @@ function renderizarNavegadorPendientes() {
     const activo = indice === navegadorPendientes.indice ? ' is-activo' : '';
     const referencia = item.referencia
       ? '<span class="nav-errores__item-ref">' + escaparHtml(item.referencia) + '</span>' : '';
-    const titulo = item.etiqueta || item.codigo;
+    const titulo = item.etiqueta || item.bloque || 'Dato pendiente';
     return '<button type="button" class="nav-errores__item' + activo + '" data-indice="' + indice + '">' +
       '<span class="nav-errores__item-num">' + (indice + 1) + '</span>' +
       '<span class="nav-errores__item-cuerpo">' +
         '<span class="nav-errores__item-titulo">' + escaparHtml(titulo) + referencia + '</span>' +
-        '<span class="nav-errores__item-detalle">' + escaparHtml(item.codigo + ': ' + item.mensaje) + '</span>' +
+        '<span class="nav-errores__item-detalle">' + escaparHtml(sinCodigoDeRegla(item.mensaje)) + '</span>' +
       '</span>' +
     '</button>';
   }).join('');
@@ -4947,7 +4956,7 @@ function mostrarBloqueosDelServidor(formulario, bloqueos, encabezado) {
       contenedor.classList.add('has-error');
       const aviso = document.createElement('span');
       aviso.className = 'field-error-msg';
-      aviso.textContent = (b.codigo || 'BD') + ': ' + b.mensaje;
+      aviso.textContent = sinCodigoDeRegla(b.mensaje);
       contenedor.appendChild(aviso);
     }
   });

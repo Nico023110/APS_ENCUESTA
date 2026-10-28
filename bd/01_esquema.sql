@@ -140,7 +140,7 @@ CREATE TABLE cat.uzpe (                                           -- RN-004
 );
 
 CREATE TABLE cat.territorio (                                     -- RN-007, Anexo A
-  codigo       text PRIMARY KEY,                                  -- T48 … T84
+  codigo       text PRIMARY KEY,                                  -- T48 … T84, T163 … T224
   nombre       text NOT NULL,
   uzpe_codigo  text REFERENCES cat.uzpe(codigo),
   es_rural     boolean NOT NULL DEFAULT false,                    -- restringe RN-007 vs ítem 6
@@ -149,7 +149,7 @@ CREATE TABLE cat.territorio (                                     -- RN-007, Ane
 
 CREATE TABLE cat.microterritorio (                                -- RN-008, Anexo A
   territorio_codigo text NOT NULL REFERENCES cat.territorio(codigo),
-  codigo            text NOT NULL,                                -- MT01 … MT04
+  codigo            text NOT NULL,                                -- MT01 … MT04 (ampliación: MT03)
   nombre            text,
   comuna            text,                                         -- se hereda como derivado
   vigente           boolean NOT NULL DEFAULT true,

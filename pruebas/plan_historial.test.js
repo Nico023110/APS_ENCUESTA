@@ -147,7 +147,7 @@ window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: tr
     /Pendiente/.test(texto) && Boolean(sec.querySelector('.plan-resumen__plazo')) &&
     /1 acción · 1 derivación · 1 de 2 seguimientos · 1 alerta sin conducta/.test(texto), texto.slice(0, 300));
   check('  la alerta de hacinamiento, sin conducta y en el plan de la vivienda',
-    /Hacinamiento/.test(texto) && /RN-211/.test(texto) && /Sin conducta/.test(texto) && /Plan de la vivienda/.test(texto));
+    /Hacinamiento/.test(texto) && !/RN-\d/.test(texto) && /Sin conducta/.test(texto) && /Plan de la vivienda/.test(texto));
   check('  la acción con su código, la derivación, la cita y quién la hizo',
     /NC-FAM-02/.test(texto) && /Derivada a ESE Ladera · cita el/.test(texto) && /Ejecutó CC 1144012345/.test(texto));
   check('  el texto libre se escapa', /Se remitió a <trabajo social>/.test(texto) && !sec.querySelector('trabajo'));

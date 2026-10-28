@@ -144,7 +144,8 @@ silencio('\n=== B. Bloques del instrumento ===');
 
 const opciones = $$('#territorio option').map(o => o.value).filter(Boolean);
 const numero = (t) => Number(String(t).replace('T', ''));
-verificar('B02', 'La lista de territorios sólo ofrece T48 a T84', opciones.length === 37 && opciones.every(t => numero(t) >= 48 && numero(t) <= 84),
+verificar('B02', 'La lista de territorios sólo ofrece T48 a T84 y la ampliación T163 a T224',
+  opciones.length === 99 && opciones.every(t => (numero(t) >= 48 && numero(t) <= 84) || (numero(t) >= 163 && numero(t) <= 224)),
   opciones.length + ': ' + opciones.slice(0, 3).join(',') + '…' + opciones.slice(-2).join(','));
 setVal($('#territorio'), 'T50');
 setVal($('#microterritorio'), 'MT02');

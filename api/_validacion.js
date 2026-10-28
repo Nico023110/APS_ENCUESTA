@@ -434,7 +434,7 @@ async function validarIntegridad(cliente, encuesta) {
         if (documentos.has(clave)) {
           errores.push(fallo(
             rutaI + '.numeroId',
-            'RN-063: documento repetido dentro de la ficha. Ya lo usa el integrante ' +
+            'Documento repetido dentro de la ficha. Ya lo usa el integrante ' +
               (documentos.get(clave) + 1) + '.',
             integrante.numeroId
           ));
@@ -452,7 +452,7 @@ async function validarIntegridad(cliente, encuesta) {
       if (noAfiliado && !sinEapb) {
         errores.push(fallo(
           rutaI + '.eapb',
-          'RN-076: "No afiliado" no admite EAPB.',
+          '«No afiliado» no admite EAPB.',
           integrante.eapb
         ));
       }
@@ -460,7 +460,7 @@ async function validarIntegridad(cliente, encuesta) {
       if (!noAfiliado && sinEapb && !vacio(integrante.regimenAfiliacion)) {
         errores.push(fallo(
           rutaI + '.eapb',
-          'RN-076: la EAPB es obligatoria cuando el régimen no es "No afiliado".',
+          'La EAPB es obligatoria cuando el régimen no es «No afiliado».',
           null
         ));
       }
@@ -571,11 +571,11 @@ async function validarPlanes(cliente, encuesta, errores) {
          aplicar RN-226.4, que escala al gestor de la EAPB. */
       if (seg.seg1Estado === 'NC' && vacio(seg.seg1MotivoNc)) {
         errores.push(aviso(rutaS + '.seg1MotivoNc',
-          'Registre el motivo del primer seguimiento "No cumple" (RN-226.4).', null));
+          'Registre el motivo del primer seguimiento «No cumple».', null));
       }
       if (seg.seg2Estado === 'NC' && vacio(seg.seg2MotivoNc)) {
         errores.push(aviso(rutaS + '.seg2MotivoNc',
-          'Registre el motivo del segundo seguimiento "No cumple" (RN-226.4).', null));
+          'Registre el motivo del segundo seguimiento «No cumple».', null));
       }
     });
   });

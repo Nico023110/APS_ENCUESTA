@@ -53,8 +53,10 @@ const CAT_TIPO_UBICACION = [
 
 /* ---------------------------------------------------------
    RN-007 / RN-008 — Territorios y microterritorios de Santiago de Cali
-   El catálogo va de T01 a T110. Los 37 territorios del Anexo A (T48…T84)
-   traen sus 4 microterritorios con nombre y comuna; el resto entra con
+   El catálogo va de T01 a T110, más la ampliación de la E.S.E. (T163 a
+   T224, con 3 microterritorios cada uno). Los 37 territorios del Anexo A
+   (T48…T84) traen sus 4 microterritorios con nombre y comuna; T01…T47 y
+   T85…T110, de otras E.S.E., entran con
    MT01…MT04 sin nombre ni comuna, para que puedan seleccionarse mientras
    llega el detalle del anexo (no se inventan nombres). Sin comuna, un
    territorio cuenta como urbano para RN-007, igual que en la base.
@@ -719,28 +721,349 @@ const CAT_TERRITORIOS = {
     { codigo: 'MT02', nombre: null, comuna: null },
     { codigo: 'MT03', nombre: null, comuna: null },
     { codigo: 'MT04', nombre: null, comuna: null }
+  ],
+  /* Ampliación de la E.S.E. Ladera (Resoluciones 1397, 1976 y 2225 de 2024;
+     hoja «Ty MT AMPLIACION» del listado de octubre de 2026): T163 a T224,
+     tres microterritorios cada uno. La hoja traía códigos con la letra O
+     (MTO2), una fila de Caney con el código de Pichindé (T187 por T167) y
+     nombres sin tilde o mal escritos (San Pacual, Felodia, Saladiito): aquí
+     van corregidos. */
+  T163: [
+    { codigo: 'MT01', nombre: 'Terrón Colorado sector 5', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Terrón Colorado sector 6', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Terrón Colorado sector 7', comuna: '1' }
+  ],
+  T164: [
+    { codigo: 'MT01', nombre: 'Terrón Colorado sector 8', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Terrón Colorado sector 9', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Terrón Colorado sector 10', comuna: '1' }
+  ],
+  T165: [
+    { codigo: 'MT01', nombre: 'Vista Hermosa sector 1', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Vista Hermosa sector 2', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Vista Hermosa sector 3', comuna: '1' }
+  ],
+  T166: [
+    { codigo: 'MT01', nombre: 'Libertadores sector 1', comuna: '3' },
+    { codigo: 'MT02', nombre: 'Libertadores sector 2', comuna: '3' },
+    { codigo: 'MT03', nombre: 'Navarro La Chanca', comuna: '3' }
+  ],
+  T167: [
+    { codigo: 'MT01', nombre: 'Caney sector 1', comuna: '17' },
+    { codigo: 'MT02', nombre: 'Caney sector 2', comuna: '17' },
+    { codigo: 'MT03', nombre: 'Caney sector 3', comuna: '17' }
+  ],
+  T168: [
+    { codigo: 'MT01', nombre: 'Valle del Lili sector 1', comuna: '17' },
+    { codigo: 'MT02', nombre: 'Valle del Lili sector 2', comuna: '17' },
+    { codigo: 'MT03', nombre: 'Valle del Lili sector 3', comuna: '17' }
+  ],
+  T169: [
+    { codigo: 'MT01', nombre: 'El Jordán sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'El Jordán sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'El Jordán sector 3', comuna: '18' }
+  ],
+  T170: [
+    { codigo: 'MT01', nombre: 'Belén sector 1', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Belén sector 2', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Belén sector 3', comuna: '20' }
+  ],
+  T171: [
+    { codigo: 'MT01', nombre: 'Lleras Camargo sector 1', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Lleras Camargo sector 2', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Lleras Camargo sector 3', comuna: '20' }
+  ],
+  T172: [
+    { codigo: 'MT01', nombre: 'Brisas de Mayo sector 1', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Brisas de Mayo sector 2', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Brisas de Mayo sector 3', comuna: '20' }
+  ],
+  T173: [
+    { codigo: 'MT01', nombre: 'La Buitrera sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Buitrera sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Buitrera sector 11', comuna: 'Rural' }
+  ],
+  T174: [
+    { codigo: 'MT01', nombre: 'Pichindé sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Pichindé sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Pichindé sector 11', comuna: 'Rural' }
+  ],
+  T175: [
+    { codigo: 'MT01', nombre: 'El Hormiguero sector 13', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'El Hormiguero sector 14', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'El Hormiguero sector 15', comuna: 'Rural' }
+  ],
+  T176: [
+    { codigo: 'MT01', nombre: 'El Saladito sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'El Saladito sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'El Saladito sector 11', comuna: 'Rural' }
+  ],
+  T177: [
+    { codigo: 'MT01', nombre: 'Felidia sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Felidia sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Felidia sector 11', comuna: 'Rural' }
+  ],
+  T178: [
+    { codigo: 'MT01', nombre: 'Golondrinas sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Golondrinas sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Golondrinas sector 11', comuna: 'Rural' }
+  ],
+  T179: [
+    { codigo: 'MT01', nombre: 'La Buitrera sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Buitrera sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Buitrera sector 14', comuna: 'Rural' }
+  ],
+  T180: [
+    { codigo: 'MT01', nombre: 'La Castilla sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Castilla sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Castilla sector 11', comuna: 'Rural' }
+  ],
+  T181: [
+    { codigo: 'MT01', nombre: 'La Elvira sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Elvira sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Elvira sector 11', comuna: 'Rural' }
+  ],
+  T182: [
+    { codigo: 'MT01', nombre: 'La Leonera sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Leonera sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Leonera sector 11', comuna: 'Rural' }
+  ],
+  T183: [
+    { codigo: 'MT01', nombre: 'La Paz sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Paz sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Paz sector 11', comuna: 'Rural' }
+  ],
+  T184: [
+    { codigo: 'MT01', nombre: 'Los Andes sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Los Andes sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Los Andes sector 11', comuna: 'Rural' }
+  ],
+  T185: [
+    { codigo: 'MT01', nombre: 'Montebello sector 13', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Montebello sector 14', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Montebello sector 15', comuna: 'Rural' }
+  ],
+  T186: [
+    { codigo: 'MT01', nombre: 'Pance sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Pance sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Pance sector 11', comuna: 'Rural' }
+  ],
+  T187: [
+    { codigo: 'MT01', nombre: 'Pichindé sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Pichindé sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Pichindé sector 14', comuna: 'Rural' }
+  ],
+  T188: [
+    { codigo: 'MT01', nombre: 'Villa Carmelo sector 9', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Villa Carmelo sector 10', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Villa Carmelo sector 11', comuna: 'Rural' }
+  ],
+  T189: [
+    { codigo: 'MT01', nombre: 'Patio Bonito sector 1', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Patio Bonito sector 2', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Patio Bonito sector 3', comuna: '1' }
+  ],
+  T190: [
+    { codigo: 'MT01', nombre: 'Aguacatal sector 1', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Aguacatal sector 2', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Aguacatal sector 3', comuna: '1' }
+  ],
+  T191: [
+    { codigo: 'MT01', nombre: 'Aguacatal sector 4', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Aguacatal sector 5', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Aguacatal sector 6', comuna: '1' }
+  ],
+  T192: [
+    { codigo: 'MT01', nombre: 'Vista Hermosa sector 4', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Vista Hermosa sector 5', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Vista Hermosa sector 6', comuna: '1' }
+  ],
+  T193: [
+    { codigo: 'MT01', nombre: 'Terrón Colorado sector 11', comuna: '1' },
+    { codigo: 'MT02', nombre: 'Terrón Colorado sector 12', comuna: '1' },
+    { codigo: 'MT03', nombre: 'Terrón Colorado sector 13', comuna: '1' }
+  ],
+  T194: [
+    { codigo: 'MT01', nombre: 'San Pascual sector 1', comuna: '3' },
+    { codigo: 'MT02', nombre: 'San Pascual sector 2', comuna: '3' },
+    { codigo: 'MT03', nombre: 'San Antonio sector 1', comuna: '3' }
+  ],
+  T195: [
+    { codigo: 'MT01', nombre: 'Ciudadela Comfandi sector 1', comuna: '17' },
+    { codigo: 'MT02', nombre: 'Ciudadela Comfandi sector 2', comuna: '17' },
+    { codigo: 'MT03', nombre: 'Ciudadela Comfandi sector 3', comuna: '17' }
+  ],
+  T196: [
+    { codigo: 'MT01', nombre: 'Valle del Lili sector 4', comuna: '17' },
+    { codigo: 'MT02', nombre: 'Valle del Lili sector 5', comuna: '17' },
+    { codigo: 'MT03', nombre: 'Valle del Lili sector 6', comuna: '17' }
+  ],
+  T197: [
+    { codigo: 'MT01', nombre: 'Alto Jordán sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Alto Jordán sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Alto Jordán sector 3', comuna: '18' }
+  ],
+  T198: [
+    { codigo: 'MT01', nombre: 'Alto Jordán sector 4', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Alto Jordán sector 5', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Alto Jordán sector 6', comuna: '18' }
+  ],
+  T199: [
+    { codigo: 'MT01', nombre: 'Bellavista sector 1', comuna: '19' },
+    { codigo: 'MT02', nombre: 'Bellavista sector 2', comuna: '19' },
+    { codigo: 'MT03', nombre: 'Bellavista sector 3', comuna: '19' }
+  ],
+  T200: [
+    { codigo: 'MT01', nombre: 'Brisas de Mayo sector 4', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Brisas de Mayo sector 5', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Brisas de Mayo sector 6', comuna: '20' }
+  ],
+  T201: [
+    { codigo: 'MT01', nombre: 'Belisario Caicedo sector 1', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Belisario Caicedo sector 2', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Cañaveralejo sector 1', comuna: '20' }
+  ],
+  T202: [
+    { codigo: 'MT01', nombre: 'Cañaveralejo sector 2', comuna: '20' },
+    { codigo: 'MT02', nombre: 'La Sultana sector 1', comuna: '20' },
+    { codigo: 'MT03', nombre: 'La Sultana sector 2', comuna: '20' }
+  ],
+  T203: [
+    { codigo: 'MT01', nombre: 'Lleras Camargo sector 4', comuna: '20' },
+    { codigo: 'MT02', nombre: 'Lleras Camargo sector 5', comuna: '20' },
+    { codigo: 'MT03', nombre: 'Lleras Camargo sector 6', comuna: '20' }
+  ],
+  T204: [
+    { codigo: 'MT01', nombre: 'Alto Jordán sector 7', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Alto Jordán sector 8', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Alto Jordán sector 9', comuna: '18' }
+  ],
+  T205: [
+    { codigo: 'MT01', nombre: 'Mario Correa sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Mario Correa sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Mario Correa sector 3', comuna: '18' }
+  ],
+  T206: [
+    { codigo: 'MT01', nombre: 'Polvorines sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Polvorines sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Polvorines sector 3', comuna: '18' }
+  ],
+  T207: [
+    { codigo: 'MT01', nombre: 'Nápoles sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Nápoles sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Meléndez sector 1', comuna: '18' }
+  ],
+  T208: [
+    { codigo: 'MT01', nombre: 'Los Chorros sector 1', comuna: '18' },
+    { codigo: 'MT02', nombre: 'Los Chorros sector 2', comuna: '18' },
+    { codigo: 'MT03', nombre: 'Lourdes sector 1', comuna: '18' }
+  ],
+  T209: [
+    { codigo: 'MT01', nombre: 'El Saladito sector 11', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'El Saladito sector 12', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'El Saladito sector 13', comuna: 'Rural' }
+  ],
+  T210: [
+    { codigo: 'MT01', nombre: 'El Saladito sector 14', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'El Saladito sector 15', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'El Saladito sector 16', comuna: 'Rural' }
+  ],
+  T211: [
+    { codigo: 'MT01', nombre: 'Felidia sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Felidia sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Felidia sector 14', comuna: 'Rural' }
+  ],
+  T212: [
+    { codigo: 'MT01', nombre: 'Felidia sector 15', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Felidia sector 16', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Felidia sector 17', comuna: 'Rural' }
+  ],
+  T213: [
+    { codigo: 'MT01', nombre: 'Golondrinas sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Golondrinas sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Golondrinas sector 14', comuna: 'Rural' }
+  ],
+  T214: [
+    { codigo: 'MT01', nombre: 'La Buitrera sector 15', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Buitrera sector 16', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Buitrera sector 17', comuna: 'Rural' }
+  ],
+  T215: [
+    { codigo: 'MT01', nombre: 'La Buitrera sector 18', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Buitrera sector 19', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Buitrera sector 20', comuna: 'Rural' }
+  ],
+  T216: [
+    { codigo: 'MT01', nombre: 'La Buitrera sector 21', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Buitrera sector 22', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Buitrera sector 23', comuna: 'Rural' }
+  ],
+  T217: [
+    { codigo: 'MT01', nombre: 'La Castilla sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Castilla sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Castilla sector 14', comuna: 'Rural' }
+  ],
+  T218: [
+    { codigo: 'MT01', nombre: 'La Elvira sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Elvira sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Elvira sector 14', comuna: 'Rural' }
+  ],
+  T219: [
+    { codigo: 'MT01', nombre: 'La Leonera sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Leonera sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Leonera sector 14', comuna: 'Rural' }
+  ],
+  T220: [
+    { codigo: 'MT01', nombre: 'La Paz sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'La Paz sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'La Paz sector 14', comuna: 'Rural' }
+  ],
+  T221: [
+    { codigo: 'MT01', nombre: 'Los Andes sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Los Andes sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Los Andes sector 14', comuna: 'Rural' }
+  ],
+  T222: [
+    { codigo: 'MT01', nombre: 'Pance sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Pance sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Pance sector 14', comuna: 'Rural' }
+  ],
+  T223: [
+    { codigo: 'MT01', nombre: 'Pichindé sector 15', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Pichindé sector 16', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Pichindé sector 17', comuna: 'Rural' }
+  ],
+  T224: [
+    { codigo: 'MT01', nombre: 'Villa Carmelo sector 12', comuna: 'Rural' },
+    { codigo: 'MT02', nombre: 'Villa Carmelo sector 13', comuna: 'Rural' },
+    { codigo: 'MT03', nombre: 'Villa Carmelo sector 14', comuna: 'Rural' }
   ]
 };
 
 /* Territorios vigentes: los que la E.S.E. Red de Salud de Ladera atiende,
    según su listado de territorios y microterritorios (Territorios_
    Microterritorio.xlsx, octubre de 2026): T48 a T84, los mismos 37 del Anexo
-   A, con 4 microterritorios cada uno. Sólo éstos se ofrecen en el ítem 7.
+   A, con 4 microterritorios cada uno, y los 62 de la ampliación (T163 a
+   T224), con 3. Sólo éstos se ofrecen en el ítem 7.
    Los demás (T01…T47 y T85…T110) siguen en CAT_TERRITORIOS para leer y
    corregir fichas antiguas que los tengan, pero ya no se eligen. Con red,
    la lista se toma de la base (cat.territorio.vigente): ver
    aplicarCatalogosDinamicos. */
 const TERRITORIOS_VIGENTES = [];
 for (let n = 48; n <= 84; n++) TERRITORIOS_VIGENTES.push('T' + n);
+for (let n = 163; n <= 224; n++) TERRITORIOS_VIGENTES.push('T' + n);
 
 function territorioVigente(codigoTerritorio) {
   return TERRITORIOS_VIGENTES.indexOf(codigoTerritorio) !== -1;
 }
 
-/* Nombre de cada territorio vigente, del listado de la E.S.E. (Microterritorios
-   ESE LADERA.xlsx, columna «Comuna»). El Anexo A sólo los identifica por
-   código; la E.S.E. los nombra por la comuna o el corregimiento que cubren, y
-   así los reconoce el equipo en terreno. Sin el nombre, los 30 rurales se
+/* Nombre de cada territorio vigente, del listado de la E.S.E. (columna
+   «Comuna» de la continuidad y de la ampliación). El Anexo A sólo los
+   identifica por código; la E.S.E. los nombra por la comuna o el
+   corregimiento que cubren, y así los reconoce el equipo en terreno. Los
+   corregimientos llevan su nombre completo y el número en arábigo en las dos
+   listas (La Buitrera 1 a 7), aunque la hoja de ampliación los numere en
+   romano. Sin el nombre, los 30 rurales se
    veían iguales en el ítem 7 («T55 · Zona rural»). Con red, la base puede
    actualizarlos (cat.territorio.nombre): ver fijarCatalogosDinamicos. */
 const NOMBRES_TERRITORIOS = {
@@ -749,11 +1072,34 @@ const NOMBRES_TERRITORIOS = {
   T55: 'Montebello 1', T56: 'Montebello 2', T57: 'Montebello 3',
   T58: 'Golondrinas 1', T59: 'Golondrinas 2', T60: 'La Paz 1', T61: 'La Paz 2',
   T62: 'La Castilla 1', T63: 'La Castilla 2', T64: 'La Elvira 1', T65: 'La Elvira 2',
-  T66: 'Saladito 1', T67: 'Saladito 2', T68: 'Felidia 1', T69: 'Felidia 2',
-  T70: 'Leonera 1', T71: 'Leonera 2', T72: 'Pichindé 1', T73: 'Pichindé 2',
-  T74: 'Los Andes 1', T75: 'Los Andes 2', T76: 'Buitrera 1', T77: 'Buitrera 2',
-  T78: 'Hormiguero 1', T79: 'Hormiguero 2', T80: 'Hormiguero 3',
-  T81: 'Villa Carmelo 1', T82: 'Villa Carmelo 2', T83: 'Pance 1', T84: 'Pance 2'
+  T66: 'El Saladito 1', T67: 'El Saladito 2', T68: 'Felidia 1', T69: 'Felidia 2',
+  T70: 'La Leonera 1', T71: 'La Leonera 2', T72: 'Pichindé 1', T73: 'Pichindé 2',
+  T74: 'Los Andes 1', T75: 'Los Andes 2', T76: 'La Buitrera 1', T77: 'La Buitrera 2',
+  T78: 'El Hormiguero 1', T79: 'El Hormiguero 2', T80: 'El Hormiguero 3',
+  T81: 'Villa Carmelo 1', T82: 'Villa Carmelo 2', T83: 'Pance 1', T84: 'Pance 2',
+  /* Ampliación. Pichindé 3 (T174) viene sin número en la hoja: es el que
+     sigue a Pichindé 2 (sectores 9 a 11) y antecede al IV y al V. */
+  T163: 'Terrón Colorado 2', T164: 'Terrón Colorado 3', T165: 'Vista Hermosa 1',
+  T166: 'Libertadores y La Chanca', T167: 'Caney', T168: 'Valle del Lili 1',
+  T169: 'El Jordán', T170: 'Belén', T171: 'Lleras Camargo 1',
+  T172: 'Brisas de Mayo 1', T173: 'La Buitrera 3', T174: 'Pichindé 3',
+  T175: 'El Hormiguero 4', T176: 'El Saladito 3', T177: 'Felidia 3',
+  T178: 'Golondrinas 3', T179: 'La Buitrera 4', T180: 'La Castilla 3',
+  T181: 'La Elvira 3', T182: 'La Leonera 3', T183: 'La Paz 3',
+  T184: 'Los Andes 3', T185: 'Montebello 4', T186: 'Pance 3',
+  T187: 'Pichindé 4', T188: 'Villa Carmelo 3', T189: 'Patio Bonito',
+  T190: 'Aguacatal 1', T191: 'Aguacatal 2', T192: 'Vista Hermosa 2',
+  T193: 'Terrón Colorado 4', T194: 'San Pascual y San Antonio', T195: 'Ciudadela Comfandi',
+  T196: 'Valle del Lili 2', T197: 'Alto Jordán 1', T198: 'Alto Jordán 2',
+  T199: 'Bellavista', T200: 'Brisas de Mayo 2', T201: 'Belisario Caicedo y Cañaveralejo',
+  T202: 'Cañaveralejo y La Sultana', T203: 'Lleras Camargo 2', T204: 'Alto Jordán 3',
+  T205: 'Mario Correa', T206: 'Polvorines', T207: 'Nápoles y Meléndez',
+  T208: 'Los Chorros y Lourdes', T209: 'El Saladito 4', T210: 'El Saladito 5',
+  T211: 'Felidia 4', T212: 'Felidia 5', T213: 'Golondrinas 4',
+  T214: 'La Buitrera 5', T215: 'La Buitrera 6', T216: 'La Buitrera 7',
+  T217: 'La Castilla 4', T218: 'La Elvira 4', T219: 'La Leonera 4',
+  T220: 'La Paz 4', T221: 'Los Andes 4', T222: 'Pance 4',
+  T223: 'Pichindé 5', T224: 'Villa Carmelo 4'
 };
 
 // La comuna es homogénea dentro de cada territorio: se toma del primer microterritorio.

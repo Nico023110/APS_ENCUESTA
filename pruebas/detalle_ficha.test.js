@@ -167,7 +167,7 @@ async function abrirDetalle(app, id) {
   const iHogares = d.titulos.indexOf('Hogares y familias de la vivienda');
   check('Hay una sección de hogares y familias', iHogares !== -1, d.titulos.join(' | '));
   check('Va entre el entorno y el plan de cuidado, como en el instrumento',
-    d.titulos[iHogares - 1] === 'Caracterización del entorno' && d.titulos[iHogares + 1] === 'Plan de cuidado (RN-220)',
+    d.titulos[iHogares - 1] === 'Caracterización del entorno' && d.titulos[iHogares + 1] === 'Plan de cuidado',
     d.titulos.join(' | '));
   check('El resumen cuenta hogares y personas', d.resumen === '2 hogares · 2 familias · 3 personas', d.resumen);
   check('Un bloque por hogar, numerado', d.hogares && d.hogares.map((h) => h.titulo).join('|') === 'Hogar 1|Hogar 2',
@@ -217,7 +217,7 @@ async function abrirDetalle(app, id) {
   check('Los hogares declarados aparecen como pendientes',
     d.hogares.length === 2 && d.hogares.every((h) => h.pendiente === 'Sin caracterizar' && h.familias === 0),
     JSON.stringify(d.hogares));
-  check('  y dicen dónde se completan', /Historial → Corregir \(RN-028\)/.test(d.hogares[0].meta), d.hogares[0].meta);
+  check('  y dicen dónde se completan', /Historial → Corregir\.$/.test(d.hogares[0].meta), d.hogares[0].meta);
 
   d = await abrirDetalle(app, 'det-3');
   check('Un hogar caracterizado y dos pendientes',

@@ -39,7 +39,7 @@ const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.j
   'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
-window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo, repintarTerritorios, opcionesDeConfirmacionDeGuardado };');
+window.eval(fuentes + ';\nwindow.__api = { recolectarDatosFormulario, actualizarTableroDeRiesgo, repintarTerritorios, opcionesDeConfirmacionDeGuardado, sinCodigoDeRegla };');
 
 window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
 
@@ -485,8 +485,18 @@ check('La alerta muestra que la conducta es obligatoria (RN-202)',
   $('#listaAlertas').innerHTML.indexOf('Conducta obligatoria') !== -1);
 check('El plan de cuidado se muestra como pendiente, no como impedimento',
   $('#estadoPlanCuidado').classList.contains('estado-plan--pendiente') &&
-  $('#listaPendientesPlan').innerHTML.indexOf('RN-202') !== -1 &&
+  $('#listaPendientesPlan').innerHTML.indexOf('riesgo de suicidio') !== -1 &&
+  !/RN-\d/.test($('#listaPendientesPlan').textContent) &&
   $('#listaImpedimentos').innerHTML.indexOf('conducta ante riesgo de suicidio') === -1);
+
+/* Los códigos de regla no se muestran: ni en las etiquetas de las secciones,
+   ni en los avisos, alertas e impedimentos que acaba de pintar la validación. */
+check('La pantalla no muestra códigos de regla (RN-…)', !/RN-\d/.test(doc.body.textContent),
+  (doc.body.textContent.match(/.{0,40}RN-\d+.{0,40}/) || [''])[0]);
+check('sinCodigoDeRegla quita el prefijo y las referencias entre paréntesis',
+  window.__api.sinCodigoDeRegla('RN-007: el territorio es rural.') === 'El territorio es rural.' &&
+  window.__api.sinCodigoDeRegla('Registre el motivo (RN-226.4).') === 'Registre el motivo.' &&
+  window.__api.sinCodigoDeRegla('Canalice (RN-063, RN-209.5) hoy') === 'Canalice hoy');
 
 /* De aquí al final se espera el guardado, que pasa por el servidor. */
 function esperarUnTurno() { return new Promise(function (r) { setTimeout(r, 0); }); }
@@ -554,10 +564,10 @@ async function cerrarPruebas() {
 
   setVal(intVivo.querySelector('[data-rol="fechaNacimiento"]'), '2011-05-10');
   await esperarValidacionEnVivo();
-  check('CC + fecha de un menor => error RN-064 en vivo sobre el tipo de documento',
+  check('CC + fecha de un menor => error RN-064 en vivo sobre el tipo de documento, sin el código',
     campoTipo.classList.contains('has-error') &&
     campoTipo.querySelector('.field-error-msg') !== null &&
-    /RN-064/.test(campoTipo.querySelector('.field-error-msg').textContent),
+    /^El tipo CC exige/.test(campoTipo.querySelector('.field-error-msg').textContent),
     campoTipo.querySelector('.field-error-msg') && campoTipo.querySelector('.field-error-msg').textContent);
 
   setVal(intVivo.querySelector('[data-rol="fechaNacimiento"]'), '1990-02-10');
@@ -591,11 +601,16 @@ async function cerrarPruebas() {
   check('Documento con puntos => se registra 1144099887 y no queda error',
     inputNumero.value === '1144099887' && !campoNumero.classList.contains('has-error'), inputNumero.value);
 
-  console.log('\n=== 14a. Territorios vigentes de la E.S.E. (T48 a T84) ===');
+  console.log('\n=== 14a. Territorios vigentes de la E.S.E. (T48 a T84 y T163 a T224) ===');
   const opcionesTerritorio = $$('#territorio option').map(function (o) { return o.value; }).filter(Boolean);
-  check('El ítem 7 ofrece sólo los 37 territorios del listado (T48 a T84)',
-    opcionesTerritorio.length === 37 && opcionesTerritorio[0] === 'T48' && opcionesTerritorio[36] === 'T84',
+  check('El ítem 7 ofrece los 99 territorios del listado: continuidad (T48 a T84) y ampliación (T163 a T224)',
+    opcionesTerritorio.length === 99 && opcionesTerritorio[0] === 'T48' && opcionesTerritorio[36] === 'T84' &&
+    opcionesTerritorio[37] === 'T163' && opcionesTerritorio[98] === 'T224',
     opcionesTerritorio.length + ' ' + opcionesTerritorio[0] + '…' + opcionesTerritorio[opcionesTerritorio.length - 1]);
+  setVal('#territorio', 'T167');
+  check('  y T167 (ampliación) trae sus 3 microterritorios, con Caney sector 2 en MT02',
+    $$('#microterritorio option').filter(function (o) { return o.value; }).map(function (o) { return o.value; }).join() === 'MT01,MT02,MT03' &&
+    /MT02 — Caney sector 2/.test($('#microterritorio').textContent), $('#microterritorio').textContent);
   check('  sin los no vigentes (T01, T110)',
     opcionesTerritorio.indexOf('T01') === -1 && opcionesTerritorio.indexOf('T110') === -1);
   setVal('#territorio', 'T53');

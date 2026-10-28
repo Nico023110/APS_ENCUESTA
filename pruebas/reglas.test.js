@@ -783,18 +783,37 @@ verificar('Primer seguimiento de ayer => bloqueo RN-226 en la fecha',
 verificar('Primer seguimiento del día de la visita => sin ese bloqueo',
   !validarReglas(conSeguimiento(iso(HOY))).some(e => e.codigo === 'RN-226'));
 
-console.log('\n=== 14. Nombres de los territorios (listado de la E.S.E.) ===');
-const { etiquetaTerritorio, fijarCatalogosDinamicos } = contexto;
-const sinNombre = [];
-for (let n = 48; n <= 84; n++) {
-  const etiqueta = etiquetaTerritorio('T' + n);
-  if (!/^T\d+ · \S/.test(etiqueta) || /Zona rural/.test(etiqueta)) sinNombre.push(etiqueta);
-}
-verificar('Los 37 territorios vigentes (T48 a T84) tienen nombre propio', sinNombre.length === 0, sinNombre.join(', '));
+console.log('\n=== 14. Territorios del listado de la E.S.E.: continuidad y ampliación ===');
+const { etiquetaTerritorio, fijarCatalogosDinamicos, esTerritorioRural } = contexto;
+const vigentes = [];
+for (let n = 48; n <= 84; n++) vigentes.push('T' + n);
+for (let n = 163; n <= 224; n++) vigentes.push('T' + n);
+const sinNombre = vigentes.map(etiquetaTerritorio).filter(e => !/^T\d+ · \S/.test(e) || /Zona rural/.test(e));
+verificar('Los 99 territorios vigentes (T48 a T84 y T163 a T224) tienen nombre propio', sinNombre.length === 0, sinNombre.join(', '));
 verificar('Urbano: «T48 · Comuna 3»; rural: «T55 · Montebello 1 (rural)»',
   etiquetaTerritorio('T48') === 'T48 · Comuna 3' && etiquetaTerritorio('T55') === 'T55 · Montebello 1 (rural)',
   etiquetaTerritorio('T48') + ' / ' + etiquetaTerritorio('T55'));
 verificar('Un territorio no vigente y sin datos se rotula sólo con el código', etiquetaTerritorio('T20') === 'T20');
+verificar('Un corregimiento se llama igual en la continuidad y en la ampliación (La Buitrera 1 … 7)',
+  etiquetaTerritorio('T76') === 'T76 · La Buitrera 1 (rural)' && etiquetaTerritorio('T216') === 'T216 · La Buitrera 7 (rural)',
+  etiquetaTerritorio('T76') + ' / ' + etiquetaTerritorio('T216'));
+
+const T = vm.runInContext('CAT_TERRITORIOS', contexto);
+const malFormados = [];
+for (let n = 163; n <= 224; n++) {
+  const lista = T['T' + n] || [];
+  if (lista.map(m => m.codigo).join() !== 'MT01,MT02,MT03' || lista.some(m => !m.nombre || !m.comuna)) malFormados.push('T' + n);
+}
+verificar('Ampliación: cada territorio trae MT01 a MT03 con nombre y comuna', malFormados.length === 0, malFormados.join(', '));
+verificar('  la fila de Caney con el código de Pichindé quedó en T167, y T187 sólo tiene Pichindé',
+  T.T167[1].nombre === 'Caney sector 2' && T.T187.every(m => /^Pichindé/.test(m.nombre)),
+  JSON.stringify([T.T167[1], T.T187.map(m => m.nombre)]));
+const rurales = vigentes.filter(esTerritorioRural);
+verificar('  32 territorios rurales en la ampliación y 30 en la continuidad',
+  rurales.filter(t => +t.slice(1) >= 163).length === 32 && rurales.filter(t => +t.slice(1) <= 84).length === 30, rurales.length);
+verificar('  RN-007: un rural de la ampliación (T173) con área urbana bloquea; urbano (T189) con área urbana no',
+  validarReglas(Object.assign(fichaBase(), { territorio: 'T173', microterritorio: 'MT01' })).some(e => e.codigo === 'RN-007') &&
+  !validarReglas(Object.assign(fichaBase(), { territorio: 'T189', microterritorio: 'MT01' })).some(e => e.codigo === 'RN-007'));
 /* Al final: cambia el catálogo compartido del contexto. */
 fijarCatalogosDinamicos({ nombresTerritorios: { T55: 'T55', T56: 'Montebello Dos' } });
 verificar('La base actualiza el nombre, pero no lo reemplaza por el código (base sin migrar)',

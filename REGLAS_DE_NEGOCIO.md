@@ -114,11 +114,11 @@ El sistema debe rechazar cualquier municipio cuyo código no inicie con el códi
 
 ### RN-007 — Territorio
 
-**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud. **Sólo se ofrecen los territorios vigentes: `T48` a `T84`**, los que atiende la E.S.E. según su listado de territorios y microterritorios (octubre de 2026), cada uno con sus cuatro microterritorios con nombre y comuna (**Anexo A**).
+**Ítem 7.** Selección única obligatoria del catálogo parametrizado de territorios de salud. **Sólo se ofrecen los territorios vigentes: `T48` a `T84` y `T163` a `T224`**, los que atiende la E.S.E. según su listado de territorios y microterritorios (octubre de 2026): la continuidad, con cuatro microterritorios por territorio, y la ampliación, con tres; todos con nombre y comuna (**Anexo A**).
 
 Los identificadores `T01`…`T47` y `T85`…`T110` permanecen en el catálogo marcados como no vigentes (`cat.territorio.vigente = false`, sin nombre ni comuna): no se eligen en una ficha nueva, pero una ficha antigua que los tenga se sigue leyendo, corrigiendo y aceptando en el servidor.
 
-El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado", y un territorio urbano no admite "Área rural". La incoherencia **bloquea** en los dos sentidos, igual que la base (`aps.trg_hogar_territorio_area`). Un territorio es rural cuando todos sus microterritorios llevan comuna "Rural" (hoy, `T55` a `T84`); sin comuna cuenta como urbano.
+El territorio seleccionado determina la lista de microterritorios habilitados en el ítem 8 y debe ser coherente con el área de ubicación del ítem 6: los territorios marcados como `Rural` en el catálogo sólo son seleccionables cuando el ítem 6 es "Área rural" o "Centro poblado", y un territorio urbano no admite "Área rural". La incoherencia **bloquea** en los dos sentidos, igual que la base (`aps.trg_hogar_territorio_area`). Un territorio es rural cuando todos sus microterritorios llevan comuna "Rural" (hoy, `T55` a `T84` y 32 de la ampliación); sin comuna cuenta como urbano.
 
 ### RN-008 — Microterritorio
 
@@ -1413,23 +1413,92 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 
 Catálogo parametrizado que soporta las reglas **RN-007** (Territorio, ítem 7) y **RN-008** (Microterritorio, ítem 8). La selección del microterritorio se filtra en cascada a partir del territorio elegido. El campo `comuna` se hereda como dato derivado de sólo lectura.
 
-**Nombre de los territorios.** El anexo los identifica sólo por código. El listado de la E.S.E. (`Microterritorios ESE LADERA.xlsx`) nombra cada uno por la comuna o el corregimiento que cubre, y el ítem 7 los muestra así: «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Se guardan en `cat.territorio.nombre`.
+**Nombre de los territorios.** El anexo los identifica sólo por código. El listado de la E.S.E. nombra cada uno por la comuna o el corregimiento que cubre, y el ítem 7 los muestra así: «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Se guardan en `cat.territorio.nombre`. Los corregimientos llevan su nombre completo y número arábigo en la continuidad y en la ampliación (La Buitrera 1 a 7, El Saladito 1 a 5), aunque la hoja de ampliación los numere en romano.
+
+**Continuidad (T48 a T84).**
 
 | Código | Territorio | Código | Territorio | Código | Territorio |
 |---|---|---|---|---|---|
 | T48 | Comuna 3 | T61 | La Paz 2 | T74 | Los Andes 1 |
 | T49 | Comuna 1 | T62 | La Castilla 1 | T75 | Los Andes 2 |
-| T50 | Comuna 1.1 | T63 | La Castilla 2 | T76 | Buitrera 1 |
-| T51 | Comuna 18 | T64 | La Elvira 1 | T77 | Buitrera 2 |
-| T52 | Comuna 18.1 | T65 | La Elvira 2 | T78 | Hormiguero 1 |
-| T53 | Comuna 20 | T66 | Saladito 1 | T79 | Hormiguero 2 |
-| T54 | Comuna 20.1 | T67 | Saladito 2 | T80 | Hormiguero 3 |
+| T50 | Comuna 1.1 | T63 | La Castilla 2 | T76 | La Buitrera 1 |
+| T51 | Comuna 18 | T64 | La Elvira 1 | T77 | La Buitrera 2 |
+| T52 | Comuna 18.1 | T65 | La Elvira 2 | T78 | El Hormiguero 1 |
+| T53 | Comuna 20 | T66 | El Saladito 1 | T79 | El Hormiguero 2 |
+| T54 | Comuna 20.1 | T67 | El Saladito 2 | T80 | El Hormiguero 3 |
 | T55 | Montebello 1 | T68 | Felidia 1 | T81 | Villa Carmelo 1 |
 | T56 | Montebello 2 | T69 | Felidia 2 | T82 | Villa Carmelo 2 |
-| T57 | Montebello 3 | T70 | Leonera 1 | T83 | Pance 1 |
-| T58 | Golondrinas 1 | T71 | Leonera 2 | T84 | Pance 2 |
+| T57 | Montebello 3 | T70 | La Leonera 1 | T83 | Pance 1 |
+| T58 | Golondrinas 1 | T71 | La Leonera 2 | T84 | Pance 2 |
 | T59 | Golondrinas 2 | T72 | Pichindé 1 | | |
 | T60 | La Paz 1 | T73 | Pichindé 2 | | |
+
+**Ampliación (T163 a T224).** Hoja «Ty MT AMPLIACION» del listado de la E.S.E. (Resoluciones 1397, 1976 y 2225 de 2024): 62 territorios —30 urbanos y 32 rurales— con tres microterritorios cada uno. Al cargarla se corrigieron los códigos escritos con la letra O (`MTO2` → `MT02`), una fila de Caney codificada con el territorio de Pichindé (`T187` → `T167`) y la ortografía de los nombres (tildes, «San Pacual», «Felodia», «Saladiito»). Pichindé 3 (`T174`) viene sin número en la hoja. La hoja repite «El Saladito sector 11» en `T176 MT03` y `T209 MT01`; se conserva como viene hasta que la E.S.E. lo corrija, porque el código del microterritorio es lo que se reporta.
+
+| Código | Territorio | Zona | MT01 | MT02 | MT03 |
+|---|---|---|---|---|---|
+| T163 | Terrón Colorado 2 | Comuna 1 | Terrón Colorado sector 5 | Terrón Colorado sector 6 | Terrón Colorado sector 7 |
+| T164 | Terrón Colorado 3 | Comuna 1 | Terrón Colorado sector 8 | Terrón Colorado sector 9 | Terrón Colorado sector 10 |
+| T165 | Vista Hermosa 1 | Comuna 1 | Vista Hermosa sector 1 | Vista Hermosa sector 2 | Vista Hermosa sector 3 |
+| T166 | Libertadores y La Chanca | Comuna 3 | Libertadores sector 1 | Libertadores sector 2 | Navarro La Chanca |
+| T167 | Caney | Comuna 17 | Caney sector 1 | Caney sector 2 | Caney sector 3 |
+| T168 | Valle del Lili 1 | Comuna 17 | Valle del Lili sector 1 | Valle del Lili sector 2 | Valle del Lili sector 3 |
+| T169 | El Jordán | Comuna 18 | El Jordán sector 1 | El Jordán sector 2 | El Jordán sector 3 |
+| T170 | Belén | Comuna 20 | Belén sector 1 | Belén sector 2 | Belén sector 3 |
+| T171 | Lleras Camargo 1 | Comuna 20 | Lleras Camargo sector 1 | Lleras Camargo sector 2 | Lleras Camargo sector 3 |
+| T172 | Brisas de Mayo 1 | Comuna 20 | Brisas de Mayo sector 1 | Brisas de Mayo sector 2 | Brisas de Mayo sector 3 |
+| T173 | La Buitrera 3 | Rural | La Buitrera sector 9 | La Buitrera sector 10 | La Buitrera sector 11 |
+| T174 | Pichindé 3 | Rural | Pichindé sector 9 | Pichindé sector 10 | Pichindé sector 11 |
+| T175 | El Hormiguero 4 | Rural | El Hormiguero sector 13 | El Hormiguero sector 14 | El Hormiguero sector 15 |
+| T176 | El Saladito 3 | Rural | El Saladito sector 9 | El Saladito sector 10 | El Saladito sector 11 |
+| T177 | Felidia 3 | Rural | Felidia sector 9 | Felidia sector 10 | Felidia sector 11 |
+| T178 | Golondrinas 3 | Rural | Golondrinas sector 9 | Golondrinas sector 10 | Golondrinas sector 11 |
+| T179 | La Buitrera 4 | Rural | La Buitrera sector 12 | La Buitrera sector 13 | La Buitrera sector 14 |
+| T180 | La Castilla 3 | Rural | La Castilla sector 9 | La Castilla sector 10 | La Castilla sector 11 |
+| T181 | La Elvira 3 | Rural | La Elvira sector 9 | La Elvira sector 10 | La Elvira sector 11 |
+| T182 | La Leonera 3 | Rural | La Leonera sector 9 | La Leonera sector 10 | La Leonera sector 11 |
+| T183 | La Paz 3 | Rural | La Paz sector 9 | La Paz sector 10 | La Paz sector 11 |
+| T184 | Los Andes 3 | Rural | Los Andes sector 9 | Los Andes sector 10 | Los Andes sector 11 |
+| T185 | Montebello 4 | Rural | Montebello sector 13 | Montebello sector 14 | Montebello sector 15 |
+| T186 | Pance 3 | Rural | Pance sector 9 | Pance sector 10 | Pance sector 11 |
+| T187 | Pichindé 4 | Rural | Pichindé sector 12 | Pichindé sector 13 | Pichindé sector 14 |
+| T188 | Villa Carmelo 3 | Rural | Villa Carmelo sector 9 | Villa Carmelo sector 10 | Villa Carmelo sector 11 |
+| T189 | Patio Bonito | Comuna 1 | Patio Bonito sector 1 | Patio Bonito sector 2 | Patio Bonito sector 3 |
+| T190 | Aguacatal 1 | Comuna 1 | Aguacatal sector 1 | Aguacatal sector 2 | Aguacatal sector 3 |
+| T191 | Aguacatal 2 | Comuna 1 | Aguacatal sector 4 | Aguacatal sector 5 | Aguacatal sector 6 |
+| T192 | Vista Hermosa 2 | Comuna 1 | Vista Hermosa sector 4 | Vista Hermosa sector 5 | Vista Hermosa sector 6 |
+| T193 | Terrón Colorado 4 | Comuna 1 | Terrón Colorado sector 11 | Terrón Colorado sector 12 | Terrón Colorado sector 13 |
+| T194 | San Pascual y San Antonio | Comuna 3 | San Pascual sector 1 | San Pascual sector 2 | San Antonio sector 1 |
+| T195 | Ciudadela Comfandi | Comuna 17 | Ciudadela Comfandi sector 1 | Ciudadela Comfandi sector 2 | Ciudadela Comfandi sector 3 |
+| T196 | Valle del Lili 2 | Comuna 17 | Valle del Lili sector 4 | Valle del Lili sector 5 | Valle del Lili sector 6 |
+| T197 | Alto Jordán 1 | Comuna 18 | Alto Jordán sector 1 | Alto Jordán sector 2 | Alto Jordán sector 3 |
+| T198 | Alto Jordán 2 | Comuna 18 | Alto Jordán sector 4 | Alto Jordán sector 5 | Alto Jordán sector 6 |
+| T199 | Bellavista | Comuna 19 | Bellavista sector 1 | Bellavista sector 2 | Bellavista sector 3 |
+| T200 | Brisas de Mayo 2 | Comuna 20 | Brisas de Mayo sector 4 | Brisas de Mayo sector 5 | Brisas de Mayo sector 6 |
+| T201 | Belisario Caicedo y Cañaveralejo | Comuna 20 | Belisario Caicedo sector 1 | Belisario Caicedo sector 2 | Cañaveralejo sector 1 |
+| T202 | Cañaveralejo y La Sultana | Comuna 20 | Cañaveralejo sector 2 | La Sultana sector 1 | La Sultana sector 2 |
+| T203 | Lleras Camargo 2 | Comuna 20 | Lleras Camargo sector 4 | Lleras Camargo sector 5 | Lleras Camargo sector 6 |
+| T204 | Alto Jordán 3 | Comuna 18 | Alto Jordán sector 7 | Alto Jordán sector 8 | Alto Jordán sector 9 |
+| T205 | Mario Correa | Comuna 18 | Mario Correa sector 1 | Mario Correa sector 2 | Mario Correa sector 3 |
+| T206 | Polvorines | Comuna 18 | Polvorines sector 1 | Polvorines sector 2 | Polvorines sector 3 |
+| T207 | Nápoles y Meléndez | Comuna 18 | Nápoles sector 1 | Nápoles sector 2 | Meléndez sector 1 |
+| T208 | Los Chorros y Lourdes | Comuna 18 | Los Chorros sector 1 | Los Chorros sector 2 | Lourdes sector 1 |
+| T209 | El Saladito 4 | Rural | El Saladito sector 11 | El Saladito sector 12 | El Saladito sector 13 |
+| T210 | El Saladito 5 | Rural | El Saladito sector 14 | El Saladito sector 15 | El Saladito sector 16 |
+| T211 | Felidia 4 | Rural | Felidia sector 12 | Felidia sector 13 | Felidia sector 14 |
+| T212 | Felidia 5 | Rural | Felidia sector 15 | Felidia sector 16 | Felidia sector 17 |
+| T213 | Golondrinas 4 | Rural | Golondrinas sector 12 | Golondrinas sector 13 | Golondrinas sector 14 |
+| T214 | La Buitrera 5 | Rural | La Buitrera sector 15 | La Buitrera sector 16 | La Buitrera sector 17 |
+| T215 | La Buitrera 6 | Rural | La Buitrera sector 18 | La Buitrera sector 19 | La Buitrera sector 20 |
+| T216 | La Buitrera 7 | Rural | La Buitrera sector 21 | La Buitrera sector 22 | La Buitrera sector 23 |
+| T217 | La Castilla 4 | Rural | La Castilla sector 12 | La Castilla sector 13 | La Castilla sector 14 |
+| T218 | La Elvira 4 | Rural | La Elvira sector 12 | La Elvira sector 13 | La Elvira sector 14 |
+| T219 | La Leonera 4 | Rural | La Leonera sector 12 | La Leonera sector 13 | La Leonera sector 14 |
+| T220 | La Paz 4 | Rural | La Paz sector 12 | La Paz sector 13 | La Paz sector 14 |
+| T221 | Los Andes 4 | Rural | Los Andes sector 12 | Los Andes sector 13 | Los Andes sector 14 |
+| T222 | Pance 4 | Rural | Pance sector 12 | Pance sector 13 | Pance sector 14 |
+| T223 | Pichindé 5 | Rural | Pichindé sector 15 | Pichindé sector 16 | Pichindé sector 17 |
+| T224 | Villa Carmelo 4 | Rural | Villa Carmelo sector 12 | Villa Carmelo sector 13 | Villa Carmelo sector 14 |
 
 ```json
 {

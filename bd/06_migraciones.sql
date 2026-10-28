@@ -223,10 +223,13 @@ ALTER TABLE aps.ficha ADD COLUMN IF NOT EXISTS referencia_familia text;
    4 microterritorios; nombres y comunas ya coincidían con el Anexo A. Sólo
    ésos quedan vigentes y se ofrecen en el formulario. T01…T47 y T85…T110 no
    se borran —un hogar ya guardado puede referirlos—: se marcan no vigentes.
+   La ampliación de la E.S.E. (T163 a T224, hoja «Ty MT AMPLIACION»; los
+   inserta 02_catalogos_seed.sql) también queda vigente.
    Idempotente: fija la vigencia, no la alterna.
    ------------------------------------------------------------------------- */
 UPDATE cat.territorio
-   SET vigente = (substring(codigo FROM 2)::int BETWEEN 48 AND 84)
+   SET vigente = (substring(codigo FROM 2)::int BETWEEN 48 AND 84
+               OR substring(codigo FROM 2)::int BETWEEN 163 AND 224)
  WHERE codigo ~ '^T[0-9]+$';
 
 UPDATE cat.microterritorio m

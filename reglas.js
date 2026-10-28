@@ -2026,14 +2026,14 @@ function reglasDeSeguimientos(codigos) {
       campo: 'seg1MotivoNc',
       aplica: function (s) { return s.seg1Estado === 'NC'; },
       valida: function (s) { return !esVacio(s.seg1MotivoNc); },
-      mensaje: 'Registre el motivo del primer seguimiento "No cumple" (RN-226.4).'
+      mensaje: 'Registre el motivo del primer seguimiento «No cumple».'
     },
     {
       codigo: 'RN-226',
       campo: 'seg2MotivoNc',
       aplica: function (s) { return s.seg2Estado === 'NC'; },
       valida: function (s) { return !esVacio(s.seg2MotivoNc); },
-      mensaje: 'Registre el motivo del segundo seguimiento "No cumple" (RN-226.4).'
+      mensaje: 'Registre el motivo del segundo seguimiento «No cumple».'
     },
     {
       codigo: codigos.segundo,
@@ -2997,7 +2997,7 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
 
 const GESTION_POR_BARRERA = {
   administrativa: 'Gestión ante la EAPB con número de radicado.',
-  aseguramiento: 'Gestión de afiliación al SGSSS (ver RN-209).',
+  aseguramiento: 'Gestión de afiliación al SGSSS.',
   geografica: 'Programe atención extramural o telesalud.',
   informacion: 'Educación en salud sobre derechos y gratuidad de las intervenciones.',
   cultural: 'Canalice con enfoque diferencial.',
