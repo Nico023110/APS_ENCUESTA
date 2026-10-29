@@ -1397,7 +1397,7 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 
 ### RN-229 — Fichas de caracterización en Excel
 
-En la misma vista («Reporte SI-APS y Excel») se descargan las fichas de un período en un libro de Excel, para consultarlas y analizarlas.
+En la misma vista (Reportes → «Archivo SI-APS y Excel») se descargan las fichas de un período en un libro de Excel, para consultarlas y analizarlas.
 
 1. **Quién y cómo.** Los mismos roles y controles de RN-227: permiso `reporte.generar`, `POST` con sesión y cabecera anti-CSRF, período de hasta un año, y cada descarga en `aud.evento` (quién, período, cuántas fichas y personas).
 2. **Qué fichas.** Todas las diligenciadas en el período **con consentimiento**, en cualquier estado y con todas sus visitas: es la caracterización para consultar, no el reporte al Ministerio.

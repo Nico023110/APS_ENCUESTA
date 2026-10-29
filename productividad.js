@@ -2,8 +2,8 @@
    Encuesta_APS — Reportes de productividad (vista «Productividad»)
    ---------------------------------------------------------
    Para la coordinación del EBS (la coordinadora y los líderes de zona), el
-   administrador y el maestro: «productividad.ver». Se abre desde el menú del
-   chip de usuario (sesion.js).
+   administrador y el maestro: «productividad.ver». Es una de las vistas del
+   apartado «Reportes» y se abre desde su menú lateral (tableros.js).
 
    Pide a /api/productividad las cuentas de un período agrupadas por EBS,
    comuna, territorio, barrio, persona o fecha, con filtros de EBS, comuna y
@@ -304,6 +304,9 @@
 
     combos.set(select.id, { sincronizar: sincronizar });
     sincronizar();
+    /* Quien lo crea (también los tableros, tableros.js) lo resincroniza
+       cuando cambia las opciones o el valor por código. */
+    return sincronizar;
   }
 
   /* ---------------------------------------------------------
@@ -816,5 +819,5 @@
     });
   });
 
-  window.PRODUCTIVIDAD = { abrir: abrirVista };
+  window.PRODUCTIVIDAD = { abrir: abrirVista, crearCombo: crearCombo };
 })();

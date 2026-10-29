@@ -25,6 +25,10 @@
    fichas en el período (con ceros): la pregunta de la coordinación suele ser
    quién no ha reportado.
 
+   Con «tablero=1» responde en cambio los tableros de población (cuántas
+   personas, familias y viviendas y cómo son, por categoría del
+   instrumento): ver _tablero.js.
+
    Qué cuenta cada columna:
      fichas         visitas diligenciadas en el período
      viviendas      viviendas distintas visitadas
@@ -40,6 +44,7 @@
 const { obtenerPool } = require('./_db');
 const { requerirSesion } = require('./_auth');
 const { SIN_CONDUCTA } = require('./_plan_cuidado');
+const tablero = require('./_tablero');
 const roles = require('../roles.js');
 
 const MAX_DIAS = 366;
@@ -180,10 +185,22 @@ module.exports = async (req, res) => {
   const alcance = roles.alcanceDeLectura(usuario.rol);
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
 
+  const equipoDelAlcance = alcance === 'todas' ? null : (usuario.equipoSaludId || -1);
+
+  if (req.query && req.query.tablero) {
+    const t = tablero.validar(req.query);
+    if (t.error) return res.status(400).json({ error: t.error });
+    try {
+      return res.status(200).json(await tablero.consultarTablero(obtenerPool(), t, equipoDelAlcance));
+    } catch (error) {
+      console.error('Error al generar el tablero de población:', error.message);
+      return res.status(500).json({ error: 'No fue posible generar el tablero.' });
+    }
+  }
+
   const p = validar(req.query);
   if (p.error) return res.status(400).json({ error: p.error });
 
-  const equipoDelAlcance = alcance === 'todas' ? null : (usuario.equipoSaludId || -1);
   const parametros = [p.desde, p.hasta, p.ebs, p.comuna, p.persona, equipoDelAlcance];
   const grupo = AGRUPACIONES[p.agrupar];
   const pool = obtenerPool();

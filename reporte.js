@@ -3,8 +3,8 @@
    ---------------------------------------------------------
    Genera el archivo plano APS124CCFP del anexo técnico para PISIS y las
    fichas en Excel. Sólo la ven quienes tienen reporte.generar
-   (coordinación, administrador y maestro); se abre desde el menú del chip
-   de usuario (sesion.js).
+   (coordinación, administrador y maestro); es la vista «Descargas» del
+   apartado «Reportes» y se abre desde su menú lateral (tableros.js).
 
    Dos pasos, los dos contra /api/reporte_sispro (POST):
      Revisar            el resumen: cuántos registros saldrían y qué

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Vista «Reportes de productividad» en el navegador (jsdom)
+   Vista «Productividad» del apartado Reportes en el navegador (jsdom)
    -------------------------------------------------------------------------
        node pruebas/productividad_vista.test.js
 
@@ -96,11 +96,23 @@ function montar(rol) {
   const BlobOriginal = w.Blob;
   w.Blob = function (partes, opciones) { w.__blob = { partes: partes, tipo: opciones && opciones.type }; return new BlobOriginal(partes, opciones); };
 
-  /* fetch simulado: se instala antes que sesion.js, que lo envuelve. */
+  /* fetch simulado: se instala antes que sesion.js, que lo envuelve. Los
+     tableros de población (tablero=1), que abre primero el apartado
+     Reportes, contestan vacío y no cuentan como pedidos de productividad. */
   w.__peticiones = [];
   w.fetch = function (url, opciones) {
     if (String(url).indexOf('/api/productividad') === -1) return Promise.reject(new Error('sin red'));
     const consulta = new URL(String(url), 'http://localhost').searchParams;
+    if (consulta.get('tablero')) {
+      return Promise.resolve({
+        ok: true, status: 200,
+        headers: { get: function () { return null; } },
+        json: function () {
+          return Promise.resolve({ periodo: { desde: consulta.get('desde'), hasta: consulta.get('hasta') }, rango: {},
+            totales: { viviendas: 0 }, dimensiones: {}, opciones: { ebs: [], comunas: [], territorios: [] } });
+        }
+      });
+    }
     w.__peticiones.push({
       metodo: (opciones && opciones.method) || 'GET',
       consulta: Object.fromEntries(consulta.entries()),
@@ -115,7 +127,7 @@ function montar(rol) {
 
   const fuentes = ['sesion.js', 'catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js',
     'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js', 'roles.js', 'usuarios.js',
-    'reporte.js', 'productividad.js']
+    'reporte.js', 'productividad.js', 'tableros.js']
     .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
     .join('\n;\n');
   w.eval(fuentes);
@@ -136,12 +148,12 @@ function iso(d) {
 async function principal() {
   console.log('\n=== 1. Quién lo ve ===');
   ['coordinador_ebs', 'lider_ebs', 'administrador', 'maestro'].forEach(function (rol) {
-    verificar(rol + ': el menú ofrece «Reportes de productividad»',
-      opcionesDelMenu(montar(rol)).indexOf('Reportes de productividad') !== -1);
+    verificar(rol + ': el menú ofrece «Reportes»',
+      opcionesDelMenu(montar(rol)).indexOf('Reportes') !== -1);
   });
   ['enfermeria', 'auxiliar_enfermeria', 'medicina'].forEach(function (rol) {
     const w = montar(rol);
-    verificar(rol + ': el menú no lo ofrece', opcionesDelMenu(w).indexOf('Reportes de productividad') === -1);
+    verificar(rol + ': el menú no lo ofrece', opcionesDelMenu(w).indexOf('Reportes') === -1);
     w.PRODUCTIVIDAD.abrir();
     verificar(rol + ': abrir la vista a mano no hace nada ni pide nada',
       !w.document.getElementById('view-productividad').classList.contains('is-active') && w.__peticiones.length === 0);
@@ -157,9 +169,13 @@ async function principal() {
     doc.getElementById('productividadDesde').value + ' / ' + doc.getElementById('productividadHasta').value);
 
   Array.from(doc.querySelectorAll('#menuUsuario .app-menu__item'))
-    .find(function (b) { return b.textContent.trim() === 'Reportes de productividad'; }).click();
+    .find(function (b) { return b.textContent.trim() === 'Reportes'; }).click();
   await esperar(50);
-  verificar('la opción abre la vista', doc.getElementById('view-productividad').classList.contains('is-active'));
+  doc.querySelector('#reportesMenu [data-reporte="productividad"]').click();
+  await esperar(50);
+  verificar('«Productividad» en el menú lateral de Reportes abre la vista',
+    doc.getElementById('view-productividad').classList.contains('is-active') && !doc.getElementById('reportesMenu').hidden &&
+    doc.querySelector('#reportesMenu [data-reporte="productividad"]').getAttribute('aria-current') === 'page');
   const primera = w.__peticiones[0] || {};
   verificar('y la genera sola: GET con la cabecera anti-CSRF, agrupado por EBS',
     primera.metodo === 'GET' && primera.csrf === 'fetch' && primera.consulta.agrupar === 'ebs' &&

@@ -2011,12 +2011,104 @@
     </div>
   </section>
 
+  <!-- ===================== APARTADO REPORTES: menú lateral =====================
+       Lo comparten las tres vistas del apartado (tableros, productividad y
+       descargas); tableros.js lo muestra sólo mientras una de ellas está
+       abierta y marca la que se está viendo. -->
+  <nav class="reportes-menu" id="reportesMenu" aria-label="Reportes" hidden>
+    <p class="reportes-menu__titulo">Reportes</p>
+    <div class="reportes-menu__grupo" role="group" aria-labelledby="reportesGrupoPoblacion">
+      <p class="eyebrow reportes-menu__etiqueta" id="reportesGrupoPoblacion">Población</p>
+      <button type="button" class="reportes-menu__item" data-reporte="principal">
+        <i class="ph ph-squares-four" aria-hidden="true"></i><span>Tablero principal</span>
+      </button>
+      <button type="button" class="reportes-menu__item" data-reporte="hogares">
+        <i class="ph ph-house-line" aria-hidden="true"></i><span>Hogares</span>
+      </button>
+      <button type="button" class="reportes-menu__item" data-reporte="personas">
+        <i class="ph ph-users-three" aria-hidden="true"></i><span>Personas</span>
+      </button>
+    </div>
+    <div class="reportes-menu__grupo" role="group" aria-labelledby="reportesGrupoGestion">
+      <p class="eyebrow reportes-menu__etiqueta" id="reportesGrupoGestion">Gestión</p>
+      <button type="button" class="reportes-menu__item" data-reporte="productividad">
+        <i class="ph ph-chart-bar" aria-hidden="true"></i><span>Productividad</span>
+      </button>
+    </div>
+    <div class="reportes-menu__grupo" role="group" aria-labelledby="reportesGrupoDescargas">
+      <p class="eyebrow reportes-menu__etiqueta" id="reportesGrupoDescargas">Descargas</p>
+      <button type="button" class="reportes-menu__item" data-reporte="descargas">
+        <i class="ph ph-file-arrow-down" aria-hidden="true"></i><span>Archivo SI-APS y Excel</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===================== VISTA: TABLEROS DE POBLACIÓN (productividad.ver) =====================
+       Tablero principal, Hogares y Personas comparten los filtros; cambiar de
+       tablero o de página no vuelve a consultar. Lo pinta tableros.js. -->
+  <section class="view" id="view-tableros" aria-labelledby="tableroTitulo">
+    <header class="reportes-cabecera">
+      <div class="reportes-cabecera__textos">
+        <h2 class="reportes-cabecera__titulo" id="tableroTitulo">Tablero principal</h2>
+        <p class="reportes-cabecera__sub" id="tableroDescripcion"></p>
+      </div>
+      <button type="button" class="btn btn--ghost" id="btnTableroDescargar" disabled>
+        <i class="ph ph-download-simple" aria-hidden="true"></i><span>Descargar datos</span>
+      </button>
+    </header>
+
+    <form class="tablero-filtros" id="tableroFiltros" novalidate>
+      <div class="tablero-filtros__periodo" role="group" aria-label="Período">
+        <button type="button" class="opcion-periodo" data-periodo-tablero="mes" aria-pressed="false">Este mes</button>
+        <button type="button" class="opcion-periodo" data-periodo-tablero="trimestre" aria-pressed="false">Últimos 3 meses</button>
+        <button type="button" class="opcion-periodo" data-periodo-tablero="anio" aria-pressed="false">Este año</button>
+        <button type="button" class="opcion-periodo" data-periodo-tablero="todo" aria-pressed="true">Todo el registro</button>
+      </div>
+      <div class="tablero-filtros__campos">
+        <div class="field" data-campo="desde">
+          <label for="tableroDesde">Desde</label>
+          <input type="date" id="tableroDesde" name="desde" required>
+        </div>
+        <div class="field" data-campo="hasta">
+          <label for="tableroHasta">Hasta</label>
+          <input type="date" id="tableroHasta" name="hasta" required>
+        </div>
+        <div class="field" data-campo="ebs">
+          <label for="tableroEbs">EBS</label>
+          <select id="tableroEbs" name="ebs"><option value="">Todos los EBS</option></select>
+        </div>
+        <div class="field" data-campo="comuna">
+          <label for="tableroComuna">Comuna</label>
+          <select id="tableroComuna" name="comuna"><option value="">Todas las comunas</option></select>
+        </div>
+        <div class="field" data-campo="territorio">
+          <label for="tableroTerritorio">Territorio</label>
+          <select id="tableroTerritorio" name="territorio"><option value="">Todos los territorios</option></select>
+        </div>
+      </div>
+      <button type="button" class="tablero-filtros__quitar" id="btnTableroQuitar" hidden>
+        <i class="ph ph-x-circle" aria-hidden="true"></i><span>Quitar filtros</span>
+      </button>
+    </form>
+
+    <nav class="tablero-paginas" id="tableroPaginas" aria-label="Páginas del tablero" hidden></nav>
+    <p class="empty-state reporte__error" id="tableroError" hidden role="alert"></p>
+    <div class="tablero" id="tableroContenido" aria-live="polite" aria-busy="false"></div>
+    <p class="tablero__fuente" id="tableroFuente" hidden></p>
+  </section>
+
   <!-- ===================== VISTA: REPORTE SI-APS (reporte.generar) ===================== -->
-  <section class="view" id="view-reporte">
+  <section class="view" id="view-reporte" aria-labelledby="descargasTitulo">
+    <header class="reportes-cabecera">
+      <div class="reportes-cabecera__textos">
+        <h2 class="reportes-cabecera__titulo" id="descargasTitulo">Descargas</h2>
+        <p class="reportes-cabecera__sub">El archivo plano para PISIS y las fichas completas en Excel, del período que indique.</p>
+      </div>
+    </header>
     <div class="card">
       <div class="card__header usuarios__cabecera">
         <div>
-          <h2>Reporte SI-APS</h2>
+          <h3 class="reportes-tarjeta__titulo">Reporte SI-APS</h3>
           <p class="usuarios__sub">Archivo plano APS124CCFP del anexo técnico (versión 7) para cargar en PISIS.</p>
         </div>
       </div>
@@ -2048,7 +2140,7 @@
     <div class="card">
       <div class="card__header usuarios__cabecera">
         <div>
-          <h2>Fichas en Excel</h2>
+          <h3 class="reportes-tarjeta__titulo">Fichas en Excel</h3>
           <p class="usuarios__sub">Cada ficha con su vivienda, familias, integrantes, plan de cuidado y alertas, con las preguntas del instrumento y las respuestas escritas.</p>
         </div>
       </div>
@@ -2075,14 +2167,14 @@
   </section>
 
   <!-- ===================== VISTA: PRODUCTIVIDAD (productividad.ver) ===================== -->
-  <section class="view" id="view-productividad">
-    <div class="card">
-      <div class="card__header usuarios__cabecera">
-        <div>
-          <h2>Reportes de productividad</h2>
-          <p class="usuarios__sub">Lo caracterizado por los equipos en un período: fichas, viviendas, hogares, familias y personas, por EBS, comuna, territorio, barrio, persona o fecha.</p>
-        </div>
+  <section class="view" id="view-productividad" aria-labelledby="productividadTitulo">
+    <header class="reportes-cabecera">
+      <div class="reportes-cabecera__textos">
+        <h2 class="reportes-cabecera__titulo" id="productividadTitulo">Productividad</h2>
+        <p class="reportes-cabecera__sub">Lo caracterizado por los equipos en un período: fichas, viviendas, hogares, familias y personas, por EBS, comuna, territorio, barrio, persona o fecha.</p>
       </div>
+    </header>
+    <div class="card">
       <form id="formProductividad" novalidate>
         <div class="productividad__rapidos" role="group" aria-label="Período">
           <button type="button" class="opcion-periodo" data-periodo-rapido="hoy" aria-pressed="false">Hoy</button>
@@ -2349,5 +2441,6 @@
 <script src="usuarios.js"></script>
 <script src="reporte.js"></script>
 <script src="productividad.js"></script>
+<script src="tableros.js"></script>
 </body>
 </html>

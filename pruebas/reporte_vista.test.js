@@ -107,7 +107,8 @@ function montar(rol) {
   };
 
   const fuentes = ['sesion.js', 'catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js',
-    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js', 'roles.js', 'usuarios.js', 'reporte.js']
+    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js', 'roles.js', 'usuarios.js', 'reporte.js',
+    'productividad.js', 'tableros.js']
     .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
     .join('\n;\n');
   w.eval(fuentes);
@@ -127,7 +128,7 @@ async function principal() {
   const w = montar('maestro');
   const doc = w.document;
 
-  verificar('el menú del usuario ofrece «Reporte SI-APS y Excel»', opcionesDelMenu(w).indexOf('Reporte SI-APS y Excel') !== -1,
+  verificar('el menú del usuario ofrece «Reportes»', opcionesDelMenu(w).indexOf('Reportes') !== -1,
     opcionesDelMenu(w).join(', '));
 
   const hoy = new Date();
@@ -141,8 +142,11 @@ async function principal() {
     doc.getElementById('reporteDesde').value + ' / ' + doc.getElementById('reporteHasta').value);
 
   Array.from(doc.querySelectorAll('#menuUsuario .app-menu__item'))
-    .find(function (b) { return b.textContent.trim() === 'Reporte SI-APS y Excel'; }).click();
-  verificar('la opción abre la vista', doc.getElementById('view-reporte').classList.contains('is-active'));
+    .find(function (b) { return b.textContent.trim() === 'Reportes'; }).click();
+  doc.querySelector('#reportesMenu [data-reporte="descargas"]').click();
+  verificar('«Archivo SI-APS y Excel» en el menú lateral de Reportes abre la vista',
+    doc.getElementById('view-reporte').classList.contains('is-active') &&
+    doc.querySelector('#reportesMenu [data-reporte="descargas"]').getAttribute('aria-current') === 'page');
 
   doc.getElementById('reporteDesde').value = '2026-08-31';
   doc.getElementById('reporteHasta').value = '2026-08-01';
@@ -200,7 +204,7 @@ async function principal() {
   console.log('\n=== 2. Sin reporte.generar (enfermería) ===');
 
   const w2 = montar('enfermeria');
-  verificar('el menú no ofrece el reporte', opcionesDelMenu(w2).indexOf('Reporte SI-APS y Excel') === -1, opcionesDelMenu(w2).join(', '));
+  verificar('el menú no ofrece Reportes', opcionesDelMenu(w2).indexOf('Reportes') === -1, opcionesDelMenu(w2).join(', '));
   w2.REPORTE_SISPRO.abrir();
   verificar('y abrir la vista a mano no hace nada', !w2.document.getElementById('view-reporte').classList.contains('is-active'));
 

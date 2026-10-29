@@ -224,8 +224,8 @@
 
   /* El chip es un botón que despliega el menú del usuario: las acciones
      dependen de los permisos (la vista de usuarios con usuarios.ver —«Crear
-     usuarios» para la coordinación, que crea pero no modifica—, Reporte
-     SI-APS sólo con reporte.generar) y Cerrar sesión va siempre al final. */
+     usuarios» para la coordinación, que crea pero no modifica—, Reportes con
+     productividad.ver o reporte.generar) y Cerrar sesión va siempre al final. */
   function pintarCabecera() {
     const contenedor = document.getElementById('appUsuario');
     if (!contenedor) return;
@@ -284,14 +284,11 @@
         if (window.USUARIOS) window.USUARIOS.abrir();
       } });
     }
-    if (puede('productividad.ver')) {
-      opciones.push({ icono: 'ph-chart-bar', texto: 'Reportes de productividad', accion: function () {
-        if (window.PRODUCTIVIDAD) window.PRODUCTIVIDAD.abrir();
-      } });
-    }
-    if (puede('reporte.generar')) {
-      opciones.push({ icono: 'ph-file-arrow-down', texto: 'Reporte SI-APS y Excel', accion: function () {
-        if (window.REPORTE_SISPRO) window.REPORTE_SISPRO.abrir();
+    /* Un solo apartado para los tableros, la productividad y las descargas:
+       su menú lateral (tableros.js) lleva a cada uno. */
+    if (puede('productividad.ver') || puede('reporte.generar')) {
+      opciones.push({ icono: 'ph-chart-bar', texto: 'Reportes', accion: function () {
+        if (window.REPORTES) window.REPORTES.abrir();
       } });
     }
     opciones.push({ icono: 'ph-lock-key', texto: 'Bloquear pantalla', accion: bloquear });

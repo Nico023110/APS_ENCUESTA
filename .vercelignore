@@ -12,3 +12,6 @@ playwright.config*.js
 skills-lock.json
 
 respaldos/
+
+# Capturas de referencia del diseño (tableros SI-APS): material de trabajo.
+img/

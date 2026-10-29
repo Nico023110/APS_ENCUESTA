@@ -67,6 +67,16 @@
   --warn-100: #f7e3c4;
   --warn-50: #fcf4e8;
 
+  /* ---- Datos (tableros de población) ------------------------------
+     Hombres en el azul de la marca y mujeres en frambuesa. El par se validó
+     para daltonismo (ΔE 9,0 en protanopía, OKLab ×100; meta 8) y pasa 3:1
+     sobre blanco. Los dos grados intermedios del riesgo familiar son los
+     del semáforo del plan; el resto de las escalas usa los estados. */
+  --dato-hombre: var(--brand-600);
+  --dato-mujer: #d55181;
+  --riesgo-bajo: #e0a90b;
+  --riesgo-medio: #e07a15;
+
   /* ---- Tipografía -------------------------------------------------
      Plus Jakarta Sans: grotesca geométrica con humanismo suficiente
      para no confundir 1/l/I en un dato clínico, y con 500 y 600 reales
@@ -4075,8 +4085,8 @@ button.atencion__fila:focus-visible {
   background: var(--ink-300);
 }
 .resumen-alertas__riesgo--verde::before { background: var(--ok-600); }
-.resumen-alertas__riesgo--amarillo::before { background: #e0a90b; }
-.resumen-alertas__riesgo--naranja::before { background: #e07a15; }
+.resumen-alertas__riesgo--amarillo::before { background: var(--riesgo-bajo); }
+.resumen-alertas__riesgo--naranja::before { background: var(--riesgo-medio); }
 .resumen-alertas__riesgo--rojo::before { background: var(--alert-600); }
 
 .resumen-alertas__vacio {
@@ -6250,6 +6260,9 @@ html.nivel-administrador #sincronia { display: none; }
 .combo-filtro__opcion { font-size: var(--fs-label); }
 .combo-filtro__opcion[aria-selected="true"] { font-weight: 600; color: var(--brand-800); }
 .combo-filtro__todos { color: var(--ink-500); }
+/* «Todos los EBS» no es una pista: es el valor que se está viendo. Se lee
+   en tinta secundaria, no en el gris tenue de los campos vacíos. */
+.field .combo-filtro__entrada::placeholder { color: var(--ink-500); }
 
 /* Buscador de la tabla, en la fila de su título. */
 .productividad__cabecera-tabla {
@@ -6598,4 +6611,745 @@ html.nivel-administrador #sincronia { display: none; }
 }
 @media (hover: hover) and (pointer: fine) {
   .bloqueo__salir:hover { background: var(--ink-100); color: var(--ink-900); }
+}
+
+/* =========================================================
+   APARTADO REPORTES (tableros.js)
+   ---------------------------------------------------------
+   Tableros de población, productividad y descargas bajo un mismo menú
+   lateral. La estructura viene de los tableros SI-APS del Ministerio (menú
+   a la izquierda, una fila de filtros, cifras de cabecera y paneles); el
+   aspecto es el de la aplicación: tarjetas blancas con contorno de sombra,
+   barras de 10 px en el azul de la marca y cifras escritas en tinta.
+   ========================================================= */
+
+/* Con el menú, la página se ensancha: un tablero necesita aire para dos
+   paneles por fila. */
+.app-main--reportes {
+  max-width: 1480px;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  column-gap: var(--s-8);
+  align-items: start;
+}
+.app-main--reportes > .view { grid-column: 2; min-width: 0; }
+
+/* ---- Menú lateral --------------------------------------------------------
+   El ítem abierto es la píldora azul llena de las pestañas: el mismo
+   «usted está aquí» de toda la aplicación. */
+.reportes-menu {
+  grid-column: 1;
+  position: sticky;
+  top: calc(var(--header-height) + var(--s-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  padding: var(--s-5) var(--s-3) var(--s-4);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+.reportes-menu[hidden] { display: none; }
+
+.reportes-menu__titulo {
+  margin: 0;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink-900);
+}
+
+.reportes-menu__grupo { display: flex; flex-direction: column; gap: 2px; }
+.reportes-menu__grupo[hidden] { display: none; }
+.reportes-menu__etiqueta { margin: 0 0 var(--s-1); padding: 0 var(--s-3); color: var(--ink-500); }
+
+.reportes-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 42px;
+  padding: 8px var(--s-3);
+  border: none;
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--ink-700);
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-out), transform var(--dur-press) var(--ease-out);
+}
+.reportes-menu__item[hidden] { display: none; }
+.reportes-menu__item i { flex: none; font-size: 18px; color: var(--ink-400); transition: color var(--dur-hover) var(--ease-out); }
+.reportes-menu__item[aria-current="page"] {
+  background: var(--brand-600);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28), 0 6px 16px -6px rgba(0, 54, 90, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.reportes-menu__item[aria-current="page"] i { color: #fff; }
+.reportes-menu__item:active { transform: scale(0.97); }
+.reportes-menu__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
+.reportes-menu__item[aria-current="page"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--brand-ring), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+@media (hover: hover) and (pointer: fine) {
+  .reportes-menu__item:not([aria-current="page"]):hover { background: var(--ink-50); color: var(--ink-900); }
+  .reportes-menu__item:not([aria-current="page"]):hover i { color: var(--brand-600); }
+}
+
+/* ---- Cabecera de cada vista del apartado ---------------------------------- */
+.reportes-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-6);
+  margin-bottom: var(--s-5);
+}
+.reportes-cabecera__textos { min-width: 0; flex: 1 1 420px; }
+.reportes-cabecera__titulo {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+  color: var(--ink-900);
+}
+.reportes-cabecera__sub {
+  margin: var(--s-2) 0 0;
+  max-width: 68ch;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-500);
+}
+.reportes-tarjeta__titulo {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
+}
+
+/* ---- Filtros: una sola barra encima de todo lo que filtran -------------- */
+.tablero-filtros {
+  container: filtros-tablero / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--s-4) var(--s-4);
+  margin-bottom: var(--s-4);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+.tablero-filtros__periodo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.tablero-filtros__campos {
+  display: grid;
+  grid-template-columns: 156px 156px repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+.tablero-filtros__campos .field { min-width: 0; }
+.tablero-filtros__campos .field label { font-size: var(--fs-label); font-weight: 500; color: var(--ink-700); }
+.tablero-filtros__campos input,
+.tablero-filtros__campos select { width: 100%; min-width: 0; }
+
+.tablero-filtros__quitar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 8px var(--s-4);
+  border: none;
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--brand-700);
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), transform var(--dur-press) var(--ease-out);
+}
+.tablero-filtros__quitar[hidden] { display: none; }
+.tablero-filtros__quitar i { font-size: 18px; }
+.tablero-filtros__quitar:active { transform: scale(0.97); }
+.tablero-filtros__quitar:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
+@media (hover: hover) and (pointer: fine) {
+  .tablero-filtros__quitar:hover { background: var(--brand-50); }
+}
+
+@container filtros-tablero (max-width: 860px) {
+  .tablero-filtros__campos { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .tablero-filtros__campos .field { grid-column: span 2; }
+  .tablero-filtros__campos .field[data-campo="desde"],
+  .tablero-filtros__campos .field[data-campo="hasta"] { grid-column: span 3; }
+}
+@container filtros-tablero (max-width: 520px) {
+  .tablero-filtros { grid-template-columns: minmax(0, 1fr); }
+  .tablero-filtros__campos .field { grid-column: span 6; }
+  .tablero-filtros__campos .field[data-campo="desde"],
+  .tablero-filtros__campos .field[data-campo="hasta"] { grid-column: span 3; }
+}
+
+/* ---- Páginas de un tablero ---------------------------------------------
+   Control segmentado: carcasa blanca y la página abierta en la píldora azul.
+   El número es el de la página en los tableros del Ministerio. */
+.tablero-paginas {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: var(--s-4);
+  padding: 5px;
+  overflow-x: auto;
+  background: #fff;
+  border-radius: var(--r-chip);
+  box-shadow: var(--sh-hair), var(--sh-1);
+  scrollbar-width: none;
+}
+.tablero-paginas[hidden] { display: none; }
+.tablero-paginas__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: none;
+  min-height: 38px;
+  padding: 6px var(--s-4) 6px 7px;
+  border: none;
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--ink-700);
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+.tablero-paginas__numero {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.tablero-paginas__item[aria-current="page"] {
+  background: var(--brand-600);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.tablero-paginas__item[aria-current="page"] .tablero-paginas__numero { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.tablero-paginas__item:active { transform: scale(0.97); }
+.tablero-paginas__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
+@media (hover: hover) and (pointer: fine) {
+  .tablero-paginas__item:not([aria-current="page"]):hover { background: var(--ink-50); color: var(--ink-900); }
+}
+
+/* ---- Rejilla de paneles ------------------------------------------------
+   Doce columnas; cada panel declara su ancho (--ancho) según lo que vale.
+   Mientras se vuelve a consultar, lo anterior queda a la vista, atenuado. */
+.tablero {
+  container: tablero / inline-size;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--s-4);
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+.tablero.is-actualizando { opacity: 0.5; }
+
+.tpanel {
+  grid-column: span var(--ancho, 12);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--s-5) var(--s-6) var(--s-6);
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+@container tablero (max-width: 780px) {
+  .tpanel { grid-column: span 12; }
+}
+
+/* En un panel angosto el título manda: el ítem y «Tabla» bajan a su propio
+   renglón antes de apretarlo. */
+.tpanel__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+  margin-bottom: var(--s-5);
+}
+.tpanel__textos { flex: 1 1 200px; min-width: 0; }
+.tpanel__titulo {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ink-900);
+}
+.tpanel__sub {
+  margin: 4px 0 0;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--ink-500);
+}
+.tpanel__acciones { display: flex; align-items: center; gap: var(--s-2); flex: none; }
+
+/* El número de ítem del instrumento: código, en monoespaciada. */
+.tpanel__item {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tpanel__alternar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px var(--s-3);
+  border: none;
+  border-radius: var(--r-chip);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--ink-200);
+  color: var(--ink-700);
+  font: inherit;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out), box-shadow var(--dur-hover) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+.tpanel__alternar i { font-size: 15px; }
+.tpanel__alternar[aria-pressed="true"] { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1.5px var(--brand-600); }
+.tpanel__alternar:active { transform: scale(0.97); }
+.tpanel__alternar:focus-visible { outline: none; box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring); }
+@media (hover: hover) and (pointer: fine) {
+  .tpanel__alternar:not([aria-pressed="true"]):hover { background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand-300); }
+}
+
+.tpanel__grafico[hidden],
+.tpanel__tabla[hidden] { display: none; }
+.tpanel__nota { margin: var(--s-4) 0 0; font-size: var(--fs-small); color: var(--ink-500); }
+.tpanel__vacio {
+  margin: 0;
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.tablero-tabla { min-width: 0; }
+.tablero-tabla th[scope="row"] { font-weight: 600; color: var(--ink-800); }
+.tablero-tabla__num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Sólo para el lector de pantalla. */
+.tablero-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Cadena y atención prioritaria -------------------------------------
+   La cadena es la de Inicio. Las tejas siguen su gramática: columnas con un
+   pelo entre ellas, sin tarjetas dentro de la tarjeta. */
+.tablero-cadena .cadena__valor { font-variant-numeric: proportional-nums; }
+
+.tejas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.teja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 0 var(--s-5);
+}
+.teja:first-child { padding-left: 0; }
+.teja:last-child { padding-right: 0; }
+.teja + .teja::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink-150);
+}
+.teja__icono {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  color: var(--brand-600);
+  font-size: 18px;
+  box-shadow: inset 0 0 0 1px rgba(0, 96, 160, 0.1);
+}
+.teja__valor {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink-900);
+  font-variant-numeric: proportional-nums;
+}
+.teja__etiqueta { margin-top: var(--s-2); font-size: var(--fs-label); font-weight: 600; line-height: 1.35; color: var(--ink-800); }
+.teja__detalle { margin-top: 2px; font-size: var(--fs-small); line-height: 1.4; color: var(--ink-500); }
+.teja.is-cero .teja__valor { color: var(--text-secondary); }
+.teja.is-cero .teja__icono { background: var(--ink-50); color: var(--ink-400); box-shadow: inset 0 0 0 1px var(--ink-150); }
+
+@container tablero (max-width: 900px) {
+  .tejas { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--s-6); }
+  .teja { padding: 0 var(--s-4); }
+  .teja:nth-child(3n + 1) { padding-left: 0; }
+  .teja:nth-child(3n + 1)::before { display: none; }
+}
+@container tablero (max-width: 520px) {
+  .tejas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .teja:nth-child(3n + 1) { padding-left: var(--s-4); }
+  .teja:nth-child(3n + 1)::before { display: block; }
+  .teja:nth-child(2n + 1) { padding-left: 0; }
+  .teja:nth-child(2n + 1)::before { display: none; }
+}
+
+/* ---- Barras horizontales (una serie) -----------------------------------
+   Las de «Viviendas por territorio» de Inicio, con la etiqueta completa:
+   una opción larga del instrumento se parte en renglones, nunca se corta. */
+.tbarras { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-4); }
+.tbarra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s-4);
+  row-gap: 7px;
+}
+.tbarra__nombre { font-size: var(--fs-label); font-weight: 600; line-height: 1.4; color: var(--ink-800); text-wrap: pretty; }
+.tbarra__cifras { font-size: var(--fs-small); color: var(--ink-500); white-space: nowrap; }
+.tbarra__cifras strong { font-weight: 700; color: var(--ink-900); }
+.tbarra__carril { grid-column: 1 / -1; display: block; height: 10px; }
+.tbarra__relleno {
+  display: block;
+  height: 100%;
+  width: calc(var(--proporcion, 0) * 100%);
+  min-width: 6px;
+  border-radius: 0 4px 4px 0;
+  background: var(--brand-600);
+}
+.tbarra.is-apagada .tbarra__nombre { font-weight: 500; color: var(--ink-500); }
+.tbarra.is-apagada .tbarra__relleno { background: var(--ink-200); }
+.tbarra.is-cero .tbarra__relleno { min-width: 0; }
+.tbarra.is-cero .tbarra__cifras strong { color: var(--text-secondary); }
+
+/* ---- Columnas (escalas cortas) ------------------------------------------ */
+.tcolumnas {
+  --alto-columna: 148px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--columnas, 6), minmax(0, 1fr));
+  gap: var(--s-2);
+}
+/* La línea de base corre bajo todas las columnas. */
+.tcolumnas::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--alto-columna);
+  height: 1px;
+  background: var(--ink-200);
+}
+.tcolumna { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.tcolumna__area {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: var(--alto-columna);
+}
+.tcolumna__valor { font-size: var(--fs-small); font-weight: 700; color: var(--ink-900); }
+.tcolumna__barra {
+  display: block;
+  width: 24px;
+  max-width: 100%;
+  height: calc(var(--proporcion, 0) * (var(--alto-columna) - 28px));
+  min-height: 4px;
+  border-radius: 4px 4px 0 0;
+  background: var(--brand-600);
+}
+.tcolumna.is-cero .tcolumna__barra { min-height: 0; height: 0; }
+.tcolumna.is-cero .tcolumna__valor { color: var(--text-secondary); font-weight: 600; }
+.tcolumna__nombre {
+  margin-top: var(--s-2);
+  font-size: var(--fs-micro);
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink-500);
+  text-wrap: balance;
+}
+
+/* ---- Espejo: hombres a la izquierda, mujeres a la derecha ---------------
+   Las dos alas comparten la escala y nacen en el eje; la cifra va en la
+   punta de cada barra, en tinta. La leyenda es la cabecera de cada ala. */
+.espejo { --eje: 132px; }
+.espejo__leyenda,
+.espejo__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--eje) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--s-2);
+}
+.espejo__leyenda { margin-bottom: var(--s-3); }
+.espejo__serie {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+.espejo__serie--hombre { grid-column: 1; justify-self: end; }
+.espejo__serie--mujer { grid-column: 3; justify-self: start; }
+.espejo__muestra { width: 10px; height: 10px; border-radius: 3px; }
+.espejo__serie--hombre .espejo__muestra { background: var(--dato-hombre); }
+.espejo__serie--mujer .espejo__muestra { background: var(--dato-mujer); }
+
+.espejo__filas { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.espejo__fila { position: relative; min-height: 22px; }
+.espejo__ala { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.espejo__ala--hombre { justify-content: flex-end; }
+.espejo__ala--mujer { justify-content: flex-start; }
+.espejo__barra {
+  display: block;
+  flex: none;
+  width: calc(var(--proporcion, 0) * (100% - 3.4em));
+  min-width: 4px;
+  height: 12px;
+}
+.espejo__ala--hombre .espejo__barra { border-radius: 4px 0 0 4px; background: var(--dato-hombre); }
+.espejo__ala--mujer .espejo__barra { border-radius: 0 4px 4px 0; background: var(--dato-mujer); }
+.espejo__barra.is-cero { min-width: 0; width: 0; }
+.espejo__cifra { flex: none; font-size: var(--fs-small); font-weight: 700; color: var(--ink-900); }
+.espejo__cifra.is-cero { font-weight: 500; color: var(--text-secondary); }
+.espejo__nombre {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink-700);
+  text-wrap: balance;
+}
+.espejo__fila.is-apagada .espejo__nombre { font-weight: 500; color: var(--ink-500); }
+.espejo__fila.is-apagada .espejo__barra { background: var(--ink-200); }
+
+/* Etiquetas largas: la categoría encima y las alas debajo, juntas en el eje. */
+.espejo--arriba { --eje: 1px; }
+.espejo--arriba .espejo__leyenda,
+.espejo--arriba .espejo__fila { column-gap: 0; }
+.espejo--arriba .espejo__filas { gap: var(--s-3); }
+.espejo--arriba .espejo__fila { row-gap: 5px; }
+.espejo--arriba .espejo__nombre { grid-column: 1 / -1; grid-row: 1; }
+.espejo--arriba .espejo__ala--hombre { grid-column: 1; grid-row: 2; padding-right: 3px; }
+.espejo--arriba .espejo__ala--mujer { grid-column: 3; grid-row: 2; padding-left: 3px; }
+.espejo--arriba .espejo__serie--hombre { padding-right: var(--s-2); }
+.espejo--arriba .espejo__serie--mujer { padding-left: var(--s-2); }
+
+@container tablero (max-width: 520px) {
+  .espejo { --eje: 96px; }
+}
+
+/* ---- Composición de una escala graduada (APGAR, Zarit, riesgo) ---------- */
+.composicion-barra__barra {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  margin-bottom: var(--s-5);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.composicion-barra__tramo { flex: var(--parte) 0 0; min-width: 4px; }
+.composicion-barra__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.composicion-barra__grado {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s-3);
+}
+.composicion-barra__punto { width: 10px; height: 10px; border-radius: 50%; transform: translateY(1px); }
+.composicion-barra__nombre { font-size: var(--fs-label); font-weight: 500; line-height: 1.4; color: var(--ink-800); }
+.composicion-barra__cifras { font-size: var(--fs-small); color: var(--ink-500); white-space: nowrap; }
+.composicion-barra__cifras strong { font-weight: 700; color: var(--ink-900); }
+.composicion-barra__grado.is-cero .composicion-barra__nombre { color: var(--ink-500); }
+.composicion-barra__grado.is-cero .composicion-barra__cifras strong { color: var(--text-secondary); }
+
+.tono--ok { background: var(--ok-600); }
+.tono--aviso { background: var(--warn-600); }
+.tono--alerta,
+.tono--alto { background: var(--alert-600); }
+.tono--bajo { background: var(--riesgo-bajo); }
+.tono--medio { background: var(--riesgo-medio); }
+.tono--sin { background: var(--ink-200); }
+
+/* ---- Medidores: una proporción contra su total -------------------------- */
+.medidores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--s-6) var(--s-8);
+}
+.medidor { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+.medidor__cabeza { display: flex; flex-direction: column; gap: 6px; }
+.medidor__valor {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink-900);
+  font-variant-numeric: proportional-nums;
+}
+.medidor__etiqueta { font-size: var(--fs-label); font-weight: 600; line-height: 1.4; color: var(--ink-800); }
+.medidor__pista { display: block; height: 8px; margin-top: 2px; border-radius: 4px; background: var(--brand-100); overflow: hidden; }
+.medidor__relleno {
+  display: block;
+  height: 100%;
+  width: calc(var(--proporcion, 0) * 100%);
+  border-radius: 0 4px 4px 0;
+  background: var(--brand-600);
+}
+.medidor__detalle { font-size: var(--fs-small); color: var(--ink-500); }
+.medidor.is-cero .medidor__valor { color: var(--text-secondary); }
+
+/* ---- Estados del tablero ----------------------------------------------- */
+.tablero__espera {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--s-10) var(--s-6);
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+.tablero__vacio {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-12) var(--s-6);
+  text-align: center;
+  background: #fff;
+  border-radius: var(--r-shell);
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+.tablero__vacio i {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--s-2);
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-600);
+  font-size: 22px;
+}
+.tablero__vacio-titulo { margin: 0; font-size: var(--fs-h3); font-weight: 700; color: var(--ink-900); }
+.tablero__vacio-texto { margin: 0; max-width: 48ch; font-size: var(--fs-small); color: var(--ink-500); }
+.tablero__fuente { margin: var(--s-5) 0 0; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-500); }
+.tablero__fuente[hidden] { display: none; }
+
+/* ---- Movimiento ----------------------------------------------------------
+   Las barras crecen desde su base cuando llegan datos o se abre otra página:
+   una revelación de dato, como en Inicio. Recorte y no anchura: no recalcula
+   el layout. El ala de los hombres crece hacia la izquierda. */
+.tablero--crece .tbarra__relleno,
+.tablero--crece .espejo__ala--mujer .espejo__barra,
+.tablero--crece .medidor__relleno {
+  animation: barraCrece 0.7s var(--ease-out) backwards;
+  animation-delay: calc(160ms + var(--orden, 0) * 35ms);
+}
+.tablero--crece .espejo__ala--hombre .espejo__barra {
+  animation: barraCreceIzquierda 0.7s var(--ease-out) backwards;
+  animation-delay: calc(160ms + var(--orden, 0) * 35ms);
+}
+.tablero--crece .tcolumna__barra {
+  animation: barraCreceArriba 0.7s var(--ease-out) backwards;
+  animation-delay: calc(160ms + var(--orden, 0) * 45ms);
+}
+@keyframes barraCreceIzquierda {
+  from { clip-path: inset(0 0 0 100%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes barraCreceArriba {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tablero--crece .tbarra__relleno,
+  .tablero--crece .espejo__barra,
+  .tablero--crece .medidor__relleno,
+  .tablero--crece .tcolumna__barra { animation: none; }
+  .reportes-menu__item,
+  .tablero-paginas__item { transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out); }
+}
+
+/* ---- Pantallas angostas: el menú pasa arriba, en una fila de píldoras ---- */
+@media (max-width: 960px) {
+  .app-main--reportes { display: block; }
+  .reportes-menu {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: var(--s-5);
+    padding: 5px;
+    overflow-x: auto;
+    border-radius: var(--r-chip);
+    scrollbar-width: none;
+  }
+  .reportes-menu__titulo,
+  .reportes-menu__etiqueta { display: none; }
+  .reportes-menu__grupo { flex-direction: row; gap: 4px; }
+  .reportes-menu__item { width: auto; flex: none; white-space: nowrap; min-height: 38px; padding: 6px var(--s-4); }
+}
+@media (max-width: 720px) {
+  .reportes-cabecera__titulo { font-size: 23px; }
+  .tpanel { padding: var(--s-4) var(--s-4) var(--s-5); }
+  .tablero-filtros { padding: var(--s-4); }
+  .tablero-filtros__campos input,
+  .tablero-filtros__campos select { font-size: 16px; }
 }

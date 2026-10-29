@@ -1536,6 +1536,8 @@ function cambiarVista(nombreVista) {
     boton.classList.toggle('is-active', boton.dataset.view === nombreVista);
   });
   moverIndicadorDeTabs();
+  /* Las vistas del apartado Reportes comparten el menú lateral (tableros.js). */
+  if (window.REPORTES) window.REPORTES.alCambiarVista(nombreVista);
 
   if (nombreVista === 'inicio') {
     renderizarInicio();

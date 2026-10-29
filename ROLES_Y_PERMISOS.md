@@ -174,8 +174,13 @@ quien la hizo. La línea de comandos (`npm run usuario:crear`) sigue disponible
 para el primer administrador o maestro y usa el mismo módulo
 (`api/_usuarios.js`).
 
-El **Reporte SI-APS** (`reporte.generar`) se abre desde el mismo menú, para la
-coordinación, el administrador y el maestro. Genera el archivo plano del anexo
+El apartado **Reportes** se abre desde el mismo menú («Reportes») para quien
+tiene `productividad.ver` o `reporte.generar`: la coordinación, el
+administrador y el maestro. Su menú lateral lleva a los tableros de población,
+a la productividad y a las descargas, y sólo muestra lo que el rol puede ver.
+
+El **Reporte SI-APS** (`reporte.generar`) es la vista de descargas del
+apartado, para la coordinación, el administrador y el maestro. Genera el archivo plano del anexo
 técnico con los datos de todas las personas del período —violencias y salud
 mental incluidas—, por eso no lo tiene el personal asistencial.
 `/api/reporte_sispro` sólo acepta `POST` con sesión y cabecera anti‑CSRF (un
@@ -184,8 +189,8 @@ año como máximo) y deja cada generación en `aud.evento` con el período, el
 formato y el número de registros. El resumen previo a la descarga sólo trae
 códigos de ficha, no datos personales.
 
-Los **Reportes de productividad** (`productividad.ver`) también se abren desde
-el menú, para la coordinación (la coordinadora y los líderes de zona), el
+Los **Reportes de productividad** (`productividad.ver`) también están en el
+apartado, para la coordinación (la coordinadora y los líderes de zona), el
 administrador y el maestro. `/api/productividad` (`GET`, con sesión) devuelve
 sólo cuentas —fichas, viviendas, hogares, familias, personas, plan pendiente—
 agrupadas por EBS, comuna, territorio, barrio, persona que diligenció o fecha,
@@ -194,6 +199,13 @@ personal que diligenció, que es lo que la coordinación necesita ver; ningún
 dato de la población. La agrupación sale de una lista fija del código y los
 filtros van como parámetros. Por EBS y por persona aparecen en cero los
 equipos y las cuentas activas sin fichas en el período.
+
+Los **tableros de población** usan el mismo permiso y el mismo endpoint, con
+`tablero=1` (`api/_tablero.js`): cuentas por categoría del instrumento de la
+población caracterizada en un período de hasta cinco años —de cada vivienda,
+su visita más reciente, sólo con consentimiento—, con filtros de EBS, comuna y
+territorio como parámetros. Nunca traen personas, y no cuentan los datos
+sensibles (orientación sexual, violencias).
 
 ## 3. Cómo se crean los usuarios
 
