@@ -431,6 +431,12 @@ function enEdadReproductiva(contexto) {
   return edadEntre(contexto, EDAD_MINIMA_REPRODUCTIVA_MESES, null);
 }
 
+/* RN-085 — La gestación se pregunta a quien puede gestar y está en edad
+   reproductiva. La usan la regla y el reporte SI-APS (variable 33). */
+function seLePreguntaGestacion(contexto) {
+  return SEXOS_CON_CAPACIDAD_GESTAR.indexOf(contexto.sexo) !== -1 && enEdadReproductiva(contexto);
+}
+
 function nombreIntegrante(integrante, indice) {
   const nombre = [integrante.primerNombre, integrante.primerApellido]
     .filter(function (parte) { return !esVacio(parte); })
@@ -1453,7 +1459,7 @@ const REGLAS_INTEGRANTE = [
   {
     codigo: 'RN-085',
     campo: 'gestacionActual',
-    aplica: function (i, c) { return SEXOS_CON_CAPACIDAD_GESTAR.indexOf(c.sexo) !== -1 && enEdadReproductiva(c); },
+    aplica: function (i, c) { return seLePreguntaGestacion(c); },
     valida: function (i) { return perteneceA(CAT_SI_NO, i.gestacionActual); },
     mensaje: 'Indique si hay gestación actual confirmada.'
   },

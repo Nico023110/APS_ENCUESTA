@@ -185,6 +185,14 @@ function crearCodificadores(m) {
   return { catalogo: catalogo, codigoDe: codigoDe, codigosDe: codigosDe };
 }
 
+/* Subregión (variable 4): tres dígitos. En el Distrito la subregión agrupa
+   barrios, y en Cali es la UZPE de la vivienda (ítem 4): UZPE006 se reporta
+   006. Si la ficha no trae UZPE, el parámetro subregion_sispro. */
+function subregionDe(encuesta, parametros) {
+  const uzpe = /^UZPE(\d{3})$/.exec(String((encuesta && encuesta.uzpe) || '').trim().toUpperCase());
+  return uzpe ? uzpe[1] : (parametros && parametros.subregion) || null;
+}
+
 /* Territorio (variable 6): «TXX» con XX de 01 a 98. «T99 está reservado; si
    los territorios superan el T98 se continúa con U01, U02…» y luego con V.
    Los territorios del Distrito van de T01 a T110. */
@@ -225,7 +233,7 @@ function variablesTipo2(m, c) {
     1: { valor: function (ctx) { return R(ctx.consecutivo); } },
     2: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO', e(ctx).consentimiento); } },
     3: { valor: function (ctx) { return R(e(ctx).departamentoCodigo); } },
-    4: { valor: function (ctx) { return R(ctx.parametros.subregion); } },
+    4: { valor: function (ctx) { return R(subregionDe(e(ctx), ctx.parametros)); } },
     5: { valor: function (ctx) { return R(e(ctx).municipioCodigo); } },
     6: { valor: function (ctx) { return R(territorioSispro(e(ctx).territorio)); } },
     7: { valor: function (ctx) { return R(e(ctx).microterritorio); } },
@@ -328,6 +336,17 @@ function variablesTipo3(m, c) {
   const i = function (ctx) { return ctx.integrante; };
   const edad = function (ctx) { return ctx.contexto.edadMeses; };
 
+  /* Variables 14, 32 y 33: el anexo las pide a todos y sin «No aplica», pero
+     el formulario no se las pregunta a todos (por la edad, y la 33 además por
+     el sexo). A quien no se le preguntó se reporta lo cierto —«No responde»
+     en la 14, «No» en la 32 y la 33—, como ya hacen la 71 y la 72. A quien sí
+     se le preguntó y no respondió le queda vacía y sale como incidencia; sin
+     fecha de nacimiento no se supone nada. */
+  function siNoSePregunto(ctx, resultado, sePregunto, codigo) {
+    if (!vacio(resultado.v) || resultado.sinCodigo.length > 0 || edad(ctx) === null || sePregunto) return resultado;
+    return R(codigo);
+  }
+
   return {
     0: { valor: function () { return R('3'); } },
     1: { valor: function (ctx) { return R(ctx.consecutivo); } },
@@ -342,7 +361,12 @@ function variablesTipo3(m, c) {
     11: { valor: function (ctx) { return c.codigoDe('CAT_SEXO', i(ctx).sexo); } },
     12: { valor: function (ctx) { return c.codigoDe('CAT_GENERO', i(ctx).genero); } },
     13: { valor: function (ctx) { return c.codigoDe('CAT_AUTOIDENTIFICACION_GENERO', i(ctx).autoidentificacionGenero); } },
-    14: { valor: function (ctx) { return c.codigoDe('CAT_ORIENTACION_SEXUAL', i(ctx).orientacionSexual); } },
+    14: {
+      valor: function (ctx) {
+        return siNoSePregunto(ctx, c.codigoDe('CAT_ORIENTACION_SEXUAL', i(ctx).orientacionSexual),
+          m.esMayorDe(ctx.contexto, 13), c.codigoDe('CAT_ORIENTACION_SEXUAL', 'no_responde').v);
+      }
+    },
     15: { valor: function (ctx) { return R(soloDigitos(i(ctx).telefono1)); } },
     16: { valor: function (ctx) { return R(soloDigitos(i(ctx).telefono2)); } },
     17: { valor: function (ctx) { return c.codigoDe('CAT_ROL_FAMILIAR', i(ctx).rolFamiliar); } },
@@ -367,8 +391,18 @@ function variablesTipo3(m, c) {
     29: { valor: function (ctx) { return c.codigosDe('CAT_ATENCIONES_RPMS', i(ctx).atencionesPendientesRpms); } },
     30: { valor: function (ctx) { return c.codigosDe('CAT_DISCAPACIDAD', i(ctx).discapacidad); } },
     31: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', i(ctx).certificacionRlcpd); }, noAplica: '3' },
-    32: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO', i(ctx).intencionReproductiva); }, condicional: true },
-    33: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO', i(ctx).gestacionActual); }, condicional: true },
+    32: {
+      valor: function (ctx) {
+        return siNoSePregunto(ctx, c.codigoDe('CAT_SI_NO', i(ctx).intencionReproductiva),
+          m.enEdadReproductiva(ctx.contexto), c.codigoDe('CAT_SI_NO', 'no').v);
+      }
+    },
+    33: {
+      valor: function (ctx) {
+        return siNoSePregunto(ctx, c.codigoDe('CAT_SI_NO', i(ctx).gestacionActual),
+          m.seLePreguntaGestacion(ctx.contexto), c.codigoDe('CAT_SI_NO', 'no').v);
+      }
+    },
     34: { valor: function (ctx) { return c.codigosDe('CAT_ATENCIONES_MATERNO', i(ctx).atencionesPendientesMaterno); }, noAplica: '9' },
     /* Variable 35: sin atenciones pendientes el formulario no pregunta el
        motivo; se reporta «Ninguna» (15), la opción de exclusión de la lista. */
@@ -404,7 +438,17 @@ function variablesTipo3(m, c) {
     60: { valor: function (ctx) { return c.codigoDe('CAT_ZONA_ENDEMICA', i(ctx).zonaEndemica); } },
     61: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', i(ctx).adherenciaTratamiento); }, noAplica: '3' },
     62: { valor: function (ctx) { return c.codigosDe('CAT_MOTIVO_NO_TRATAMIENTO', i(ctx).motivoNoTratamiento); }, noAplica: '15' },
-    63: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', i(ctx).consumoSpa); }, noAplica: '3' },
+    /* Variable 63: sólo mayores de 14 años, con la lista LstSINO (1 y 2), que
+       no tiene «No aplica». Al menor el formulario le autoasigna «no_aplica»;
+       antes salía 3, un código que el anexo no admite. Va vacía. */
+    63: {
+      valor: function (ctx) {
+        const respuesta = i(ctx).consumoSpa;
+        const resultado = respuesta === 'si' || respuesta === 'no' ? c.codigoDe('CAT_SI_NO', respuesta) : R(null);
+        resultado.requerido = edad(ctx) !== null && edad(ctx) >= 14 * 12;
+        return resultado;
+      }
+    },
     67: { valor: function (ctx) { return R(entero(i(ctx).puntajeAssist)); } },
     68: { valor: function (ctx) { return R(entero(i(ctx).puntajeAudit)); } },
     69: { valor: function (ctx) { return R(entero(i(ctx).puntajeCrafft)); } },
@@ -570,7 +614,7 @@ function nombreDeArchivo(entidad, hasta) {
  * @param opciones.desde       AAAA-MM-DD, inicio del período
  * @param opciones.hasta       AAAA-MM-DD, fecha de corte
  * @param opciones.entidad     { tipo: 'NI', numero: NIT sin dígito de verificación }
- * @param opciones.subregion   código de 3 dígitos de la subregión (variable 4) o null
+ * @param opciones.subregion   subregión (variable 4) para la ficha sin UZPE: 3 dígitos o null
  * @param opciones.nitPrestador NIT a usar si el prestador de la ficha no trae el suyo
  * @returns { nombreArchivo, contenido, resumen }
  */
@@ -593,7 +637,7 @@ function construirReporte(opciones) {
     const fechaFicha = encuesta.fechaDiligenciamiento;
 
     const consecutivoVivienda = relleno(meta.consecutivoVivienda, 4);
-    const partesVivienda = [encuesta.departamentoCodigo, parametros.subregion, encuesta.municipioCodigo,
+    const partesVivienda = [encuesta.departamentoCodigo, subregionDe(encuesta, parametros), encuesta.municipioCodigo,
       territorioSispro(encuesta.territorio), encuesta.microterritorio];
     const idVivienda = consecutivoVivienda === null || partesVivienda.some(vacio)
       ? null
@@ -653,6 +697,7 @@ module.exports = {
   construirReporte,
   nombreDeArchivo,
   territorioSispro,
+  subregionDe,
   textoPlano,
   formatear,
   coordenada,

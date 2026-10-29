@@ -152,10 +152,12 @@ module.exports = async (req, res) => {
       },
       registros: reporte.resumen.registros,
       incidencias: reporte.resumen.incidencias,
-      avisos: parametros.subregion ? [] : [
-        'Falta el código de subregión (variable 4): configure «subregion_sispro» con los 3 dígitos ' +
-        'parametrizados en la gestión técnica del SI-APS. Sin él, las variables 4, 123 y 124 salen vacías.'
-      ]
+      /* La subregión sale de la UZPE de cada vivienda; sólo se avisa si alguna
+         quedó sin ella (ficha sin UZPE y sin el parámetro de respaldo). */
+      avisos: reporte.resumen.incidencias.detalle.some(function (x) { return x.tipoRegistro === 2 && x.variable === 4; })
+        ? ['Hay viviendas sin subregión (variable 4): su ficha no trae UZPE y no está configurado «subregion_sispro». ' +
+           'Sin ella, las variables 4, 123 y 124 salen vacías.']
+        : []
     };
 
     /* RN-225: quién generó qué período, en qué formato y con qué volumen. */

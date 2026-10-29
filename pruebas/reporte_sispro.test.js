@@ -180,6 +180,18 @@ verificar('el integrante apunta a su familia', campo(t3a, 117) === campo(t2, 124
 verificar('ID del integrante: familia + tipo + número', campo(t3a, 118) === idVivienda + 'F0001CC1144099887', campo(t3a, 118));
 verificar('número de personas de la familia = registros tipo 3', campo(t2, 110) === '2', campo(t2, 110));
 
+/* La subregión es la UZPE de la vivienda (UZPE006 => 006); el parámetro sólo
+   respalda a la ficha que no trae UZPE. */
+const conUzpe = Object.assign(ficha(), { uzpe: 'UZPE006' });
+const tUzpe = generar([{ encuesta: conUzpe, meta: meta() }], '117').contenido.split('\r\n')[1];
+verificar('Ficha con UZPE006: subregión 006 en la variable 4 y en el ID de la vivienda',
+  campo(tUzpe, 4) === '006' && campo(tUzpe, 123) === '76' + '006' + '76001' + 'T48' + 'MT01' + 'H0007', campo(tUzpe, 4) + ' ' + campo(tUzpe, 123));
+const sinNada = generar([{ encuesta: ficha(), meta: meta() }], null);
+verificar('Sin UZPE ni parámetro: la 4 vacía y señalada como incidencia',
+  campo(sinNada.contenido.split('\r\n')[1], 4) === '' && incidenciasDe(sinNada, 2, 4).length === 1);
+verificar('subregionDe: UZPE006 => 006; sin UZPE, el parámetro',
+  reporte.subregionDe({ uzpe: 'uzpe006' }, null) === '006' && reporte.subregionDe({}, { subregion: '117' }) === '117');
+
 console.log('\n=== 5. Registro tipo 2 ===');
 
 verificar('consentimiento sí => 1', campo(t2, 2) === '1');
@@ -216,10 +228,21 @@ verificar('mujer de 30 años: edad fértil 1, embarazo 2', campo(t3a, 71) === '1
 verificar('niño de 8 años sin ocupación => 9998', campo(t3b, 18) === '9998', campo(t3b, 18));
 verificar('niño: sin cintura ni tensión, clasificación de tensión «No aplica» (6)',
   campo(t3b, 40) === '' && campo(t3b, 44) === '' && campo(t3b, 46) === '6', [campo(t3b, 40), campo(t3b, 44), campo(t3b, 46)].join('/'));
-verificar('niño: ítems de mayores de 14 «No aplica» (52 => 5, 53 => 3, 63 => 3)',
-  campo(t3b, 52) === '5' && campo(t3b, 53) === '3' && campo(t3b, 63) === '3',
-  [campo(t3b, 52), campo(t3b, 53), campo(t3b, 63)].join('/'));
+verificar('niño: ítems de mayores de 14 «No aplica» (52 => 5, 53 => 3)',
+  campo(t3b, 52) === '5' && campo(t3b, 53) === '3', [campo(t3b, 52), campo(t3b, 53)].join('/'));
+/* La lista de la 63 (LstSINO) no tiene «No aplica»: el 3 no existe ahí. */
+verificar('niño: consumo de SPA (63) vacío, no 3; adulta que no consume => 2',
+  campo(t3b, 63) === '' && campo(t3a, 63) === '2', campo(t3b, 63) + ' / ' + campo(t3a, 63));
 verificar('niño de 8: tabaco «No aplica» por su siOculta (3)', campo(t3b, 64) === '3', campo(t3b, 64));
+/* Obligatorias sin «No aplica» que el formulario no le pregunta a un niño:
+   se reporta lo cierto en vez de dejarlas vacías. */
+verificar('niño de 8: orientación «No responde» (5), intención reproductiva y gestación «No» (2)',
+  campo(t3b, 14) === '5' && campo(t3b, 32) === '2' && campo(t3b, 33) === '2',
+  [campo(t3b, 14), campo(t3b, 32), campo(t3b, 33)].join('/'));
+verificar('  y el niño no deja incidencias en las variables 14, 32 y 33',
+  [14, 32, 33].every((n) => incidenciasDe(r, 3, n).length === 0));
+verificar('adulta: su orientación y su respuesta de gestación (no => 2)',
+  campo(t3a, 14) === '1' && campo(t3a, 33) === '2', campo(t3a, 14) + '/' + campo(t3a, 33));
 verificar('niño de 8: signos de desnutrición (3 meses a 5 años) «No aplica» (9)', campo(t3b, 41) === '9', campo(t3b, 41));
 verificar('hombre: edad fértil 2', campo(t3b, 71) === '2');
 
