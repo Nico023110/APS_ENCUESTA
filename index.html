@@ -2044,6 +2044,34 @@
       <p class="empty-state reporte__error" id="reporteError" hidden role="alert"></p>
       <div class="reporte__resultado" id="reporteResultado" hidden aria-live="polite"></div>
     </div>
+
+    <div class="card">
+      <div class="card__header usuarios__cabecera">
+        <div>
+          <h2>Fichas en Excel</h2>
+          <p class="usuarios__sub">Cada ficha con su vivienda, familias, integrantes, plan de cuidado y alertas, con las preguntas del instrumento y las respuestas escritas.</p>
+        </div>
+      </div>
+      <form id="formExcel" novalidate>
+        <div class="form-grid form-grid--2col">
+          <div class="field" data-campo="desde">
+            <label for="excelDesde">Desde *</label>
+            <input type="date" id="excelDesde" name="desde" required>
+          </div>
+          <div class="field" data-campo="hasta">
+            <label for="excelHasta">Hasta *</label>
+            <input type="date" id="excelHasta" name="hasta" required>
+          </div>
+        </div>
+        <p class="field-hint reporte__criterio">Entran todas las fichas con consentimiento diligenciadas en el período, con todas sus visitas. El libro trae una hoja por nivel (fichas, familias, integrantes, acciones, seguimientos y alertas) y el código de la ficha en cada una. Contiene datos personales y sensibles: la descarga queda registrada.</p>
+        <div class="reporte__acciones">
+          <button type="submit" class="btn btn--primary" id="btnExcelDescargar">
+            <i class="ph ph-file-xls" aria-hidden="true"></i><span>Descargar Excel</span>
+          </button>
+        </div>
+      </form>
+      <p class="empty-state reporte__error" id="excelError" hidden role="alert"></p>
+    </div>
   </section>
 
   <!-- ===================== VISTA: PRODUCTIVIDAD (productividad.ver) ===================== -->

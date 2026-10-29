@@ -290,7 +290,7 @@
       } });
     }
     if (puede('reporte.generar')) {
-      opciones.push({ icono: 'ph-file-arrow-down', texto: 'Reporte SI-APS', accion: function () {
+      opciones.push({ icono: 'ph-file-arrow-down', texto: 'Reporte SI-APS y Excel', accion: function () {
         if (window.REPORTE_SISPRO) window.REPORTE_SISPRO.abrir();
       } });
     }

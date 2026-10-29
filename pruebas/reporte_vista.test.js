@@ -92,6 +92,13 @@ function montar(rol) {
         blob: function () { return Promise.resolve(new w.Blob(['1|NI|805027289\r\n'])); }
       });
     }
+    if (cuerpo.formato === 'excel') {
+      return Promise.resolve({
+        ok: true, status: 200,
+        headers: { get: function (h) { return h === 'X-Nombre-Archivo' ? 'Fichas_caracterizacion_20260801_20260831.xlsx' : null; } },
+        blob: function () { return Promise.resolve(new w.Blob(['PK'])); }
+      });
+    }
     return Promise.resolve({
       ok: true, status: 200,
       headers: { get: function () { return null; } },
@@ -120,7 +127,7 @@ async function principal() {
   const w = montar('maestro');
   const doc = w.document;
 
-  verificar('el menú del usuario ofrece «Reporte SI-APS»', opcionesDelMenu(w).indexOf('Reporte SI-APS') !== -1,
+  verificar('el menú del usuario ofrece «Reporte SI-APS y Excel»', opcionesDelMenu(w).indexOf('Reporte SI-APS y Excel') !== -1,
     opcionesDelMenu(w).join(', '));
 
   const hoy = new Date();
@@ -134,7 +141,7 @@ async function principal() {
     doc.getElementById('reporteDesde').value + ' / ' + doc.getElementById('reporteHasta').value);
 
   Array.from(doc.querySelectorAll('#menuUsuario .app-menu__item'))
-    .find(function (b) { return b.textContent.trim() === 'Reporte SI-APS'; }).click();
+    .find(function (b) { return b.textContent.trim() === 'Reporte SI-APS y Excel'; }).click();
   verificar('la opción abre la vista', doc.getElementById('view-reporte').classList.contains('is-active'));
 
   doc.getElementById('reporteDesde').value = '2026-08-31';
@@ -171,10 +178,29 @@ async function principal() {
     JSON.stringify(segunda));
   verificar('y lo descarga con el nombre oficial', w.__descargas[0] === RESUMEN.nombreArchivo, JSON.stringify(w.__descargas));
 
+  verificar('«Fichas en Excel» propone el mes anterior', doc.getElementById('excelDesde').value === iso(inicio) &&
+    doc.getElementById('excelHasta').value === iso(fin));
+  doc.getElementById('excelDesde').value = '2026-08-31';
+  doc.getElementById('excelHasta').value = '2026-08-01';
+  doc.getElementById('formExcel').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  await esperar(20);
+  verificar('Excel con fechas al revés: avisa y no llama al servidor',
+    !doc.getElementById('excelError').hidden && w.__peticiones.length === 2, doc.getElementById('excelError').textContent);
+  doc.getElementById('excelDesde').value = '2026-08-01';
+  doc.getElementById('excelHasta').value = '2026-08-31';
+  doc.getElementById('formExcel').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  await esperar(50);
+  const tercera = w.__peticiones[2] || {};
+  verificar('«Descargar Excel» pide el libro por POST con la cabecera anti-CSRF',
+    tercera.metodo === 'POST' && tercera.cuerpo && tercera.cuerpo.formato === 'excel' && tercera.cuerpo.desde === '2026-08-01' &&
+    tercera.csrf === 'fetch', JSON.stringify(tercera));
+  verificar('y lo descarga con el nombre que manda el servidor', w.__descargas[1] === 'Fichas_caracterizacion_20260801_20260831.xlsx',
+    JSON.stringify(w.__descargas));
+
   console.log('\n=== 2. Sin reporte.generar (enfermería) ===');
 
   const w2 = montar('enfermeria');
-  verificar('el menú no ofrece el reporte', opcionesDelMenu(w2).indexOf('Reporte SI-APS') === -1, opcionesDelMenu(w2).join(', '));
+  verificar('el menú no ofrece el reporte', opcionesDelMenu(w2).indexOf('Reporte SI-APS y Excel') === -1, opcionesDelMenu(w2).join(', '));
   w2.REPORTE_SISPRO.abrir();
   verificar('y abrir la vista a mano no hace nada', !w2.document.getElementById('view-reporte').classList.contains('is-active'));
 

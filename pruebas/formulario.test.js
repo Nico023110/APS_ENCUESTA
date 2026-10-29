@@ -603,10 +603,24 @@ async function cerrarPruebas() {
 
   console.log('\n=== 14a. Territorios vigentes de la E.S.E. (T48 a T84 y T163 a T224) ===');
   const opcionesTerritorio = $$('#territorio option').map(function (o) { return o.value; }).filter(Boolean);
+  const numeroTerritorio = function (t) { return Number(t.slice(1)); };
   check('El ítem 7 ofrece los 99 territorios del listado: continuidad (T48 a T84) y ampliación (T163 a T224)',
-    opcionesTerritorio.length === 99 && opcionesTerritorio[0] === 'T48' && opcionesTerritorio[36] === 'T84' &&
-    opcionesTerritorio[37] === 'T163' && opcionesTerritorio[98] === 'T224',
-    opcionesTerritorio.length + ' ' + opcionesTerritorio[0] + '…' + opcionesTerritorio[opcionesTerritorio.length - 1]);
+    opcionesTerritorio.length === 99 && opcionesTerritorio.every(function (t) {
+      return (numeroTerritorio(t) >= 48 && numeroTerritorio(t) <= 84) || (numeroTerritorio(t) >= 163 && numeroTerritorio(t) <= 224);
+    }), opcionesTerritorio.length + ' ' + opcionesTerritorio[0] + '…' + opcionesTerritorio[opcionesTerritorio.length - 1]);
+  const gruposTerritorio = $$('#territorio optgroup').map(function (g) {
+    return g.label + ': ' + Array.from(g.querySelectorAll('option')).map(function (o) { return o.value; }).join(',');
+  });
+  check('  agrupados: primero las comunas en orden y luego los corregimientos',
+    gruposTerritorio.slice(0, 6).map(function (g) { return g.split(':')[0]; }).join() ===
+      'Comuna 1,Comuna 3,Comuna 17,Comuna 18,Comuna 19,Comuna 20' &&
+    gruposTerritorio.slice(6).every(function (g) { return /^Corregimiento /.test(g); }), gruposTerritorio.join(' | '));
+  check('  la comuna 17 junta sus 4 territorios (continuidad y ampliación) y la 19 trae Bellavista',
+    gruposTerritorio.indexOf('Comuna 17: T167,T168,T195,T196') !== -1 && gruposTerritorio.indexOf('Comuna 19: T199') !== -1,
+    gruposTerritorio.slice(2, 5).join(' | '));
+  check('  la 18.1 va con la comuna 18 y Montebello 4 (ampliación) sigue a Montebello 3',
+    /^Comuna 18: T51,T52,/.test(gruposTerritorio[3]) &&
+    gruposTerritorio.indexOf('Corregimiento Montebello: T55,T56,T57,T185') !== -1, gruposTerritorio[3]);
   setVal('#territorio', 'T167');
   check('  y T167 (ampliación) trae sus 3 microterritorios, con Caney sector 2 en MT02',
     $$('#microterritorio option').filter(function (o) { return o.value; }).map(function (o) { return o.value; }).join() === 'MT01,MT02,MT03' &&

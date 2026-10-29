@@ -119,13 +119,22 @@ function llenarSelect(idSelectOElemento, catalogo, opciones) {
   const partes = [];
   if (placeholder !== null) partes.push('<option value="">' + placeholder + '</option>');
 
+  /* Las opciones con `grupo` (los territorios del ítem 7, por comuna y
+     corregimiento) van dentro de un <optgroup>, en el orden en que llegan. */
+  let grupoAbierto = null;
   opcionesVigentes(catalogo).forEach(function (opcion) {
+    if (opcion.grupo !== undefined && opcion.grupo !== grupoAbierto) {
+      if (grupoAbierto !== null) partes.push('</optgroup>');
+      partes.push('<optgroup label="' + escaparHtml(opcion.grupo) + '">');
+      grupoAbierto = opcion.grupo;
+    }
     partes.push(
       '<option value="' + escaparHtml(opcion.valor) + '"' + (opcion.valor === config.seleccionado ? ' selected' : '') + '>' +
         escaparHtml(opcion.etiqueta) +
       '</option>'
     );
   });
+  if (grupoAbierto !== null) partes.push('</optgroup>');
 
   select.innerHTML = partes.join('');
 }
@@ -482,12 +491,14 @@ function inicializarCatalogosDelFormulario() {
 
 /* Sólo se ofrecen los territorios vigentes (TERRITORIOS_VIGENTES). `incluir`
    añade uno no vigente cuando ya viene en la ficha —una corrección de una
-   ficha antigua—: sin la opción, el <select> no podría mostrarlo. */
+   ficha antigua—: sin la opción, el <select> no podría mostrarlo. Van
+   agrupados por comuna y corregimiento (grupoTerritorio). */
 function catalogoTerritorios(incluir) {
-  return Object.keys(CAT_TERRITORIOS).map(function (codigo) {
+  return Object.keys(CAT_TERRITORIOS).sort(compararTerritorios).map(function (codigo) {
     return {
       valor: codigo,
       etiqueta: etiquetaTerritorio(codigo),
+      grupo: grupoTerritorio(codigo).nombre,
       vigente: territorioVigente(codigo) || codigo === incluir
     };
   });

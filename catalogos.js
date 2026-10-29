@@ -1122,14 +1122,54 @@ function etiquetaMicroterritorio(mt) {
   return mt.nombre ? mt.codigo + ' — ' + mt.nombre : mt.codigo;
 }
 
-/* «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Un territorio sin nombre
-   se rotula por su comuna, y uno sin comuna (no vigente) sólo por el código. */
+/* «T48 · Comuna 3», «T55 · Montebello 1 (rural)», «T168 · Valle del Lili 1
+   (comuna 17)». Los urbanos de la ampliación se nombran por el barrio: sin la
+   comuna, el equipo que busca la 17 o la 19 en el ítem 7 no los reconoce.
+   Un territorio sin nombre se rotula por su comuna, y uno sin comuna (no
+   vigente) sólo por el código. */
 function etiquetaTerritorio(codigoTerritorio) {
   const nombre = NOMBRES_TERRITORIOS[codigoTerritorio];
   const comuna = comunaDeTerritorio(codigoTerritorio);
-  if (nombre) return codigoTerritorio + ' · ' + nombre + (comuna === 'Rural' ? ' (rural)' : '');
+  if (nombre) {
+    let detalle = '';
+    if (comuna === 'Rural') detalle = ' (rural)';
+    else if (comuna && !/^comuna /i.test(nombre)) detalle = ' (comuna ' + comuna + ')';
+    return codigoTerritorio + ' · ' + nombre + detalle;
+  }
   if (!comuna) return codigoTerritorio;
   return codigoTerritorio + ' · ' + (comuna === 'Rural' ? 'Zona rural' : 'Comuna ' + comuna);
+}
+
+/* Grupo del territorio en el ítem 7: los urbanos por comuna (la 1.1, la 18.1
+   y la 20.1 de la continuidad van con la suya) y los rurales por
+   corregimiento. Por código, una misma comuna quedaba repartida entre la
+   continuidad y la ampliación (la 17 en T167, T168, T195 y T196) y parecía
+   que faltaran territorios. `tipo` ordena: comunas, corregimientos, otros. */
+function grupoTerritorio(codigoTerritorio) {
+  const comuna = comunaDeTerritorio(codigoTerritorio);
+  const nombre = NOMBRES_TERRITORIOS[codigoTerritorio];
+  if (comuna === 'Rural') {
+    const corregimiento = nombre ? nombre.replace(/\s+\d+$/, '') : '';
+    return corregimiento
+      ? { nombre: 'Corregimiento ' + corregimiento, tipo: 1, numero: 0, corregimiento: corregimiento }
+      : { nombre: 'Zona rural', tipo: 1, numero: 1, corregimiento: '' };
+  }
+  if (comuna) {
+    const numero = parseInt(comuna, 10);
+    return { nombre: 'Comuna ' + numero, tipo: 0, numero: numero, corregimiento: '' };
+  }
+  return { nombre: 'Otros territorios', tipo: 2, numero: 0, corregimiento: '' };
+}
+
+/* Orden del ítem 7: por grupo (comuna ascendente, corregimiento alfabético)
+   y dentro de cada grupo por código, que en la E.S.E. sigue la numeración
+   (Montebello 1, 2 y 3 en la continuidad; Montebello 4 en la ampliación). */
+function compararTerritorios(a, b) {
+  const ga = grupoTerritorio(a);
+  const gb = grupoTerritorio(b);
+  return (ga.tipo - gb.tipo) || (ga.numero - gb.numero) ||
+    ga.corregimiento.localeCompare(gb.corregimiento, 'es') ||
+    (Number(a.slice(1)) - Number(b.slice(1)));
 }
 
 function buscarMicroterritorio(codigoTerritorio, codigoMicroterritorio) {

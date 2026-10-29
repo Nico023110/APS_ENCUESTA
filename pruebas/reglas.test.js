@@ -793,7 +793,27 @@ verificar('Los 99 territorios vigentes (T48 a T84 y T163 a T224) tienen nombre p
 verificar('Urbano: «T48 · Comuna 3»; rural: «T55 · Montebello 1 (rural)»',
   etiquetaTerritorio('T48') === 'T48 · Comuna 3' && etiquetaTerritorio('T55') === 'T55 · Montebello 1 (rural)',
   etiquetaTerritorio('T48') + ' / ' + etiquetaTerritorio('T55'));
+verificar('Urbano de la ampliación, nombrado por el barrio, lleva su comuna: «T168 · Valle del Lili 1 (comuna 17)»',
+  etiquetaTerritorio('T168') === 'T168 · Valle del Lili 1 (comuna 17)' && etiquetaTerritorio('T199') === 'T199 · Bellavista (comuna 19)',
+  etiquetaTerritorio('T168') + ' / ' + etiquetaTerritorio('T199'));
+const conComunaRepetida = vigentes.map(etiquetaTerritorio).filter(e => /Comuna .*\(comuna /i.test(e));
+verificar('  y la continuidad, que ya se llama «Comuna N», no la repite', conComunaRepetida.length === 0, conComunaRepetida.join(', '));
 verificar('Un territorio no vigente y sin datos se rotula sólo con el código', etiquetaTerritorio('T20') === 'T20');
+const { grupoTerritorio, compararTerritorios } = contexto;
+const grupos = {};
+vigentes.slice().sort(compararTerritorios).forEach(t => { const g = grupoTerritorio(t).nombre; (grupos[g] = grupos[g] || []).push(t); });
+const ordenGrupos = Object.keys(grupos);
+verificar('Ítem 7 agrupado: 6 comunas en orden (1, 3, 17, 18, 19, 20) y 14 corregimientos en orden alfabético',
+  ordenGrupos.slice(0, 6).join() === 'Comuna 1,Comuna 3,Comuna 17,Comuna 18,Comuna 19,Comuna 20' &&
+  ordenGrupos.length === 20 && ordenGrupos[6] === 'Corregimiento El Hormiguero' && ordenGrupos[19] === 'Corregimiento Villa Carmelo',
+  ordenGrupos.join(', '));
+verificar('  la comuna 17 junta T167, T168, T195 y T196; la 1.1, la 18.1 y la 20.1 van con su comuna',
+  grupos['Comuna 17'].join() === 'T167,T168,T195,T196' &&
+  grupos['Comuna 1'].includes('T50') && grupos['Comuna 18'].includes('T52') && grupos['Comuna 20'].includes('T54'),
+  JSON.stringify(grupos['Comuna 17']));
+verificar('  un corregimiento junta la continuidad y la ampliación en orden (La Buitrera 1 a 7)',
+  grupos['Corregimiento La Buitrera'].map(etiquetaTerritorio).map(e => e.match(/La Buitrera (\d)/)[1]).join('') === '1234567',
+  grupos['Corregimiento La Buitrera'].join());
 verificar('Un corregimiento se llama igual en la continuidad y en la ampliación (La Buitrera 1 … 7)',
   etiquetaTerritorio('T76') === 'T76 · La Buitrera 1 (rural)' && etiquetaTerritorio('T216') === 'T216 · La Buitrera 7 (rural)',
   etiquetaTerritorio('T76') + ' / ' + etiquetaTerritorio('T216'));

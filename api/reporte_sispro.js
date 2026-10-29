@@ -2,12 +2,15 @@
    Encuesta_APS — POST /api/reporte_sispro
    -------------------------------------------------------------------------
    Genera el archivo plano APS124CCFP del anexo técnico SI-APS para cargarlo
-   en PISIS. Cuerpo: { desde: 'AAAA-MM-DD', hasta: 'AAAA-MM-DD',
-   formato: 'resumen' | 'archivo' }.
+   en PISIS, y las fichas en Excel. Cuerpo: { desde: 'AAAA-MM-DD',
+   hasta: 'AAAA-MM-DD', formato: 'resumen' | 'archivo' | 'excel' }.
 
      resumen   JSON con el nombre del archivo, los conteos y las incidencias
                agrupadas por variable (qué fichas corregir antes de enviar).
      archivo   el .TXT, para descargar y firmar digitalmente.
+     excel     las fichas del período en un libro de Excel legible
+               (api/_excel_fichas.js). Va aquí y no en un endpoint propio:
+               mismo permiso, mismo período, misma auditoría.
 
    El archivo lleva los datos de todas las personas del período, sensibles
    incluidos, así que:
@@ -21,6 +24,8 @@
    Qué fichas entran: diligenciadas dentro del período, con consentimiento y
    cerradas. De cada hogar, sólo la visita más reciente del período: el
    anexo usa el ID de la familia como llave primaria y no admite repetirlo.
+   El Excel, en cambio, trae todas las visitas con consentimiento del período,
+   cerradas o no: es la caracterización para consultar, no el reporte.
    ========================================================================= */
 
 'use strict';
@@ -29,13 +34,15 @@ const { obtenerPool } = require('./_db');
 const { requerirSesion } = require('./_auth');
 const { leerFichasCompletas } = require('./_ficha_completa');
 const { construirReporte } = require('./_reporte_sispro');
+const { construirExcel } = require('./_excel_fichas');
+const { obtenerMotor } = require('./_validacion');
 
 const TAMANO_LOTE = 500;
 const MAX_DIAS = 366;
 /* Tope por archivo: la función arma el reporte en memoria. Un mes de la red
    queda muy por debajo; un período mayor se divide. */
 const MAX_FICHAS = 10000;
-const FORMATOS = ['resumen', 'archivo'];
+const FORMATOS = ['resumen', 'archivo', 'excel'];
 
 /* Fecha real AAAA-MM-DD: 2026-02-30 no pasa. */
 function fechaValida(texto) {
@@ -75,6 +82,65 @@ async function leerParametros(cliente) {
   };
 }
 
+/* Nombre de cada acción del plan, del catálogo (CUPS y NoCUPS). */
+async function nombresDeAcciones(cliente, fichas) {
+  const codigos = new Set();
+  fichas.forEach(function (leida) {
+    const e = leida.encuesta;
+    const planes = [e.planVivienda];
+    (e.familias || []).forEach(function (f) {
+      planes.push(f.planFamilia);
+      (f.integrantes || []).forEach(function (i) { planes.push(i.planPersona); });
+    });
+    planes.filter(Boolean).forEach(function (p) {
+      (p.acciones || []).forEach(function (a) { if (a.codigoAccion) codigos.add(String(a.codigoAccion)); });
+    });
+  });
+  const nombres = {};
+  if (codigos.size === 0) return nombres;
+  (await cliente.query('SELECT codigo, nombre FROM cat.cups WHERE codigo = ANY($1)', [Array.from(codigos)])).rows
+    .forEach(function (fila) { nombres[fila.codigo] = fila.nombre; });
+  return nombres;
+}
+
+async function enviarExcel(cliente, periodo, usuario, res) {
+  const ids = (await cliente.query(`
+    SELECT id FROM aps.ficha
+     WHERE fecha_diligenciamiento BETWEEN $1 AND $2 AND consentimiento
+     ORDER BY fecha_diligenciamiento, id
+  `, [periodo.desde, periodo.hasta])).rows.map(function (f) { return String(f.id); });
+
+  if (ids.length === 0) return res.status(404).json({ error: 'No hay fichas con consentimiento en el período.' });
+  if (ids.length > MAX_FICHAS) {
+    return res.status(400).json({
+      error: 'El período tiene ' + ids.length + ' fichas y un libro admite hasta ' + MAX_FICHAS + '. Elija un período más corto.'
+    });
+  }
+
+  const fichas = [];
+  for (let i = 0; i < ids.length; i += TAMANO_LOTE) {
+    Array.prototype.push.apply(fichas, await leerFichasCompletas(cliente, ids.slice(i, i + TAMANO_LOTE)));
+  }
+
+  const libro = construirExcel({
+    fichas: fichas, motor: obtenerMotor(), nombresAcciones: await nombresDeAcciones(cliente, fichas),
+    desde: periodo.desde, hasta: periodo.hasta, generadoPor: usuario.nombre || usuario.documento
+  });
+
+  /* RN-225: quién descargó qué período y cuántas personas trae. */
+  await cliente.query(`
+    INSERT INTO aud.evento (entidad, tipo, campo, valor_nuevo, funcionario_id)
+    VALUES ('fichas_excel', 'consulta_sensible', 'excel', $1, $2)
+  `, [JSON.stringify({ archivo: libro.nombreArchivo, desde: periodo.desde, hasta: periodo.hasta,
+    fichas: libro.totales.fichas, personas: libro.totales.personas }), usuario.funcionarioId]);
+
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="' + libro.nombreArchivo + '"');
+  res.setHeader('X-Nombre-Archivo', libro.nombreArchivo);
+  return res.end(libro.contenido);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -91,6 +157,8 @@ module.exports = async (req, res) => {
   let cliente;
   try {
     cliente = await obtenerPool().connect();
+
+    if (periodo.formato === 'excel') return await enviarExcel(cliente, periodo, usuario, res);
 
     const parametros = await leerParametros(cliente);
     if (!/^(NI|MU|DE|DI)$/.test(parametros.entidad.tipo) || !/^\d{1,12}$/.test(parametros.entidad.numero)) {

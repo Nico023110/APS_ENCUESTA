@@ -1382,9 +1382,9 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 - **Vivienda (A2.123):** departamento + subregión + municipio + territorio + microterritorio + `H` + consecutivo de 4 dígitos. El consecutivo se asigna al hogar la primera vez que se guarda una ficha suya, reinicia en 0001 en cada microterritorio y no cambia después; si el hogar cambia de territorio o microterritorio, recibe uno nuevo en el destino. La asignación es atómica: dos fichas guardadas a la vez en el mismo microterritorio no pueden recibir el mismo número.
 - **Familia (A2.124):** identificador de la vivienda + `F` + consecutivo de la familia dentro del hogar.
 - **Integrante (A3.118):** identificador de la familia + tipo + número de documento.
-- **Territorio (A2.6):** tres caracteres. El anexo reserva `T99` y continúa con `U01`, `U02`…, así que los territorios `T99` a `T110` se reportan como `U01` a `U12`.
+- **Territorio (A2.6):** tres caracteres. El anexo reserva `T99` y continúa con `U01`, `U02`… y luego con `V`, así que `T99` a `T110` se reportan como `U01` a `U12`, y la ampliación `T163` a `T224` como `U65` a `V28`.
 - **No. Familias de la vivienda (A2.17):** cuenta familias, no hogares. El ítem 28 cuenta hogares y un hogar puede reunir varias familias (RN-028); como cada hogar declarado tiene al menos una familia, se reporta el mayor entre los hogares declarados y las familias caracterizadas.
-- **Subregión (A2.4):** es el código de 3 dígitos parametrizado para Cali en la gestión técnica del SI-APS. Se configura en `cat.parametro` (`subregion_sispro`); mientras no esté, el reporte deja vacías las variables 4, 123 y 124 y lo advierte.
+- **Subregión (A2.4):** tres dígitos. En el Distrito la subregión es la **UZPE de la vivienda** (ítem 4): `UZPE006` se reporta `006` (confirmado por la E.S.E., octubre de 2026). Para la ficha que no traiga UZPE se usa el parámetro `subregion_sispro` de `cat.parametro`; si tampoco hay, el reporte deja vacías las variables 4, 123 y 124 y lo advierte.
 
 ### RN-227 — Archivo plano APS124CCFP para PISIS
 
@@ -1394,6 +1394,16 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 4. **Nombre.** `APS124CCFP` + fecha de corte (`AAAAMMDD`) + tipo y número de la entidad (`NI` + NIT a 12 dígitos) + `.TXT`, a partir del parámetro `entidad_reportante`.
 5. **Incidencias.** Antes de descargar se revisa un resumen con las variables obligatorias vacías, las respuestas sin código en el anexo y los textos recortados, agrupados por variable y con los códigos de las fichas a corregir. El resumen no contiene datos personales. Nada se rellena para cuadrar el archivo: lo que falta se corrige en la ficha.
 6. **Firma.** El archivo debe firmarse digitalmente con el certificado de la entidad antes de cargarlo en PISIS; la firma no la hace la aplicación.
+
+### RN-229 — Fichas de caracterización en Excel
+
+En la misma vista («Reporte SI-APS y Excel») se descargan las fichas de un período en un libro de Excel, para consultarlas y analizarlas.
+
+1. **Quién y cómo.** Los mismos roles y controles de RN-227: permiso `reporte.generar`, `POST` con sesión y cabecera anti-CSRF, período de hasta un año, y cada descarga en `aud.evento` (quién, período, cuántas fichas y personas).
+2. **Qué fichas.** Todas las diligenciadas en el período **con consentimiento**, en cualquier estado y con todas sus visitas: es la caracterización para consultar, no el reporte al Ministerio.
+3. **Hojas.** *Resumen* (período, quién lo generó, totales y aviso de datos sensibles), *Fichas* (una fila por ficha: entorno, equipo y vivienda, con un resumen de alertas, riesgo familiar y plan), *Familias*, *Integrantes*, *Acciones* y *Seguimientos* del plan de cuidado, y *Alertas*. El código de la ficha encabeza cada hoja para cruzarlas.
+4. **Columnas.** Una por pregunta, en el orden del formulario, con el número del ítem y su nombre (las del anexo con su código, «A3.10»), agrupadas por sección. La lista sale del propio formulario (`bd/gen_campos_ficha.js` → `api/_campos_ficha.js`), así que una pregunta nueva aparece en el Excel al regenerarla. Las respuestas van escritas (la opción, no su código); la selección múltiple, separada por «; »; los documentos y teléfonos, como texto. No lleva códigos de regla.
+5. **Sin dependencias.** El libro lo arma la aplicación (`api/_xlsx.js`), sin librerías de terceros que procesen los datos.
 
 ---
 
@@ -1413,7 +1423,7 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 
 Catálogo parametrizado que soporta las reglas **RN-007** (Territorio, ítem 7) y **RN-008** (Microterritorio, ítem 8). La selección del microterritorio se filtra en cascada a partir del territorio elegido. El campo `comuna` se hereda como dato derivado de sólo lectura.
 
-**Nombre de los territorios.** El anexo los identifica sólo por código. El listado de la E.S.E. nombra cada uno por la comuna o el corregimiento que cubre, y el ítem 7 los muestra así: «T48 · Comuna 3», «T55 · Montebello 1 (rural)». Se guardan en `cat.territorio.nombre`. Los corregimientos llevan su nombre completo y número arábigo en la continuidad y en la ampliación (La Buitrera 1 a 7, El Saladito 1 a 5), aunque la hoja de ampliación los numere en romano.
+**Nombre de los territorios.** El anexo los identifica sólo por código. El listado de la E.S.E. nombra cada uno por la comuna o el corregimiento que cubre, y el ítem 7 los muestra así: «T48 · Comuna 3», «T55 · Montebello 1 (rural)»; los urbanos de la ampliación, nombrados por el barrio, llevan su comuna: «T168 · Valle del Lili 1 (comuna 17)». La lista va agrupada: primero las comunas (1, 3, 17, 18, 19, 20; la 1.1, la 18.1 y la 20.1 con la suya) y luego los corregimientos en orden alfabético, cada grupo en orden de código, para que la continuidad y la ampliación de una misma comuna queden juntas. Se guardan en `cat.territorio.nombre`. Los corregimientos llevan su nombre completo y número arábigo en la continuidad y en la ampliación (La Buitrera 1 a 7, El Saladito 1 a 5), aunque la hoja de ampliación los numere en romano.
 
 **Continuidad (T48 a T84).**
 

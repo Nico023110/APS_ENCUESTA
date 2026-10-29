@@ -1,9 +1,10 @@
 /* =========================================================
    Encuesta_APS — Reporte SI-APS (vista «Reporte SI-APS»)
    ---------------------------------------------------------
-   Genera el archivo plano APS124CCFP del anexo técnico para PISIS. Sólo la
-   ven quienes tienen reporte.generar (administrador y maestro); se abre
-   desde el menú del chip de usuario (sesion.js).
+   Genera el archivo plano APS124CCFP del anexo técnico para PISIS y las
+   fichas en Excel. Sólo la ven quienes tienen reporte.generar
+   (coordinación, administrador y maestro); se abre desde el menú del chip
+   de usuario (sesion.js).
 
    Dos pasos, los dos contra /api/reporte_sispro (POST):
      Revisar            el resumen: cuántos registros saldrían y qué
@@ -11,6 +12,7 @@
                         códigos de ficha a corregir. No trae datos personales.
      Descargar archivo  el .TXT, que luego se firma digitalmente fuera de la
                         aplicación y se carga en PISIS.
+     Descargar Excel    las fichas del período, legibles, en un .xlsx.
 
    Todo lo que viene del servidor se pinta con textContent.
    ========================================================= */
@@ -199,20 +201,61 @@
     try {
       const respuesta = await pedir('archivo');
       if (!respuesta.ok) throw new Error(await errorDe(respuesta));
-      const nombre = respuesta.headers.get('X-Nombre-Archivo') || 'APS124CCFP.TXT';
-      const url = URL.createObjectURL(await respuesta.blob());
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.download = nombre;
-      document.body.appendChild(enlace);
-      enlace.click();
-      enlace.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      const nombre = await guardarComoArchivo(respuesta, 'APS124CCFP.TXT');
       avisar('Archivo ' + nombre + ' descargado', 'success');
     } catch (error) {
       mostrarError('No fue posible generar el archivo: ' + error.message);
     } finally {
       ocupado(false);
+    }
+  }
+
+  /* Baja la respuesta como archivo con el nombre que manda el servidor. */
+  async function guardarComoArchivo(respuesta, nombrePorDefecto) {
+    const nombre = respuesta.headers.get('X-Nombre-Archivo') || nombrePorDefecto;
+    const url = URL.createObjectURL(await respuesta.blob());
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    return nombre;
+  }
+
+  /* ---------------------------------------------------------
+     Fichas en Excel
+     --------------------------------------------------------- */
+
+  function mostrarErrorExcel(texto) {
+    $('excelError').textContent = texto;
+    $('excelError').hidden = !texto;
+  }
+
+  async function descargarExcel(evento) {
+    if (evento) evento.preventDefault();
+    const desde = $('excelDesde').value;
+    const hasta = $('excelHasta').value;
+    if (!desde || !hasta) { mostrarErrorExcel('Indique las dos fechas del período.'); return; }
+    if (desde > hasta) { mostrarErrorExcel('La fecha inicial es posterior a la final.'); return; }
+    mostrarErrorExcel('');
+    ['btnExcelDescargar', 'excelDesde', 'excelHasta'].forEach(function (id) { $(id).disabled = true; });
+    $('formExcel').setAttribute('aria-busy', 'true');
+    try {
+      const respuesta = await fetch('/api/reporte_sispro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ desde: desde, hasta: hasta, formato: 'excel' })
+      });
+      if (!respuesta.ok) throw new Error(await errorDe(respuesta));
+      const nombre = await guardarComoArchivo(respuesta, 'Fichas_caracterizacion.xlsx');
+      avisar('Archivo ' + nombre + ' descargado', 'success');
+    } catch (error) {
+      mostrarErrorExcel('No fue posible generar el Excel: ' + error.message);
+    } finally {
+      ['btnExcelDescargar', 'excelDesde', 'excelHasta'].forEach(function (id) { $(id).disabled = false; });
+      $('formExcel').setAttribute('aria-busy', 'false');
     }
   }
 
@@ -228,6 +271,9 @@
     $('reporteHasta').value = p.hasta;
     $('formReporte').addEventListener('submit', revisar);
     $('btnReporteDescargar').addEventListener('click', descargar);
+    $('excelDesde').value = p.desde;
+    $('excelHasta').value = p.hasta;
+    $('formExcel').addEventListener('submit', descargarExcel);
   });
 
   window.REPORTE_SISPRO = { abrir: abrirVista };
