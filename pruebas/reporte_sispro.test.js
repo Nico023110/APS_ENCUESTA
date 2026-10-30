@@ -159,9 +159,15 @@ console.log('\n=== 3. Estructura del archivo ===');
 
 const r = generar([{ encuesta: ficha(), meta: meta() }]);
 const lineas = r.contenido.split('\r\n');
-verificar('cada registro termina en CRLF (también el último)', r.contenido.endsWith('\r\n') && lineas[lineas.length - 1] === '');
-lineas.pop();
+verificar('los registros se separan con CRLF y el último no lleva salto (sin fin de archivo)',
+  !r.contenido.endsWith('\r\n') && !r.contenido.endsWith('\n') && lineas[lineas.length - 1] !== '' &&
+  !/\r(?!\n)|[^\r]\n/.test(r.contenido));
 verificar('1 registro de control + 1 de familia + 2 de integrantes', lineas.length === 4, lineas.length);
+verificar('el control va primero, luego los tipo 2 y después los tipo 3',
+  lineas.map(function (l) { return l.split('|')[0]; }).join('') === '1233', lineas.map(function (l) { return l.split('|')[0]; }).join(''));
+verificar('cada tipo numera su consecutivo desde 1',
+  lineas[1].split('|')[1] === '1' && lineas[2].split('|')[1] === '1' && lineas[3].split('|')[1] === '2',
+  [lineas[1], lineas[2], lineas[3]].map(function (l) { return l.split('|')[1]; }).join(','));
 verificar('registro de control', lineas[0] === '1|NI|805027289|2026-09-01|2026-09-30|3', lineas[0]);
 const t2 = lineas[1];
 const [t3a, t3b] = [lineas[2], lineas[3]];
@@ -305,7 +311,6 @@ rota.equipoSaludId = 'EBS|12\r\n2|X';                            // un valor que
 rota.familias[0].integrantes[0].ocupacion = 'Juan Pérez, vendedor';
 const rr = generar([{ encuesta: rota, meta: meta() }]);
 const lr = rr.contenido.split('\r\n');
-lr.pop();
 verificar('ningún valor parte el registro: mismas líneas y 125 variables',
   lr.length === 4 && lr[1].split('|').length === 125, lr.length + ' / ' + (lr[1] || '').split('|').length);
 verificar('el resumen no repite un texto libre de la ficha',

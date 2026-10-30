@@ -37,9 +37,13 @@ const FIN_DE_REGISTRO = '\r\n';
 /* Tipo de fuente 124 (DTS y E.S.E. beneficiarias de recursos) y tema CCFP. */
 const PREFIJO_ARCHIVO = 'APS124CCFP';
 
-/* El consecutivo de registro (variable 1 de los tipos 2 y 3) «inicia en 1
-   para el primer registro de detalle»: se numera cada tipo desde 1, con los
-   registros agrupados por tipo (todos los tipo 2 y luego todos los tipo 3). */
+/* Estructura, como la fija el anexo: el registro de control es el primero;
+   luego todos los tipo 2 y después todos los tipo 3. El consecutivo
+   (variable 1) del tipo 2 «inicia en 1 para el primer registro de detalle y
+   va incrementando de 1 en 1, hasta el final del archivo»; el del tipo 3
+   «inicia en 1 para el primer registro de integrante de la familia»: cada
+   tipo lleva su propia numeración desde 1. Un tipo 3 se une a su familia por
+   la variable 117 (= variable 124 del tipo 2), no por su posición. */
 const MAX_EJEMPLOS_POR_INCIDENCIA = 5;
 
 /* ---------------------------------------------------------
@@ -680,9 +684,11 @@ function construirReporte(opciones) {
     .concat(tipo2, tipo3);
 
   const listaIncidencias = incidencias.lista();
+  /* El ENTER separa registros y el último no lleva ninguno: el anexo pide
+     que el archivo no traiga «ningún carácter especial de fin de archivo». */
   return {
     nombreArchivo: nombreDeArchivo(entidad, opciones.hasta),
-    contenido: lineas.join(FIN_DE_REGISTRO) + FIN_DE_REGISTRO,
+    contenido: lineas.join(FIN_DE_REGISTRO),
     resumen: {
       registros: { tipo2: tipo2.length, tipo3: tipo3.length, total: tipo2.length + tipo3.length },
       incidencias: {
