@@ -165,20 +165,20 @@ verificar('los registros se separan con CRLF y el último no lleva salto (sin fi
 verificar('1 registro de control + 1 de familia + 2 de integrantes', lineas.length === 4, lineas.length);
 verificar('el control va primero, luego los tipo 2 y después los tipo 3',
   lineas.map(function (l) { return l.split('|')[0]; }).join('') === '1233', lineas.map(function (l) { return l.split('|')[0]; }).join(''));
-verificar('cada tipo numera su consecutivo desde 1',
-  lineas[1].split('|')[1] === '1' && lineas[2].split('|')[1] === '1' && lineas[3].split('|')[1] === '2',
+verificar('un solo consecutivo en todo el archivo: los tipo 3 siguen a los tipo 2',
+  lineas[1].split('|')[1] === '1' && lineas[2].split('|')[1] === '2' && lineas[3].split('|')[1] === '3',
   [lineas[1], lineas[2], lineas[3]].map(function (l) { return l.split('|')[1]; }).join(','));
 verificar('registro de control', lineas[0] === '1|NI|805027289|2026-09-01|2026-09-30|3', lineas[0]);
 const t2 = lineas[1];
 const [t3a, t3b] = [lineas[2], lineas[3]];
 verificar('el tipo 2 tiene 125 variables', t2.split('|').length === 125, t2.split('|').length);
 verificar('los tipo 3 tienen 119 variables', t3a.split('|').length === 119 && t3b.split('|').length === 119);
-verificar('consecutivos: cada tipo desde 1', campo(t2, 1) === '1' && campo(t3a, 1) === '1' && campo(t3b, 1) === '2');
+verificar('consecutivos: 1 la familia, 2 y 3 sus integrantes', campo(t2, 1) === '1' && campo(t3a, 1) === '2' && campo(t3b, 1) === '3');
 verificar('sólo ASCII imprimible', /^[\x20-\x7E\r\n]*$/.test(r.contenido));
 
 console.log('\n=== 4. Identificadores (variables 123, 124, 117 y 118) ===');
 
-const idVivienda = '76' + '117' + '76001' + 'T48' + 'MT01' + 'H0007';
+const idVivienda = '76' + 'UZPE117' + '76001' + 'T48' + 'MT01' + 'H0007';
 verificar('ID de la vivienda: depto + subregión + municipio + territorio + micro + H + consecutivo',
   campo(t2, 123) === idVivienda, campo(t2, 123));
 verificar('ID de la familia: vivienda + F + consecutivo', campo(t2, 124) === idVivienda + 'F0001', campo(t2, 124));
@@ -186,17 +186,18 @@ verificar('el integrante apunta a su familia', campo(t3a, 117) === campo(t2, 124
 verificar('ID del integrante: familia + tipo + número', campo(t3a, 118) === idVivienda + 'F0001CC1144099887', campo(t3a, 118));
 verificar('número de personas de la familia = registros tipo 3', campo(t2, 110) === '2', campo(t2, 110));
 
-/* La subregión es la UZPE de la vivienda (UZPE006 => 006); el parámetro sólo
-   respalda a la ficha que no trae UZPE. */
+/* La variable 4 es la UZPE de la vivienda, completa (PISIS: «CodUZPE», 7
+   caracteres); el parámetro sólo respalda a la ficha que no trae UZPE. */
 const conUzpe = Object.assign(ficha(), { uzpe: 'UZPE006' });
 const tUzpe = generar([{ encuesta: conUzpe, meta: meta() }], '117').contenido.split('\r\n')[1];
-verificar('Ficha con UZPE006: subregión 006 en la variable 4 y en el ID de la vivienda',
-  campo(tUzpe, 4) === '006' && campo(tUzpe, 123) === '76' + '006' + '76001' + 'T48' + 'MT01' + 'H0007', campo(tUzpe, 4) + ' ' + campo(tUzpe, 123));
+verificar('Ficha con UZPE006: UZPE006 en la variable 4 y en el ID de la vivienda (26 caracteres, como en PISIS)',
+  campo(tUzpe, 4) === 'UZPE006' && campo(tUzpe, 123) === '76' + 'UZPE006' + '76001' + 'T48' + 'MT01' + 'H0007' &&
+  campo(tUzpe, 123).length === 26, campo(tUzpe, 4) + ' ' + campo(tUzpe, 123));
 const sinNada = generar([{ encuesta: ficha(), meta: meta() }], null);
 verificar('Sin UZPE ni parámetro: la 4 vacía y señalada como incidencia',
   campo(sinNada.contenido.split('\r\n')[1], 4) === '' && incidenciasDe(sinNada, 2, 4).length === 1);
-verificar('subregionDe: UZPE006 => 006; sin UZPE, el parámetro',
-  reporte.subregionDe({ uzpe: 'uzpe006' }, null) === '006' && reporte.subregionDe({}, { subregion: '117' }) === '117');
+verificar('subregionDe: UZPE006 => UZPE006; sin UZPE, el parámetro con su prefijo',
+  reporte.subregionDe({ uzpe: 'uzpe006' }, null) === 'UZPE006' && reporte.subregionDe({}, { subregion: '117' }) === 'UZPE117');
 
 console.log('\n=== 5. Registro tipo 2 ===');
 
@@ -205,13 +206,13 @@ verificar('texto de la división territorial normalizado', campo(t2, 9) === 'BAR
 verificar('tipo de ubicación (anexo) barrio => 5', campo(t2, 8) === '5', campo(t2, 8));
 verificar('área urbana => 1', campo(t2, 10) === '1');
 verificar('longitud y latitud', campo(t2, 12) === '-76.531234' && campo(t2, 13) === '3.451234', campo(t2, 12) + ' ' + campo(t2, 13));
-verificar('situación «No aplica» => 4 y observaciones «NO APLICA»', campo(t2, 23) === '4' && campo(t2, 24) === 'NO APLICA',
+verificar('situación «No aplica» => 4 y observaciones «NO APLICA» (PISIS la exige llena)', campo(t2, 23) === '4' && campo(t2, 24) === 'NO APLICA',
   campo(t2, 23) + ' / ' + campo(t2, 24));
 verificar('NIT del prestador primario', campo(t2, 26) === '805027289', campo(t2, 26));
 verificar('perfil como texto', campo(t2, 29) === 'ENFERMERIA (PROFESIONAL)' || /^ENFERMER/.test(campo(t2, 29)), campo(t2, 29));
 verificar('fuente de agua múltiple => 1,12', campo(t2, 53) === '1,12', campo(t2, 53));
 verificar('sin tanque: la frecuencia de limpieza va «No aplica» (4)', campo(t2, 56) === '4', campo(t2, 56));
-verificar('sin actividad económica: el área de trabajo va vacía', campo(t2, 51) === '', campo(t2, 51));
+verificar('sin actividad económica: el área de trabajo va «No» (2), PISIS no la admite vacía', campo(t2, 51) === '2', campo(t2, 51));
 verificar('criaderos (ítem 37) «no» => 2', campo(t2, 84) === '2', campo(t2, 84));
 verificar('medidas para vectores (103) derivada de la 87', campo(t2, 103) === '1', campo(t2, 103));
 verificar('hacinamiento no => 2 y personas por habitación', campo(t2, 21) === '2' && campo(t2, 20) === '2');
@@ -232,13 +233,13 @@ verificar('adulta: cintura y tensión', campo(t3a, 40) === '80' && campo(t3a, 44
   [campo(t3a, 40), campo(t3a, 44), campo(t3a, 46)].join(' '));
 verificar('mujer de 30 años: edad fértil 1, embarazo 2', campo(t3a, 71) === '1' && campo(t3a, 72) === '2');
 verificar('niño de 8 años sin ocupación => 9998', campo(t3b, 18) === '9998', campo(t3b, 18));
-verificar('niño: sin cintura ni tensión, clasificación de tensión «No aplica» (6)',
-  campo(t3b, 40) === '' && campo(t3b, 44) === '' && campo(t3b, 46) === '6', [campo(t3b, 40), campo(t3b, 44), campo(t3b, 46)].join('/'));
+verificar('niño: cintura y tensión en 0 (no aplican), clasificación de tensión «No aplica» (6)',
+  campo(t3b, 40) === '0' && campo(t3b, 44) === '0' && campo(t3b, 46) === '6', [campo(t3b, 40), campo(t3b, 44), campo(t3b, 46)].join('/'));
 verificar('niño: ítems de mayores de 14 «No aplica» (52 => 5, 53 => 3)',
   campo(t3b, 52) === '5' && campo(t3b, 53) === '3', [campo(t3b, 52), campo(t3b, 53)].join('/'));
 /* La lista de la 63 (LstSINO) no tiene «No aplica»: el 3 no existe ahí. */
-verificar('niño: consumo de SPA (63) vacío, no 3; adulta que no consume => 2',
-  campo(t3b, 63) === '' && campo(t3a, 63) === '2', campo(t3b, 63) + ' / ' + campo(t3a, 63));
+verificar('niño: consumo de SPA (63) «No» (2), no 3; adulta que no consume => 2',
+  campo(t3b, 63) === '2' && campo(t3a, 63) === '2', campo(t3b, 63) + ' / ' + campo(t3a, 63));
 verificar('niño de 8: tabaco «No aplica» por su siOculta (3)', campo(t3b, 64) === '3', campo(t3b, 64));
 /* Obligatorias sin «No aplica» que el formulario no le pregunta a un niño:
    se reporta lo cierto en vez de dejarlas vacías. */
@@ -267,6 +268,10 @@ dosFamiliasUnHogar.hogaresEnVivienda = 1;
 dosFamiliasUnHogar.familias = [dosFamiliasUnHogar.familias[0], JSON.parse(JSON.stringify(dosFamiliasUnHogar.familias[0]))];
 const rFamilias = generar([{ encuesta: dosFamiliasUnHogar, meta: { consecutivoVivienda: 7, familias: [{ consecutivo: 1 }, { consecutivo: 2 }] } }]);
 verificar('1 hogar con 2 familias => 2 familias, no 1 hogar', campo(lineaT2(rFamilias), 17) === '2', campo(lineaT2(rFamilias), 17));
+const tipoYConsecutivo = rFamilias.contenido.split('\r\n').slice(1)
+  .map(function (l) { return l.split('|')[0] + ':' + l.split('|')[1]; }).join(',');
+verificar('2 familias de 2 integrantes: tipo 2 en 1 y 2, tipo 3 del 3 al 6',
+  tipoYConsecutivo === '2:1,2:2,3:3,3:4,3:5,3:6', tipoYConsecutivo);
 
 const hogarAusente = ficha();
 hogarAusente.hogaresEnVivienda = 3;                              // sólo una familia caracterizada
@@ -316,6 +321,50 @@ verificar('ningún valor parte el registro: mismas líneas y 125 variables',
 verificar('el resumen no repite un texto libre de la ficha',
   JSON.stringify(rr.resumen).indexOf('JUAN') === -1 && JSON.stringify(rr.resumen).indexOf('Juan') === -1 &&
   incidenciasDe(rr, 3, 18).some(function (x) { return /texto libre/.test(x.problema); }));
+
+console.log('\n=== 9. Lo que no se diligenció va vacío entre pipes ===');
+
+/* «Ninguno/Ninguna» de las 7 listas obligatorias que el anexo trae sin
+   opción de exclusión: responde la pregunta, pero no tiene código. */
+const conNinguna = ficha();
+Object.assign(conNinguna, {
+  elementosVivienda: ['ninguno'], desplazamientoMayor30: ['ninguno'], practicasCalidadAire: ['ninguna'],
+  vectoresPresentes: ['ninguno'], medidasControlVectores: ['ninguna'],
+  animalesPonzonosos: ['aranas'], medidasPonzonosos: ['ninguna']
+});
+conNinguna.familias[0].integrantes[0].enfermedadesUltimoMes = ['ninguna'];
+conNinguna.familias[0].practicasVinculo = ['ninguna'];
+conNinguna.familias[0].practicasCuidadoHogar = ['ninguna'];
+const rn = generar([{ encuesta: conNinguna, meta: meta() }]);
+const [, t2n, t3n] = rn.contenido.split('\r\n');
+const sinExclusion = [36, 48, 82, 85, 87, 91, 117, 119];
+verificar('«Ninguna» sin código: variables 36, 48, 82, 85, 87, 91 y 3.48 en 0; la 117 y la 119 con su «Ninguna» de SISPRO (7 y 9)',
+  [36, 48, 82, 85, 87, 91].every(function (n) { return campo(t2n, n) === '0'; }) && campo(t3n, 48) === '0' &&
+  campo(t2n, 117) === '7' && campo(t2n, 119) === '9',
+  sinExclusion.map(function (n) { return n + '=' + campo(t2n, n); }).join(' ') + ' 3.48=' + campo(t3n, 48));
+verificar('  y no son incidencia', sinExclusion.every(function (n) { return incidenciasDe(rn, 2, n).length === 0; }) &&
+  incidenciasDe(rn, 3, 48).length === 0, JSON.stringify(rn.resumen.incidencias.detalle.map(function (x) {
+    return x.tipoRegistro + '.' + x.variable + ' ' + x.problema;
+  })));
+verificar('  y sin enfermedad no se pregunta qué hizo: 3.50 en 1 (PISIS no admite 0)', campo(t3n, 50) === '1' && incidenciasDe(rn, 3, 50).length === 0);
+
+const listaSinMarcar = ficha();
+listaSinMarcar.elementosVivienda = [];
+verificar('lista obligatoria sin marcar: vacía y «Obligatoria y vacía»',
+  campo(generar([{ encuesta: listaSinMarcar, meta: meta() }]).contenido.split('\r\n')[1], 36) === '' &&
+  incidenciasDe(generar([{ encuesta: listaSinMarcar, meta: meta() }]), 2, 36).some(function (x) { return x.problema === 'Obligatoria y vacía'; }));
+
+const opcionalesVacios = ficha();
+opcionalesVacios.mediosTransporte = ['otro'];
+delete opcionalesVacios.familias[0].integrantes[0].eapb;
+delete opcionalesVacios.familias[0].integrantes[0].telefono1;
+const ro = generar([{ encuesta: opcionalesVacios, meta: meta() }]);
+const [, t2o, t3o] = ro.contenido.split('\r\n');
+verificar('«Otro» medio de transporte sin decir cuál: 44 = 10 y 45 vacía', campo(t2o, 44) === '10' && campo(t2o, 45) === '');
+verificar('EAPB y teléfono sin diligenciar: 3.21 y 3.15 vacías', campo(t3o, 21) === '' && campo(t3o, 15) === '');
+verificar('  ninguno de esos opcionales es incidencia', ro.resumen.incidencias.total === 0,
+  JSON.stringify(ro.resumen.incidencias.detalle.map(function (x) { return x.tipoRegistro + '.' + x.variable + ' ' + x.problema; })));
+verificar('  y el registro conserva sus 125 y 119 campos', t2o.split('|').length === 125 && t3o.split('|').length === 119);
 
 const repetida = [{ encuesta: ficha(), meta: meta() }, { encuesta: ficha(), meta: meta() }];
 repetida[1].encuesta.codigoFicha = 'F-RPT-2';

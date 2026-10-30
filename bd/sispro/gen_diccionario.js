@@ -23,6 +23,7 @@ const path = require('path');
 const RAIZ = path.join(__dirname, '..', '..');
 const ANEXO = path.join(__dirname, 'anexo_APS124CCFP_v7.md');
 const DESTINO = path.join(RAIZ, 'api', '_diccionario_sispro.js');
+const ESTRUCTURA_PISIS = path.join(__dirname, 'estructura_pisis.json');
 
 /* Cada tabla resumen empieza en un título «Tabla Resumen de Campos – Tipo N». */
 const FILA = /^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*([NADFT])\s*\|\s*(SI|NO)\s*\|/;
@@ -61,14 +62,38 @@ function verificar(tablas) {
   });
 }
 
+/* Lo que valida PISIS manda sobre el PDF: la longitud, la obligatoriedad, el
+   formato y el rango salen de la estructura que muestra PISIS Cliente Neo
+   (estructura_pisis.json). El anexo difiere en varias: PISIS exige la 84
+   del tipo 2 y la 23 y de la 65 a la 69 del tipo 3, no exige la 36 ni la
+   41, y admite 7 caracteres en la variable 4 (la UZPE completa). */
+function aplicarPisis(tablas) {
+  const pisis = JSON.parse(fs.readFileSync(ESTRUCTURA_PISIS, 'utf8')).tipos;
+  [1, 2, 3].forEach(function (tipo) {
+    if (pisis[tipo].length !== tablas[tipo].length) {
+      throw new Error('Tipo ' + tipo + ': PISIS trae ' + pisis[tipo].length + ' campos y el anexo ' + tablas[tipo].length);
+    }
+    tablas[tipo].forEach(function (f, i) {
+      const p = pisis[tipo][i];
+      if (p.n !== f.n) throw new Error('Tipo ' + tipo + ': PISIS tiene la posición ' + p.n + ' donde el anexo la ' + f.n);
+      if (p.max) f.max = p.max;
+      f.requerido = p.requerido;
+      f.formato = p.formato;
+      f.rango = p.rango;
+    });
+  });
+}
+
 function generar() {
   const tablas = leerTablas(fs.readFileSync(ANEXO, 'utf8'));
   verificar(tablas);
+  aplicarPisis(tablas);
 
   const bloque = function (tipo) {
     return '[\n' + tablas[tipo].map(function (f) {
       return '  { n: ' + f.n + ', nombre: ' + JSON.stringify(f.nombre) + ', max: ' + f.max +
-        ", tipo: '" + f.tipo + "', requerido: " + f.requerido + ' }';
+        ", tipo: '" + f.tipo + "', requerido: " + f.requerido +
+        ', formato: ' + JSON.stringify(f.formato) + ', rango: ' + JSON.stringify(f.rango) + ' }';
     }).join(',\n') + '\n]';
   };
 
@@ -77,10 +102,13 @@ function generar() {
     '   Diccionario de variables del archivo plano APS124CCFP (SI-APS)',
     '   -------------------------------------------------------------------------',
     '   GENERADO por bd/sispro/gen_diccionario.js desde las tablas resumen del',
-    '   anexo técnico (bd/sispro/anexo_APS124CCFP_v7.md, versión 7, junio 2026).',
-    '   No se edita a mano: se corrige el anexo o el generador y se regenera.',
+    '   anexo técnico (bd/sispro/anexo_APS124CCFP_v7.md, versión 7, junio 2026)',
+    '   y la estructura que valida PISIS Cliente Neo (bd/sispro/estructura_pisis.json),',
+    '   que manda en longitud, obligatoriedad, formato y rango.',
+    '   No se edita a mano: se corrige la fuente o el generador y se regenera.',
     '',
     '   tipo: N numérico entero · A alfanumérico · D decimal · F fecha · T texto',
+    '   formato: el de PISIS (NUMERICOPOSITIVONOCERO no admite 0); rango: [mín, máx]',
     '   ========================================================================= */',
     '',
     "'use strict';",

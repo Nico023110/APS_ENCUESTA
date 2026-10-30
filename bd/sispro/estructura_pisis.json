@@ -1,0 +1,2589 @@
+{
+ "fuente": "PISIS Cliente Neo 2.0.0.16, ventana «Estructura de: APS124CCFP», leída el 2026-10-30",
+ "tipos": {
+  "1": [
+   {
+    "n": 0,
+    "campo": "Tipo Registro",
+    "max": null,
+    "formato": null,
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 1,
+    "campo": "TipoIDReportador",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS",
+    "tabla": "TipoIDNIDEDIMU",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 2,
+    "campo": "NroIDReportador",
+    "max": 12,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 3,
+    "campo": "FechaInicial",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 4,
+    "campo": "FechaFinal",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 5,
+    "campo": "CantidadRegistrosDetalle",
+    "max": 10,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   }
+  ],
+  "2": [
+   {
+    "n": 0,
+    "campo": "Tipo Registro",
+    "max": null,
+    "formato": null,
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 1,
+    "campo": "ConsecutivoRegistro",
+    "max": 8,
+    "formato": "PISIS Consecutivo Registro",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 2,
+    "campo": "ConsentimientoInformado",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 3,
+    "campo": "CodDepartamento",
+    "max": 2,
+    "formato": "NUMERICOPOSITIVOSICERO",
+    "tabla": "Departamento",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 4,
+    "campo": "CodUZPE",
+    "max": 7,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 5,
+    "campo": "CodMunicipio",
+    "max": 5,
+    "formato": "NUMERICOPOSITIVOSICERO",
+    "tabla": "Municipio",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 6,
+    "campo": "CodTerritorio",
+    "max": 4,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 7,
+    "campo": "CodMicroterritorio",
+    "max": 5,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 8,
+    "campo": "TipoUbicacion",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 9,
+    "campo": "UbicacionHogar",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 10,
+    "campo": "AreaUbicacion",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 11,
+    "campo": "NombreLugar",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 12,
+    "campo": "Longitud",
+    "max": 10,
+    "formato": "DECIMALConPuntoNegativoSiCero",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 13,
+    "campo": "Latitud",
+    "max": 10,
+    "formato": "DECIMALConPuntoNegativoSiCero",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 14,
+    "campo": "Direccion",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 15,
+    "campo": "Telefono",
+    "max": 10,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 16,
+    "campo": "EstratoVivienda",
+    "max": 1,
+    "formato": "NUMREGISTROS",
+    "tabla": "EstratoSocioeconomico",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 17,
+    "campo": "NroFamiliasVivienda",
+    "max": 2,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 18,
+    "campo": "NroPersonasVivienda",
+    "max": 3,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 19,
+    "campo": "DormitoriosVivienda",
+    "max": 2,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 20,
+    "campo": "PersonasHabitacion",
+    "max": 3,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 21,
+    "campo": "Hacinamiento",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 22,
+    "campo": "ElementosDormirVivienda",
+    "max": 2,
+    "formato": "NUMREGISTROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 23,
+    "campo": "TipoSituacion",
+    "max": 5,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 24,
+    "campo": "ObseracionesSituacion",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 25,
+    "campo": "NroIdentificacionEBS",
+    "max": 10,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   },
+   {
+    "n": 26,
+    "campo": "CodPrestadorPrimario",
+    "max": 10,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 27,
+    "campo": "TipoIdentificacionResponsableEvaluacion",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSTipoIdentificacion",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 28,
+    "campo": "NroIdentificacionResponsableEvaluacion",
+    "max": 20,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   },
+   {
+    "n": 29,
+    "campo": "PerfilQuienRealizaEvaluacion",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 30,
+    "campo": "FechaDiligenciamientoFicha",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 31,
+    "campo": "CodTipoVivienda",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSTipoVivienda",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 32,
+    "campo": "CodRiesgoAccidenteVivienda",
+    "max": 20,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 33,
+    "campo": "ObservacionesLugaresCercaVivienda",
+    "max": 56,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 34,
+    "campo": "AmbientesLuzNatural",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 35,
+    "campo": "AmbientesVentilacionNatural",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 36,
+    "campo": "ElementosEnVivienda",
+    "max": 5,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 37,
+    "campo": "AlumbradoPredominante",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSAlumbradoPredominante",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 38,
+    "campo": "AccesoVivienda",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSAccesoVivienda",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 39,
+    "campo": "OtrosAccesosVivienda",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 40,
+    "campo": "MaterialPredominanteTecho",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSMaterialTecho",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 41,
+    "campo": "CocinaSeparadaVivienda",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 42,
+    "campo": "BanioSeparadoVivienda",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 43,
+    "campo": "DormitoriosSeparados",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 44,
+    "campo": "MedioTransporteHabitual",
+    "max": 20,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 45,
+    "campo": "OtrosMediosTransporte",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 46,
+    "campo": "SeguridadEnDesplazamiento",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 47,
+    "campo": "OtrosMediosSeguridad",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 48,
+    "campo": "DesplazamientoMayor30Minutos",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 49,
+    "campo": "OtrosFactoresTiempoDesplazamiento",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 50,
+    "campo": "RealizaAlgunaActividadEconomica",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 51,
+    "campo": "AreaTrabajoIndependiente",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 52,
+    "campo": "FamiliarAfectadoActividadEconomica",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 53,
+    "campo": "PrincipalFuenteAguaConsumoHumano",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 54,
+    "campo": "HorasConSuministroAgua",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSHorasSuministroAgua",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 55,
+    "campo": "TanqueAlmacenamientoAgua",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSTanqueAgua",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 56,
+    "campo": "FrecuenciaLimpiezaTanque",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSFrecuenciaLimpiezaTanque",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 57,
+    "campo": "DistanciaTanquePozoAlcantarillado",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 58,
+    "campo": "SistemaDisposicionExcretas",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 59,
+    "campo": "SistemaDisposicionAguasResiduales",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 60,
+    "campo": "AlmacenamientoResiduosSolidos",
+    "max": 9,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 61,
+    "campo": "OtroSistemaAlmacenamientoResiduosSolidos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 62,
+    "campo": "DisposicionFinalResiduosSolidosOrdinarios",
+    "max": 9,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 63,
+    "campo": "ConocePracticasReduccionSeparacionResiduos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 64,
+    "campo": "RealizaPracticasReduccionResiduos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 65,
+    "campo": "ComoReduceGeneracionResiduos",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 66,
+    "campo": "OtrasPracticasReduccionResiduos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 67,
+    "campo": "RealizaPracticasAprovechamientoResiduos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 68,
+    "campo": "OtrasPracticasAprovechamientoResiduos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 69,
+    "campo": "ComoRealizaDisposicionResiduosPeligrosos",
+    "max": 17,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 70,
+    "campo": "OtraDisposicionResiduosPeligrosos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 71,
+    "campo": "RealizaProcesosReduccionResiduosRural",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 72,
+    "campo": "PracticasAprovechamientoResiduosRurales",
+    "max": 9,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 73,
+    "campo": "OtrasPracticasAprovechamientoResiduosRural",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 74,
+    "campo": "PracticasSeparacionResiduosRural",
+    "max": 7,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 75,
+    "campo": "OtrasPracticasSeparacionResiduosRural",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 76,
+    "campo": "ComoLimpiezaSuperficies",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSLimpiezaSuperficies",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 77,
+    "campo": "OtrasPracticasLimpiezaSuperficies",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 78,
+    "campo": "FuenteEnergiaCocinar",
+    "max": 15,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 79,
+    "campo": "OtrasFuentesEnergiaCocinar",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 80,
+    "campo": "FuentesFrecuentesHumo",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 81,
+    "campo": "OtrasFuentesHumo",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 82,
+    "campo": "PracticasCalidadAire",
+    "max": 9,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 83,
+    "campo": "TipoEstufa",
+    "max": 7,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 84,
+    "campo": "ObservaCriaderosVectores",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 85,
+    "campo": "VectoresTransmisoresEnfermedades",
+    "max": 23,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 86,
+    "campo": "OtrasVectoresTransmisoresEnfermedades",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 87,
+    "campo": "MedidasControlVectoresTransmisores",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 88,
+    "campo": "OtrasMedidasControlVectoresTransmisores",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 89,
+    "campo": "AnimalesPonsonozos",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 90,
+    "campo": "OtrasAnimalesPonsonozos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 91,
+    "campo": "MedidasReducirRiesgoAnimalesPonsonozos",
+    "max": 20,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 92,
+    "campo": "AnimalesEnViviendaEntornoInmediato",
+    "max": 26,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 93,
+    "campo": "CantidadPerrosHogar",
+    "max": 3,
+    "formato": "NUMERONATURALENTERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 94,
+    "campo": "PerrosVacunaAntirabica",
+    "max": 3,
+    "formato": "NUMERONATURALENTERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 95,
+    "campo": "CantidadGatosHogar",
+    "max": 3,
+    "formato": "NUMERONATURALENTERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 96,
+    "campo": "GatosVacunaAntirabica",
+    "max": 3,
+    "formato": "NUMERONATURALENTERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 97,
+    "campo": "FinalidadTenenciaAnimalesHogar",
+    "max": 7,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 98,
+    "campo": "ConfinamientoAnimalesHogar",
+    "max": 5,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 99,
+    "campo": "SeDesparasitanLosAnimales",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 100,
+    "campo": "InstalacionesParaAnimalesSeguras",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 101,
+    "campo": "DisposicionExcretasAnimales",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 102,
+    "campo": "ViviendaConBarrerasEvitarcontractoAnimales",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 103,
+    "campo": "MedidasControlVectoresTrasmisores",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     2
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 104,
+    "campo": "LugarObtieneProductosQuimicos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSLugarAdquiereQuimicos",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 105,
+    "campo": "ComoRealizaDisposicionResiduosQuimicos",
+    "max": 15,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 106,
+    "campo": "OtraPracticaDisposicionResiduosQuimicos",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 107,
+    "campo": "SiguenInstruccionesFabricanteQuimicos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 108,
+    "campo": "QuimicosEnvaseOriginalQuimicos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 109,
+    "campo": "UsoVentilacionProteccionLimpiar",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 110,
+    "campo": "NroIntegrantesFamilia",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 111,
+    "campo": "AliasFamilia",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 112,
+    "campo": "CodTipoFamilia",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSTipoFamilia",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 113,
+    "campo": "CodResultadoAPGAR",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSAPGAR",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 114,
+    "campo": "CuidadorEnLaFamilia",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 115,
+    "campo": "EscalaZarit",
+    "max": 3,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 116,
+    "campo": "FamiliaSituacionesRiesgo",
+    "max": 50,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 117,
+    "campo": "PracticasFavorecenVinculosFamiliares",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 118,
+    "campo": "RedesApoyoSocial",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSRedesApoyoSocial",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 119,
+    "campo": "PracticasCuidadoSaludProteccionHogar",
+    "max": 15,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 120,
+    "campo": "MedidaAnteEnfermedadesRespiratorias",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSMedidasEnfermedadesRespiratorias",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 121,
+    "campo": "OtrasMedidasAnteEnfermedadesRespiratorias",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 122,
+    "campo": "CompartenElementosHigienePersonal",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 123,
+    "campo": "NroIdentificacionHogar",
+    "max": 26,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 124,
+    "campo": "NroIdentificacionUnicoFamilia",
+    "max": 31,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   }
+  ],
+  "3": [
+   {
+    "n": 0,
+    "campo": "Tipo Registro",
+    "max": null,
+    "formato": null,
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 1,
+    "campo": "ConsecutivoRegistro",
+    "max": 8,
+    "formato": "PISIS Consecutivo Registro",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 2,
+    "campo": "PrimerNombre",
+    "max": 60,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 3,
+    "campo": "SegundoNombre",
+    "max": 60,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 4,
+    "campo": "PrimerApellido",
+    "max": 60,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 5,
+    "campo": "SegundoApellido",
+    "max": 60,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 6,
+    "campo": "TipoIdentificacion",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "TipoIDAfiliado",
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   },
+   {
+    "n": 7,
+    "campo": "NroIdentificacion",
+    "max": 20,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   },
+   {
+    "n": 8,
+    "campo": "FechaNacimiento",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 9,
+    "campo": "PaisOrigen",
+    "max": 3,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "Pais",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 10,
+    "campo": "EstatusMigratorio",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 11,
+    "campo": "CodSexo",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 12,
+    "campo": "Genero",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     2
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 13,
+    "campo": "GeneroIdentifica",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     6
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 14,
+    "campo": "OrientacionSexual",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     6
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 15,
+    "campo": "TelefonoPrincipal",
+    "max": 20,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 16,
+    "campo": "TelefonoSecundario",
+    "max": 20,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 17,
+    "campo": "CodRolFamilia",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSRolFamilia",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 18,
+    "campo": "CodOcupacion",
+    "max": 4,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "SGDCIUO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 19,
+    "campo": "CodNivelEducativo",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "SGDNivEducativo",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 20,
+    "campo": "CodRegimenAfiliacion",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSRegimenAfiliacion",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 21,
+    "campo": "CodEAPB",
+    "max": 8,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "SGDCodigoEAPB",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 22,
+    "campo": "CodGrupoPoblacional",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 23,
+    "campo": "ModalidadViolencia",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 24,
+    "campo": "CodPertenenciaEtnica",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "MDECEtnia",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 25,
+    "campo": "ComunidadPuebloIndigenaPertenece",
+    "max": 60,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 26,
+    "campo": "PracticasCuidadoSaludSaberesAncestrales",
+    "max": 11,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 27,
+    "campo": "PracticasExigibilidadDerechoSalud",
+    "max": 7,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 28,
+    "campo": "RealizaPracticasCuidadoSalud",
+    "max": 15,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 29,
+    "campo": "IntervencionesPendientesPromocMtto",
+    "max": 81,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 30,
+    "campo": "CodCondicionesDiscapacidadReconoce",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 31,
+    "campo": "CertificadoRLCPD",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 32,
+    "campo": "IntencionReproductivaCortoPlazo",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 33,
+    "campo": "GestacionActualConfirmada",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 34,
+    "campo": "AtencionesRutaMaternoPerinatal",
+    "max": 15,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 35,
+    "campo": "MotivosNoAtencionPromocMtto",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 36,
+    "campo": "LactanciaMaternaExclusivaHasta6Meses",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 37,
+    "campo": "PesoKg",
+    "max": 5,
+    "formato": "DECIMALCONPUNTOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     250
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 38,
+    "campo": "TallaCm",
+    "max": 5,
+    "formato": "DECIMALCONPUNTOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     225
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 39,
+    "campo": "ResultadoIMC",
+    "max": 4,
+    "formato": "DECIMALCONPUNTOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 40,
+    "campo": "CircunferenciaCintura",
+    "max": 3,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 41,
+    "campo": "SignosFisicosDesnutricionAguda",
+    "max": 13,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 42,
+    "campo": "PesoParaTalla",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSDiagnosticoNutricion",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 43,
+    "campo": "LavadoManosAguaJabon",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 44,
+    "campo": "TensionArterialSistolica",
+    "max": 3,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 45,
+    "campo": "TensionArterialDiastolica",
+    "max": 3,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 46,
+    "campo": "ClasificacionTensionArterial",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSTensionArterial",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 47,
+    "campo": "UrgenciasAccidenteHogar",
+    "max": 20,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 48,
+    "campo": "EnfermedadesUltimoMes",
+    "max": 47,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 49,
+    "campo": "OtrasEnfermedadesUltimoMes",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 50,
+    "campo": "AccionAntesAfeccion",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSAccionEnfermedadesUltimoMes",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 51,
+    "campo": "OtrasAccionAntesAfeccion",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 52,
+    "campo": "Mayor14DosUltimasSemanas",
+    "max": 5,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 53,
+    "campo": "Mayor14AnimoUltimaSemana",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 54,
+    "campo": "RiegosSaludFisicaMental",
+    "max": 50,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 55,
+    "campo": "SituacionSaludUltimaSemanaLimitante",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 56,
+    "campo": "TieneDiagnostico",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 57,
+    "campo": "SignosSintomasSinDiagnostico",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 58,
+    "campo": "CondicionSalud",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 59,
+    "campo": "EnfermedadNoTransmisible",
+    "max": 35,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 60,
+    "campo": "ZonaEndemicaSignosSintomas",
+    "max": 1,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": "APSZonaEndemicaSignosSintomas",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 61,
+    "campo": "RecibeAtencionTratamientoActual",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 62,
+    "campo": "MotivosNoAtencion",
+    "max": 32,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 63,
+    "campo": "Mayor14ConsumeSustancias",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 64,
+    "campo": "ConsumeTabaco",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 65,
+    "campo": "MaximoCigarrilloDiarios",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 66,
+    "campo": "AniosFumando",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 67,
+    "campo": "PuntajeRiesgoASSIST",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 68,
+    "campo": "PuntajeRiesgoAUDIT",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 69,
+    "campo": "PuntajeRiesgoCarlosCRAFFT",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 70,
+    "campo": "FUM",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 71,
+    "campo": "MujerEdadFertil",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 72,
+    "campo": "EnEmbarazo",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 73,
+    "campo": "SignosAlarmaEmbarazo",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 74,
+    "campo": "ConoceInterrupcionVoluntaria",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 75,
+    "campo": "InicioAtencionesPrenatales",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 76,
+    "campo": "AtencionOportunaPrenatal",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 77,
+    "campo": "AccesoMetodosAnticonceptivos",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 78,
+    "campo": "ClasificacionRiesgoGestacional",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 79,
+    "campo": "ClasificacionRiesgoPreeclampsia",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     2
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 80,
+    "campo": "NumeroAtencionesPrenatales",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 81,
+    "campo": "AtencionCuidadoPreconcepcional",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 82,
+    "campo": "AtencionCuidadoPrenatal",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 83,
+    "campo": "PreparacionMaternidadPaternidad",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 84,
+    "campo": "FechaAtencionEventoObstetrico",
+    "max": 10,
+    "formato": "FECHA [AAAA-MM-DD]",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 85,
+    "campo": "AtencionPuerperioPrimeras48horas",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 86,
+    "campo": "ConsultaSeguimientoPuerperio",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 87,
+    "campo": "ApoyoLactanciaMaterna",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 88,
+    "campo": "AtencionPrimerasHorasRecienNacido",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 89,
+    "campo": "ControlDiasRecienNacido",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 90,
+    "campo": "VacunacionRecienNacido",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 91,
+    "campo": "ProvisionMetodosAnticonceptivos",
+    "max": 2,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSMetodosAnticonceptivos",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 92,
+    "campo": "HistorialLaboral",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 93,
+    "campo": "LugarTrabajoActividadEspecificaReciente",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 94,
+    "campo": "NombreEmpleadorReciente",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 95,
+    "campo": "PeriodoLaboralReciente",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 96,
+    "campo": "EmpleosPrevios",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 97,
+    "campo": "LugarTrabajoActividadEspecificaPrevio1",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 98,
+    "campo": "NombreEmpleadorPrevio1",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 99,
+    "campo": "PeriodoLaboralPrevio1",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 100,
+    "campo": "LugarTrabajoActividadEspecificaPrevio2",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 101,
+    "campo": "NombreEmpleadorPrevio2",
+    "max": 200,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 102,
+    "campo": "PeriodoLaboralPrevio2",
+    "max": 2,
+    "formato": "LETRAS MAYUSCULAS Y/O NUMEROS",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 103,
+    "campo": "ActividadInvolucraAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 104,
+    "campo": "RealizoActividadesTrabajoAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 105,
+    "campo": "CualesActividadesTrabajoAsbesto",
+    "max": 135,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 106,
+    "campo": "InteracionMaterialesAsbestoTrabajo",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "LstSINO",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 107,
+    "campo": "CualesMaterialesAsbestoTrabajo",
+    "max": 5,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 108,
+    "campo": "ModalidadEmpleoMayorExposicion",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     2
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 109,
+    "campo": "MaterialesAsbestoHogar",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 110,
+    "campo": "CualesMaterialesAsbestoHogar",
+    "max": 20,
+    "formato": "MULTIPLE SEPARADOR COMA",
+    "tabla": null,
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 111,
+    "campo": "EstadoMaterialesAsbestoHogar",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     2
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 112,
+    "campo": "ConvivePersonaContactoAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 113,
+    "campo": "ReparacionesHogarMaterialesAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 114,
+    "campo": "ActividadCercaHogarAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 115,
+    "campo": "CualesActividadCercaHogarAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": "APSActividadesPresenciaAsbestoHogar",
+    "rango": null,
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 116,
+    "campo": "FamiliaresEnfermedadesAsbesto",
+    "max": 1,
+    "formato": "NUMERICOPOSITIVONOCERO",
+    "tabla": null,
+    "rango": [
+     1,
+     3
+    ],
+    "requerido": false,
+    "llave": false
+   },
+   {
+    "n": 117,
+    "campo": "NroIdentificacionUnicoFamilia",
+    "max": 31,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": false
+   },
+   {
+    "n": 118,
+    "campo": "NroIdentificacionUnicoIntegranteFamilia",
+    "max": 53,
+    "formato": "LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto",
+    "tabla": null,
+    "rango": null,
+    "requerido": true,
+    "llave": true
+   }
+  ]
+ }
+}

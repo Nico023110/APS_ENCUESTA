@@ -734,6 +734,16 @@ const REGLAS_BLOQUE_3 = [
     }
   },
   {
+    /* Obligatorias en toda vivienda, urbana o rural: PISIS exige latitud y
+       longitud (variables 12 y 13 del registro tipo 2) y no acepta un
+       motivo en su lugar. */
+    codigo: 'RN-022',
+    campo: 'latitud',
+    valida: function (d) { return typeof d.latitud === 'number' && typeof d.longitud === 'number'; },
+    mensaje: 'Capture las coordenadas de la vivienda con «Usar GPS», «Buscar dir.» o «Digitar coordenadas»: ' +
+      'son obligatorias en el reporte SI-APS, también en zona rural.'
+  },
+  {
     codigo: 'RN-022',
     campo: 'latitud',
     aplica: function (d) { return !esVacio(d.latitudTexto) || d.latitud !== null; },
@@ -880,10 +890,12 @@ const REGLAS_BLOQUE_3 = [
     mensaje: 'Marque los escenarios de riesgo o seleccione "Ninguno" (que excluye las demás opciones).'
   },
   {
+    /* Obligatoria: PISIS exige la variable 84 del registro tipo 2, aunque
+       el anexo la marque opcional. */
     codigo: 'RN-037',
     campo: 'vectores',
     valida: function (d) { return perteneceA(CAT_SI_NO_NA, d.vectores); },
-    mensaje: 'Indique si existen criaderos o reservorios de vectores.'
+    mensaje: 'Indique si existen criaderos o reservorios de vectores (Sí, No o No aplica).'
   },
   {
     codigo: 'RN-038',
@@ -1077,17 +1089,6 @@ const REGLAS_FAMILIA = [
     }
   },
   {
-    // RN-070 — El contacto es obligatorio a nivel de familia, no de persona.
-    codigo: 'RN-070',
-    campo: 'telefono1',
-    aplica: function (f) { return !listaVacia(f.integrantes); },
-    valida: function (f) {
-      if (f.sinContactoTelefonico === true) return true; // novedad registrada
-      return f.integrantes.some(function (i) { return telefonoValido(i.telefono1); });
-    },
-    mensaje: 'Al menos un integrante debe registrar un teléfono válido, o debe registrarse la novedad "sin medio de contacto telefónico".'
-  },
-  {
     codigo: 'RN-052',
     campo: 'cuidadorPrincipal',
     valida: function (f) { return perteneceA(CAT_SI_NO, f.cuidadorPrincipal); },
@@ -1112,8 +1113,8 @@ const REGLAS_FAMILIA = [
   {
     codigo: 'RN-055',
     campo: 'practicasVinculo',
-    valida: function (f) { return Array.isArray(f.practicasVinculo) && todosPertenecenA(CAT_PRACTICAS_VINCULO, f.practicasVinculo); },
-    mensaje: 'Registre las prácticas que favorecen los vínculos familiares.'
+    valida: function (f) { return seleccionValidaDeCatalogo(CAT_PRACTICAS_VINCULO, f.practicasVinculo); },
+    mensaje: 'Marque las prácticas que favorecen los vínculos familiares o seleccione "Ninguna" (obligatoria en el anexo, variable 117).'
   },
   {
     codigo: 'RN-056',
@@ -1124,8 +1125,8 @@ const REGLAS_FAMILIA = [
   {
     codigo: 'RN-057',
     campo: 'practicasCuidadoHogar',
-    valida: function (f) { return Array.isArray(f.practicasCuidadoHogar) && todosPertenecenA(CAT_PRACTICAS_CUIDADO_HOGAR, f.practicasCuidadoHogar); },
-    mensaje: 'Registre las prácticas de cuidado de la salud en el entorno hogar.'
+    valida: function (f) { return seleccionValidaDeCatalogo(CAT_PRACTICAS_CUIDADO_HOGAR, f.practicasCuidadoHogar); },
+    mensaje: 'Marque las prácticas de cuidado de la salud en el entorno hogar o seleccione "Ninguna" (obligatoria en el anexo, variable 119).'
   }
 ];
 
@@ -1376,13 +1377,13 @@ const REGLAS_INTEGRANTE = [
     mensaje: 'Seleccione el régimen de afiliación al SGSSS.'
   },
   {
+    /* Opcional: el anexo no la exige (variable 21 del registro tipo 3). Sí
+       se impide la que contradice el régimen: sin afiliación no hay EAPB. */
     codigo: 'RN-076',
     campo: 'eapb',
-    aplica: function (i) {
-      return !esVacio(i.regimenAfiliacion) && i.regimenAfiliacion !== REGIMEN_NO_AFILIADO;
-    },
-    valida: function (i) { return !esVacio(i.eapb); },
-    mensaje: 'Registre la EAPB a la que está afiliado el integrante.'
+    aplica: function (i) { return !esVacio(i.eapb); },
+    valida: function (i) { return i.regimenAfiliacion !== REGIMEN_NO_AFILIADO; },
+    mensaje: 'Un integrante no afiliado no lleva EAPB.'
   },
   {
     codigo: 'RN-077',
@@ -1416,15 +1417,8 @@ const REGLAS_INTEGRANTE = [
     valida: function (i) { return perteneceA(CAT_PERTENENCIA_ETNICA, i.pertenenciaEtnica); },
     mensaje: 'Seleccione la pertenencia étnica.'
   },
-  {
-    codigo: 'RN-080',
-    campo: 'puebloEtnico',
-    aplica: function (i) {
-      return !esVacio(i.pertenenciaEtnica) && i.pertenenciaEtnica !== ETNIA_NINGUNA;
-    },
-    valida: function (i) { return !esVacio(i.puebloEtnico); },
-    mensaje: 'Registre el pueblo o comunidad étnica a la cual pertenece.'
-  },
+  /* RN-080: el pueblo o comunidad étnica es opcional; el anexo no lo exige
+     (variable 25 del registro tipo 3). */
 
   /* --- Situación de salud (81-110) --- */
   {
@@ -1767,7 +1761,8 @@ const REGLAS_INTEGRANTE = [
    que arma la base y el reporte. Por pregunta salen hasta dos:
 
      obligatoriedad  cuando la pregunta aplica (su `visible`) y
-                     `requerido` lo pide; en bloqueo o advertencia
+                     `requerido` lo pide (SI en la columna «Requerido»
+                     del anexo); bloquea el cierre
      dominio         cuando trae valor: opción del catálogo, largo
                      del texto, rango del entero, fecha válida
 
@@ -1847,16 +1842,12 @@ function reglasDelAnexo(nivel) {
       reglas.push({
         codigo: codigo,
         campo: pregunta.clave,
-        severidad: pregunta.requerido === 'advertencia' ? SEVERIDAD.ADVERTENCIA : SEVERIDAD.BLOQUEO,
         aplica: function () {
           return esVisibleAnexo(pregunta, lectorParaAmbito(nivel, arguments));
         },
         valida: function () { return respuestaPresente(pregunta, valorDe(arguments)); },
-        mensaje: pregunta.requerido === 'advertencia'
-          ? 'El reporte SI-APS pide esta variable y el anexo no trae una opción «ninguna». ' +
-            'Si de verdad no aplica, puede guardar así: el archivo plano la señalará.'
-          : 'Obligatoria en el reporte SI-APS (variable ' + pregunta.variable + ' del registro tipo ' +
-            pregunta.registro + ').'
+        mensaje: 'Obligatoria en el reporte SI-APS (variable ' + pregunta.variable + ' del registro tipo ' +
+          pregunta.registro + ').'
       });
     }
 
@@ -3251,27 +3242,11 @@ function validarCierre(datos) {
   const alertas = evaluarAlertas(datos);
   const planCuidado = resumirPlanCuidado(datos, alertas);
 
-  // 6. Georreferenciación pendiente sin motivo (RN-022)
-  const sinCoordenadas = typeof datos.latitud !== 'number' || typeof datos.longitud !== 'number';
-  if (sinCoordenadas && esVacio(datos.motivoSinGeorreferenciacion)) {
-    impedimentos.push({
-      codigo: 'RN-022', bloque: 'Vivienda',
-      mensaje: 'Georreferenciación pendiente: capture las coordenadas o registre el motivo de imposibilidad.'
-    });
-  }
+  /* 6. Georreferenciación (RN-022): ya no se admite un motivo en lugar de
+     las coordenadas; las exige validarReglas, arriba. */
 
-  // 7. Ausencia de contacto telefónico sin novedad (RN-070)
-  (datos.familias || []).forEach(function (familia, indice) {
-    if (listaVacia(familia.integrantes)) return;
-    const tieneContacto = familia.integrantes.some(function (i) { return telefonoValido(i.telefono1); });
-    if (!tieneContacto && familia.sinContactoTelefonico !== true) {
-      impedimentos.push({
-        codigo: 'RN-070', bloque: 'Familia',
-        referencia: 'Familia ' + (indice + 1),
-        mensaje: 'Sin medio de contacto telefónico y sin la novedad correspondiente registrada.'
-      });
-    }
-  });
+  /* 7. La familia sin teléfono (RN-070) ya no impide el cierre: el anexo no
+     exige el teléfono (variable 15 del registro tipo 3). */
 
   /* 8. La conducta ante riesgo de suicidio (RN-202) sigue siendo obligatoria,
      pero se exige por la misma vía que el resto del plan: la ficha queda

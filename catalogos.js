@@ -1260,39 +1260,44 @@ const CAT_ESTRATO = [
 
 /* ---------------------------------------------------------
    RN-034 — Tipo de vivienda (variable 31)
+   El código es el de la tabla APSTipoVivienda de SISPRO, contra la que
+   valida PISIS; el anexo v7 trae otra numeración. La vivienda
+   tradicional étnica no indígena va como «Otro» (12).
    --------------------------------------------------------- */
 const CAT_TIPO_VIVIENDA = [
   { valor: 'casa', etiqueta: 'Casa', sispro: '1' },
-  { valor: 'apartamento', etiqueta: 'Apartamento', sispro: '2' },
-  { valor: 'cuarto', etiqueta: 'Tipo "Cuarto"', sispro: '3' },
-  { valor: 'tradicional_indigena', etiqueta: 'Vivienda tradicional Indígena', sispro: '4' },
-  { valor: 'tradicional_etnica', etiqueta: 'Vivienda tradicional étnica', sispro: '5' },
-  { valor: 'carpa', etiqueta: 'Carpa', sispro: '6' },
-  { valor: 'contenedor', etiqueta: 'Contenedor', sispro: '7' },
-  { valor: 'embarcacion', etiqueta: 'Embarcación', sispro: '8' },
-  { valor: 'vagon', etiqueta: 'Vagón', sispro: '9' },
-  { valor: 'refugio_natural', etiqueta: 'Refugio Natural', sispro: '10' },
-  { valor: 'cueva', etiqueta: 'Cueva', sispro: '11' },
-  { valor: 'puente', etiqueta: 'Puente', sispro: '12' },
-  { valor: 'otro', etiqueta: 'Otro', sispro: '13' }
+  { valor: 'apartamento', etiqueta: 'Apartamento', sispro: '4' },
+  { valor: 'cuarto', etiqueta: 'Tipo "Cuarto"', sispro: '5' },
+  { valor: 'tradicional_indigena', etiqueta: 'Vivienda tradicional Indígena', sispro: '2' },
+  { valor: 'tradicional_etnica', etiqueta: 'Vivienda tradicional étnica', sispro: '12' },
+  { valor: 'carpa', etiqueta: 'Carpa', sispro: '3' },
+  { valor: 'contenedor', etiqueta: 'Contenedor', sispro: '6' },
+  { valor: 'embarcacion', etiqueta: 'Embarcación', sispro: '7' },
+  { valor: 'vagon', etiqueta: 'Vagón', sispro: '8' },
+  { valor: 'refugio_natural', etiqueta: 'Refugio Natural', sispro: '9' },
+  { valor: 'cueva', etiqueta: 'Cueva', sispro: '10' },
+  { valor: 'puente', etiqueta: 'Puente', sispro: '11' },
+  { valor: 'otro', etiqueta: 'Otro', sispro: '12' }
 ];
 
 /* ---------------------------------------------------------
    RN-035 — Material predominante del techo (variable 40)
    El anexo distingue «Fibrocemento con asbesto» (4) de «Teja o
-   lámina de fibrocemento con asbesto» (6). Se respetan las dos.
+   lámina de fibrocemento con asbesto» (6) y la app las conserva para el
+   riesgo; pero PISIS valida contra la tabla APSMaterialTecho de SISPRO,
+   que tiene un solo «Fibrocemento» (3). El código es el de esa tabla.
    --------------------------------------------------------- */
 const CAT_MATERIAL_TECHO = [
   { valor: 'concreto', etiqueta: 'Concreto', sispro: '1' },
   { valor: 'tejas_barro', etiqueta: 'Tejas de barro', sispro: '2' },
   { valor: 'fibrocemento_sin_asbesto', etiqueta: 'Fibrocemento sin asbesto', sispro: '3' },
-  { valor: 'fibrocemento_asbesto', etiqueta: 'Fibrocemento con asbesto', sispro: '4' },
-  { valor: 'zinc', etiqueta: 'Zinc', sispro: '5' },
-  { valor: 'fibrocemento_con_asbesto', etiqueta: 'Teja o lámina de fibrocemento con asbesto', sispro: '6' },
-  { valor: 'palma_paja', etiqueta: 'Palma o paja', sispro: '7' },
-  { valor: 'plastico', etiqueta: 'Plástico', sispro: '8' },
-  { valor: 'desechos', etiqueta: 'Desechos (cartón, lata, tela, sacos, etc.)', sispro: '9' },
-  { valor: 'otro', etiqueta: 'Otro', sispro: '10' }
+  { valor: 'fibrocemento_asbesto', etiqueta: 'Fibrocemento con asbesto', sispro: '3' },
+  { valor: 'zinc', etiqueta: 'Zinc', sispro: '4' },
+  { valor: 'fibrocemento_con_asbesto', etiqueta: 'Teja o lámina de fibrocemento con asbesto', sispro: '3' },
+  { valor: 'palma_paja', etiqueta: 'Palma o paja', sispro: '5' },
+  { valor: 'plastico', etiqueta: 'Plástico', sispro: '6' },
+  { valor: 'desechos', etiqueta: 'Desechos (cartón, lata, tela, sacos, etc.)', sispro: '7' },
+  { valor: 'otro', etiqueta: 'Otro', sispro: '8' }
 ];
 
 /* ---------------------------------------------------------
@@ -1678,7 +1683,9 @@ const CAT_PRACTICAS_VINCULO = [
   { valor: 'resuelve_conflictos', etiqueta: 'La familia resuelve los conflictos buscando el bienestar de todos sus integrantes', sispro: '3' },
   { valor: 'escucha_activa', etiqueta: 'La comunicación en la familia está basada en la escucha activa, el respeto y la negociación', sispro: '4' },
   { valor: 'acompana_menores', etiqueta: 'Los padres y cuidadores comparten, apoyan y supervisan las actividades de niños y adolescentes con respeto y límites', sispro: '5' },
-  { valor: 'considera_mayores', etiqueta: 'Los integrantes tienen en cuenta los intereses, opiniones y preferencias de las personas adultas mayores', sispro: '6' }
+  { valor: 'considera_mayores', etiqueta: 'Los integrantes tienen en cuenta los intereses, opiniones y preferencias de las personas adultas mayores', sispro: '6' },
+  /* No está en el anexo, pero sí en la tabla APSPracticasVinculosFamiliares. */
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, sispro: '7' }
 ];
 
 /* ---------------------------------------------------------
@@ -1701,7 +1708,9 @@ const CAT_PRACTICAS_CUIDADO_HOGAR = [
   { valor: 'pisos_limpios', etiqueta: 'Los pisos y paredes de la vivienda están limpios', sispro: '5' },
   { valor: 'toldillos', etiqueta: 'Usa toldillos, angeos y trampas caseras para la protección contra vectores y roedores', sispro: '6' },
   { valor: 'peridomicilio_limpio', etiqueta: 'Al interior de la vivienda o el peri-domicilio, jardín o espacios como patio o azotea están limpios', sispro: '7' },
-  { valor: 'quimicos_seguros', etiqueta: 'El lugar donde se almacenan los productos químicos está ventilado, cerrado, separado de alimentos y fuera del alcance de niños y mascotas', sispro: '8' }
+  { valor: 'quimicos_seguros', etiqueta: 'El lugar donde se almacenan los productos químicos está ventilado, cerrado, separado de alimentos y fuera del alcance de niños y mascotas', sispro: '8' },
+  /* No está en el anexo, pero sí en la tabla APSPracticasSaludHogar. */
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, sispro: '9' }
 ];
 
 /* ---------------------------------------------------------
@@ -2167,6 +2176,10 @@ const CAT_CONOCIMIENTO_DERECHO = [
 
 /* ---------------------------------------------------------
    RN-096 / RN-204 — Clasificación antropométrica (variable 42)
+   La tabla APSDiagnosticoNutricion de SISPRO, contra la que valida
+   PISIS, sólo tiene los códigos 1 a 7: las clasificaciones 8 a 11 del
+   anexo se reportan con la que las contiene (5 para riesgo de delgadez,
+   delgadez y bajo peso gestacional; 4 para «Normal»).
    --------------------------------------------------------- */
 const CAT_CLASIFICACION_ANTROPOMETRICA = [
   { valor: 'obesidad', etiqueta: 'Obesidad', prioridad: 'regular', sispro: '1' },
@@ -2176,10 +2189,10 @@ const CAT_CLASIFICACION_ANTROPOMETRICA = [
   { valor: 'riesgo_desnutricion', etiqueta: 'Riesgo de Desnutrición Aguda (en <5 años), o Riesgo de delgadez (en > de 4 años) o Bajo peso para la edad gestacional o Delgadez (en mayores de 17 años)', prioridad: 'regular', sispro: '5' },
   { valor: 'desnutricion_moderada', etiqueta: 'Desnutrición Aguda Moderada', prioridad: 'prioritaria', sispro: '6' },
   { valor: 'desnutricion_severa', etiqueta: 'Desnutrición Aguda Severa', prioridad: 'inmediata', sispro: '7' },
-  { valor: 'riesgo_delgadez', etiqueta: 'Riesgo de Delgadez', prioridad: 'regular', sispro: '8' },
-  { valor: 'delgadez', etiqueta: 'Delgadez', prioridad: 'regular', sispro: '9' },
-  { valor: 'bajo_peso_gestacional', etiqueta: 'Bajo Peso para la Edad Gestacional', prioridad: 'prioritaria', sispro: '10' },
-  { valor: 'normal', etiqueta: 'Normal', prioridad: null, sispro: '11' }
+  { valor: 'riesgo_delgadez', etiqueta: 'Riesgo de Delgadez', prioridad: 'regular', sispro: '5' },
+  { valor: 'delgadez', etiqueta: 'Delgadez', prioridad: 'regular', sispro: '5' },
+  { valor: 'bajo_peso_gestacional', etiqueta: 'Bajo Peso para la Edad Gestacional', prioridad: 'prioritaria', sispro: '5' },
+  { valor: 'normal', etiqueta: 'Normal', prioridad: null, sispro: '4' }
 ];
 
 /* ---------------------------------------------------------
@@ -2487,6 +2500,14 @@ function fijarCatalogosDinamicos(data) {
    2026). Estas preguntas no estaban en el instrumento impreso;
    las define anexo.js y cada una cita aquí su lista. El `valor`
    es interno y el `sispro`, el código que se reporta.
+
+   Siete listas que el anexo exige (SI en «Requerido») no traen
+   opción para cuando no hay nada que marcar, ni en el anexo ni en
+   las tablas de SISPRO: las variables 36, 48, 82, 85, 87 y 91 del
+   tipo 2 y 48 del tipo 3. La aplicación les añade «Ninguno» o
+   «Ninguna» con `reportaVacia`: responde la pregunta y no tiene
+   código; el archivo plano la reporta como «no aplica» (ver
+   rellenoNoAplica en api/_reporte_sispro.js).
    ========================================================= */
 
 /* --- Registro tipo 2: vivienda -------------------------------------- */
@@ -2505,7 +2526,8 @@ const CAT_AMBIENTES_VIVIENDA = [
 const CAT_ELEMENTOS_VIVIENDA = [
   { valor: 'lavamanos', etiqueta: 'Lavamanos', sispro: '1' },
   { valor: 'lavaplatos', etiqueta: 'Lavaplatos', sispro: '2' },
-  { valor: 'lavadero', etiqueta: 'Lavadero de ropa', sispro: '3' }
+  { valor: 'lavadero', etiqueta: 'Lavadero de ropa', sispro: '3' },
+  { valor: VALOR_NINGUNO, etiqueta: 'Ninguno', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 37 */
@@ -2560,7 +2582,8 @@ const CAT_DESPLAZAMIENTO_30 = [
   { valor: 'disponibilidad_transporte', etiqueta: 'Disponibilidad de medios de transporte', sispro: '3' },
   { valor: 'distancias', etiqueta: 'Distancias a recorrer', sispro: '4' },
   { valor: 'economica', etiqueta: 'Disponibilidad económica', sispro: '5' },
-  { valor: 'otro', etiqueta: 'Otro', sispro: '6' }
+  { valor: 'otro', etiqueta: 'Otro', sispro: '6' },
+  { valor: VALOR_NINGUNO, etiqueta: 'Ninguno: toma 30 minutos o menos', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 54 */
@@ -2685,7 +2708,8 @@ const CAT_PRACTICAS_CALIDAD_AIRE = [
   { valor: 'fumadores', etiqueta: 'Fumadores activos en la vivienda', sispro: '2' },
   { valor: 'vehiculo', etiqueta: 'Encender el vehículo dentro de la vivienda en un área sin buena ventilación', sispro: '3' },
   { valor: 'quema_basura', etiqueta: 'Quema de basura afuera de la vivienda', sispro: '4' },
-  { valor: 'polvillo', etiqueta: 'Barrido de pisos con levantamiento de polvillo', sispro: '5' }
+  { valor: 'polvillo', etiqueta: 'Barrido de pisos con levantamiento de polvillo', sispro: '5' },
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 83 */
@@ -2708,7 +2732,8 @@ const CAT_VECTORES = [
   { valor: 'roedores', etiqueta: 'Roedores', sispro: '8' },
   { valor: 'chinches', etiqueta: 'Chinches', sispro: '9' },
   { valor: 'triatominos', etiqueta: 'Triatominos (pito)', sispro: '10' },
-  { valor: 'otro', etiqueta: 'Otro', sispro: '11' }
+  { valor: 'otro', etiqueta: 'Otro', sispro: '11' },
+  { valor: VALOR_NINGUNO, etiqueta: 'Ninguno', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 87. Las dos primeras son también las únicas opciones de la
@@ -2727,7 +2752,8 @@ const CAT_MEDIDAS_VECTORES = [
   { valor: 'reemplazo_techos', etiqueta: 'Reemplazo de techos en paja por techo de zinc', sispro: '11' },
   { valor: 'reparaciones', etiqueta: 'Reparaciones para eliminar sitios húmedos o poco iluminados', sispro: '12' },
   { valor: 'ropa_clara', etiqueta: 'Uso de pantalones y camisas manga larga de colores claros', sispro: '13' },
-  { valor: 'otro', etiqueta: 'Otras', sispro: '14' }
+  { valor: 'otro', etiqueta: 'Otras', sispro: '14' },
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 89 */
@@ -2753,7 +2779,8 @@ const CAT_MEDIDAS_PONZONOSOS = [
   { valor: 'ninos_boscosas', etiqueta: 'Evitar que los niños y niñas jueguen en zonas boscosas', sispro: '7' },
   { valor: 'perros', etiqueta: 'Transitar si es posible en compañía de perros', sispro: '8' },
   { valor: 'noche', etiqueta: 'Evitar deambular de noche', sispro: '9' },
-  { valor: 'panales', etiqueta: 'No molestar panales de abejas o avispas', sispro: '10' }
+  { valor: 'panales', etiqueta: 'No molestar panales de abejas o avispas', sispro: '10' },
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 97 */
@@ -2846,7 +2873,8 @@ const CAT_ENFERMEDADES_ULTIMO_MES = [
   { valor: 'huerfanas', etiqueta: 'Enfermedades huérfanas', sispro: '16' },
   { valor: 'bucales', etiqueta: 'Enfermedades bucales (caries, enfermedad periodontal)', sispro: '17' },
   { valor: 'visuales_auditivas', etiqueta: 'Enfermedades visuales y auditivas', sispro: '18' },
-  { valor: 'otro', etiqueta: 'Otra', sispro: '19' }
+  { valor: 'otro', etiqueta: 'Otra', sispro: '19' },
+  { valor: VALOR_NINGUNA, etiqueta: 'Ninguna', excluyente: true, reportaVacia: true }
 ];
 
 /* Variable 50 */

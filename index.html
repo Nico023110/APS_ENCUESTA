@@ -593,17 +593,18 @@
           <div class="field field--full field--block" data-campo="coordenadas">
             <label>Coordenadas geográficas del lugar de aplicación</label>
             <span class="field-hint field-hint--inline">
-              Se calculan automáticamente a partir de la dirección del ítem 21 y del barrio del ítem 9.
-              También puede tomarlas del GPS del dispositivo o, con «Digitar coordenadas», escribirlas
+              Obligatorias en toda vivienda, también en zona rural. Se calculan a partir de la dirección
+              del ítem 21 y del barrio del ítem 9; en zona rural, donde la dirección no suele ubicarse,
+              use «Usar GPS» en la vivienda o, con «Digitar coordenadas», escríbalas
               (por ejemplo, copiadas de Google Maps: 3.451647, -76.531985).
             </span>
             <div class="form-grid coordenadas">
               <div class="field field--sm" data-campo="latitud">
-                <label for="latitud"><span class="item-num">22.</span> Latitud:</label>
+                <label for="latitud"><span class="item-num">22.</span> Latitud: *</label>
                 <input type="text" id="latitud" name="latitud" inputmode="decimal" placeholder="3.451647" readonly>
               </div>
               <div class="field field--sm" data-campo="longitud">
-                <label for="longitud"><span class="item-num">23.</span> Longitud:</label>
+                <label for="longitud"><span class="item-num">23.</span> Longitud: *</label>
                 <input type="text" id="longitud" name="longitud" inputmode="decimal" placeholder="-76.531985" readonly>
               </div>
               <div class="geo-acciones">
@@ -956,7 +957,7 @@
                 </div>
 
                 <div class="field field--full field--block" data-campo="practicasVinculo">
-                  <label><span class="item-num">55.</span> Prácticas que favorecen los vínculos familiares:</label>
+                  <label><span class="item-num">55.</span> Prácticas que favorecen los vínculos familiares: *</label>
                   <span class="field-hint field-hint--inline">Selección múltiple.</span>
                   <div class="check-group" data-catalogo="CAT_PRACTICAS_VINCULO" data-name="familias[0].practicasVinculo"></div>
                 </div>
@@ -967,7 +968,7 @@
                 </div>
 
                 <div class="field field--full field--block" data-campo="practicasCuidadoHogar">
-                  <label><span class="item-num">57.</span> Prácticas para el cuidado de la salud y protección en el hogar:</label>
+                  <label><span class="item-num">57.</span> Prácticas para el cuidado de la salud y protección en el hogar: *</label>
                   <span class="field-hint field-hint--inline">Selección múltiple.</span>
                   <div class="check-group" data-catalogo="CAT_PRACTICAS_CUIDADO_HOGAR" data-name="familias[0].practicasCuidadoHogar"></div>
                 </div>
@@ -1156,7 +1157,7 @@
                           <select name="familias[0].integrantes[0].pertenenciaEtnica" data-catalogo="CAT_PERTENENCIA_ETNICA"></select>
                         </div>
                         <div class="field" data-campo="puebloEtnico" data-rol="campoPuebloEtnico" hidden>
-                          <label><span class="item-num">80.</span> Pueblo o comunidad étnica: *</label>
+                          <label><span class="item-num">80.</span> Pueblo o comunidad étnica:</label>
                           <input type="text" name="familias[0].integrantes[0].puebloEtnico" placeholder="Ej. Wayuu">
                         </div>
                       </div>
@@ -1850,11 +1851,6 @@
             Al intentar guardar se listarán aquí los campos obligatorios pendientes y las familias o
             integrantes sin caracterizar. El plan de cuidado no se exige aquí: se muestra arriba.
           </p>
-        </div>
-
-        <div class="field field--full field--block" data-campo="motivoSinGeorreferenciacion" id="campoMotivoGeo" hidden>
-          <label for="motivoSinGeorreferenciacion">Motivo por el cual no fue posible georreferenciar la vivienda: *</label>
-          <input type="text" id="motivoSinGeorreferenciacion" name="motivoSinGeorreferenciacion" placeholder="Ej: sin señal GPS en zona de ladera">
         </div>
 
         <div class="field field--full field--block" data-campo="visitaIncompleta">

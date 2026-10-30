@@ -1072,15 +1072,6 @@ const CAMPOS_FICHA = {
       anexo: true
     },
     {
-      campo: "motivoSinGeorreferenciacion",
-      item: "",
-      etiqueta: "Motivo por el cual no fue posible georreferenciar la vivienda",
-      seccion: "Validación de completitud",
-      catalogo: null,
-      multiple: false,
-      anexo: false
-    },
-    {
       campo: "visitaIncompleta",
       item: "",
       etiqueta: "Cierre por causa externa",
@@ -2187,7 +2178,7 @@ const CAMPOS_FICHA = {
       item: "A3.103",
       etiqueta: "En alguno de sus trabajos, ¿ha realizado alguna actividad que involucre asbesto?",
       seccion: "5.5 Historial laboral y exposición a asbesto",
-      catalogo: "CAT_SI_NO_NA",
+      catalogo: "CAT_SI_NO",
       multiple: false,
       anexo: true
     },
@@ -2196,7 +2187,7 @@ const CAMPOS_FICHA = {
       item: "A3.104",
       etiqueta: "En alguno de sus trabajos, ¿ha realizado alguna actividad relacionada con asbesto?",
       seccion: "5.5 Historial laboral y exposición a asbesto",
-      catalogo: "CAT_SI_NO_NA",
+      catalogo: "CAT_SI_NO",
       multiple: false,
       anexo: true
     },
@@ -2214,7 +2205,7 @@ const CAMPOS_FICHA = {
       item: "A3.106",
       etiqueta: "¿Ha interactuado con materiales que tengan asbesto en sus trabajos?",
       seccion: "5.5 Historial laboral y exposición a asbesto",
-      catalogo: "CAT_SI_NO_NA",
+      catalogo: "CAT_SI_NO",
       multiple: false,
       anexo: true
     },

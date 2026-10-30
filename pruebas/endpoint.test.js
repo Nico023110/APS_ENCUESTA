@@ -340,7 +340,7 @@ async function correrPruebas() {
   const afiliadoSinEapb = fichaValida(sello + 'h');
   delete afiliadoSinEapb.familias[0].integrantes[0].eapb;
   r = await enviar(afiliadoSinEapb);
-  verificar('Régimen subsidiado sin EAPB => 400 (RN-076)', r.estado === 400, 'estado ' + r.estado);
+  verificar('Régimen subsidiado sin EAPB => 200 (ítem 76 opcional en el anexo)', r.estado === 200, 'estado ' + r.estado);
 
   const noAfiliadoConEapb = fichaValida(sello + 'i');
   noAfiliadoConEapb.familias[0].integrantes[0].regimenAfiliacion = 'no_afiliado';

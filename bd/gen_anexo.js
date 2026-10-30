@@ -190,17 +190,25 @@ WITH numerados AS (
 UPDATE aps.hogar h SET consecutivo_sispro = numerados.n
   FROM numerados WHERE numerados.id = h.id;
 
-/* Parámetros del reporte. La subregión (variable 4) la asigna la Secretaría
-   en el componente de gestión técnica de SI-APS: tres dígitos que el anexo
-   no permite deducir. Mientras falte, el archivo plano la señala. */
+/* Parámetros del reporte. La subregión (variable 4) es la UZPE de la
+   vivienda: UZPE006 se reporta 006 (confirmado por la E.S.E., 2026-10-29), y
+   el generador la toma de cada ficha. El parámetro es el respaldo para la
+   ficha que no traiga UZPE. */
 INSERT INTO cat.parametro (clave, valor, descripcion) VALUES
   ('entidad_reportante', '{"tipo":"NI","numero":"805027289","nombre":"Red de Salud de Ladera E.S.E."}',
    'Anexo SI-APS, registro tipo 1 y nombre del archivo: tipo y número (NIT sin dígito de verificación) de la entidad que reporta.'),
-  ('subregion_sispro', 'null',
-   'Anexo SI-APS, variable 4: código de subregión (3 dígitos) parametrizado en SI-APS para el distrito. Sin él, las variables 4, 123 y 124 quedan incompletas.'),
+  ('subregion_sispro', '"006"',
+   'Anexo SI-APS, variable 4: subregión (3 dígitos) para la vivienda cuya ficha no trae UZPE. Las demás la toman de su UZPE (UZPE006 → 006).'),
   ('nit_prestador_primario', '"805027289"',
    'Anexo SI-APS, variable 26: NIT sin dígito de verificación del prestador primario u organismo de adscripción del EBS.')
 ON CONFLICT (clave) DO NOTHING;
+
+/* La base que ya tenía el parámetro vacío lo recibe; uno puesto a mano no se toca. */
+UPDATE cat.parametro
+   SET valor = '"006"',
+       descripcion = 'Anexo SI-APS, variable 4: subregión (3 dígitos) para la vivienda cuya ficha no trae UZPE. Las demás la toman de su UZPE (UZPE006 → 006).',
+       actualizado_en = now()
+ WHERE clave = 'subregion_sispro' AND valor = 'null'::jsonb;
 
 /* =========================================================================
    3. RN-211 CON LAS LISTAS
@@ -233,7 +241,7 @@ SELECT v.ficha_id,
      + aps.alguna_marca('RESIDUOS_SOLIDOS', coalesce(
          (SELECT array_agg(codigo) FROM aps.vivienda_residuos_solidos x WHERE x.ficha_id = v.ficha_id),
          ARRAY[v.residuos_solidos]), 'critica')::int                                   -- RN-049
-     + (v.vectores = 'si')::int                                                        -- RN-037
+     + coalesce(v.vectores = 'si', false)::int                                         -- RN-037
      + (v.material_techo IN ('desechos','palma_paja','fibrocemento_con_asbesto','fibrocemento_asbesto'))::int -- RN-035
      + (v.perros_vacunados < v.perros
         OR v.gatos_vacunados < v.gatos

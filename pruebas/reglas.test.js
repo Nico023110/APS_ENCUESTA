@@ -571,8 +571,8 @@ verificar('Falta el alumbrado => bloqueo A2.37', codigos(sinAlumbrado).indexOf('
 verificar('Alumbrado fuera del catálogo => bloqueo A2.37',
   codigos(Object.assign(fichaBase(), { alumbrado: 'antorcha' })).indexOf('A2.37') !== -1);
 
-verificar('Transporte «otro» sin decir cuál => bloqueo A2.45',
-  codigos(Object.assign(fichaBase(), { mediosTransporte: ['publico', 'otro'] })).indexOf('A2.45') !== -1);
+verificar('Transporte «otro» sin decir cuál => válido: el anexo no exige el texto (A2.45, «Requerido» NO)',
+  codigos(Object.assign(fichaBase(), { mediosTransporte: ['publico', 'otro'] })).indexOf('A2.45') === -1);
 verificar('Transporte «otro» con cuál => sin A2.45',
   codigos(Object.assign(fichaBase(), { mediosTransporte: ['otro'], mediosTransporteOtro: 'Mototaxi' })).indexOf('A2.45') === -1);
 
@@ -582,9 +582,24 @@ const conTanque = codigos(Object.assign(fichaBase(), { tanqueAlmacenamiento: 'ae
 verificar('Con tanque aéreo => se exigen limpieza y distancia',
   conTanque.indexOf('A2.56') !== -1 && conTanque.indexOf('A2.57') !== -1, JSON.stringify(conTanque));
 
-const sinElementos = Object.assign(fichaBase(), { elementosVivienda: [] });
-verificar('Sin elementos en la vivienda (sin opción «ninguno» en el anexo) => advertencia A2.36, no bloqueo',
-  codigos(sinElementos).indexOf('A2.36') === -1 && avisos(sinElementos).indexOf('A2.36') !== -1);
+verificar('Elementos de la vivienda sin marcar => bloqueo A2.36 (obligatoria en el anexo)',
+  codigos(Object.assign(fichaBase(), { elementosVivienda: [] })).indexOf('A2.36') !== -1);
+verificar('Elementos de la vivienda «Ninguno» => válido',
+  codigos(Object.assign(fichaBase(), { elementosVivienda: ['ninguno'] })).indexOf('A2.36') === -1);
+verificar('«Ninguno» junto con un elemento => bloqueo A2.36 (es excluyente)',
+  codigos(Object.assign(fichaBase(), { elementosVivienda: ['ninguno', 'lavamanos'] })).indexOf('A2.36') !== -1);
+verificar('Ninguna lista del anexo queda como advertencia: las 7 sin exclusión son obligatorias',
+  ['A2.36', 'A2.48', 'A2.82', 'A2.85', 'A2.87'].every(function (c) {
+    return codigos(Object.assign(fichaBase(), {
+      elementosVivienda: [], desplazamientoMayor30: [], practicasCalidadAire: [],
+      vectoresPresentes: [], medidasControlVectores: []
+    })).indexOf(c) !== -1;
+  }) && avisos(Object.assign(fichaBase(), { elementosVivienda: [] })).indexOf('A2.36') === -1);
+
+verificar('Ítem 37 sin respuesta => bloqueo RN-037 (PISIS exige la variable 84)',
+  codigos(Object.assign(fichaBase(), { vectores: null })).indexOf('RN-037') !== -1);
+verificar('Ítem 37 fuera del catálogo => bloqueo RN-037',
+  codigos(Object.assign(fichaBase(), { vectores: 'tal_vez' })).indexOf('RN-037') !== -1);
 
 verificar('«No aplica» junto con otra fuente de humo => bloqueo A2.80',
   codigos(Object.assign(fichaBase(), { fuentesHumo: ['no_aplica', 'lena'] })).indexOf('A2.80') !== -1);
@@ -624,10 +639,12 @@ verificar('Puntaje ZARIT 60 con clasificación derivada «intensa» => válido',
 verificar('Clasificación ZARIT que no corresponde al puntaje => bloqueo RN-053',
   codigos(fichaConFamilia({}, { cuidadorPrincipal: 'si', zaritPuntaje: 60, zarit: 'ausencia' })).indexOf('RN-053') !== -1);
 
-verificar('Fumador activo sin cigarrillos ni años => bloqueos A3.65 y A3.66',
+verificar('Fumador activo sin cigarrillos ni años => bloqueos A3.65 y A3.66 (PISIS los exige)',
   ['A3.65', 'A3.66'].every(c => codigos(fichaConFamilia({ consumoTabaco: 'activo' })).indexOf(c) !== -1));
-verificar('Asbesto: actividad relacionada «sí» sin decir cuál => bloqueo A3.105',
-  codigos(fichaConFamilia({ actividadRelacionadaAsbesto: 'si' })).indexOf('A3.105') !== -1);
+verificar('Fumador activo con 150 cigarrillos diarios => bloqueo A3.65 (fuera de rango)',
+  codigos(fichaConFamilia({ consumoTabaco: 'activo', cigarrillosDiarios: 150 })).indexOf('A3.65') !== -1);
+verificar('Asbesto: actividad relacionada «sí» sin decir cuál => válido (A3.105, «Requerido» NO)',
+  codigos(fichaConFamilia({ actividadRelacionadaAsbesto: 'si' })).indexOf('A3.105') === -1);
 verificar('Módulo materno opcional: una gestante sin responderlo guarda igual',
   codigos(fichaConFamilia({ gestacionActual: 'si', sujetoEspecialProteccion: ['gestante'],
     atencionesPendientesMaterno: ['ninguna'] })).filter(c => /^A3\.(7\d|8\d|9[01])$/.test(c)).length === 0);
@@ -635,6 +652,10 @@ verificar('Fecha de última menstruación posterior a la visita => bloqueo A3.70
   codigos(fichaConFamilia({ fechaUltimaMenstruacion: iso(new Date(HOY.getFullYear() + 1, 0, 1)) })).indexOf('A3.70') !== -1);
 verificar('Evento del último mes sin decir qué hizo => bloqueo A3.50',
   codigos(fichaConFamilia({ enfermedadesUltimoMes: ['resfriado'] })).indexOf('A3.50') !== -1);
+verificar('Enfermedades del último mes sin marcar => bloqueo A3.48 (obligatoria en el anexo)',
+  codigos(fichaConFamilia({ enfermedadesUltimoMes: [] })).indexOf('A3.48') !== -1);
+verificar('«Ninguna» enfermedad en el último mes => no se pregunta qué hizo (A3.50)',
+  codigos(fichaConFamilia({ enfermedadesUltimoMes: ['ninguna'] })).filter(c => c === 'A3.48' || c === 'A3.50').length === 0);
 
 verificar('Ocupación que no es código CIUO => bloqueo RN-073',
   codigos(fichaConFamilia({ ocupacion: 'Ingeniera de Sistemas' })).indexOf('RN-073') !== -1);
@@ -642,6 +663,23 @@ verificar('Ocupación 9998 (sin ocupación remunerada) => válida',
   codigos(fichaConFamilia({ ocupacion: '9998' })).indexOf('RN-073') === -1);
 verificar('Teléfono de 7 dígitos (fijo antiguo) => bloqueo RN-070',
   codigos(fichaConFamilia({ telefono1: '4451234' })).indexOf('RN-070') !== -1);
+const familiaSinTelefono = fichaConFamilia({ telefono1: null });
+verificar('Familia sin teléfono y sin la novedad => cierra (ítem 70 / variable 15, «Requerido» NO)',
+  codigos(familiaSinTelefono).indexOf('RN-070') === -1 && validarCierre(familiaSinTelefono).puedeCerrar,
+  JSON.stringify(validarCierre(familiaSinTelefono).impedimentos.map(i => i.codigo)));
+verificar('Afiliado sin EAPB => válido (ítem 76 / variable 21, «Requerido» NO)',
+  codigos(fichaConFamilia({ eapb: null })).indexOf('RN-076') === -1);
+verificar('No afiliado con EAPB => bloqueo RN-076',
+  codigos(fichaConFamilia({ regimenAfiliacion: 'no_afiliado' })).indexOf('RN-076') !== -1);
+verificar('Prácticas de vínculo (ítem 55) y de cuidado en el hogar (ítem 57) sin marcar => bloqueos RN-055 y RN-057',
+  ['RN-055', 'RN-057'].every(c => codigos(fichaConFamilia({}, { practicasVinculo: [], practicasCuidadoHogar: [] })).indexOf(c) !== -1));
+verificar('  con «Ninguna» => válidas',
+  codigos(fichaConFamilia({}, { practicasVinculo: ['ninguna'], practicasCuidadoHogar: ['ninguna'] }))
+    .filter(c => c === 'RN-055' || c === 'RN-057').length === 0);
+verificar('  «Ninguna» junto con una práctica => bloqueo RN-055 (es excluyente)',
+  codigos(fichaConFamilia({}, { practicasVinculo: ['ninguna', 'escucha_activa'] })).indexOf('RN-055') !== -1);
+verificar('Pertenencia étnica sin pueblo => válido (ítem 80 / variable 25, «Requerido» NO)',
+  codigos(fichaConFamilia({ pertenenciaEtnica: 'indigena' })).indexOf('RN-080') === -1);
 verificar('Nivel educativo retirado («Técnica laboral») => bloqueo RN-074',
   codigos(fichaConFamilia({ nivelEducativo: 'tecnica_laboral' })).indexOf('RN-074') !== -1);
 verificar('Sujeto «violencia de género» (retirado del anexo) => bloqueo RN-077',

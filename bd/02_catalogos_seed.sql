@@ -1820,28 +1820,28 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('ESTRATO', 'medio_alto', 'Medio - Alto', 5, false, false, NULL, '5', true),
   ('ESTRATO', 'alto', 'Alto', 6, false, false, NULL, '6', true),
   ('TIPO_VIVIENDA', 'casa', 'Casa', 1, false, false, NULL, '1', true),
-  ('TIPO_VIVIENDA', 'apartamento', 'Apartamento', 2, false, false, NULL, '2', true),
-  ('TIPO_VIVIENDA', 'cuarto', 'Tipo "Cuarto"', 3, false, false, NULL, '3', true),
-  ('TIPO_VIVIENDA', 'tradicional_indigena', 'Vivienda tradicional Indígena', 4, false, false, NULL, '4', true),
-  ('TIPO_VIVIENDA', 'tradicional_etnica', 'Vivienda tradicional étnica', 5, false, false, NULL, '5', true),
-  ('TIPO_VIVIENDA', 'carpa', 'Carpa', 6, false, false, NULL, '6', true),
-  ('TIPO_VIVIENDA', 'contenedor', 'Contenedor', 7, false, false, NULL, '7', true),
-  ('TIPO_VIVIENDA', 'embarcacion', 'Embarcación', 8, false, false, NULL, '8', true),
-  ('TIPO_VIVIENDA', 'vagon', 'Vagón', 9, false, false, NULL, '9', true),
-  ('TIPO_VIVIENDA', 'refugio_natural', 'Refugio Natural', 10, false, false, NULL, '10', true),
-  ('TIPO_VIVIENDA', 'cueva', 'Cueva', 11, false, false, NULL, '11', true),
-  ('TIPO_VIVIENDA', 'puente', 'Puente', 12, false, false, NULL, '12', true),
-  ('TIPO_VIVIENDA', 'otro', 'Otro', 13, false, true, NULL, '13', true),
+  ('TIPO_VIVIENDA', 'apartamento', 'Apartamento', 2, false, false, NULL, '4', true),
+  ('TIPO_VIVIENDA', 'cuarto', 'Tipo "Cuarto"', 3, false, false, NULL, '5', true),
+  ('TIPO_VIVIENDA', 'tradicional_indigena', 'Vivienda tradicional Indígena', 4, false, false, NULL, '2', true),
+  ('TIPO_VIVIENDA', 'tradicional_etnica', 'Vivienda tradicional étnica', 5, false, false, NULL, '12', true),
+  ('TIPO_VIVIENDA', 'carpa', 'Carpa', 6, false, false, NULL, '3', true),
+  ('TIPO_VIVIENDA', 'contenedor', 'Contenedor', 7, false, false, NULL, '6', true),
+  ('TIPO_VIVIENDA', 'embarcacion', 'Embarcación', 8, false, false, NULL, '7', true),
+  ('TIPO_VIVIENDA', 'vagon', 'Vagón', 9, false, false, NULL, '8', true),
+  ('TIPO_VIVIENDA', 'refugio_natural', 'Refugio Natural', 10, false, false, NULL, '9', true),
+  ('TIPO_VIVIENDA', 'cueva', 'Cueva', 11, false, false, NULL, '10', true),
+  ('TIPO_VIVIENDA', 'puente', 'Puente', 12, false, false, NULL, '11', true),
+  ('TIPO_VIVIENDA', 'otro', 'Otro', 13, false, true, NULL, '12', true),
   ('MATERIAL_TECHO', 'concreto', 'Concreto', 1, false, false, NULL, '1', true),
   ('MATERIAL_TECHO', 'tejas_barro', 'Tejas de barro', 2, false, false, NULL, '2', true),
   ('MATERIAL_TECHO', 'fibrocemento_sin_asbesto', 'Fibrocemento sin asbesto', 3, false, false, NULL, '3', true),
-  ('MATERIAL_TECHO', 'fibrocemento_asbesto', 'Fibrocemento con asbesto', 4, false, false, NULL, '4', true),
-  ('MATERIAL_TECHO', 'zinc', 'Zinc', 5, false, false, NULL, '5', true),
-  ('MATERIAL_TECHO', 'fibrocemento_con_asbesto', 'Teja o lámina de fibrocemento con asbesto', 6, false, false, NULL, '6', true),
-  ('MATERIAL_TECHO', 'palma_paja', 'Palma o paja', 7, false, false, NULL, '7', true),
-  ('MATERIAL_TECHO', 'plastico', 'Plástico', 8, false, false, NULL, '8', true),
-  ('MATERIAL_TECHO', 'desechos', 'Desechos (cartón, lata, tela, sacos, etc.)', 9, false, false, NULL, '9', true),
-  ('MATERIAL_TECHO', 'otro', 'Otro', 10, false, true, NULL, '10', true),
+  ('MATERIAL_TECHO', 'fibrocemento_asbesto', 'Fibrocemento con asbesto', 4, false, false, NULL, '3', true),
+  ('MATERIAL_TECHO', 'zinc', 'Zinc', 5, false, false, NULL, '4', true),
+  ('MATERIAL_TECHO', 'fibrocemento_con_asbesto', 'Teja o lámina de fibrocemento con asbesto', 6, false, false, NULL, '3', true),
+  ('MATERIAL_TECHO', 'palma_paja', 'Palma o paja', 7, false, false, NULL, '5', true),
+  ('MATERIAL_TECHO', 'plastico', 'Plástico', 8, false, false, NULL, '6', true),
+  ('MATERIAL_TECHO', 'desechos', 'Desechos (cartón, lata, tela, sacos, etc.)', 9, false, false, NULL, '7', true),
+  ('MATERIAL_TECHO', 'otro', 'Otro', 10, false, true, NULL, '8', true),
   ('RIESGOS_ACCIDENTE', 'objetos_cortopunzantes', 'Objetos cortantes o punzantes al alcance de los niños', 1, false, false, NULL, '1', true),
   ('RIESGOS_ACCIDENTE', 'sustancias_quimicas', 'Sustancias químicas al alcance de los niños y/o reenvasadas en envases de alimentos o bebidas', 2, false, false, NULL, '2', true),
   ('RIESGOS_ACCIDENTE', 'medicamentos', 'Medicamentos al alcance de los niños', 3, false, false, NULL, '3', true),
@@ -1958,6 +1958,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('PRACTICAS_VINCULO', 'escucha_activa', 'La comunicación en la familia está basada en la escucha activa, el respeto y la negociación', 4, false, false, NULL, '4', true),
   ('PRACTICAS_VINCULO', 'acompana_menores', 'Los padres y cuidadores comparten, apoyan y supervisan las actividades de niños y adolescentes con respeto y límites', 5, false, false, NULL, '5', true),
   ('PRACTICAS_VINCULO', 'considera_mayores', 'Los integrantes tienen en cuenta los intereses, opiniones y preferencias de las personas adultas mayores', 6, false, false, NULL, '6', true),
+  ('PRACTICAS_VINCULO', 'ninguna', 'Ninguna', 7, true, false, '{"excluyente":true}'::jsonb, '7', true),
   ('REDES_APOYO', 'cuenta_protectoras', 'Cuenta con redes de apoyo sociales protectoras para el cuidado de su salud', 1, false, false, '{"riesgo":false}'::jsonb, '1', true),
   ('REDES_APOYO', 'cuenta_ampliables', 'Cuenta con redes de apoyo sociales para el cuidado de su salud, pero podría ampliarlas para fortalecerse', 2, false, false, '{"riesgo":false}'::jsonb, '2', true),
   ('REDES_APOYO', 'no_cuenta', 'No identifica / no cuenta con redes de apoyo sociales protectoras', 3, false, false, '{"riesgo":true}'::jsonb, '3', true),
@@ -1969,6 +1970,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('PRACTICAS_CUIDADO_HOGAR', 'toldillos', 'Usa toldillos, angeos y trampas caseras para la protección contra vectores y roedores', 6, false, false, NULL, '6', true),
   ('PRACTICAS_CUIDADO_HOGAR', 'peridomicilio_limpio', 'Al interior de la vivienda o el peri-domicilio, jardín o espacios como patio o azotea están limpios', 7, false, false, NULL, '7', true),
   ('PRACTICAS_CUIDADO_HOGAR', 'quimicos_seguros', 'El lugar donde se almacenan los productos químicos está ventilado, cerrado, separado de alimentos y fuera del alcance de niños y mascotas', 8, false, false, NULL, '8', true),
+  ('PRACTICAS_CUIDADO_HOGAR', 'ninguna', 'Ninguna', 9, true, false, '{"excluyente":true}'::jsonb, '9', true),
   ('TIPO_ID_INTEGRANTE', 'AS', 'AS. Adulto sin Identificación', 1, false, false, '{"formato":"temporal","edadMinMeses":216,"edadMaxMeses":null,"bloqueaEdad":true,"exigeExtranjero":false,"sinDocumento":true}'::jsonb, 'AS', true),
   ('TIPO_ID_INTEGRANTE', 'CC', 'CC. Cédula de Ciudadanía', 2, false, false, '{"formato":"numerico_6_10","edadMinMeses":216,"edadMaxMeses":null,"bloqueaEdad":false,"exigeExtranjero":false}'::jsonb, 'CC', true),
   ('TIPO_ID_INTEGRANTE', 'CD', 'CD. Carné Diplomático', 3, false, false, '{"formato":"alfanumerico_5_16","edadMinMeses":null,"edadMaxMeses":null,"bloqueaEdad":false,"exigeExtranjero":true}'::jsonb, 'CD', true),
@@ -2138,10 +2140,10 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('CLASIFICACION_ANTROPOMETRICA', 'riesgo_desnutricion', 'Riesgo de Desnutrición Aguda (en <5 años), o Riesgo de delgadez (en > de 4 años) o Bajo peso para la edad gestacional o Delgadez (en mayores de 17 años)', 5, false, false, '{"prioridad":"regular"}'::jsonb, '5', true),
   ('CLASIFICACION_ANTROPOMETRICA', 'desnutricion_moderada', 'Desnutrición Aguda Moderada', 6, false, false, '{"prioridad":"prioritaria"}'::jsonb, '6', true),
   ('CLASIFICACION_ANTROPOMETRICA', 'desnutricion_severa', 'Desnutrición Aguda Severa', 7, false, false, '{"prioridad":"inmediata"}'::jsonb, '7', true),
-  ('CLASIFICACION_ANTROPOMETRICA', 'riesgo_delgadez', 'Riesgo de Delgadez', 8, false, false, '{"prioridad":"regular"}'::jsonb, '8', true),
-  ('CLASIFICACION_ANTROPOMETRICA', 'delgadez', 'Delgadez', 9, false, false, '{"prioridad":"regular"}'::jsonb, '9', true),
-  ('CLASIFICACION_ANTROPOMETRICA', 'bajo_peso_gestacional', 'Bajo Peso para la Edad Gestacional', 10, false, false, '{"prioridad":"prioritaria"}'::jsonb, '10', true),
-  ('CLASIFICACION_ANTROPOMETRICA', 'normal', 'Normal', 11, false, false, '{"prioridad":null}'::jsonb, '11', true),
+  ('CLASIFICACION_ANTROPOMETRICA', 'riesgo_delgadez', 'Riesgo de Delgadez', 8, false, false, '{"prioridad":"regular"}'::jsonb, '5', true),
+  ('CLASIFICACION_ANTROPOMETRICA', 'delgadez', 'Delgadez', 9, false, false, '{"prioridad":"regular"}'::jsonb, '5', true),
+  ('CLASIFICACION_ANTROPOMETRICA', 'bajo_peso_gestacional', 'Bajo Peso para la Edad Gestacional', 10, false, false, '{"prioridad":"prioritaria"}'::jsonb, '5', true),
+  ('CLASIFICACION_ANTROPOMETRICA', 'normal', 'Normal', 11, false, false, '{"prioridad":null}'::jsonb, '4', true),
   ('SIGNOS_DESNUTRICION', 'cabeza', 'Cabeza', 1, false, false, NULL, '1', true),
   ('SIGNOS_DESNUTRICION', 'cara', 'Cara', 2, false, false, NULL, '2', true),
   ('SIGNOS_DESNUTRICION', 'piel', 'Piel', 3, false, false, NULL, '3', true),
@@ -2267,6 +2269,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('ELEMENTOS_VIVIENDA', 'lavamanos', 'Lavamanos', 1, false, false, NULL, '1', true),
   ('ELEMENTOS_VIVIENDA', 'lavaplatos', 'Lavaplatos', 2, false, false, NULL, '2', true),
   ('ELEMENTOS_VIVIENDA', 'lavadero', 'Lavadero de ropa', 3, false, false, NULL, '3', true),
+  ('ELEMENTOS_VIVIENDA', 'ninguno', 'Ninguno', 4, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('ALUMBRADO', 'electrica', 'Luz eléctrica', 1, false, false, NULL, '1', true),
   ('ALUMBRADO', 'combustible', 'Kerosén, petróleo, gasolina', 2, false, false, NULL, '2', true),
   ('ALUMBRADO', 'velas', 'Velas', 3, false, false, NULL, '3', true),
@@ -2302,6 +2305,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('DESPLAZAMIENTO_30', 'distancias', 'Distancias a recorrer', 4, false, false, NULL, '4', true),
   ('DESPLAZAMIENTO_30', 'economica', 'Disponibilidad económica', 5, false, false, NULL, '5', true),
   ('DESPLAZAMIENTO_30', 'otro', 'Otro', 6, false, true, NULL, '6', true),
+  ('DESPLAZAMIENTO_30', 'ninguno', 'Ninguno: toma 30 minutos o menos', 7, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('FINALIDAD_TENENCIA', 'compania', 'Compañía', 1, false, false, NULL, '1', true),
   ('FINALIDAD_TENENCIA', 'produccion', 'Producción', 2, false, false, NULL, '2', true),
   ('FINALIDAD_TENENCIA', 'autoconsumo', 'Autoconsumo', 3, false, false, NULL, '3', true),
@@ -2380,6 +2384,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('PRACTICAS_CALIDAD_AIRE', 'vehiculo', 'Encender el vehículo dentro de la vivienda en un área sin buena ventilación', 3, false, false, NULL, '3', true),
   ('PRACTICAS_CALIDAD_AIRE', 'quema_basura', 'Quema de basura afuera de la vivienda', 4, false, false, NULL, '4', true),
   ('PRACTICAS_CALIDAD_AIRE', 'polvillo', 'Barrido de pisos con levantamiento de polvillo', 5, false, false, NULL, '5', true),
+  ('PRACTICAS_CALIDAD_AIRE', 'ninguna', 'Ninguna', 6, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('TIPO_ESTUFA', 'convencional_buena', 'Eléctrica, de gas, petróleo, gasolina, kerosén o alcohol con conexiones en buen estado, sin fugas, buena combustión y sin riesgo eléctrico', 1, false, false, NULL, '1', true),
   ('TIPO_ESTUFA', 'convencional_mala', 'Eléctrica, de gas, petróleo, gasolina, kerosén o alcohol con conexiones en mal estado, reparaciones defectuosas, mala combustión o riesgo eléctrico', 2, false, false, NULL, '2', true),
   ('TIPO_ESTUFA', 'lena_mejorada', 'De leña, madera o carbón mejorada: con chimenea y fuera de la vivienda, o dentro en buen estado y sin manchas', 3, false, false, NULL, '3', true),
@@ -2395,6 +2400,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('VECTORES', 'chinches', 'Chinches', 9, false, false, NULL, '9', true),
   ('VECTORES', 'triatominos', 'Triatominos (pito)', 10, false, false, NULL, '10', true),
   ('VECTORES', 'otro', 'Otro', 11, false, true, NULL, '11', true),
+  ('VECTORES', 'ninguno', 'Ninguno', 12, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('MEDIDAS_VECTORES', 'residuos_higienicos', 'Manejo higiénico de los residuos sólidos', 1, false, false, NULL, '1', true),
   ('MEDIDAS_VECTORES', 'evita_luz_blanca', 'Evitar el uso de fuentes de luz blanca o brillante en ambientes oscuros', 2, false, false, NULL, '2', true),
   ('MEDIDAS_VECTORES', 'inservibles', 'Recolección de inservibles', 3, false, false, NULL, '3', true),
@@ -2409,6 +2415,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('MEDIDAS_VECTORES', 'reparaciones', 'Reparaciones para eliminar sitios húmedos o poco iluminados', 12, false, false, NULL, '12', true),
   ('MEDIDAS_VECTORES', 'ropa_clara', 'Uso de pantalones y camisas manga larga de colores claros', 13, false, false, NULL, '13', true),
   ('MEDIDAS_VECTORES', 'otro', 'Otras', 14, false, true, NULL, '14', true),
+  ('MEDIDAS_VECTORES', 'ninguna', 'Ninguna', 15, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('ANIMALES_PONZONOSOS', 'aranas', 'Arañas', 1, false, false, NULL, '1', true),
   ('ANIMALES_PONZONOSOS', 'escorpiones', 'Escorpiones o alacranes', 2, false, false, NULL, '2', true),
   ('ANIMALES_PONZONOSOS', 'serpientes', 'Serpientes o víboras', 3, false, false, NULL, '3', true),
@@ -2427,6 +2434,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('MEDIDAS_PONZONOSOS', 'perros', 'Transitar si es posible en compañía de perros', 8, false, false, NULL, '8', true),
   ('MEDIDAS_PONZONOSOS', 'noche', 'Evitar deambular de noche', 9, false, false, NULL, '9', true),
   ('MEDIDAS_PONZONOSOS', 'panales', 'No molestar panales de abejas o avispas', 10, false, false, NULL, '10', true),
+  ('MEDIDAS_PONZONOSOS', 'ninguna', 'Ninguna', 11, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('LUGAR_QUIMICOS', 'tienda_barrio', 'Tiendas de barrio', 1, false, false, NULL, '1', true),
   ('LUGAR_QUIMICOS', 'almacen_cadena', 'Almacenes de cadena', 2, false, false, NULL, '2', true),
   ('LUGAR_QUIMICOS', 'especializado', 'Establecimientos específicos de venta de productos químicos', 3, false, false, NULL, '3', true),
@@ -2480,6 +2488,7 @@ INSERT INTO cat.opcion (dominio_codigo, codigo, etiqueta, orden, es_excluyente, 
   ('ENFERMEDADES_ULTIMO_MES', 'bucales', 'Enfermedades bucales (caries, enfermedad periodontal)', 17, false, false, NULL, '17', true),
   ('ENFERMEDADES_ULTIMO_MES', 'visuales_auditivas', 'Enfermedades visuales y auditivas', 18, false, false, NULL, '18', true),
   ('ENFERMEDADES_ULTIMO_MES', 'otro', 'Otra', 19, false, true, NULL, '19', true),
+  ('ENFERMEDADES_ULTIMO_MES', 'ninguna', 'Ninguna', 20, true, false, '{"excluyente":true,"reportaVacia":true}'::jsonb, NULL, true),
   ('ACCION_AFECCION', 'no_acudio', 'No acudió a ningún servicio de salud', 1, false, false, NULL, '1', true),
   ('ACCION_AFECCION', 'eps_atendido', 'Solicitó atención a través de la EPS y lo atendieron', 2, false, false, NULL, '2', true),
   ('ACCION_AFECCION', 'eps_no_atendido', 'Solicitó atención a través de la EPS y no lo atendieron', 3, false, false, NULL, '3', true),
@@ -2604,9 +2613,9 @@ UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'RESIDUOS_SOLIDOS' 
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'TIPO_FAMILIA' AND codigo NOT IN ('nuclear_biparental', 'nuclear_monoparental', 'extenso_biparental', 'extenso_monoparental', 'compuesto_biparental', 'compuesto_monoparental', 'unipersonal');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ZARIT' AND codigo NOT IN ('ausencia', 'ligera', 'intensa');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'SITUACIONES_RIESGO_FAMILIAR' AND codigo NOT IN ('inicio_convivencia', 'nuevo_integrante', 'ingreso_estudiar', 'perdida_ano_escolar', 'embarazo_adolescente', 'independencia_hijos', 'separacion', 'jubilacion', 'duelo', 'desempleo', 'crisis_economica', 'enfermedad_terminal', 'antecedente_suicidio', 'accidente_discapacidad', 'muerte_inesperada', 'violencia', 'abandono', 'migracion', 'consumo_spa', 'trastorno_mental', 'ninguna');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_VINCULO' AND codigo NOT IN ('maneja_tension', 'decisiones_concertadas', 'resuelve_conflictos', 'escucha_activa', 'acompana_menores', 'considera_mayores');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_VINCULO' AND codigo NOT IN ('maneja_tension', 'decisiones_concertadas', 'resuelve_conflictos', 'escucha_activa', 'acompana_menores', 'considera_mayores', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'REDES_APOYO' AND codigo NOT IN ('cuenta_protectoras', 'cuenta_ampliables', 'no_cuenta');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_CUIDADO_HOGAR' AND codigo NOT IN ('tratamiento_agua', 'ventilacion', 'evita_humo', 'residuos_tapados', 'pisos_limpios', 'toldillos', 'peridomicilio_limpio', 'quimicos_seguros');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_CUIDADO_HOGAR' AND codigo NOT IN ('tratamiento_agua', 'ventilacion', 'evita_humo', 'residuos_tapados', 'pisos_limpios', 'toldillos', 'peridomicilio_limpio', 'quimicos_seguros', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'TIPO_ID_INTEGRANTE' AND codigo NOT IN ('AS', 'CC', 'CD', 'CE', 'MS', 'NV', 'PA', 'PE', 'PT', 'RC', 'TI');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'SEXO' AND codigo NOT IN ('hombre', 'mujer', 'intersexual');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'GENERO' AND codigo NOT IN ('femenino', 'masculino');
@@ -2640,12 +2649,12 @@ UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ESTADO_SEGUIMIENTO
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'TIPO_ID_EJECUTOR' AND codigo NOT IN ('CC', 'CD', 'CE', 'PT');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'TIPO_UBICACION' AND codigo NOT IN ('corregimiento', 'centro_poblado', 'vereda', 'localidad', 'barrio', 'resguardo_indigena');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'AMBIENTES_VIVIENDA' AND codigo NOT IN ('cocina', 'dormitorio_adultos', 'dormitorio_ninos', 'sala_comedor', 'sanitario', 'lavado_ropas');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ELEMENTOS_VIVIENDA' AND codigo NOT IN ('lavamanos', 'lavaplatos', 'lavadero');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ELEMENTOS_VIVIENDA' AND codigo NOT IN ('lavamanos', 'lavaplatos', 'lavadero', 'ninguno');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ALUMBRADO' AND codigo NOT IN ('electrica', 'combustible', 'velas', 'solar', 'planta');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ACCESO_VIVIENDA' AND codigo NOT IN ('transporte', 'centros_sociales', 'parques', 'cultos', 'educativas', 'salud', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIOS_TRANSPORTE' AND codigo NOT IN ('particular', 'publico', 'motocicleta', 'bicicleta', 'caminando', 'maquinaria', 'cable', 'fluvial', 'semovientes', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'SEGURIDAD_DESPLAZAMIENTO' AND codigo NOT IN ('casco', 'cinturon', 'retencion_infantil', 'chaleco_reflectivo', 'chaleco_salvavidas', 'ninguno', 'otro');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'DESPLAZAMIENTO_30' AND codigo NOT IN ('infraestructura_vial', 'congestion', 'disponibilidad_transporte', 'distancias', 'economica', 'otro');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'DESPLAZAMIENTO_30' AND codigo NOT IN ('infraestructura_vial', 'congestion', 'disponibilidad_transporte', 'distancias', 'economica', 'otro', 'ninguno');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'FINALIDAD_TENENCIA' AND codigo NOT IN ('compania', 'produccion', 'autoconsumo', 'vigilancia');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'CONFINAMIENTO_ANIMALES' AND codigo NOT IN ('total', 'parcial', 'libres');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'HORAS_SUMINISTRO' AND codigo NOT IN ('24h', '12a23', '4a12', 'menos4', 'dias_sin');
@@ -2660,19 +2669,19 @@ UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'SEPARACION_RESIDUO
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'LIMPIEZA_SUPERFICIES' AND codigo NOT IN ('polvo', 'agua_jabon', 'desinfeccion', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ENERGIA_COCINAR' AND codigo NOT IN ('electricidad', 'gas_natural', 'glp', 'lena', 'combustible', 'carbon_mineral', 'desechos', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'FUENTES_HUMO' AND codigo NOT IN ('tabaco', 'lena', 'carbon', 'quema_basura', 'vapeadores', 'narguilas', 'no_aplica', 'otro');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_CALIDAD_AIRE' AND codigo NOT IN ('carbon_lena', 'fumadores', 'vehiculo', 'quema_basura', 'polvillo');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'PRACTICAS_CALIDAD_AIRE' AND codigo NOT IN ('carbon_lena', 'fumadores', 'vehiculo', 'quema_basura', 'polvillo', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'TIPO_ESTUFA' AND codigo NOT IN ('convencional_buena', 'convencional_mala', 'lena_mejorada', 'lena_interior');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'VECTORES' AND codigo NOT IN ('zancudos', 'cucarachas', 'moscas', 'mosquitos', 'pulgas', 'piojos', 'garrapatas', 'roedores', 'chinches', 'triatominos', 'otro');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIDAS_VECTORES' AND codigo NOT IN ('residuos_higienicos', 'evita_luz_blanca', 'inservibles', 'toldillos', 'angeos', 'orden_higiene', 'malezas', 'drenaje', 'proteccion_depositos', 'retiro_recipientes', 'reemplazo_techos', 'reparaciones', 'ropa_clara', 'otro');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'VECTORES' AND codigo NOT IN ('zancudos', 'cucarachas', 'moscas', 'mosquitos', 'pulgas', 'piojos', 'garrapatas', 'roedores', 'chinches', 'triatominos', 'otro', 'ninguno');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIDAS_VECTORES' AND codigo NOT IN ('residuos_higienicos', 'evita_luz_blanca', 'inservibles', 'toldillos', 'angeos', 'orden_higiene', 'malezas', 'drenaje', 'proteccion_depositos', 'retiro_recipientes', 'reemplazo_techos', 'reparaciones', 'ropa_clara', 'otro', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ANIMALES_PONZONOSOS' AND codigo NOT IN ('aranas', 'escorpiones', 'serpientes', 'abejas', 'avispas', 'orugas', 'no_aplica', 'otro');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIDAS_PONZONOSOS' AND codigo NOT IN ('sacudir_ropa', 'huecos_arboles', 'guantes', 'orden_peridomicilio', 'corte_monte', 'botas', 'ninos_boscosas', 'perros', 'noche', 'panales');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIDAS_PONZONOSOS' AND codigo NOT IN ('sacudir_ropa', 'huecos_arboles', 'guantes', 'orden_peridomicilio', 'corte_monte', 'botas', 'ninos_boscosas', 'perros', 'noche', 'panales', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'LUGAR_QUIMICOS' AND codigo NOT IN ('tienda_barrio', 'almacen_cadena', 'especializado', 'granel');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'DISPOSICION_QUIMICOS' AND codigo NOT IN ('separados', 'con_ordinarios', 'quema', 'fuentes_agua', 'campo_abierto', 'enterramiento', 'reutiliza_envases', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'APGAR' AND codigo NOT IN ('alta', 'moderada', 'disfuncion');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'MEDIDAS_RESPIRATORIAS' AND codigo NOT IN ('tapabocas', 'lavado_manos', 'cubrir_rostro', 'ninguno', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ESTATUS_MIGRATORIO' AND codigo NOT IN ('regular', 'sin_autorizacion', 'no_aplica');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'URGENCIAS_HOGAR' AND codigo NOT IN ('cortopunzantes', 'intoxicacion', 'quemadura', 'electrocucion', 'asfixia', 'golpes', 'caida', 'ahogamiento', 'agresion_animal', 'caida_alturas', 'no_aplica');
-UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ENFERMEDADES_ULTIMO_MES' AND codigo NOT IN ('diarrea', 'resfriado', 'infeccion_pulmonar', 'intoxicacion', 'piel_alergias', 'accidente_hogar', 'explosivos', 'siniestro_vial', 'cancer', 'hta', 'diabetes', 'obesidad', 'renal', 'epoc', 'asma', 'huerfanas', 'bucales', 'visuales_auditivas', 'otro');
+UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ENFERMEDADES_ULTIMO_MES' AND codigo NOT IN ('diarrea', 'resfriado', 'infeccion_pulmonar', 'intoxicacion', 'piel_alergias', 'accidente_hogar', 'explosivos', 'siniestro_vial', 'cancer', 'hta', 'diabetes', 'obesidad', 'renal', 'epoc', 'asma', 'huerfanas', 'bucales', 'visuales_auditivas', 'otro', 'ninguna');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'ACCION_AFECCION' AND codigo NOT IN ('no_acudio', 'eps_atendido', 'eps_no_atendido', 'particular', 'alternativa', 'farmacia', 'curandero', 'otro');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'CONSUMO_TABACO' AND codigo NOT IN ('activo', 'exfumador', 'no_aplica');
 UPDATE cat.opcion SET vigente = false WHERE dominio_codigo = 'RIESGO_GESTACIONAL' AND codigo NOT IN ('alto', 'bajo', 'no_evaluado');

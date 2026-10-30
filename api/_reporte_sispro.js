@@ -39,12 +39,23 @@ const PREFIJO_ARCHIVO = 'APS124CCFP';
 
 /* Estructura, como la fija el anexo: el registro de control es el primero;
    luego todos los tipo 2 y después todos los tipo 3. El consecutivo
-   (variable 1) del tipo 2 «inicia en 1 para el primer registro de detalle y
-   va incrementando de 1 en 1, hasta el final del archivo»; el del tipo 3
-   «inicia en 1 para el primer registro de integrante de la familia»: cada
-   tipo lleva su propia numeración desde 1. Un tipo 3 se une a su familia por
-   la variable 117 (= variable 124 del tipo 2), no por su posición. */
+   (variable 1) «inicia en 1 para el primer registro de detalle y va
+   incrementando de 1 en 1, hasta el final del archivo»: es uno solo, y los
+   tipo 3 siguen la cuenta donde terminan los tipo 2, como en los archivos
+   ya cargados en PISIS. Un tipo 3 se une a su familia por la variable 117
+   (= variable 124 del tipo 2), no por su posición. */
 const MAX_EJEMPLOS_POR_INCIDENCIA = 5;
+
+/* «No aplica» de las variables obligatorias cuyo formato en PISIS no admite
+   0 (NUMERICOPOSITIVONOCERO) y cuya lista no tiene un código para eso. Son
+   supuestos, a confirmar con el Ministerio:
+     T2 57   sin tanque: 1, «más de 10 metros» (no hay tanque que contaminar)
+     T2 103  sin ninguna de las dos medidas: 1 (sólo admite 1 o 2)
+     T2 115  sin cuidador: 1, imposible en el ZARIT (de 22 a 110 puntos), así
+             se distingue de un puntaje real; la variable 114 dice «No»
+     T3 50   sin enfermedad en el último mes: 1, «no acudió a ningún servicio» */
+const RELLENOS_SIN_CERO = { 2: { 57: '1', 103: '1', 115: '1' }, 3: { 50: '1' } };
+const SIN_CERO = /NOCERO$/;
 
 /* ---------------------------------------------------------
    1. Formato de los valores
@@ -127,7 +138,10 @@ function formatear(definicion, bruto, tipoReal) {
   if (tipo !== 'T' && tipo !== 'A') texto = texto.replace(/[^\x20-\x7E]|\|/g, ' ');
 
   if (tipo === 'T') {
-    texto = textoPlano(texto);
+    /* PISIS sólo admite en el texto letras, números, guion, espacio y punto
+       (formato «LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto»):
+       el «#» de las direcciones va como «NO» y el resto de signos, como espacio. */
+    texto = textoPlano(texto.replace(/#/g, ' NO ')).replace(/[^A-Z0-9 .\-]/g, ' ').replace(/\s+/g, ' ').trim();
     if (texto.length > definicion.max) {
       texto = texto.slice(0, definicion.max).trim();
       problemas.push('Texto recortado a ' + definicion.max + ' caracteres');
@@ -166,15 +180,29 @@ function crearCodificadores(m) {
     return typeof cat === 'string' ? catalogo(cat) : cat;
   }
 
+  /* La «Ninguna» que la aplicación añade a una lista obligatoria que el
+     anexo trae sin opción de exclusión (`reportaVacia` en catalogos.js)
+     responde la pregunta, pero no tiene código: el campo va vacío y no es
+     incidencia. */
+  function respondidaSinCodigo(opciones, lista) {
+    return lista.length > 0 && lista.every(function (valor) {
+      const opcion = opciones.find(function (o) { return o.valor === valor; });
+      return !!(opcion && opcion.reportaVacia);
+    });
+  }
+
   function codigoDe(cat, valor) {
     const lista = comoLista(valor);
     if (lista.length === 0) return R(null);
-    const codigo = m.codigoSispro(resolver(cat), lista[0]);
+    const opciones = resolver(cat);
+    if (respondidaSinCodigo(opciones, lista)) return Object.assign(R(null), { requerido: false });
+    const codigo = m.codigoSispro(opciones, lista[0]);
     return codigo === null ? R(null, [lista[0]]) : R(codigo);
   }
 
   function codigosDe(cat, valores) {
     const opciones = resolver(cat);
+    if (respondidaSinCodigo(opciones, comoLista(valores))) return Object.assign(R([]), { requerido: false });
     const codigos = [];
     const faltan = [];
     comoLista(valores).forEach(function (valor) {
@@ -189,12 +217,16 @@ function crearCodificadores(m) {
   return { catalogo: catalogo, codigoDe: codigoDe, codigosDe: codigosDe };
 }
 
-/* Subregión (variable 4): tres dígitos. En el Distrito la subregión agrupa
-   barrios, y en Cali es la UZPE de la vivienda (ítem 4): UZPE006 se reporta
-   006. Si la ficha no trae UZPE, el parámetro subregion_sispro. */
+/* Variable 4: la UZPE de la vivienda (ítem 4), completa. PISIS la llama
+   «CodUZPE» y le da 7 caracteres, y sólo con UZPE006 (no «006», como dice
+   el anexo) los identificadores de vivienda, familia e integrante llegan a
+   las longitudes de PISIS (26, 31 y 53). Si la ficha no trae UZPE, el
+   parámetro subregion_sispro (tres dígitos). */
 function subregionDe(encuesta, parametros) {
   const uzpe = /^UZPE(\d{3})$/.exec(String((encuesta && encuesta.uzpe) || '').trim().toUpperCase());
-  return uzpe ? uzpe[1] : (parametros && parametros.subregion) || null;
+  if (uzpe) return 'UZPE' + uzpe[1];
+  const respaldo = parametros && parametros.subregion;
+  return respaldo ? 'UZPE' + String(respaldo).replace(/^UZPE/i, '') : null;
 }
 
 /* Territorio (variable 6): «TXX» con XX de 01 a 98. «T99 está reservado; si
@@ -305,7 +337,7 @@ function variablesTipo2(m, c) {
     58: { valor: function (ctx) { return c.codigosDe('CAT_DISPOSICION_EXCRETAS', e(ctx).disposicionExcretas); } },
     59: { valor: function (ctx) { return c.codigosDe('CAT_AGUAS_RESIDUALES', e(ctx).aguasResiduales); } },
     62: { valor: function (ctx) { return c.codigosDe('CAT_RESIDUOS_SOLIDOS', e(ctx).residuosSolidos); } },
-    84: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', e(ctx).vectores); }, noAplica: '3' },
+    84: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', e(ctx).vectores); } },
     92: { valor: function (ctx) { return c.codigosDe('CAT_ANIMALES', e(ctx).animales); } },
     93: { valor: function (ctx) { return R(entero(e(ctx).perros)); } },
     94: { valor: function (ctx) { return R(entero(e(ctx).perrosVacunados)); } },
@@ -386,7 +418,9 @@ function variablesTipo3(m, c) {
     20: { valor: function (ctx) { return c.codigoDe('CAT_REGIMEN_AFILIACION', i(ctx).regimenAfiliacion); } },
     21: { valor: function (ctx) { return c.codigoDe('CAT_EAPB', i(ctx).eapb); }, tipo: 'A' },
     22: { valor: function (ctx) { return c.codigosDe('CAT_SUJETO_ESPECIAL_PROTECCION', i(ctx).sujetoEspecialProteccion); } },
-    23: { valor: function (ctx) { return c.codigosDe('CAT_MODALIDAD_VIOLENCIA', i(ctx).modalidadViolencia); } },
+    /* Sólo para víctimas de violencia interpersonal (RN-078); a los demás
+       PISIS igual la exige: va «NO APLICA». */
+    23: { valor: function (ctx) { return c.codigosDe('CAT_MODALIDAD_VIOLENCIA', i(ctx).modalidadViolencia); }, condicional: true },
     24: { valor: function (ctx) { return c.codigoDe('CAT_PERTENENCIA_ETNICA', i(ctx).pertenenciaEtnica); } },
     25: { valor: function (ctx) { return R(i(ctx).puebloEtnico); } },
     26: { valor: function (ctx) { return c.codigosDe('CAT_SABERES_ANCESTRALES', i(ctx).saberesAncestrales); } },
@@ -414,9 +448,15 @@ function variablesTipo3(m, c) {
     36: { valor: function (ctx) { return c.codigoDe('CAT_SI_NO_NA', i(ctx).lactanciaExclusiva); }, noAplica: '3' },
     37: { valor: function (ctx) { return R(decimales(i(ctx).peso, 1)); } },
     38: { valor: function (ctx) { return R(decimales(i(ctx).talla, 1)); } },
+    /* Variable 39: PISIS la exige a todos y no admite 0; con peso y talla el
+       IMC se calcula a cualquier edad. */
     39: {
-      valor: function (ctx) { return R(edad(ctx) !== null && edad(ctx) >= 60 ? decimales(i(ctx).imc, 1) : null); },
-      condicional: true
+      valor: function (ctx) {
+        const peso = Number(i(ctx).peso);
+        const talla = Number(i(ctx).talla) / 100;
+        if (!vacio(i(ctx).imc)) return R(decimales(i(ctx).imc, 1));
+        return R(peso > 0 && talla > 0 ? decimales(peso / (talla * talla), 1) : null);
+      }
     },
     40: {
       valor: function (ctx) { return R(edad(ctx) !== null && edad(ctx) >= 216 ? entero(i(ctx).circunferenciaCintura) : null); },
@@ -451,11 +491,13 @@ function variablesTipo3(m, c) {
         const resultado = respuesta === 'si' || respuesta === 'no' ? c.codigoDe('CAT_SI_NO', respuesta) : R(null);
         resultado.requerido = edad(ctx) !== null && edad(ctx) >= 14 * 12;
         return resultado;
-      }
+      },
+      relleno: '2'
     },
-    67: { valor: function (ctx) { return R(entero(i(ctx).puntajeAssist)); } },
-    68: { valor: function (ctx) { return R(entero(i(ctx).puntajeAudit)); } },
-    69: { valor: function (ctx) { return R(entero(i(ctx).puntajeCrafft)); } },
+    /* Puntajes: sólo se registran si se aplicó la prueba. */
+    67: { valor: function (ctx) { return R(entero(i(ctx).puntajeAssist)); }, condicional: true },
+    68: { valor: function (ctx) { return R(entero(i(ctx).puntajeAudit)); }, condicional: true },
+    69: { valor: function (ctx) { return R(entero(i(ctx).puntajeCrafft)); }, condicional: true },
     /* Variables 71 y 72: no se preguntan; salen del sexo, la edad y el ítem 85. */
     71: { valor: function (ctx) { return R(m.enEdadFertil(ctx.lector) ? '1' : '2'); } },
     72: { valor: function (ctx) { return R(i(ctx).gestacionActual === 'si' ? '1' : '2'); } },
@@ -476,6 +518,7 @@ function variablesTipo3(m, c) {
 
 function variableDesdeAnexo(m, c, pregunta) {
   return {
+    catalogo: pregunta.catalogo ? m.catalogoDePregunta(pregunta) : null,
     valor: function (ctx) {
       const r = ctx.lector;
       const visible = m.esVisibleAnexo(pregunta, r);
@@ -484,15 +527,19 @@ function variableDesdeAnexo(m, c, pregunta) {
       else valor = typeof pregunta.siOculta === 'function' ? pregunta.siOculta(r) : null;
 
       const catalogo = pregunta.catalogo ? m.catalogoDePregunta(pregunta) : null;
+      /* Un «No aplica» de una ficha vieja a una pregunta cuya lista ya no lo
+         ofrece (las de asbesto pasaron a Sí/No, que es lo que admite PISIS):
+         es no haber respondido. */
+      if (catalogo && valor === 'no_aplica' && !catalogo.some(function (o) { return o.valor === 'no_aplica'; })) valor = null;
       let resultado;
       if (catalogo) resultado = pregunta.tipo === 'multiple' ? c.codigosDe(catalogo, valor) : c.codigoDe(catalogo, valor);
       else if (pregunta.tipo === 'entero') resultado = R(entero(valor));
       else if (pregunta.formato === 'telefono') resultado = R(soloDigitos(valor));
       else resultado = R(valor);
 
-      /* Obligatoria sólo si aplica y el anexo la exige; las «advertencia»
-         (listas sin opción de exclusión) pueden ir vacías. */
-      resultado.requerido = visible && pregunta.requerido === 'bloqueo';
+      /* Obligatoria sólo si aplica y el anexo la exige (SI en «Requerido»),
+         salvo que se haya respondido con una «Ninguna» sin código. */
+      if (resultado.requerido !== false) resultado.requerido = visible && pregunta.requerido === 'bloqueo';
       return resultado;
     }
   };
@@ -518,21 +565,9 @@ function obtenerDefiniciones() {
   const m = obtenerMotor();
   const c = crearCodificadores(m);
 
-  const tipo2 = definicionesDe(m, c, 2, variablesTipo2(m, c), DICCIONARIO.TIPO_2.length);
-  /* Variable 24: sin situación que atender, el anexo la pide igual (es
-     obligatoria); se reporta «NO APLICA» en vez de dejarla vacía. */
-  const observaciones = tipo2[24];
-  tipo2[24] = {
-    valor: function (ctx) {
-      const resultado = observaciones.valor(ctx);
-      if (vacio(resultado.v) && !resultado.requerido) return Object.assign(R('NO APLICA'), { requerido: false });
-      return resultado;
-    }
-  };
-
   definicionesCache = {
     motor: m,
-    tipo2: tipo2,
+    tipo2: definicionesDe(m, c, 2, variablesTipo2(m, c), DICCIONARIO.TIPO_2.length),
     tipo3: definicionesDe(m, c, 3, variablesTipo3(m, c), DICCIONARIO.TIPO_3.length)
   };
   return definicionesCache;
@@ -575,6 +610,27 @@ function respuestaParaResumen(valor) {
   return /^[A-Za-z0-9_-]{1,30}$/.test(texto) ? '«' + texto + '»' : 'escrita como texto libre';
 }
 
+/* PISIS rechaza vacía toda variable obligatoria aunque no aplique a la
+   persona o a la vivienda: para su validador no hay campos condicionales.
+   Cuando la pregunta no aplica, o se respondió con una «Ninguna» que el
+   anexo no codifica, se reporta su «No aplica»: el código de su lista si lo
+   tiene, «No» si la lista es Sí/No, «NO APLICA» si es texto y 0 si es
+   numérica. Lo que sí aplicaba y quedó sin responder no se rellena: va
+   vacío y queda como incidencia, para que se corrija la ficha. */
+function rellenoNoAplica(tipo, definicion, entrada) {
+  if (entrada.relleno !== undefined) return entrada.relleno;
+  const fijo = RELLENOS_SIN_CERO[tipo][definicion.n];
+  if (fijo !== undefined) return fijo;
+  const opciones = entrada.catalogo || [];
+  const noAplica = opciones.find(function (o) { return o.valor === 'no_aplica' && o.sispro !== undefined; });
+  if (noAplica) return noAplica.sispro;
+  const siNo = opciones.length > 0 && opciones.every(function (o) { return o.sispro === '1' || o.sispro === '2'; });
+  if (siNo) return '2';
+  if (definicion.tipo === 'T') return 'NO APLICA';
+  /* Un 0 que PISIS no admite no se manda: sin relleno conocido, queda vacía. */
+  return SIN_CERO.test(definicion.formato || '') ? null : '0';
+}
+
 function armarRegistro(tipo, diccionario, definiciones, ctx, incidencias) {
   const codigoFicha = ctx.encuesta.codigoFicha;
   return diccionario.map(function (definicion) {
@@ -593,6 +649,10 @@ function armarRegistro(tipo, diccionario, definiciones, ctx, incidencias) {
       : definicion.requerido && !entrada.condicional;
     if (vacio(valor) && requerido && resultado.sinCodigo.length === 0) {
       incidencias.agregar(tipo, definicion, 'Obligatoria y vacía', codigoFicha);
+    }
+    if (vacio(valor) && !requerido && definicion.requerido === true && resultado.sinCodigo.length === 0) {
+      valor = rellenoNoAplica(tipo, definicion, entrada);
+      if (vacio(valor)) incidencias.agregar(tipo, definicion, 'PISIS la exige y no tiene un «no aplica» válido', codigoFicha);
     }
 
     const formateado = formatear(definicion, valor, entrada.tipo);
@@ -634,6 +694,10 @@ function construirReporte(opciones) {
   const tipo2 = [];
   const tipo3 = [];
   const integrantesVistos = new Map();
+  /* Los tipo 3 van después de todos los tipo 2 y siguen su consecutivo. */
+  const totalTipo2 = (opciones.fichas || []).reduce(function (suma, leida) {
+    return suma + ((leida.encuesta && leida.encuesta.familias) || []).length;
+  }, 0);
 
   (opciones.fichas || []).forEach(function (leida) {
     const encuesta = leida.encuesta;
@@ -662,7 +726,7 @@ function construirReporte(opciones) {
         const contexto = m.contextoIntegrante(integrante, encuesta);
         const ctx = {
           encuesta: encuesta, familia: familia, integrante: integrante, contexto: contexto,
-          parametros: parametros, consecutivo: tipo3.length + 1, idFamilia: idFamilia,
+          parametros: parametros, consecutivo: totalTipo2 + tipo3.length + 1, idFamilia: idFamilia,
           lector: m.lectorDeRespuestas([integrante, familia, encuesta], {
             edadMeses: contexto.edadMeses, sexo: contexto.sexo, gestante: contexto.gestante, fechaFicha: fechaFicha
           })

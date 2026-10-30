@@ -692,7 +692,7 @@ const GUIA_CAMPOS = {
     variable: '78',
     que: 'Enfermedades que la persona presenta o presentó en el último mes, como diarrea o soltura de estómago, ' +
       'tos, resfriado o infección pulmonar, problemas de piel o alergias, o un accidente en el hogar.',
-    como: 'Marque todas las que correspondan. Si marca otra enfermedad, escriba cuál.'
+    como: 'Marque todas las que correspondan; si no enfermó, marque «Ninguna». Si marca otra enfermedad, escriba cuál.'
   },
 
   adherenciaTratamiento: {

@@ -161,7 +161,7 @@ SELECT v.ficha_id,
      + aps.alguna_marca('RESIDUOS_SOLIDOS', coalesce(
          (SELECT array_agg(codigo) FROM aps.vivienda_residuos_solidos x WHERE x.ficha_id = v.ficha_id),
          ARRAY[v.residuos_solidos]), 'critica')::int                                   -- RN-049
-     + (v.vectores = 'si')::int                                                        -- RN-037
+     + coalesce(v.vectores = 'si', false)::int                                         -- RN-037
      + (v.material_techo IN ('desechos','palma_paja','fibrocemento_con_asbesto','fibrocemento_asbesto'))::int -- RN-035
      + (v.perros_vacunados < v.perros
         OR v.gatos_vacunados < v.gatos
@@ -1208,7 +1208,7 @@ COMMENT ON COLUMN aps.integrante.empleo_previo2_meses IS 'Anexo SI-APS A3.102: E
 ALTER TABLE aps.integrante ADD COLUMN IF NOT EXISTS actividad_involucra_asbesto text;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ax_inte_actividad_involucra_asbesto') THEN
-    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_actividad_involucra_asbesto CHECK (cat.es_opcion('SI_NO_NA', actividad_involucra_asbesto));
+    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_actividad_involucra_asbesto CHECK (cat.es_opcion('SI_NO', actividad_involucra_asbesto));
   END IF;
 END $$;
 COMMENT ON COLUMN aps.integrante.actividad_involucra_asbesto IS 'Anexo SI-APS A3.103: En alguno de sus trabajos, ¿ha realizado alguna actividad que involucre asbesto?';
@@ -1217,7 +1217,7 @@ COMMENT ON COLUMN aps.integrante.actividad_involucra_asbesto IS 'Anexo SI-APS A3
 ALTER TABLE aps.integrante ADD COLUMN IF NOT EXISTS actividad_relacionada_asbesto text;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ax_inte_actividad_relacionada_asbesto') THEN
-    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_actividad_relacionada_asbesto CHECK (cat.es_opcion('SI_NO_NA', actividad_relacionada_asbesto));
+    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_actividad_relacionada_asbesto CHECK (cat.es_opcion('SI_NO', actividad_relacionada_asbesto));
   END IF;
 END $$;
 COMMENT ON COLUMN aps.integrante.actividad_relacionada_asbesto IS 'Anexo SI-APS A3.104: En alguno de sus trabajos, ¿ha realizado alguna actividad relacionada con asbesto?';
@@ -1235,7 +1235,7 @@ COMMENT ON TABLE aps.integrante_actividades_asbesto IS 'Anexo SI-APS A3.105: ¿C
 ALTER TABLE aps.integrante ADD COLUMN IF NOT EXISTS interactuo_materiales_asbesto text;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ax_inte_interactuo_materiales_asbesto') THEN
-    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_interactuo_materiales_asbesto CHECK (cat.es_opcion('SI_NO_NA', interactuo_materiales_asbesto));
+    ALTER TABLE aps.integrante ADD CONSTRAINT ax_inte_interactuo_materiales_asbesto CHECK (cat.es_opcion('SI_NO', interactuo_materiales_asbesto));
   END IF;
 END $$;
 COMMENT ON COLUMN aps.integrante.interactuo_materiales_asbesto IS 'Anexo SI-APS A3.106: ¿Ha interactuado con materiales que tengan asbesto en sus trabajos?';

@@ -63,6 +63,7 @@ function integranteAnexo() {
   return {
     lavadoManos: 'si',
     urgenciasAccidente: ['no_aplica'],
+    enfermedadesUltimoMes: ['ninguna'],
     tieneDiagnostico: 'no',
     sintomasSinDiagnostico: 'no',
     consumoTabaco: 'no_aplica'

@@ -57,7 +57,9 @@ const SCRIPTS = [
   /* Idempotente. Sólo índices. */
   { archivo: '16_indices_rendimiento.sql', descripcion: 'Índices del plan de cuidado y de las visitas por familia' },
   /* Idempotente. */
-  { archivo: '17_barrios.sql', descripcion: 'Barrios de Cali para el ítem 9' }
+  { archivo: '17_barrios.sql', descripcion: 'Barrios de Cali para el ítem 9' },
+  /* Idempotente. */
+  { archivo: '18_items_opcionales_anexo.sql', descripcion: 'Ítems 37, 76 y 80 opcionales, como en el anexo SI-APS' }
 ];
 
 /* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
@@ -65,7 +67,8 @@ const SCRIPTS = [
    porque las migraciones validan contra sus dominios. */
 const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql',
   '09_hogar_de_familia.sql', '10_permiso_plan.sql', '11_hora_diligenciamiento.sql', '12_coordinacion_ebs.sql',
-  '13_plan_opcional.sql', '14_codigo_cf.sql', '15_portafolio_cups.sql', '16_indices_rendimiento.sql', '17_barrios.sql'];
+  '13_plan_opcional.sql', '14_codigo_cf.sql', '15_portafolio_cups.sql', '16_indices_rendimiento.sql', '17_barrios.sql',
+  '18_items_opcionales_anexo.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN

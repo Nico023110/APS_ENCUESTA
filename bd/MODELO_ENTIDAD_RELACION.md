@@ -432,8 +432,8 @@ erDiagram
 | RN-042 / RN-044 | `CHECK` vacunados ≤ total |
 | RN-045 | `CHECK viv_carnet_no_aplica` |
 | RN-053 | `CHECK ff_zarit_condicionado` — Zarit si y sólo si hay cuidador |
-| RN-076 / RN-209.2 | `CHECK int_eapb_condicionada` |
-| RN-080 | `CHECK int_pueblo_etnico_condicionado` |
+| RN-076 / RN-209.2 | `CHECK int_eapb_condicionada` — el no afiliado no lleva EAPB; el afiliado puede no tenerla (18_items_opcionales_anexo.sql) |
+| RN-080 | Sin restricción: el pueblo étnico es opcional en el anexo (`int_pueblo_etnico_condicionado` se retiró en 18_items_opcionales_anexo.sql) |
 | RN-095 | Columna generada `imc` |
 | RN-098 | `CHECK int_tension_par` y rango fisiológico |
 | RN-109 | `CHECK int_puntajes_condicionados` + rangos CRAFFT/AUDIT/ASSIST |

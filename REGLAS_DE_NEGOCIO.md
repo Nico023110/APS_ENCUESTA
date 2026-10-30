@@ -218,7 +218,7 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 ### RN-022 — Coordenada geográfica de latitud
 
-**Ítem 22.** Campo numérico decimal obligatorio, capturado automáticamente por el GPS del dispositivo y editable sólo por excepción justificada. Rango válido de captura: **−90 a 90**, con mínimo 6 decimales.
+**Ítem 22.** Campo numérico decimal obligatorio en toda vivienda, urbana o rural (PISIS exige las variables 12 y 13 y no acepta un motivo en su lugar). Se toma de la dirección, del GPS del dispositivo o se digita (por ejemplo, desde Google Maps). Rango válido de captura: **−90 a 90**, con mínimo 6 decimales.
 
 El sistema **advierte sin bloquear** cuando el valor quede fuera del recuadro municipal de Santiago de Cali: **3.24 a 3.56**, rango que comprende tanto la zona urbana como la totalidad del área rural, desde el límite sur en Pance y los Farallones hasta el límite norte en Golondrinas y Montebello.
 
@@ -330,7 +330,7 @@ La presencia de riesgos eleva la prioridad únicamente cuando la ficha registra 
 
 ### RN-037 — Criaderos o reservorios de vectores
 
-**Ítem 37.** Selección única obligatoria entre "Sí", "No" o "No aplica", para registrar factores de riesgo que favorezcan enfermedades de transmisión vectorial cercanas a la vivienda.
+**Ítem 37.** Selección única **obligatoria** entre "Sí", "No" o "No aplica", para registrar factores de riesgo que favorezcan enfermedades de transmisión vectorial cercanas a la vivienda. El anexo la marca opcional, pero PISIS exige la variable 84 del registro tipo 2 (ver RN-227).
 
 ### RN-038 — Factores de contaminación y entorno peridomiciliario
 
@@ -448,7 +448,7 @@ Los ítems relacionados con violencia, suicidio y abandono activan las reglas de
 
 ### RN-055 — Prácticas de vínculo familiar
 
-**Ítem 55.** Selección múltiple de dinámicas saludables observables o referidas de convivencia interna (manejo pacífico de tensiones, decisiones concertadas, resolución de conflictos, comunicación basada en escucha activa, acompañamiento a niños y adolescentes, consideración de las personas mayores). No cuenta con opción de exclusión explícita.
+**Ítem 55.** Selección múltiple de dinámicas saludables observables o referidas de convivencia interna (manejo pacífico de tensiones, decisiones concertadas, resolución de conflictos, comunicación basada en escucha activa, acompañamiento a niños y adolescentes, consideración de las personas mayores). **Obligatoria**: el anexo la exige (variable 117, «Requerido» SI) y no trae opción de exclusión, así que la aplicación añade **«Ninguna»**, excluyente, que en el archivo plano va vacía.
 
 La **ausencia total de prácticas protectoras** constituye factor de riesgo familiar y debe considerarse en la semaforización de RN-221.
 
@@ -460,7 +460,7 @@ La tercera opción constituye determinante social de aislamiento y se cruza con 
 
 ### RN-057 — Prácticas de cuidado de la salud en el hogar
 
-**Ítem 57.** Selección múltiple de conductas higiénicas, sanitarias y ambientales protectoras: tratamiento casero del agua, ventilación, evitar tabaco y leña, manejo de residuos sólidos, limpieza de pisos y paredes, uso de toldillos y trampas, limpieza del peridomicilio, almacenamiento seguro de productos químicos.
+**Ítem 57.** Selección múltiple de conductas higiénicas, sanitarias y ambientales protectoras: tratamiento casero del agua, ventilación, evitar tabaco y leña, manejo de residuos sólidos, limpieza de pisos y paredes, uso de toldillos y trampas, limpieza del peridomicilio, almacenamiento seguro de productos químicos. **Obligatoria**: el anexo la exige (variable 119, «Requerido» SI) y no trae opción de exclusión, así que la aplicación añade **«Ninguna»**, excluyente, que en el archivo plano va vacía.
 
 ---
 
@@ -591,11 +591,9 @@ Este dato es **sensible** y tiene tratamiento reforzado conforme a RN-224.
 
 ### RN-070 — Teléfono 1
 
-**Ítem 70.** Campo numérico **obligatorio a nivel de familia**: al menos un integrante del núcleo debe registrar un número de contacto válido. Acepta de **10 a 20 dígitos** (anexo técnico, variable 15 del registro tipo 3: numérico de hasta 20). Los fijos de 7 dígitos ya no se aceptan: desde la marcación nacional los fijos de Cali también tienen 10 (60 2 + número). El sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
+**Ítem 70.** Campo numérico **opcional**: el anexo técnico no lo exige (variable 15 del registro tipo 3, «Requerido» NO). Si se registra, acepta de **10 a 20 dígitos** (numérico de hasta 20 en el anexo). Los fijos de 7 dígitos ya no se aceptan: desde la marcación nacional los fijos de Cali también tienen 10 (60 2 + número). El sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
 
-Sin un número de contacto válido en la familia, el sistema **no permite cerrar la ficha**, porque toda derivación registrada en el Plan de Cuidado y todo seguimiento de los ítems 118, 119, 128, 129, 139 y 140 dependen de la posibilidad de contactar al hogar.
-
-Si el hogar carece de teléfono, debe registrarse explícitamente la novedad **"sin medio de contacto telefónico"**, lo que activa la alerta de **riesgo de pérdida de seguimiento**.
+Conviene registrar al menos un teléfono por familia, porque las derivaciones del Plan de Cuidado y los seguimientos de los ítems 118, 119, 128, 129, 139 y 140 dependen de poder contactar al hogar; pero desde el 30-10-2026 su ausencia **no impide cerrar la ficha**. Si el hogar carece de teléfono, puede registrarse la novedad **"sin medio de contacto telefónico"**.
 
 ### RN-071 — Teléfono 2
 
@@ -639,7 +637,7 @@ En personas de 18 años o más, "Ninguno" se registra como determinante social d
 
 ### RN-076 — EAPB
 
-**Ítem 76.** Selección obligatoria de la Entidad Administradora de Planes de Beneficios a la que está afiliado el individuo, de la tabla oficial **SGDCodigoEAPB** de SISPRO (variable 21 del registro tipo 3; 91 entidades habilitadas). Se desactiva automáticamente y se autoasigna "No aplica" si en el ítem 75 se seleccionó "No afiliado".
+**Ítem 76.** Selección **opcional** de la Entidad Administradora de Planes de Beneficios a la que está afiliado el individuo, de la tabla oficial **SGDCodigoEAPB** de SISPRO (variable 21 del registro tipo 3; 91 entidades habilitadas). El anexo técnico no la exige («Requerido» NO): un afiliado puede guardarse sin EAPB. Se desactiva automáticamente y queda vacía si en el ítem 75 se seleccionó "No afiliado"; un no afiliado con EAPB se bloquea, en la aplicación y en la base.
 
 Los códigos salen de la tabla oficial y no se escriben a mano: la carga manual anterior tenía errores (Coosalud figuraba como `EPS026`, que no existe —es `ESS024`, `ESSC24` o `ESSS24`— y Mallamas como `EPSI01`, que es Dusakawi —Mallamas es `EPSI05`—).
 
@@ -665,7 +663,7 @@ La selección de la modalidad **Sexual**, o de cualquier modalidad en un menor d
 
 ### RN-080 — Pueblo o comunidad étnica
 
-**Ítem 80.** Campo condicionado de texto o catálogo, de obligatorio diligenciamiento si la respuesta del ítem 79 fue diferente a "Ninguna".
+**Ítem 80.** Campo condicionado de texto, **opcional**: se muestra si la respuesta del ítem 79 fue diferente a "Ninguna", pero el anexo técnico no lo exige (variable 25 del registro tipo 3, «Requerido» NO).
 
 ---
 
@@ -1276,8 +1274,8 @@ El sistema **no permite cerrar una ficha** mientras exista alguna de las siguien
 3. ~~Familias declaradas en el ítem 28 sin caracterizar.~~ Advierte (RN-028): la familia ausente se caracteriza en otra visita.
 4. Integrantes capturados con instancias incompletas (RN-051). ~~Integrantes declarados sin caracterizar~~ advierte, no bloquea.
 5. ~~Alertas de prioridad INMEDIATA sin conducta registrada (RN-220).~~ Pasa al plan diferido (ver abajo).
-6. Georreferenciación pendiente sin motivo de imposibilidad registrado (RN-022).
-7. Ausencia de medio de contacto en la familia sin la novedad correspondiente (RN-070).
+6. Vivienda sin latitud y longitud (RN-022). Desde el 30-10-2026 no se admite un motivo de imposibilidad en su lugar: PISIS exige las coordenadas en toda vivienda, también en zona rural.
+7. ~~Ausencia de medio de contacto en la familia sin la novedad correspondiente (RN-070).~~ Ya no impide el cierre: el anexo no exige el teléfono (RN-070).
 8. Inconsistencia de llaves relacionales del Plan de Cuidado (RN-130 / RN-131 / RN-132).
 
 El sistema debe presentar un **resumen de validación previo al cierre** que liste los incumplimientos agrupados por bloque, indicando el ítem y la regla incumplida, y permitiendo navegar directamente al campo. No se admite un mensaje genérico de error.
@@ -1372,7 +1370,7 @@ Los módulos materno, laboral y de asbesto son **opcionales** en el anexo (su ob
 
 **Reglas generadas (A{registro}.{variable}).** Cada pregunta del anexo produce dos reglas con el código de su variable (por ejemplo, A2.37 para el alumbrado), que se muestra también junto a la pregunta en el formulario:
 
-1. **Obligatoriedad**, sólo cuando la pregunta aplica: **bloqueo** si el anexo la exige; **advertencia** en las listas que el anexo no cierra con una opción "Ninguno" (dejarlas en blanco significa que no hay nada que marcar).
+1. **Obligatoriedad**, sólo cuando la pregunta aplica y la columna «Requerido» del anexo dice **SI**: bloquea el cierre. Las que dicen **NO** son opcionales, entre ellas el «¿cuál?» de cada opción «Otro», los cigarrillos y años de fumador (A3.65–66) y el detalle del asbesto (A3.105, 107, 110, 111 y 115). Siete listas obligatorias que el anexo no cierra con una opción de exclusión (A2.36, A2.48, A2.82, A2.85, A2.87, A2.91 y A3.48) traen una opción **«Ninguno»/«Ninguna»** propia de la aplicación: responde la pregunta, no tiene código en el anexo y en el archivo plano el campo va vacío, sin incidencia. Lo mismo los ítems 55 y 57 del instrumento (variables 117 y 119; RN-055 y RN-057).
 2. **Dominio**: la opción pertenece a su catálogo vigente (y una opción excluyente va sola), los enteros están en su rango, las fechas no son posteriores a la visita cuando así se declara, el texto no supera su longitud ni lleva el carácter `|`, y el teléfono tiene 10 dígitos.
 
 Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un valor: el servidor evalúa la condición con los mismos datos y descarta la respuesta. Su "No aplica" (por ejemplo, la limpieza del tanque cuando no hay tanque) sólo se escribe en el archivo plano.
@@ -1390,8 +1388,9 @@ Una pregunta que no aplica se guarda **vacía** aunque el dispositivo envíe un 
 
 1. **Quién.** Sólo los roles con el permiso `reporte.generar` (coordinación del EBS, administrador y maestro), porque el archivo reúne los datos de todas las personas del período, sensibles incluidos. La generación se pide por `POST` con sesión y cabecera anti-CSRF, y cada generación queda en `aud.evento` (quién, cuándo, período y volumen) conforme a RN-225.
 2. **Qué fichas.** Las diligenciadas dentro del período, **con consentimiento** y **cerradas**. De cada hogar entra sólo la **visita más reciente** del período, porque el identificador de la familia es llave primaria del anexo. Las demás se cuentan en el resumen como excluidas, con su motivo.
-3. **Estructura.** El registro de control (tipo 1) es la primera línea; después van todos los tipo 2 (uno por familia) y luego todos los tipo 3 (uno por integrante). El consecutivo de registro (variable 1) se numera desde 1 en cada tipo, como lo dice el anexo para cada uno, y el tipo 3 se une a su familia por la variable 117, igual a la 124 del tipo 2. El campo 5 del control es la suma de los tipo 2 y tipo 3.
-4. **Formato.** Un registro por línea, separados por `CRLF`; el último registro no lleva salto de línea, porque el anexo pide que el archivo no traiga ningún carácter de fin de archivo; campos separados por `|`; texto en mayúsculas, sin tildes (la Ñ se reporta como N), sin comillas ni `|`; selección múltiple como códigos separados por coma; fechas `AAAA-MM-DD`; peso y talla con un decimal; IMC con un decimal y sólo desde los 5 años; cintura y tensión arterial desde los 18. Un ítem del instrumento que no aplica por edad lleva el código "No aplica" del anexo.
+3. **Estructura.** El registro de control (tipo 1) es la primera línea; después van todos los tipo 2 (uno por familia) y luego todos los tipo 3 (uno por integrante). El consecutivo de registro (variable 1) es uno solo en todo el archivo: empieza en 1 con el primer tipo 2 y sigue de 1 en 1 «hasta el final del archivo», de modo que los tipo 3 continúan donde terminan los tipo 2, como en los archivos ya cargados en PISIS. El tipo 3 se une a su familia por la variable 117, igual a la 124 del tipo 2. El campo 5 del control es la suma de los tipo 2 y tipo 3.
+4. **Formato.** Un registro por línea, separados por `CRLF`; el último registro no lleva salto de línea, porque el anexo pide que el archivo no traiga ningún carácter de fin de archivo; campos separados por `|`; texto en mayúsculas, sin tildes (la Ñ se reporta como N), sin comillas ni `|`; selección múltiple como códigos separados por coma; fechas `AAAA-MM-DD`; peso y talla con un decimal; IMC con un decimal y sólo desde los 5 años; cintura y tensión arterial desde los 18. Un ítem del instrumento que no aplica por edad lleva el código "No aplica" del anexo. Un campo que no se diligenció va **vacío**: nada entre los dos `|` (por ejemplo, las observaciones de la situación inminente cuando no hay situación, o el ítem 37 sin responder).
+4b. **Lo que valida PISIS manda sobre el anexo.** La estructura que muestra PISIS Cliente Neo 2.0.0.16 está en `bd/sispro/estructura_pisis.json` y el diccionario toma de ella longitud, obligatoriedad, formato y rango. Difiere del anexo en: variable 4 = la UZPE completa (`UZPE006`, 7 caracteres; con ella los identificadores miden 26, 31 y 53); PISIS exige la 84 del tipo 2 y la 23 y de la 65 a la 69 del tipo 3, y no exige la 36 ni la 41. Los códigos de las listas de una sola respuesta son los de las tablas de SISPRO (estado nutricional 1 a 7, tipo de vivienda y material del techo con su numeración, «Ninguna» 7 y 9 en las variables 117 y 119). PISIS no acepta vacía ninguna obligatoria aunque no aplique: entonces va su «no aplica» (el código de la lista, «2» en Sí/No, «NO APLICA» en texto, 0 en números), y donde el formato no admite 0 va 1 (variables 57, 103 y 115 del tipo 2 y 50 del tipo 3; supuestos por confirmar con el Ministerio). El texto sólo lleva letras, números, guion, espacio y punto (el «#» va como «NO»). Lo que sí aplicaba y quedó sin responder no se rellena: es incidencia y se corrige en la ficha.
 5. **Nombre.** `APS124CCFP` + fecha de corte (`AAAAMMDD`) + tipo y número de la entidad (`NI` + NIT a 12 dígitos) + `.TXT`, a partir del parámetro `entidad_reportante`.
 6. **Incidencias.** Antes de descargar se revisa un resumen con las variables obligatorias vacías, las respuestas sin código en el anexo y los textos recortados, agrupados por variable y con los códigos de las fichas a corregir. El resumen no contiene datos personales. Nada se rellena para cuadrar el archivo: lo que falta se corrige en la ficha.
 7. **Firma.** El archivo debe firmarse digitalmente con el certificado de la entidad antes de cargarlo en PISIS; la firma no la hace la aplicación.
@@ -1793,6 +1792,8 @@ Durante la elaboración de estas reglas se identificaron tres inconsistencias en
 | **2.4** | **15/10/2026** | Roles de **coordinación del EBS** (coordinadora y líderes de zona). **RN-228**: una ficha guardada sólo la corrige el personal asistencial con autorización de la coordinación o del maestro; «Evolucionar plan» no la requiere. **RN-225**: sólo el usuario maestro elimina una ficha de la base, con motivo y en la auditoría. |
 | **2.2** | **14/10/2026** | **RN-028**: un hogar puede reunir varias familias; cada familia indica a qué hogar de la vivienda pertenece. **RN-228**: «Evolucionar plan» desde el historial y bloqueo de lo registrado en el plan de cuidado, que sólo se completa; cambiarlo exige autorización del usuario maestro. |
 | **2.5** | **20/10/2026** | Observaciones de la E.S.E. del 19/10/2026. **RN-222**: nada del plan de cuidado bloquea el guardado; lo que le falta a una fila se advierte y se completa con «Evolucionar plan». **RN-228**: en una fila registrada a medias sólo queda bloqueado lo escrito. **RN-115/125/136**: «Derivada» pide institución de destino y fecha de cita. **RN-226**: campo de motivo del «No cumple». **RN-015**: código `CFnnn` por familia (variable 19) y consecutivo reservado para las fichas sin terminar. **RN-114/124/136**: búsqueda CUPS tolerante y portafolio de la E.S.E. primero. |
+| **2.7** | **30/10/2026** | **RN-227** según la estructura de PISIS Cliente Neo (leída de su ventana «Estructura»): UZPE completa en la variable 4, códigos de las tablas de SISPRO, «no aplica» en toda obligatoria y texto sin signos. Vuelven a ser obligatorios el ítem 37 y los cigarrillos y años de fumador (A3.65–66); las preguntas de asbesto A3.103, 104 y 106 pasan a Sí/No. |
+| **2.6** | **30/10/2026** | Obligatoriedad según la columna «Requerido» del anexo SI-APS: 25 preguntas del anexo y los ítems **37, 70, 76 y 80** pasan a opcionales (**RN-222.7** ya no bloquea); las 7 listas obligatorias sin opción de exclusión reciben «Ninguno»/«Ninguna» y dejan de ser advertencia; los ítems **55 y 57** (RN-055, RN-057) pasan a obligatorios, también con «Ninguna». **RN-227**: un solo consecutivo en todo el archivo y lo no diligenciado va vacío entre `|` (sin «NO APLICA» en la variable 24 ni «No aplica» en la 84). |
 
 ### Resumen de la versión 2.0
 

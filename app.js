@@ -4130,16 +4130,7 @@ function destinoDePendiente(formulario, item) {
       if (boton) return { destino: boton, control: boton };
       break;
     }
-    case 'RN-070': {
-      const casilla = familia && familia.querySelector('[name$=".sinContactoTelefonico"]');
-      if (casilla) return { destino: casilla.closest('.field') || casilla, control: casilla };
-      break;
-    }
     case 'RN-022': {
-      const motivo = document.getElementById('campoMotivoGeo');
-      if (motivo && !motivo.hidden) {
-        return { destino: motivo, control: document.getElementById('motivoSinGeorreferenciacion') };
-      }
       const latitud = document.getElementById('latitud');
       if (latitud) return { destino: latitud.closest('.field') || latitud, control: null };
       break;
@@ -4570,9 +4561,6 @@ function actualizarTableroDeRiesgo(datos) {
   renderizarPlanCuidado(resumirPlanCuidado(datos, alertas));
   renderizarResumenAlertasPlan(alertas, sinAccion, riesgo);
 
-  // RN-022: el motivo sólo se pide cuando falta la georreferenciación.
-  const faltaGeo = typeof datos.latitud !== 'number' || typeof datos.longitud !== 'number';
-  document.getElementById('campoMotivoGeo').hidden = !faltaGeo;
 
   return { alertas: alertas, sinAccion: sinAccion };
 }

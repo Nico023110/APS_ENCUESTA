@@ -57,6 +57,10 @@ const MULTIPLES = { 2: {}, 3: {} };
   }
 });
 const admite = (lista, codigo) => lista.has(String(codigo)) || lista.has(String(Number(codigo)));
+/* Códigos que no trae el anexo pero sí la tabla de SISPRO contra la que valida
+   PISIS: la «Ninguna» de APSPracticasVinculosFamiliares y APSPracticasSaludHogar. */
+const DE_SISPRO = { '2.117': ['7'], '2.119': ['9'] };
+const deSispro = (t, n, codigo) => (DE_SISPRO[t + '.' + n] || []).indexOf(String(codigo)) !== -1;
 
 console.log('\n=== 1. Opciones de los catálogos contra las listas del anexo ===');
 const contexto = vm.createContext({ console });
@@ -91,7 +95,7 @@ const fuera = [];
     if (!lista) return;                       // tabla externa (Pais, CIUO, EAPB…)
     comparadas++;
     vm.runInContext(USOS[t][n], contexto).filter(function (o) { return o.vigente !== false && o.sispro; })
-      .forEach(function (o) { if (!admite(lista, o.sispro)) fuera.push('tipo ' + t + ' var ' + n + ': ' + o.valor + ' → ' + o.sispro); });
+      .forEach(function (o) { if (!admite(lista, o.sispro) && !deSispro(t, n, o.sispro)) fuera.push('tipo ' + t + ' var ' + n + ': ' + o.valor + ' → ' + o.sispro); });
   });
 });
 verificar('Más de 140 variables con catálogo tienen su lista en el anexo', comparadas > 140, comparadas);
@@ -216,7 +220,8 @@ const errores = [];
       const lista = LISTAS[t][d.n];
       if (lista && (d.tipo === 'N' || d.tipo === 'A')) {
         (multiple ? v.split(',') : [v]).forEach(function (x) {
-          if (!admite(lista, x) && !lista.has(x.padStart(2, '0'))) errores.push(donde + ': código ' + x + ' fuera de la lista');
+          /* 0: el «no aplica» que exige PISIS en una lista que no lo tiene. */
+          if (x !== '0' && !admite(lista, x) && !lista.has(x.padStart(2, '0')) && !deSispro(t, d.n, x)) errores.push(donde + ': código ' + x + ' fuera de la lista');
         });
       }
     });
@@ -224,19 +229,53 @@ const errores = [];
 });
 verificar('Cada campo respeta número de campos, longitud, tipo y códigos del anexo', errores.length === 0, errores.slice(0, 8).join('; '));
 
+/* Lo que valida PISIS Cliente Neo, leído de su ventana de estructura: ningún
+   obligatorio vacío, longitud, formato y rango. */
+const PISIS = require('../bd/sispro/estructura_pisis.json').tipos;
+const FORMATOS_PISIS = {
+  NUMERICOPOSITIVONOCERO: /^[1-9][0-9]*$/,
+  NUMERICOPOSITIVOSICERO: /^[0-9]+$/,
+  NUMREGISTROS: /^[0-9]+$/,
+  NUMERONATURALENTERO: /^[0-9]+$/,
+  'LETRAS MAYUSCULAS': /^[A-Z]+$/,
+  'LETRAS MAYUSCULAS Y/O NUMEROS': /^[A-Z0-9]+$/,
+  LetrasMayusculasMinusculasTildesNumerosGuionesEspacioPunto: /^[A-Za-z0-9 .\-]+$/,
+  DECIMALConPuntoNegativoSiCero: /^-?[0-9]+(\.[0-9]+)?$/,
+  DECIMALCONPUNTOPOSITIVONOCERO: /^(?!0+(\.0+)?$)[0-9]+(\.[0-9]+)?$/,
+  'FECHA [AAAA-MM-DD]': /^\d{4}-\d{2}-\d{2}$/,
+  'MULTIPLE SEPARADOR COMA': /^[0-9]+(,[0-9]+)*$/,
+  'PISIS Consecutivo Registro': /^[0-9]+$/
+};
+const erroresPisis = [];
+registros.forEach(function (campos, k) {
+  PISIS[campos[0]].forEach(function (f) {
+    const v = campos[f.n] === undefined ? '' : campos[f.n];
+    const donde = 'línea ' + (k + 1) + ' T' + campos[0] + '.' + f.n + ' ' + f.campo;
+    if (v === '') { if (f.requerido) erroresPisis.push(donde + ': vacío y requerido'); return; }
+    if (f.max && v.length > f.max) erroresPisis.push(donde + ': largo ' + v.length);
+    const formato = FORMATOS_PISIS[f.formato];
+    if (formato && !formato.test(v)) erroresPisis.push(donde + ': no cumple ' + f.formato + ' (' + v + ')');
+    if (f.rango && (+v < f.rango[0] || +v > f.rango[1])) erroresPisis.push(donde + ': fuera de ' + f.rango.join('-'));
+    if (f.tabla === 'LstSINO' && v !== '1' && v !== '2') erroresPisis.push(donde + ': LstSINO admite 1 o 2 (' + v + ')');
+  });
+});
+verificar('Pasa la estructura de PISIS: obligatorios llenos, longitud, formato y rango', erroresPisis.length === 0,
+  erroresPisis.slice(0, 10).join('; '));
+
 const idsFamilia = new Set(t2.map(function (x) { return x[124]; }));
 verificar('Vivienda (123) = var 3+4+5+6+7 + H + 4 dígitos; familia (124) = 123 + F + 4 dígitos',
   t2.every(function (x) { return x[123] === x[3] + x[4] + x[5] + x[6] + x[7] + x[123].slice(-5) && /H\d{4}$/.test(x[123]) &&
     x[124].startsWith(x[123]) && /^F\d{4}$/.test(x[124].slice(x[123].length)); }), t2.map(function (x) { return x[124]; }).join(','));
 verificar('Integrante (118) = 117 + tipo + número, y su familia existe en el tipo 2',
   t3.every(function (x) { return x[118] === x[117] + x[6] + x[7] && idsFamilia.has(x[117]); }));
-verificar('Consecutivos de 1 en 1, cada tipo desde 1',
-  t2.every(function (x, k) { return x[1] === String(k + 1); }) && t3.every(function (x, k) { return x[1] === String(k + 1); }));
+verificar('Un consecutivo de 1 en 1 en todo el archivo: los tipo 3 siguen a los tipo 2',
+  t2.every(function (x, k) { return x[1] === String(k + 1); }) &&
+  t3.every(function (x, k) { return x[1] === String(t2.length + k + 1); }));
 const nino = t3[2], bebe = t3[3], hombre = t3[0];
 verificar('A quien no se le preguntó por su edad o sexo: orientación 5, intención y gestación 2',
   nino[14] === '5' && nino[32] === '2' && nino[33] === '2' && bebe[14] === '5' && hombre[33] === '2',
   [nino[14], nino[32], nino[33], bebe[14], hombre[33]].join('/'));
-verificar('Menor de 14: consumo de SPA (63) vacío, no 3', nino[63] === '' && bebe[63] === '', nino[63] + '/' + bebe[63]);
+verificar('Menor de 14: consumo de SPA (63) «No» (2), no 3', nino[63] === '2' && bebe[63] === '2', nino[63] + '/' + bebe[63]);
 verificar('La gestante reporta 1 en gestación (33) y en embarazo (72)', t3[1][33] === '1' && t3[1][72] === '1', t3[1][33] + '/' + t3[1][72]);
 
 console.log('\n---------------------------------------------');

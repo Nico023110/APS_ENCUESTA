@@ -276,9 +276,11 @@ verificar('B08', 'Latitud fuera de Cali: advertencia y no bloqueo', hay(adverten
 f = fichaE01(); f.longitud = null;
 verificar('B08', 'Latitud sin longitud: bloqueo (van en par)', hay(bloqueos(f), 'longitud') || hay(bloqueos(f), 'latitud'), resumen(bloqueos(f)));
 f = fichaE01(); f.latitud = null; f.longitud = null;
-verificar('B08', 'Sin GPS ni motivo: no deja cerrar', M.validarCierre(f).puedeCerrar === false, JSON.stringify(M.validarCierre(f).impedimentos));
+verificar('B08', 'Sin coordenadas: no deja cerrar (RN-022)', M.validarCierre(f).puedeCerrar === false && hay(bloqueos(f), 'latitud', 'RN-022'), JSON.stringify(M.validarCierre(f).impedimentos));
 f.motivoSinGeorreferenciacion = 'Sin señal GPS en la ladera';
-verificar('B08', 'Sin GPS con motivo: deja cerrar', M.validarCierre(f).puedeCerrar === true, JSON.stringify(M.validarCierre(f).impedimentos));
+verificar('B08', 'Sin coordenadas aunque haya motivo: tampoco cierra (PISIS las exige)', M.validarCierre(f).puedeCerrar === false, JSON.stringify(M.validarCierre(f).impedimentos));
+f = fichaE01(); f.areaUbicacion = 'rural'; f.latitud = null; f.longitud = null;
+verificar('B08', 'Vivienda rural sin coordenadas: bloqueo RN-022', hay(bloqueos(f), 'latitud', 'RN-022'), resumen(bloqueos(f)));
 
 let h = M.evaluarHacinamiento(7, 2);
 verificar('B09', '7/2 = 3.5: hacinamiento crítico PRIORITARIO', h.hacinamiento === 'si' && h.critico && h.prioridad === 'prioritaria', JSON.stringify(h));
@@ -339,7 +341,7 @@ f.familias[0].zarit = 'ausencia';
 verificar('B20', 'Categoría que no corresponde al puntaje: bloqueo RN-053', hay(bloqueos(f), 'zarit', 'RN-053'), resumen(bloqueos(f)));
 
 f = fichaE01(); f.familias[0].integrantes.forEach(i => { delete i.telefono1; });
-verificar('B21', 'Familia sin teléfono: no deja cerrar', M.validarCierre(f).puedeCerrar === false, JSON.stringify(M.validarCierre(f).impedimentos));
+verificar('B21', 'Familia sin teléfono: deja cerrar (el anexo no exige el teléfono)', M.validarCierre(f).puedeCerrar === true, JSON.stringify(M.validarCierre(f).impedimentos));
 f.familias[0].sinContactoTelefonico = true;
 verificar('B21', 'Con la novedad «sin medio de contacto»: deja cerrar', M.validarCierre(f).puedeCerrar === true, JSON.stringify(M.validarCierre(f).impedimentos));
 f = fichaE01(); primerIntegrante(f).telefono1 = '5551234';
@@ -368,7 +370,7 @@ primerIntegrante(f).modalidadViolencia = ['psicologica'];
 verificar('B26', 'Con modalidad: alerta de violencia', !!alerta(f, 'Víctima de violencia'), titulos(f));
 
 f = fichaE01(); primerIntegrante(f).pertenenciaEtnica = 'indigena';
-verificar('B27', 'Indígena sin pueblo: bloqueo RN-080', hay(bloqueos(f), 'puebloEtnico'), resumen(bloqueos(f)));
+verificar('B27', 'Indígena sin pueblo: guarda (el anexo no exige el pueblo)', !hay(bloqueos(f), 'puebloEtnico'), resumen(bloqueos(f)));
 
 /* =========================================================================
    C — Edad, sexo y condición
@@ -494,10 +496,12 @@ verificar('A04', 'Observaciones con «|»: rechazo', hay(bloqueos(f), 'observaci
 f.observacionesSituacion = 'x'.repeat(201);
 verificar('A04', 'Observaciones de 201 caracteres: rechazo', hay(bloqueos(f), 'observacionesSituacion'), resumen(bloqueos(f)));
 f = fichaE01(); f.elementosVivienda = [];
-verificar('A05', 'Elementos de la vivienda vacíos: advertencia, no bloqueo',
-  hay(advertencias(f), 'elementosVivienda') && !hay(bloqueos(f), 'elementosVivienda'), 'b: ' + resumen(bloqueos(f)) + ' a: ' + resumen(advertencias(f)));
+verificar('A05', 'Elementos de la vivienda sin marcar: bloqueo A2.36 (obligatoria en el anexo)',
+  hay(bloqueos(f), 'elementosVivienda', 'A2.36'), 'b: ' + resumen(bloqueos(f)) + ' a: ' + resumen(advertencias(f)));
+f.elementosVivienda = ['ninguno'];
+verificar('A05', 'Elementos de la vivienda «Ninguno»: guarda', !hay(bloqueos(f), 'elementosVivienda'), resumen(bloqueos(f)));
 f = fichaE01(); f.mediosTransporte = ['publico', 'otro'];
-verificar('A06', 'Transporte «Otro» sin cuál: bloqueo A2.45', hay(bloqueos(f), 'mediosTransporteOtro', 'A2.45'), resumen(bloqueos(f)));
+verificar('A06', 'Transporte «Otro» sin cuál: guarda (el anexo no exige el texto)', !hay(bloqueos(f), 'mediosTransporteOtro'), resumen(bloqueos(f)));
 f = fichaE01(); f.actividadEconomica = 'si';
 verificar('A07', 'Actividad económica Sí: exige A2.51 y A2.52',
   hay(bloqueos(f), 'areaTrabajoIndependiente') && hay(bloqueos(f), 'familiarAfectadoActividad'), resumen(bloqueos(f)));
@@ -521,7 +525,7 @@ verificar('A12', 'Ecuador con estatus Regular: válido', bloqueos(f).length === 
 f = fichaE01(); primerIntegrante(f).enfermedadesUltimoMes = ['eda'];
 verificar('A13', 'Enfermedad del último mes sin acción: bloqueo A3.50', hay(bloqueos(f), 'accionAfeccion'), resumen(bloqueos(f)));
 f = fichaE01(); primerIntegrante(f).consumoTabaco = 'activo';
-verificar('A14', 'Fumador activo sin cigarrillos ni años: bloqueo', hay(bloqueos(f), 'cigarrillosDiarios') && hay(bloqueos(f), 'aniosFumando'), resumen(bloqueos(f)));
+verificar('A14', 'Fumador activo sin cigarrillos ni años: bloqueo (PISIS los exige)', hay(bloqueos(f), 'cigarrillosDiarios') && hay(bloqueos(f), 'aniosFumando'), resumen(bloqueos(f)));
 primerIntegrante(f).cigarrillosDiarios = 100; primerIntegrante(f).aniosFumando = 20;
 verificar('A14', '100 cigarrillos: rechazo (0 a 99)', hay(bloqueos(f), 'cigarrillosDiarios'), resumen(bloqueos(f)));
 f = ficha([familia([responsable(30 * 12, 'mujer', { gestacionActual: 'si', atencionesPendientesMaterno: ['ninguna'] })])]);
