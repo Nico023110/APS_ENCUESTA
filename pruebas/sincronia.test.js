@@ -61,7 +61,13 @@ function montar(locales, guardar) {
   window.fetch = (url, opciones) => {
     const ruta = String(url);
     peticiones.push(ruta);
-    if (ruta.indexOf('/api/listar_fichas') === 0) return Promise.resolve(responder(200, []));
+    /* La base tiene lo que ya subió: una ficha marcada como subida que la base
+       no trae se retira del navegador (retirarLocalesQueYaNoEstanEnLaBase). */
+    if (ruta.indexOf('/api/listar_fichas') === 0) {
+      return Promise.resolve(responder(200, JSON.parse(almacen.aps_encuestas)
+        .filter((e) => e.sincronizada === true)
+        .map((e) => ({ codigoFicha: e.codigoFicha, fechaRegistro: e.fechaRegistro, territorio: e.territorio, microterritorio: e.microterritorio }))));
+    }
     if (ruta === '/api/guardar_encuesta') {
       return Promise.resolve(guardar(JSON.parse(opciones.body))).then((r) => responder(r.estado, r.cuerpo));
     }

@@ -1161,6 +1161,9 @@ async function refrescarFichasDelServidor() {
     /* La primera vez, el pedido que sesion.js hizo desde la cabecera. */
     const anticipado = typeof SESION !== 'undefined' && typeof SESION.tomarListadoAnticipado === 'function'
       ? SESION.tomarListadoAnticipado() : null;
+    /* El pedido anticipado salió al cargar la página, antes de cualquier
+       subida de esta sesión. */
+    const pedidoEn = anticipado ? 0 : Date.now();
     const respuesta = await (anticipado || fetch('/api/listar_fichas'));
     if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
 
@@ -1191,6 +1194,9 @@ async function refrescarFichasDelServidor() {
         soloEnServidor: true
       });
     });
+    /* Si algo subió mientras el listado viajaba, el listado puede no traerlo
+       todavía: esta vez no se retira nada. */
+    if (!sincronizacionEnCurso && ultimaSubidaALaBase <= pedidoEn) retirarLocalesQueYaNoEstanEnLaBase(filas);
   } catch (error) {
     /* Sin red, o el servidor caído: se seguirá mostrando la última copia
        que sí llegó a responder, si la hay. No es un error del encuestador
@@ -1202,6 +1208,35 @@ async function refrescarFichasDelServidor() {
   }
 
   return cacheFichasDelServidor || [];
+}
+
+/* El tope de filas de /api/listar_fichas (LIMITE en api/listar_fichas.js).
+   Un listado que lo alcanza puede venir cortado. */
+const LIMITE_LISTADO_FICHAS = 2000;
+
+/* Cuándo subió a la base la última ficha de esta página (guardado directo o
+   sincronización); 0 si ninguna. */
+let ultimaSubidaALaBase = 0;
+
+/**
+ * Una ficha de este navegador que ya subió a la base y que la base ya no
+ * tiene —la eliminó el maestro desde otro equipo, o se depuró la base— seguía
+ * apareciendo «En la base» para siempre, porque lo local manda sobre el
+ * listado. Se retira la copia local. Lo que no ha subido (sincronizada
+ * distinto de true) nunca se toca: sólo existe aquí. Con un listado que pudo
+ * venir cortado no se retira nada.
+ */
+function retirarLocalesQueYaNoEstanEnLaBase(filas) {
+  if (filas.length >= LIMITE_LISTADO_FICHAS) return;
+  const enLaBase = new Set(filas.map(function (fila) { return fila.codigoFicha; }));
+  const locales = obtenerEncuestas();
+  const conservadas = locales.filter(function (encuesta) {
+    return encuesta.sincronizada !== true || !encuesta.codigoFicha || enLaBase.has(encuesta.codigoFicha);
+  });
+  if (conservadas.length === locales.length) return;
+  guardarEncuestas(conservadas);
+  console.info('Se retiraron ' + (locales.length - conservadas.length) +
+    ' ficha(s) que ya no están en la base del almacenamiento local.');
 }
 
 /**
@@ -1312,6 +1347,7 @@ async function sincronizarEncuestas() {
 
         if (respuesta.ok) {
           encuesta.sincronizada = true;
+          ultimaSubidaALaBase = Date.now();
           /* Una ficha capturada sin señal recibe aquí sus códigos. */
           const cuerpo = await respuesta.json().catch(function () { return {}; });
           aplicarCodigosAsignados(encuesta, cuerpo.codigos);
@@ -4903,6 +4939,7 @@ async function enviarFichaAlServidor(encuesta, boton) {
     });
 
     if (respuesta.ok) {
+      ultimaSubidaALaBase = Date.now();
       const cuerpo = await respuesta.json().catch(function () { return {}; });
       return { estado: 'guardada', codigos: cuerpo.codigos || null };
     }
