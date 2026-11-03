@@ -47,8 +47,8 @@ module.exports = async (req, res) => {
 
   /* RN-224.3: fuera del equipo la ficha «no existe». Un 403 confirmaría que
      el código es real, y el código de ficha es un dato que no se regala. */
-  const filtroAlcance = alcance === 'todas' ? '' : 'AND f.equipo_salud_id = $2';
-  const parametros = alcance === 'todas' ? [codigo] : [codigo, usuario.equipoSaludId || -1];
+  const filtroAlcance = alcance === 'todas' ? '' : 'AND f.equipo_salud_id = ANY($2::bigint[])';
+  const parametros = alcance === 'todas' ? [codigo] : [codigo, roles.equiposDelAlcance(usuario)];
 
   try {
     /* La ficha, sus familias y sus integrantes se leen a la vez, cada

@@ -251,7 +251,7 @@
     nombre.textContent = usuario.nombre;
     const detalle = document.createElement('span');
     detalle.className = 'app-usuario__detalle';
-    detalle.textContent = usuario.rolEtiqueta + (usuario.equipoCodigo ? ' · ' + usuario.equipoCodigo : '');
+    detalle.textContent = usuario.rolEtiqueta + equiposDeLaCabecera();
     texto.appendChild(nombre);
     texto.appendChild(detalle);
 
@@ -275,7 +275,7 @@
     cabecera.innerHTML = '<span class="app-menu__nombre"></span><span class="app-menu__detalle"></span>';
     cabecera.querySelector('.app-menu__nombre').textContent = usuario.nombre;
     cabecera.querySelector('.app-menu__detalle').textContent = usuario.rolEtiqueta +
-      (usuario.equipoCodigo ? ' · ' + usuario.equipoCodigo : '') + ' · ' + usuario.tipoId + ' ' + usuario.documento;
+      equiposDeLaCabecera() + ' · ' + usuario.tipoId + ' ' + usuario.documento;
     menu.appendChild(cabecera);
 
     const opciones = [];
@@ -353,24 +353,60 @@
   /* La coordinación no pertenece a un EBS: lidera zonas con varios. Sin
      equipo propio, el ítem 10 queda abierto para indicar el EBS de la visita,
      con la lista de los registrados (app.js); el servidor exige que exista. */
+  function equiposDeLaCabecera() {
+    const apoyo = Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [];
+    return (usuario.equipoCodigo ? ' · ' + usuario.equipoCodigo : '') +
+      (apoyo.length > 0 ? ' · Apoya a ' + apoyo.join(', ') : '');
+  }
+
   function eligeEquipoDeLaFicha() {
     return !usuario.equipoCodigo && usuario.nivel === 'coordinacion';
   }
 
-  function abrirCampoDeEquipo(formulario) {
+  /* Quien apoya a varios EBS sin pertenecer a ellos (enfoque diferencial)
+     elige en el ítem 10 el de la visita entre los suyos; con uno solo, ese
+     queda fijo. El servidor rechaza cualquier otro. */
+  function equiposQueApoya() {
+    if (usuario.nivel === 'coordinacion') return [];
+    const apoyo = Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [];
+    if (apoyo.length === 0) return [];
+    return (usuario.equipoCodigo ? [usuario.equipoCodigo] : []).concat(apoyo.filter(function (c) {
+      return c !== usuario.equipoCodigo;
+    }));
+  }
+
+  function abrirCampoDeEquipo(formulario, lista, ejemplo) {
     const control = formulario.querySelector('[name="equipoSaludId"]');
     if (!control) return;
     control.readOnly = false;
     control.classList.remove('is-sesion');
-    control.setAttribute('list', 'listaEquiposEbs');
+    control.setAttribute('list', lista || 'listaEquiposEbs');
     control.setAttribute('autocomplete', 'off');
-    control.placeholder = 'EBS de esta visita, ej. EBS001';
+    control.placeholder = 'EBS de esta visita, ej. ' + (ejemplo || 'EBS001');
+  }
+
+  function listaDeApoyo(equipos) {
+    let lista = document.getElementById('listaEquiposApoyo');
+    if (!lista) {
+      lista = document.createElement('datalist');
+      lista.id = 'listaEquiposApoyo';
+      document.body.appendChild(lista);
+    }
+    lista.innerHTML = '';
+    equipos.forEach(function (codigo) {
+      const opcion = document.createElement('option');
+      opcion.value = codigo;
+      lista.appendChild(opcion);
+    });
+    return lista.id;
   }
 
   function aplicarEnFormulario(formulario) {
     if (!formulario || !usuario || usuario.nivel === 'administrador') return;
+    const apoyo = equiposQueApoya();
     if (eligeEquipoDeLaFicha()) abrirCampoDeEquipo(formulario);
-    else fijarCampo(formulario, 'equipoSaludId', usuario.equipoCodigo || '');
+    else if (apoyo.length > 1) abrirCampoDeEquipo(formulario, listaDeApoyo(apoyo), apoyo[0]);
+    else fijarCampo(formulario, 'equipoSaludId', apoyo[0] || usuario.equipoCodigo || '');
     fijarCampo(formulario, 'responsableTipoId', usuario.tipoId || 'CC');
     fijarCampo(formulario, 'responsableNumeroId', usuario.documento);
     fijarCampo(formulario, 'perfilProfesional', usuario.perfilProfesional || usuario.rol);
@@ -382,8 +418,11 @@
       (nota.querySelector('span') || nota).textContent = eligeEquipoDeLaFicha()
         ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Como lidera una zona, indique en el ítem 10 ' +
           'el EBS de esta visita.'
-        : 'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
-          (usuario.equipoCodigo ? ', ' + usuario.equipoCodigo : '') + '.';
+        : apoyo.length > 1
+          ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Indique en el ítem 10 el EBS al que apoya en ' +
+            'esta visita: ' + apoyo.join(', ') + '.'
+          : 'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
+            (apoyo[0] || usuario.equipoCodigo ? ', ' + (apoyo[0] || usuario.equipoCodigo) : '') + '.';
     }
   }
 

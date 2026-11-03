@@ -1097,7 +1097,29 @@ module.exports = async (req, res) => {
          que tiene que estar registrado: un código mal escrito crearía un
          equipo fantasma al que nadie más ve. */
       let equipoDeLaFicha = usuario.equipoCodigo;
-      if (!equipoDeLaFicha && roles.eligeEquipoDeLaFicha(usuario.rol)) {
+      /* Quien apoya a varios EBS sin pertenecer a ellos (enfoque diferencial)
+         firma con el EBS de la visita, que tiene que ser uno de los suyos. */
+      const apoyo = roles.eligeEquipoDeLaFicha(usuario.rol) ? [] : (usuario.equiposApoyoCodigos || []);
+      if (apoyo.length > 0) {
+        const permitidos = (usuario.equipoCodigo ? [usuario.equipoCodigo] : []).concat(apoyo);
+        const indicado = (texto(req.body.equipoSaludId) || '').toUpperCase();
+        equipoDeLaFicha = indicado
+          ? permitidos.find(function (codigo) { return codigo.toUpperCase() === indicado; }) || null
+          : (permitidos.length === 1 ? permitidos[0] : null);
+        if (!equipoDeLaFicha) {
+          return res.status(400).json({
+            error: 'La ficha no cumple las reglas de negocio',
+            total: 1,
+            bloqueos: [{
+              codigo: 'RN-010', ruta: 'equipoSaludId', campo: 'equipoSaludId', severidad: 'bloqueo',
+              mensaje: (indicado ? 'Su cuenta no apoya al EBS ' + indicado + '. ' : '') +
+                'Indique en el ítem 10 el EBS de esta visita: ' + permitidos.join(', ') + '.',
+              recibido: indicado || null
+            }],
+            advertencias: []
+          });
+        }
+      } else if (!equipoDeLaFicha && roles.eligeEquipoDeLaFicha(usuario.rol)) {
         const indicado = (texto(req.body.equipoSaludId) || '').toUpperCase();
         equipoDeLaFicha = await equipoRegistrado(cliente, indicado);
         if (!equipoDeLaFicha) {

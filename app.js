@@ -1572,6 +1572,8 @@ function cambiarVista(nombreVista) {
     boton.classList.toggle('is-active', boton.dataset.view === nombreVista);
   });
   moverIndicadorDeTabs();
+  /* El índice del formulario no tiene alto mientras su vista está oculta. */
+  if (typeof publicarAltosFijos === 'function') publicarAltosFijos();
   /* Las vistas del apartado Reportes comparten el menú lateral (tableros.js). */
   if (window.REPORTES) window.REPORTES.alCambiarVista(nombreVista);
 
@@ -2547,7 +2549,10 @@ async function eliminarFichaDeLaBase(ficha, copiaLocal, motivo) {
 function usuarioParaReglas() {
   if (typeof SESION === 'undefined' || !SESION.usuario) return null;
   const usuario = SESION.usuario();
-  return usuario ? { rol: usuario.rol, equipoSaludId: usuario.equipoCodigo, funcionarioId: usuario.funcionarioId } : null;
+  return usuario ? {
+    rol: usuario.rol, equipoSaludId: usuario.equipoCodigo,
+    equiposApoyo: usuario.equiposApoyoCodigos || [], funcionarioId: usuario.funcionarioId
+  } : null;
 }
 
 /* RN-228 — Corregir una ficha que ya está en la base: por el rol
@@ -5279,6 +5284,9 @@ function inicializarModales() {
  * classList.toggle en cada scroll invalidaría estilos sesenta veces por
  * segundo en las tablets del terreno.
  */
+/* Vuelve a medir la cabecera y el índice (la pone inicializarCabeceraAlDesplazar). */
+let publicarAltosFijos = null;
+
 function inicializarCabeceraAlDesplazar() {
   const cabecera = document.querySelector('.app-header');
   if (!cabecera) return;
@@ -5294,6 +5302,33 @@ function inicializarCabeceraAlDesplazar() {
 
   revisar();
   window.addEventListener('scroll', revisar, { passive: true });
+
+  /* La cabecera mide 74 px en escritorio, pero en una tableta o una pantalla
+     mediana el usuario baja a una segunda fila y la cabecera crece: el índice
+     del formulario, pegado bajo ella, quedaba medio tapado y las secciones
+     llegaban debajo. Se publica su alto real en --alto-cabecera. */
+  /* Lo mismo con el índice («Ir a»), que en esas pantallas ocupa dos filas:
+     con su alto en --alto-indice cada sección llega justo debajo de él. */
+  const indice = document.getElementById('formNav');
+  function publicarAlto() {
+    const raiz = document.documentElement.style;
+    raiz.setProperty('--alto-cabecera', Math.ceil(cabecera.offsetHeight) + 'px');
+    /* En el teléfono el índice no se pega arriba: no hay que descontarlo. */
+    if (indice && indice.offsetHeight) {
+      const pegado = getComputedStyle(indice).position === 'sticky';
+      raiz.setProperty('--alto-indice', (pegado ? Math.ceil(indice.offsetHeight) : 0) + 'px');
+    }
+  }
+  publicarAlto();
+  publicarAltosFijos = publicarAlto;
+  window.addEventListener('resize', publicarAlto, { passive: true });
+  /* El alto cambia también sin redimensionar la ventana: al entrar el nombre
+     del usuario o al abrir el formulario, que antes estaba oculto. */
+  if (typeof ResizeObserver === 'function') {
+    const observador = new ResizeObserver(publicarAlto);
+    observador.observe(cabecera);
+    if (indice) observador.observe(indice);
+  }
 }
 
 /**

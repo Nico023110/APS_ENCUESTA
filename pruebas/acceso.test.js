@@ -121,6 +121,24 @@ async function principal() {
     !roles.puedeRecibirAutorizacion(lider, fichaDeAuxiliar) && !roles.puedeRecibirAutorizacion(maestro, fichaDeAuxiliar));
   verificar('al administrador sí, para cambiar lo registrado del plan', roles.puedeRecibirAutorizacion(admin, fichaDeAuxiliar));
 
+  console.log('\n=== 3d. Personal de apoyo a varios EBS (enfoque diferencial) ===');
+  const apoyo = { rol: 'psicologia', equipoSaludId: null, equiposApoyo: [7, 9], funcionarioId: 200 };
+  const auxiliarDeApoyo = { rol: 'auxiliar_enfermeria', equipoSaludId: null, equiposApoyo: [7], funcionarioId: 201 };
+  const fichaDeApoyo = { equipoSaludId: 9, responsableId: 200 };
+  verificar('ve las fichas de cada EBS que apoya', roles.puedeVerFicha(apoyo, fichaDeAuxiliar) &&
+    roles.puedeVerFicha(apoyo, fichaDeApoyo));
+  verificar('  y no las de un EBS que no apoya', !roles.puedeVerFicha(apoyo, { equipoSaludId: 8, responsableId: 102 }));
+  verificar('la profesional de apoyo evoluciona el plan de las fichas de esos EBS', roles.puedeEvolucionar(apoyo, fichaDeAuxiliar));
+  verificar('la auxiliar de apoyo evoluciona sólo el de las suyas',
+    roles.puedeEvolucionar(auxiliarDeApoyo, { equipoSaludId: 7, responsableId: 201 }) &&
+    !roles.puedeEvolucionar(auxiliarDeApoyo, fichaDeAuxiliar));
+  verificar('el alcance son los EBS que apoya, más el propio si tiene',
+    roles.equiposDelAlcance(apoyo).join() === '7,9' &&
+    roles.equiposDelAlcance({ equipoSaludId: 8, equiposApoyo: [7] }).join() === '8,7');
+  verificar('a quien apoya el EBS de la ficha se le puede autorizar', roles.puedeRecibirAutorizacion(apoyo, fichaDeAuxiliar));
+  verificar('sin EBS propio ni de apoyo no ve nada', !roles.puedeVerFicha(
+    { rol: 'medicina', equipoSaludId: null, equiposApoyo: [], funcionarioId: 300 }, fichaDeAuxiliar));
+
   console.log('\n=== 4. Cookies ===');
 
   const cookies = auth.leerCookies({ headers: { cookie: 'a=1; aps_sesion=abc%3D; otra=x' } });

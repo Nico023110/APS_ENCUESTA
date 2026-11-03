@@ -75,7 +75,7 @@ async function leer(req, res, usuario, busqueda) {
     let fila = await busqueda;
     /* RN-224.3: fuera del equipo la ficha «no existe», igual que antes cuando
        el equipo iba en el WHERE. */
-    if (fila && alcance !== 'todas' && Number(fila.equipo_salud_id) !== (usuario.equipoSaludId || -1)) fila = null;
+    if (fila && alcance !== 'todas' && !roles.esDeSuEquipo(usuario, { equipoSaludId: Number(fila.equipo_salud_id) })) fila = null;
 
     if (!fila) return res.status(404).json({ error: 'No existe ninguna ficha con ese código.' });
 

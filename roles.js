@@ -205,11 +205,22 @@ function alcanceDeLectura(rol) {
 }
 
 /* `ficha` trae equipoSaludId y responsableId de la fila existente; `usuario`
-   trae rol, equipoSaludId y funcionarioId (en el navegador, el equipo va
-   como código en los dos lados). */
+   trae rol, equipoSaludId, equiposApoyo y funcionarioId (en el navegador, el
+   equipo va como código en los dos lados). Quien apoya a varios EBS
+   (enfoque diferencial) cuenta como parte de cada uno de ellos. */
 function esDeSuEquipo(usuario, ficha) {
-  return ficha.equipoSaludId !== null && ficha.equipoSaludId !== undefined &&
-    ficha.equipoSaludId === usuario.equipoSaludId;
+  if (ficha.equipoSaludId === null || ficha.equipoSaludId === undefined) return false;
+  return ficha.equipoSaludId === usuario.equipoSaludId ||
+    (Array.isArray(usuario.equiposApoyo) && usuario.equiposApoyo.indexOf(ficha.equipoSaludId) !== -1);
+}
+
+/* Los EBS cuyas fichas entran en el alcance «equipo»: el suyo y los que
+   apoya. Vacío si no tiene ninguno (entonces no ve ninguna ficha). */
+function equiposDelAlcance(usuario) {
+  const equipos = Array.isArray(usuario.equiposApoyo) ? usuario.equiposApoyo.slice() : [];
+  if (usuario.equipoSaludId !== null && usuario.equipoSaludId !== undefined &&
+      equipos.indexOf(usuario.equipoSaludId) === -1) equipos.unshift(usuario.equipoSaludId);
+  return equipos;
 }
 
 function esSuya(usuario, ficha) {
@@ -251,6 +262,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ROLES, PERMISOS_POR_NIVEL, esRolValido, nivelDe, etiquetaDeRol,
     esAsistencial, requiereEquipo, eligeEquipoDeLaFicha, eligePerfil, rolesQuePuedeCrear, permisosDe, puede,
-    alcanceDeLectura, puedeVerFicha, puedeCorregir, puedeEvolucionar, puedeRecibirAutorizacion
+    alcanceDeLectura, equiposDelAlcance, esDeSuEquipo, puedeVerFicha, puedeCorregir, puedeEvolucionar, puedeRecibirAutorizacion
   };
 }

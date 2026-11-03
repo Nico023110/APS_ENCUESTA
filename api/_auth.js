@@ -213,6 +213,10 @@ function perfilPublico(fila) {
     funcionarioId: numero(fila.funcionario_id),
     equipoSaludId: numero(fila.equipo_salud_id),
     equipoCodigo: fila.equipo_codigo,
+    /* EBS a los que apoya sin pertenecer a ellos (enfoque diferencial):
+       firma el ítem 10 con uno de ellos y ve sus fichas. */
+    equiposApoyo: (fila.apoyo || []).map(function (e) { return Number(e.id); }),
+    equiposApoyoCodigos: (fila.apoyo || []).map(function (e) { return e.codigo; }),
     debeCambiarClave: fila.debe_cambiar_clave,
     sesionExpiraEn: fila.expira_en
   };
@@ -223,7 +227,11 @@ const CONSULTA_USUARIO = `
          u.debe_cambiar_clave, u.intentos_fallidos, u.bloqueado_hasta,
          f.id AS funcionario_id, f.tipo_id, f.nombre_completo, f.perfil_profesional, f.perfil_otro,
          f.activo AS funcionario_activo,
-         e.id AS equipo_salud_id, e.codigo AS equipo_codigo
+         e.id AS equipo_salud_id, e.codigo AS equipo_codigo,
+         (SELECT json_agg(json_build_object('id', ea.id, 'codigo', ea.codigo) ORDER BY ea.codigo)
+            FROM aps.funcionario_apoyo_ebs a
+            JOIN aps.equipo_salud ea ON ea.id = a.equipo_salud_id AND ea.activo
+           WHERE a.funcionario_id = f.id) AS apoyo
     FROM aps.usuario u
     JOIN aps.funcionario f ON f.id = u.funcionario_id
     LEFT JOIN aps.equipo_salud e ON e.id = f.equipo_salud_id

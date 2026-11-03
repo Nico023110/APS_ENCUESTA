@@ -46,12 +46,13 @@ module.exports = async (req, res) => {
   const usuario = await requerirSesion(req, res);
   if (!usuario) return;
 
-  /* RN-224.3: el equipo sólo ve sus fichas; el administrador, todas. Un
-     usuario asistencial sin equipo asignado no ve ninguna. */
+  /* RN-224.3: el equipo sólo ve sus fichas; el administrador, todas. Quien
+     apoya a varios EBS ve las de cada uno. Un usuario asistencial sin
+     equipo asignado no ve ninguna. */
   const alcance = roles.alcanceDeLectura(usuario.rol);
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
-  const filtro = alcance === 'todas' ? '' : 'WHERE f.equipo_salud_id = $1';
-  const parametros = alcance === 'todas' ? [] : [usuario.equipoSaludId || -1];
+  const filtro = alcance === 'todas' ? '' : 'WHERE f.equipo_salud_id = ANY($1::bigint[])';
+  const parametros = alcance === 'todas' ? [] : [roles.equiposDelAlcance(usuario)];
   /* RN-228: si la coordinación o el maestro le autorizaron a este usuario
      corregir la ficha (incluido lo registrado en su plan), la fila lo dice
      (permisoPlan) para que el historial habilite Corregir. */

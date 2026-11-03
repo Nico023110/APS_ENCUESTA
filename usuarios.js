@@ -98,7 +98,7 @@
       if (estado === 'activo' && !u.activo) return false;
       if (estado === 'inactivo' && u.activo) return false;
       if (!texto) return true;
-      return [u.nombre, u.documento, u.equipo, u.rolEtiqueta, u.cargo, u.correo].some(function (v) {
+      return [u.nombre, u.documento, u.equipo, (u.apoyo || []).join(' '), u.rolEtiqueta, u.cargo, u.correo].some(function (v) {
         return String(v || '').toLowerCase().indexOf(texto) !== -1;
       });
     });
@@ -139,7 +139,7 @@
           '<td data-label="Nombre">' + textoSeguro(u.nombre) + (esYo ? ' <span class="usuarios__yo">(usted)</span>' : '') + '</td>' +
           '<td data-label="Documento"><span class="mono">' + textoSeguro(u.tipoId) + ' ' + textoSeguro(u.documento) + '</span></td>' +
           '<td data-label="Rol">' + textoSeguro(u.rolEtiqueta) + detalleDeRol(u) + '</td>' +
-          '<td data-label="Equipo">' + (u.equipo ? '<span class="mono">' + textoSeguro(u.equipo) + '</span>' : '—') + '</td>' +
+          '<td data-label="Equipo">' + celdaDeEquipo(u) + '</td>' +
           '<td data-label="Contacto">' + contacto(u) + '</td>' +
           '<td data-label="Estado">' + badgeEstado(u) + '</td>' +
           '<td data-label="Último acceso">' + textoSeguro(formatearFechaHora(u.ultimoAccesoEn)) + '</td>' +
@@ -210,6 +210,16 @@
     $('usuarioClaveTemporal').hidden = !clave;
   }
 
+  /* El equipo propio y, para quien apoya a varios EBS (enfoque diferencial),
+     los que apoya. */
+  function celdaDeEquipo(u) {
+    const apoyo = u.apoyo || [];
+    if (!u.equipo && apoyo.length === 0) return '—';
+    return (u.equipo ? '<span class="mono">' + textoSeguro(u.equipo) + '</span>' : '') +
+      (apoyo.length > 0 ? (u.equipo ? ' · ' : '') + '<span class="usuarios__detalle">Apoya a <span class="mono">' +
+        textoSeguro(apoyo.join(', ')) + '</span></span>' : '');
+  }
+
   /* Qué se le explica a quien crea la cuenta según el rol elegido. El rol
      ya dice qué hace la persona; el cargo sólo aporta cuando el rol no lo
      dice todo: la coordinación y los líderes no tienen EBS y lideran una
@@ -248,7 +258,9 @@
       '¿Cuál?' + (elige ? '' : ' *');
 
     $('usuarioCampoEquipo').hidden = !requiereEquipo(rol);
-    $('usuarioCampoEquipo').querySelector('label').textContent = 'Equipo Básico de Salud *';
+    $('usuarioCampoApoyo').hidden = !requiereEquipo(rol);
+    $('usuarioCampoEquipo').querySelector('label').textContent = $('usuarioApoyo').value.trim()
+      ? 'Equipo Básico de Salud (si pertenece a uno)' : 'Equipo Básico de Salud *';
 
     $('usuarioCampoCargo').hidden = !muestraCargo(rol);
     $('usuarioCargo').placeholder = PLACEHOLDER_CARGO[nivel] || '';
@@ -289,6 +301,7 @@
       $('usuarioTelefono').value = u.telefono || '';
       $('usuarioRol').value = u.rol;
       $('usuarioEquipo').value = u.equipo || '';
+      $('usuarioApoyo').value = (u.apoyo || []).join(', ');
       $('usuarioPerfil').value = u.perfil && u.perfil !== u.rol ? u.perfil : (eligePerfil(u.rol) ? (u.perfil || 'otro') : 'otro');
       $('usuarioPerfilOtro').value = u.perfilOtro || '';
       $('usuarioActivo').checked = !!u.activo;
@@ -339,6 +352,8 @@
       telefono: $('usuarioTelefono').value.trim() || null,
       rol: rol,
       equipo: equipo ? equipo.toUpperCase() : null,
+      apoyo: valorSegunVisibilidad('usuarioCampoApoyo', $('usuarioApoyo'),
+        editando && editando.rol === rol ? (editando.apoyo || []).join(', ') : null) || '',
       perfil: eligePerfil($('usuarioRol').value) ? $('usuarioPerfil').value : undefined,
       perfilOtro: $('usuarioPerfilOtro').value.trim() || null,
       activo: editando ? $('usuarioActivo').checked : true
@@ -497,6 +512,7 @@
     $('formUsuario').addEventListener('submit', guardar);
     $('usuarioRol').addEventListener('change', ajustarCamposSegunRol);
     $('usuarioPerfil').addEventListener('change', ajustarCamposSegunRol);
+    $('usuarioApoyo').addEventListener('input', ajustarCamposSegunRol);
     $('btnRestablecerClave').addEventListener('click', function () { restablecerClave(editando, { enFormulario: true }); });
     $('btnCopiarClave').addEventListener('click', function () { copiarTexto($('usuarioClaveValor').textContent); });
     $('btnCancelarUsuario').addEventListener('click', cerrarFormulario);

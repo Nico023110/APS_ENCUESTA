@@ -2298,6 +2298,11 @@
           <legend class="usuarios__grupo-titulo"><i class="ph ph-shield-check" aria-hidden="true"></i> Rol y equipo</legend>
           <div class="form-grid form-grid--2col">
             <div class="field" data-campo="rol">
+            <div class="field" data-campo="apoyo" id="usuarioCampoApoyo">
+              <label for="usuarioApoyo">EBS que apoya <span class="usuarios__opcional">enfoque diferencial</span></label>
+              <input type="text" id="usuarioApoyo" name="apoyo" class="mono" maxlength="400" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS007, EBS017" aria-describedby="usuarioApoyoAyuda">
+              <small class="field-hint" id="usuarioApoyoAyuda">Para quien no pertenece a un EBS sino que apoya a varios: separe los códigos con comas. En cada ficha elige uno de ellos y ve las fichas de todos.</small>
+            </div>
               <label for="usuarioRol">Rol *</label>
               <select id="usuarioRol" name="rol" aria-describedby="usuarioRolAyuda"></select>
             </div>

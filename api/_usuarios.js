@@ -59,9 +59,22 @@ function validarDatos(datos, paraCrear) {
   salida.rol = String(d.rol || '').trim();
   if (!roles.esRolValido(salida.rol)) throw new ErrorDeCuenta('Elija un rol de la lista.', 'rol');
 
+  /* EBS a los que apoya sin pertenecer a ellos (enfoque diferencial): una
+     lista o un texto separado por comas. Sólo para el personal asistencial;
+     con ellos no necesita equipo propio. */
+  const listaApoyo = Array.isArray(d.apoyo) ? d.apoyo : String(d.apoyo || '').split(/[,;s]+/);
+  salida.apoyo = listaApoyo.map(function (c) { return String(c || '').trim().toUpperCase(); })
+    .filter(function (c, i, todos) { return c && todos.indexOf(c) === i; });
+  if (salida.apoyo.length > 0 && !roles.requiereEquipo(salida.rol)) salida.apoyo = [];
+  salida.apoyo.forEach(function (codigo) {
+    if (!/^[A-Za-z0-9]{3,20}$/.test(codigo)) {
+      throw new ErrorDeCuenta('El código ' + codigo + ' no es un código de EBS: lleva entre 3 y 20 letras o números.', 'apoyo');
+    }
+  });
+
   salida.equipo = d.equipo ? String(d.equipo).trim() : null;
-  if (roles.requiereEquipo(salida.rol) && !salida.equipo) {
-    throw new ErrorDeCuenta('Un rol que captura fichas necesita su Equipo Básico de Salud.', 'equipo');
+  if (roles.requiereEquipo(salida.rol) && !salida.equipo && salida.apoyo.length === 0) {
+    throw new ErrorDeCuenta('Un rol que captura fichas necesita su Equipo Básico de Salud, o los EBS a los que apoya.', 'equipo');
   }
   if (salida.equipo && !/^[A-Za-z0-9]{3,20}$/.test(salida.equipo)) {
     throw new ErrorDeCuenta('El código del equipo lleva entre 3 y 20 letras o números.', 'equipo');
@@ -122,6 +135,31 @@ async function asegurarEquipo(cliente, codigo) {
   return r.rows[0].id;
 }
 
+/* Reemplaza los EBS que apoya el funcionario. Tienen que estar registrados:
+   un código mal escrito crearía un equipo fantasma cuyas fichas no ve nadie. */
+async function guardarApoyo(cliente, funcionarioId, codigos) {
+  let ids = [];
+  if (codigos.length > 0) {
+    const filas = (await cliente.query(`
+      SELECT id, upper(codigo) AS codigo FROM aps.equipo_salud WHERE upper(codigo) = ANY($1::text[]) AND activo
+    `, [codigos])).rows;
+    const faltan = codigos.filter(function (c) { return !filas.some(function (f) { return f.codigo === c; }); });
+    if (faltan.length > 0) {
+      throw new ErrorDeCuenta('No hay un EBS registrado con ' + (faltan.length === 1 ? 'el código ' : 'los códigos ') +
+        faltan.join(', ') + '.', 'apoyo');
+    }
+    ids = filas.map(function (f) { return f.id; });
+  }
+  await cliente.query('DELETE FROM aps.funcionario_apoyo_ebs WHERE funcionario_id = $1 AND NOT (equipo_salud_id = ANY($2::bigint[]))',
+    [funcionarioId, ids]);
+  if (ids.length > 0) {
+    await cliente.query(`
+      INSERT INTO aps.funcionario_apoyo_ebs (funcionario_id, equipo_salud_id)
+      SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING
+    `, [funcionarioId, ids]);
+  }
+}
+
 /* Crea funcionario + cuenta dentro de la transacción del cliente. Devuelve
    { id, clave } con la clave temporal en claro, que sólo existe aquí. */
 async function crearCuenta(cliente, datos, opciones) {
@@ -158,6 +196,8 @@ async function crearCuenta(cliente, datos, opciones) {
     throw error;
   }
 
+  await guardarApoyo(cliente, funcionarioId, d.apoyo);
+
   const usuarioId = (await cliente.query(`
     INSERT INTO aps.usuario (funcionario_id, documento, clave_hash, rol, debe_cambiar_clave, creado_por)
     VALUES ($1, $2, $3, $4, true, $5)
@@ -190,6 +230,7 @@ async function modificarCuenta(cliente, usuarioId, datos) {
            telefono = $9
      WHERE id = $1
   `, [fila.funcionario_id, d.nombre, d.perfil, d.perfilOtro, equipoId, d.activo, d.cargo, d.correo, d.telefono]);
+  await guardarApoyo(cliente, fila.funcionario_id, d.apoyo);
 
   await cliente.query(`
     UPDATE aps.usuario SET rol = $2, activo = $3 WHERE id = $1
@@ -229,7 +270,10 @@ const CONSULTA_LISTADO = `
          u.creado_en, u.ultimo_acceso_en,
          f.tipo_id, f.nombre_completo, f.perfil_profesional, f.perfil_otro,
          f.cargo, f.correo, f.telefono,
-         e.codigo AS equipo_codigo
+         e.codigo AS equipo_codigo,
+         (SELECT array_agg(ea.codigo ORDER BY ea.codigo)
+            FROM aps.funcionario_apoyo_ebs a JOIN aps.equipo_salud ea ON ea.id = a.equipo_salud_id
+           WHERE a.funcionario_id = f.id) AS apoyo_codigos
     FROM aps.usuario u
     JOIN aps.funcionario f ON f.id = u.funcionario_id
     LEFT JOIN aps.equipo_salud e ON e.id = f.equipo_salud_id
@@ -250,6 +294,7 @@ function filaPublica(fila) {
     correo: fila.correo,
     telefono: fila.telefono,
     equipo: fila.equipo_codigo,
+    apoyo: fila.apoyo_codigos || [],
     activo: fila.activo,
     debeCambiarClave: fila.debe_cambiar_clave,
     bloqueadoHasta: fila.bloqueado_hasta,

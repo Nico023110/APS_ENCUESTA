@@ -61,7 +61,9 @@ async function vigentes(cliente, fichaId) {
    no puede ya corregirla, o cambiar lo registrado en su plan, por sí misma. */
 async function candidatos(cliente, ficha) {
   const filas = (await cliente.query(`
-    SELECT u.id, u.documento, u.rol, fu.id AS funcionario_id, fu.nombre_completo, fu.equipo_salud_id
+    SELECT u.id, u.documento, u.rol, fu.id AS funcionario_id, fu.nombre_completo, fu.equipo_salud_id,
+           (SELECT array_agg(a.equipo_salud_id) FROM aps.funcionario_apoyo_ebs a
+             WHERE a.funcionario_id = fu.id) AS equipos_apoyo
       FROM aps.usuario u
       JOIN aps.funcionario fu ON fu.id = u.funcionario_id
      WHERE u.activo AND fu.activo
@@ -71,7 +73,7 @@ async function candidatos(cliente, ficha) {
   return filas.filter(function (fila) {
     return roles.puedeRecibirAutorizacion(
       { rol: fila.rol, equipoSaludId: fila.equipo_salud_id === null ? null : Number(fila.equipo_salud_id),
-        funcionarioId: Number(fila.funcionario_id) },
+        equiposApoyo: (fila.equipos_apoyo || []).map(Number), funcionarioId: Number(fila.funcionario_id) },
       { equipoSaludId: Number(ficha.equipo_salud_id), responsableId: Number(ficha.responsable_id) });
   }).map(function (fila) {
     return { id: Number(fila.id), documento: fila.documento, rol: fila.rol, nombre: fila.nombre_completo };

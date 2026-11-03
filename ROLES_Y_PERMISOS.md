@@ -52,6 +52,19 @@ El instrumento no distingue permisos entre profesiones; lo que distingue es el
   como cargo; al diligenciar una ficha indica en el ítem 10 el EBS de esa
   visita, que debe estar registrado. Firma el ítem 14 con el perfil que se le
   indique al crearla (si no, «Otro: su cargo»).
+- **Personal de apoyo a varios EBS** (enfoque diferencial, 2026‑11‑03): es
+  personal asistencial —médico, enfermera, auxiliar, psicóloga, trabajadora
+  social— que no pertenece a un EBS sino que apoya a los de determinadas
+  comunas. Se crea **sin equipo** y con la lista de **EBS que apoya**
+  (`aps.funcionario_apoyo_ebs`), que tienen que estar registrados. En el ítem
+  10 elige uno de ellos para cada visita (con uno solo, queda fijo) y el
+  servidor rechaza cualquier otro, porque el anexo SI‑APS exige en la variable
+  25 del tipo 2 un EBS parametrizado en gestión técnica. Sus permisos son los
+  de su nivel, y «su equipo» son todos los EBS que apoya: ve sus fichas y,
+  como profesional, evoluciona el plan de cualquiera de ellas. El equipo de
+  enfoque diferencial apoya a EBS006 (comuna 3), EBS074 (comuna 18), EBS064
+  (comuna 20) y EBS035 (El Hormiguero), según la distribución de EBS de la
+  E.S.E.
 - **Administrador**: administra (cuentas, equipos, catálogos) y consulta y
   corrige cualquier ficha; no captura.
 - **Maestro**: lo hace todo y es el **único que elimina una ficha** de la
@@ -98,7 +111,8 @@ Consecuencias en la interfaz:
 - Para los roles asistenciales los ítems **10, 12, 13 y 14** se rellenan desde la
   sesión y quedan fijos. La coordinación sin EBS propio deja el ítem 10 abierto,
   con la lista de los EBS registrados, para indicar el de cada visita; el
-  servidor rechaza un EBS que no exista. El servidor los impone de todos modos: una ficha nueva
+  servidor rechaza un EBS que no exista. Quien apoya a varios EBS elige el de la
+  visita entre los suyos. El servidor los impone de todos modos: una ficha nueva
   se firma con el equipo y el responsable de quien la envía; al corregir una
   ficha existente se conservan el equipo y el responsable originales y la
   corrección queda en `aud.evento` a nombre de quien la hizo (RN‑225).

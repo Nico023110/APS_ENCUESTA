@@ -74,6 +74,7 @@ erDiagram
     EQUIPO_SALUD ||--o{ FICHA : "caracteriza (RN-010)"
     FUNCIONARIO ||--o{ FICHA : "es responsable (RN-012/013)"
     EQUIPO_SALUD ||--o{ FUNCIONARIO : "integra"
+    FUNCIONARIO }o--o{ EQUIPO_SALUD : "apoya (enfoque diferencial, funcionario_apoyo_ebs)"
 
     FICHA ||--|| VIVIENDA : "1 por ficha (RN-000)"
     FICHA ||--o{ FAMILIA_FICHA : "N familias (item 28)"

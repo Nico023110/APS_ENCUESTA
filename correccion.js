@@ -303,6 +303,24 @@ function primerIntegranteNuevo(encuesta) {
   return primero;
 }
 
+/* Al llenar una ficha se trabaja con un integrante a la vista; una ficha
+   guardada se abría con todos desplegados (unas veinte pantallas cada uno) y
+   el índice tenía que recorrer la página entera para llegar a una sección.
+   Se abre como al llenarla: los integrantes plegados —su cabecera dice quién
+   es, y un pendiente o un clic los abre— y, al completar, abiertos sólo los
+   que faltaban. Con un único integrante no hay nada que plegar. */
+function plegarIntegrantesAlAbrir(encuesta, soloNuevos) {
+  const registros = registrosDeIntegrantes(encuesta);
+  document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').forEach(function (bloque, fi) {
+    const integrantes = bloque.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]');
+    if (integrantes.length <= 1 && !soloNuevos) return;
+    const capturados = (registros[fi] || { capturados: 0 }).capturados;
+    integrantes.forEach(function (integrante, ii) {
+      integrante.open = soloNuevos ? ii >= capturados : false;
+    });
+  });
+}
+
 /* La coordinación y el maestro modifican lo registrado; los demás, sólo con
    su autorización vigente sobre la ficha, que llega en la fila del historial. */
 function planRegistradoEditablePara(codigoFicha) {
@@ -347,6 +365,7 @@ function entrarEnCorreccion(id, encuesta, desdeServidor, opciones) {
   const primerNuevo = completar ? primerIntegranteNuevo(encuesta) : null;
 
   reponerBloqueosDePlan(encuesta, encuesta);
+  plegarIntegrantesAlAbrir(encuesta, completar);
 
   if (completar) {
     mostrarNotificacion(primerNuevo
@@ -404,6 +423,8 @@ function salirDeCorreccion() {
   quitarBloqueosDePlan();
   const aviso = document.getElementById('avisoCorreccion');
   if (aviso) aviso.hidden = true;
+  const cancelar = document.getElementById('btnCancelarCorreccion');
+  if (cancelar) cancelar.hidden = true;
 }
 
 /* RN-016: una ficha que ya está en la base se corrige aunque la visita tenga
@@ -436,24 +457,41 @@ function mostrarAvisoDeCorreccion(encuesta, opciones) {
 
     const texto = document.createElement('span');
     texto.id = 'avisoCorreccionTexto';
-
-    const cancelar = document.createElement('button');
-    cancelar.type = 'button';
-    cancelar.className = 'btn btn--ghost btn--icon';
-    cancelar.textContent = 'Cancelar corrección';
-    cancelar.addEventListener('click', function () {
-      salirDeCorreccion();
-      descartarBorrador();
-      document.getElementById('encuestaForm').reset();
-      reiniciarEstadoFormulario();
-      cambiarVista('historial');
-    });
-
     aviso.appendChild(texto);
-    aviso.appendChild(cancelar);
 
     const formulario = document.getElementById('encuestaForm');
     formulario.parentNode.insertBefore(aviso, formulario);
+  }
+
+  /* El botón para salir va en el índice «Ir a», que acompaña al desplazarse:
+     en la cinta se quedaba arriba, a decenas de pantallas de donde se está. */
+  let cancelar = document.getElementById('btnCancelarCorreccion');
+  if (!cancelar) {
+    cancelar = document.createElement('button');
+    cancelar.type = 'button';
+    cancelar.id = 'btnCancelarCorreccion';
+    cancelar.className = 'btn btn--ghost btn--icon form-nav__cancelar';
+    cancelar.addEventListener('click', function () {
+      const accion = modoEvolucionPlan ? 'la evolución del plan de cuidado'
+        : modoCompletarIntegrantes ? 'completar los integrantes' : 'la corrección';
+      pedirConfirmacion({
+        titulo: modoEvolucionPlan ? 'Cancelar evolución' : modoCompletarIntegrantes ? 'Cancelar completar' : 'Cancelar corrección',
+        mensaje: '¿Está seguro de que desea cancelar ' + accion + '? Los cambios que no haya guardado se ' +
+          'perderán. La ficha registrada queda como estaba.',
+        textoConfirmar: 'Sí, cancelar',
+        textoCancelar: 'Seguir editando',
+        alConfirmar: function () {
+          salirDeCorreccion();
+          descartarBorrador();
+          document.getElementById('encuestaForm').reset();
+          reiniciarEstadoFormulario();
+          cambiarVista('historial');
+        }
+      });
+    });
+    const grupo = document.querySelector('#formNav .form-nav__avance');
+    if (grupo) grupo.insertBefore(cancelar, grupo.firstChild);
+    else aviso.appendChild(cancelar);
   }
 
   let texto;
@@ -487,11 +525,9 @@ function mostrarAvisoDeCorreccion(encuesta, opciones) {
   }
 
   document.getElementById('avisoCorreccionTexto').textContent = texto;
-  const cancelar = aviso.querySelector('button');
-  if (cancelar) {
-    cancelar.textContent = o.evolucionPlan ? 'Cancelar evolución'
-      : o.completarIntegrantes ? 'Cancelar' : 'Cancelar corrección';
-  }
+  cancelar.innerHTML = '<i class="ph ph-x" aria-hidden="true"></i> ' + (o.evolucionPlan ? 'Cancelar evolución'
+    : o.completarIntegrantes ? 'Cancelar completar' : 'Cancelar corrección');
+  cancelar.hidden = false;
   aviso.hidden = false;
 }
 
