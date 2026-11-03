@@ -190,7 +190,7 @@ para el primer administrador o maestro y usa el mismo módulo
 
 El apartado **Reportes** se abre desde el mismo menú («Reportes») para quien
 tiene `productividad.ver` o `reporte.generar`: la coordinación, el
-administrador y el maestro. Su menú lateral lleva a los tableros de población,
+administrador y el maestro. Su menú lateral lleva al tablero de población,
 a la productividad y a las descargas, y sólo muestra lo que el rol puede ver.
 
 El **Reporte SI-APS** (`reporte.generar`) es la vista de descargas del
@@ -214,12 +214,12 @@ dato de la población. La agrupación sale de una lista fija del código y los
 filtros van como parámetros. Por EBS y por persona aparecen en cero los
 equipos y las cuentas activas sin fichas en el período.
 
-Los **tableros de población** usan el mismo permiso y el mismo endpoint, con
-`tablero=1` (`api/_tablero.js`): cuentas por categoría del instrumento de la
-población caracterizada en un período de hasta cinco años —de cada vivienda,
-su visita más reciente, sólo con consentimiento—, con filtros de EBS, comuna y
-territorio como parámetros. Nunca traen personas, y no cuentan los datos
-sensibles (orientación sexual, violencias).
+El **tablero de población** usa el mismo permiso y el mismo endpoint, con
+`tablero=1` (`api/_tablero.js`): cuentas por categoría —sólo las que muestra
+el tablero— de la población caracterizada en un período de hasta cinco años
+—de cada vivienda, su visita más reciente, sólo con consentimiento—, con
+filtros de EBS, comuna y territorio como parámetros. Nunca trae personas, y
+no cuenta los datos sensibles (orientación sexual, violencias).
 
 ## 3. Cómo se crean los usuarios
 

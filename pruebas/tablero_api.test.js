@@ -1,5 +1,5 @@
 /* =========================================================================
-   Tableros de población en el servidor (api/_tablero.js), sin base
+   Tablero de población en el servidor (api/_tablero.js), sin base
    -------------------------------------------------------------------------
        node pruebas/tablero_api.test.js
 
@@ -66,8 +66,8 @@ async function principal() {
       return Promise.resolve({ rows: [
         { dim: 'total', valor: 'viviendas', sexo: null, n: 12 },
         { dim: 'total', valor: 'personas', sexo: null, n: 23 },
-        { dim: 'estrato', valor: 'bajo', sexo: null, n: 4 },
-        { dim: 'estrato', valor: null, sexo: null, n: 1 },
+        { dim: 'riesgoFamiliar', valor: 'alto', sexo: null, n: 4 },
+        { dim: 'riesgoFamiliar', valor: null, sexo: null, n: 1 },
         { dim: 'cursoVida', valor: 'adultez', sexo: 'mujer', n: 7 },
         { dim: 'cursoVida', valor: 'adultez', sexo: 'hombre', n: 5 }
       ] });
@@ -90,12 +90,17 @@ async function principal() {
   verificar('no cuenta datos sensibles (orientación sexual, violencias)',
     consultas[0].sql.indexOf('orientacion_sexual') === -1 && consultas[0].sql.indexOf('modalidad_violencia') === -1);
   verificar('la comuna 18.1 de la E.S.E. se cuenta como la 18', /split_part\(m\.comuna, '\.', 1\)/.test(consultas[0].sql));
+  verificar('sólo cuenta lo que muestra el tablero de seguimiento',
+    ['estrato', 'fuenteAgua', 'tipoFamilia', 'apgar', 'zarit', 'quinquenio', 'nivelEducativo', 'etnia', 'saberes', 'transmisibles']
+      .every(function (dim) { return consultas[0].sql.indexOf("'" + dim + "'") === -1; }) &&
+    ['riesgoFamiliar', 'cursoVida', 'regimen', 'tratamiento', 'antropometria', 'lactancia', 'enfermedadesNT', 'comuna', 'territorio']
+      .every(function (dim) { return consultas[0].sql.indexOf("'" + dim + "'") !== -1; }));
 
   console.log('\n=== 3. La respuesta ===');
   verificar('totales por nombre', r.totales.viviendas === 12 && r.totales.personas === 23, JSON.stringify(r.totales));
-  verificar('una categoría sin sexo no trae el campo', JSON.stringify(r.dimensiones.estrato) === JSON.stringify([{ valor: 'bajo', n: 4 }]),
-    JSON.stringify(r.dimensiones.estrato));
-  verificar('  y una fila sin valor no se cuela', r.dimensiones.estrato.length === 1);
+  verificar('una categoría sin sexo no trae el campo', JSON.stringify(r.dimensiones.riesgoFamiliar) === JSON.stringify([{ valor: 'alto', n: 4 }]),
+    JSON.stringify(r.dimensiones.riesgoFamiliar));
+  verificar('  y una fila sin valor no se cuela', r.dimensiones.riesgoFamiliar.length === 1);
   verificar('una categoría por sexo sí lo trae', r.dimensiones.cursoVida.length === 2 && r.dimensiones.cursoVida[0].sexo === 'mujer');
   verificar('período, filtros y fechas de lo incluido',
     r.periodo.desde === '2024-01-01' && r.filtros.territorio === 'T52' && r.rango.primera === '2026-08-25' && r.rango.ultima === '2026-10-13');

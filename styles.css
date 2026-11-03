@@ -6809,65 +6809,6 @@ html.nivel-administrador #sincronia { display: none; }
   .tablero-filtros__campos .field[data-campo="hasta"] { grid-column: span 3; }
 }
 
-/* ---- Páginas de un tablero ---------------------------------------------
-   Control segmentado: carcasa blanca y la página abierta en la píldora azul.
-   El número es el de la página en los tableros del Ministerio. */
-.tablero-paginas {
-  display: flex;
-  gap: 4px;
-  width: fit-content;
-  max-width: 100%;
-  margin-bottom: var(--s-4);
-  padding: 5px;
-  overflow-x: auto;
-  background: #fff;
-  border-radius: var(--r-chip);
-  box-shadow: var(--sh-hair), var(--sh-1);
-  scrollbar-width: none;
-}
-.tablero-paginas[hidden] { display: none; }
-.tablero-paginas__item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex: none;
-  min-height: 38px;
-  padding: 6px var(--s-4) 6px 7px;
-  border: none;
-  border-radius: var(--r-chip);
-  background: transparent;
-  color: var(--ink-700);
-  font: inherit;
-  font-size: var(--fs-label);
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out),
-              transform var(--dur-press) var(--ease-out);
-}
-.tablero-paginas__numero {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--ink-100);
-  color: var(--ink-500);
-  font-size: var(--fs-micro);
-  font-weight: 700;
-}
-.tablero-paginas__item[aria-current="page"] {
-  background: var(--brand-600);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
-.tablero-paginas__item[aria-current="page"] .tablero-paginas__numero { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.tablero-paginas__item:active { transform: scale(0.97); }
-.tablero-paginas__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
-@media (hover: hover) and (pointer: fine) {
-  .tablero-paginas__item:not([aria-current="page"]):hover { background: var(--ink-50); color: var(--ink-900); }
-}
-
 /* ---- Rejilla de paneles ------------------------------------------------
    Doce columnas; cada panel declara su ancho (--ancho) según lo que vale.
    Mientras se vuelve a consultar, lo anterior queda a la vista, atenuado. */
@@ -6894,8 +6835,8 @@ html.nivel-administrador #sincronia { display: none; }
   .tpanel { grid-column: span 12; }
 }
 
-/* En un panel angosto el título manda: el ítem y «Tabla» bajan a su propio
-   renglón antes de apretarlo. */
+/* En un panel angosto el título manda: «Tabla» baja a su propio renglón
+   antes de apretarlo. */
 .tpanel__cabecera {
   display: flex;
   flex-wrap: wrap;
@@ -6919,18 +6860,6 @@ html.nivel-administrador #sincronia { display: none; }
   color: var(--ink-500);
 }
 .tpanel__acciones { display: flex; align-items: center; gap: var(--s-2); flex: none; }
-
-/* El número de ítem del instrumento: código, en monoespaciada. */
-.tpanel__item {
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--ink-100);
-  color: var(--ink-500);
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  font-weight: 500;
-  white-space: nowrap;
-}
 
 .tpanel__alternar {
   display: inline-flex;
@@ -7085,55 +7014,6 @@ html.nivel-administrador #sincronia { display: none; }
 .tbarra.is-cero .tbarra__relleno { min-width: 0; }
 .tbarra.is-cero .tbarra__cifras strong { color: var(--text-secondary); }
 
-/* ---- Columnas (escalas cortas) ------------------------------------------ */
-.tcolumnas {
-  --alto-columna: 148px;
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--columnas, 6), minmax(0, 1fr));
-  gap: var(--s-2);
-}
-/* La línea de base corre bajo todas las columnas. */
-.tcolumnas::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--alto-columna);
-  height: 1px;
-  background: var(--ink-200);
-}
-.tcolumna { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.tcolumna__area {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  height: var(--alto-columna);
-}
-.tcolumna__valor { font-size: var(--fs-small); font-weight: 700; color: var(--ink-900); }
-.tcolumna__barra {
-  display: block;
-  width: 24px;
-  max-width: 100%;
-  height: calc(var(--proporcion, 0) * (var(--alto-columna) - 28px));
-  min-height: 4px;
-  border-radius: 4px 4px 0 0;
-  background: var(--brand-600);
-}
-.tcolumna.is-cero .tcolumna__barra { min-height: 0; height: 0; }
-.tcolumna.is-cero .tcolumna__valor { color: var(--text-secondary); font-weight: 600; }
-.tcolumna__nombre {
-  margin-top: var(--s-2);
-  font-size: var(--fs-micro);
-  line-height: 1.3;
-  text-align: center;
-  color: var(--ink-500);
-  text-wrap: balance;
-}
-
 /* ---- Espejo: hombres a la izquierda, mujeres a la derecha ---------------
    Las dos alas comparten la escala y nacen en el eje; la cifra va en la
    punta de cada barra, en tinta. La leyenda es la cabecera de cada ala. */
@@ -7204,7 +7084,7 @@ html.nivel-administrador #sincronia { display: none; }
   .espejo { --eje: 96px; }
 }
 
-/* ---- Composición de una escala graduada (APGAR, Zarit, riesgo) ---------- */
+/* ---- Composición de una escala graduada (el riesgo familiar) ------------ */
 .composicion-barra__barra {
   display: flex;
   gap: 2px;
@@ -7236,17 +7116,24 @@ html.nivel-administrador #sincronia { display: none; }
 .tono--medio { background: var(--riesgo-medio); }
 .tono--sin { background: var(--ink-200); }
 
-/* ---- Medidores: una proporción contra su total -------------------------- */
+/* ---- Medidores: una proporción contra su total --------------------------
+   Tres por fila. La cifra y su pista van arriba, a la misma altura en toda
+   la fila; el nombre, que puede ocupar varios renglones, va debajo. */
 .medidores {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s-6) var(--s-8);
 }
+@container tablero (max-width: 780px) {
+  .medidores { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-6); }
+}
+@container tablero (max-width: 480px) {
+  .medidores { grid-template-columns: minmax(0, 1fr); }
+}
 .medidor { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
-.medidor__cabeza { display: flex; flex-direction: column; gap: 6px; }
 .medidor__valor {
   font-size: var(--fs-h1);
   font-weight: 800;
@@ -7305,7 +7192,7 @@ html.nivel-administrador #sincronia { display: none; }
 .tablero__fuente[hidden] { display: none; }
 
 /* ---- Movimiento ----------------------------------------------------------
-   Las barras crecen desde su base cuando llegan datos o se abre otra página:
+   Las barras crecen desde su base cuando llegan datos o se vuelve al tablero:
    una revelación de dato, como en Inicio. Recorte y no anchura: no recalcula
    el layout. El ala de los hombres crece hacia la izquierda. */
 .tablero--crece .tbarra__relleno,
@@ -7318,26 +7205,16 @@ html.nivel-administrador #sincronia { display: none; }
   animation: barraCreceIzquierda 0.7s var(--ease-out) backwards;
   animation-delay: calc(160ms + var(--orden, 0) * 35ms);
 }
-.tablero--crece .tcolumna__barra {
-  animation: barraCreceArriba 0.7s var(--ease-out) backwards;
-  animation-delay: calc(160ms + var(--orden, 0) * 45ms);
-}
 @keyframes barraCreceIzquierda {
   from { clip-path: inset(0 0 0 100%); }
-  to { clip-path: inset(0 0 0 0); }
-}
-@keyframes barraCreceArriba {
-  from { clip-path: inset(100% 0 0 0); }
   to { clip-path: inset(0 0 0 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tablero--crece .tbarra__relleno,
   .tablero--crece .espejo__barra,
-  .tablero--crece .medidor__relleno,
-  .tablero--crece .tcolumna__barra { animation: none; }
-  .reportes-menu__item,
-  .tablero-paginas__item { transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out); }
+  .tablero--crece .medidor__relleno { animation: none; }
+  .reportes-menu__item { transition: background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out); }
 }
 
 /* ---- Pantallas angostas: el menú pasa arriba, en una fila de píldoras ---- */

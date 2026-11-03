@@ -2015,14 +2015,8 @@
     <p class="reportes-menu__titulo">Reportes</p>
     <div class="reportes-menu__grupo" role="group" aria-labelledby="reportesGrupoPoblacion">
       <p class="eyebrow reportes-menu__etiqueta" id="reportesGrupoPoblacion">Población</p>
-      <button type="button" class="reportes-menu__item" data-reporte="principal">
-        <i class="ph ph-squares-four" aria-hidden="true"></i><span>Tablero principal</span>
-      </button>
-      <button type="button" class="reportes-menu__item" data-reporte="hogares">
-        <i class="ph ph-house-line" aria-hidden="true"></i><span>Hogares</span>
-      </button>
-      <button type="button" class="reportes-menu__item" data-reporte="personas">
-        <i class="ph ph-users-three" aria-hidden="true"></i><span>Personas</span>
+      <button type="button" class="reportes-menu__item" data-reporte="poblacion">
+        <i class="ph ph-squares-four" aria-hidden="true"></i><span>Tablero de población</span>
       </button>
     </div>
     <div class="reportes-menu__grupo" role="group" aria-labelledby="reportesGrupoGestion">
@@ -2039,13 +2033,13 @@
     </div>
   </nav>
 
-  <!-- ===================== VISTA: TABLEROS DE POBLACIÓN (productividad.ver) =====================
-       Tablero principal, Hogares y Personas comparten los filtros; cambiar de
-       tablero o de página no vuelve a consultar. Lo pinta tableros.js. -->
+  <!-- ===================== VISTA: TABLERO DE POBLACIÓN (productividad.ver) =====================
+       Una sola página con lo esencial para el seguimiento; volver a ella no
+       vuelve a consultar. Lo pinta tableros.js. -->
   <section class="view" id="view-tableros" aria-labelledby="tableroTitulo">
     <header class="reportes-cabecera">
       <div class="reportes-cabecera__textos">
-        <h2 class="reportes-cabecera__titulo" id="tableroTitulo">Tablero principal</h2>
+        <h2 class="reportes-cabecera__titulo" id="tableroTitulo">Tablero de población</h2>
         <p class="reportes-cabecera__sub" id="tableroDescripcion"></p>
       </div>
       <button type="button" class="btn btn--ghost" id="btnTableroDescargar" disabled>
@@ -2087,7 +2081,6 @@
       </button>
     </form>
 
-    <nav class="tablero-paginas" id="tableroPaginas" aria-label="Páginas del tablero" hidden></nav>
     <p class="empty-state reporte__error" id="tableroError" hidden role="alert"></p>
     <div class="tablero" id="tableroContenido" aria-live="polite" aria-busy="false"></div>
     <p class="tablero__fuente" id="tableroFuente" hidden></p>

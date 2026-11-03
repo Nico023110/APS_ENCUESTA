@@ -25,7 +25,7 @@
    fichas en el período (con ceros): la pregunta de la coordinación suele ser
    quién no ha reportado.
 
-   Con «tablero=1» responde en cambio los tableros de población (cuántas
+   Con «tablero=1» responde en cambio el tablero de población (cuántas
    personas, familias y viviendas y cómo son, por categoría del
    instrumento): ver _tablero.js.
 

@@ -222,14 +222,14 @@ harían daño aquí. Se descartaron, con motivo:
 estado que no sea error: lo pendiente. Plan de cuidado sin diligenciar, fichas
 sin sincronizar, corrección en curso.
 
-### Datos — los tableros de población
+### Datos — el tablero de población
 Los gráficos del apartado Reportes usan la misma regla del acento: **una serie
 es azul Ladera**, sea cual sea el número de barras; nunca se colorea una
 categoría por su valor. Sólo dos cosas piden otro color:
 - **Sexo**: hombres en azul Ladera (`--dato-hombre`) y mujeres en frambuesa
   `#d55181` (`--dato-mujer`). El par se validó para daltonismo (ΔE 9,0 en
   protanopía, OKLab ×100, meta 8) y los dos pasan 3:1 sobre blanco.
-- **Escalas graduadas** (APGAR, Zarit, riesgo familiar): los estados (verde,
+- **Escalas graduadas** (el riesgo familiar): los estados (verde,
   ámbar, rojo) y, para los dos grados intermedios del riesgo, el amarillo
   `#e0a90b` y el naranja `#e07a15` del semáforo del plan (`--riesgo-bajo`,
   `--riesgo-medio`). Siempre con su nombre al lado.
@@ -306,11 +306,11 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
 - **Historial: nunca se pinta como tabla.** Doce columnas no caben ni en
   escritorio. El marcado sigue siendo `<table>` por semántica y el CSS lo
   reorganiza en tarjetas de `minmax(320px, 1fr)` con `data-label`.
-- **Reportes: menú lateral + vista.** Las tres vistas del apartado (tableros,
-  productividad, descargas) comparten un menú de 232 px a la izquierda,
-  pegajoso bajo la cabecera; con él el contenedor se ensancha a 1480 px. Los
-  tableros son un bento de 12 columnas donde cada panel declara su ancho
-  (`--ancho`) según lo que vale. Bajo 960 px de pantalla el menú pasa arriba
+- **Reportes: menú lateral + vista.** Las tres vistas del apartado (tablero
+  de población, productividad, descargas) comparten un menú de 232 px a la
+  izquierda, pegajoso bajo la cabecera; con él el contenedor se ensancha a
+  1480 px. El tablero es un bento de 12 columnas donde cada panel declara su
+  ancho (`--ancho`) según lo que vale. Bajo 960 px de pantalla el menú pasa arriba
   como una fila de píldoras; bajo 780 px de contenedor cada panel ocupa la
   fila entera.
 
@@ -430,9 +430,13 @@ isla del índice del formulario, con el estado («Avance guardado… a las 10:42
 en verde debajo.
 
 ### Apartado Reportes (`tableros.js`)
-La estructura viene de los tableros SI-APS del Ministerio (menú lateral, una
-fila de filtros, cifras de cabecera, paneles y páginas); el aspecto es el de
-la aplicación.
+Un solo tablero de población, en una página, con lo esencial para el
+seguimiento y nada más: población caracterizada, atención prioritaria, curso
+de vida, riesgo familiar, necesidades por atender, enfermedades crónicas y
+dónde están las viviendas. El detalle de cada ficha va en las descargas. La
+estructura (menú lateral, una fila de filtros, cifras de cabecera, paneles)
+viene de los tableros SI-APS del Ministerio; el aspecto es el de la
+aplicación.
 - **Menú lateral** (`.reportes-menu`): carcasa blanca; grupos con su rótulo
   en `.eyebrow` (tinta secundaria) y el ítem abierto en la píldora azul llena
   de las pestañas. Bajo 960 px, fila de píldoras sin rótulos.
@@ -441,18 +445,13 @@ la aplicación.
   comuna y territorio con el combo con búsqueda de productividad. «Quitar
   filtros» aparece sólo con algún filtro puesto. Mientras se vuelve a
   consultar, lo anterior queda a la vista al 50 %: sin esqueleto ni salto.
-- **Páginas** (`.tablero-paginas`): control segmentado con el número de la
-  página del Ministerio en un círculo; la abierta en la píldora azul.
 - **Panel** (`.tpanel`): tarjeta blanca; título 19/700, subtítulo 12.5 en
-  tinta secundaria, el número de ítem en monoespaciada sobre `--ink-100`, y
-  «Tabla», que cambia el gráfico por su tabla (la misma especificación sirve
-  la descarga para Excel).
+  tinta secundaria que dice en palabras qué se cuenta, y «Tabla», que cambia
+  el gráfico por su tabla (la misma especificación sirve la descarga para
+  Excel, que es donde va el número de ítem del instrumento).
 - **Barras** (`.tbarra`): las de Inicio con la etiqueta completa encima —una
   opción larga del instrumento se parte en renglones, nunca se corta— y la
   cifra con su porcentaje a la derecha.
-- **Columnas** (`.tcolumna`): para escalas cortas (estrato, integrantes):
-  24 px de ancho, 4 px de radio en la punta, la cifra encima y una sola línea
-  de base.
 - **Espejo** (`.espejo`): hombres a la izquierda y mujeres a la derecha, con
   la escala compartida y las barras naciendo en el eje; la leyenda es la
   cabecera de cada ala. Con etiquetas largas la categoría pasa encima de las
@@ -460,12 +459,14 @@ la aplicación.
 - **Composición** (`.composicion-barra`): una barra partida con 2 px de aire
   entre tramos y, debajo, cada grado con su punto, nombre y cifra.
 - **Medidor** (`.medidor`): en lugar de una dona de dos porciones, el
-  porcentaje a 27/800, la pista en `--brand-100` y «n de N» debajo.
+  porcentaje a 27/800 con su pista en `--brand-100` justo debajo —a la misma
+  altura en toda la fila, tres por fila—, luego el nombre y «n de N». Sin
+  respuestas en el período: «—» y «Nada registrado en el período».
 - **Cadena y atención prioritaria**: la cadena es la de Inicio; los grupos
   prioritarios siguen su gramática (columnas separadas por un pelo, sin
   tarjetas dentro de la tarjeta).
 - Al llegar datos, las cifras cuentan y las barras crecen desde su base (por
-  recorte); al cambiar de página los paneles entran; nunca al mirar.
+  recorte); al volver al tablero los paneles entran; nunca al mirar.
 
 ### Cinta tricolor (firma)
 `.app-header::after`: **2 px**, tres segmentos iguales verde · rojo · azul. Los

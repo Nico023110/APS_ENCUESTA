@@ -1,23 +1,23 @@
 /* =========================================================
-   Encuesta_APS — Apartado «Reportes» y tableros de población
+   Encuesta_APS — Apartado «Reportes» y tablero de población
    ---------------------------------------------------------
    Para la coordinación del EBS (la coordinadora y los líderes de zona), el
    administrador y el maestro. Se abre desde el menú del chip de usuario
    (sesion.js) con «Reportes».
 
    El apartado reúne tres vistas bajo un mismo menú lateral (#reportesMenu):
-     - Tableros de población (esta vista): Tablero principal, Hogares (tres
-       páginas) y Personas (cinco), con la estructura de los tableros SI-APS
-       del Ministerio y el aspecto de la aplicación;
+     - Tablero de población (esta vista): una sola página con lo esencial
+       para el seguimiento —cuánto se caracterizó, quiénes requieren
+       atención prioritaria, el riesgo de las familias y las necesidades por
+       atender—; el detalle de cada ficha sale en las descargas;
      - Productividad (productividad.js);
      - Descargas: el archivo plano SI-APS y las fichas en Excel (reporte.js).
 
-   Los tableros piden a /api/productividad?tablero=1 las cuentas de un
-   período —de cada vivienda, su visita más reciente— con filtros de EBS,
-   comuna y territorio. Una sola consulta trae todo: cambiar de tablero o de
-   página vuelve a pintar sin pedir nada. El servidor manda códigos de
-   catálogo y aquí se nombran con catalogos.js, la misma fuente que el
-   formulario.
+   El tablero pide a /api/productividad?tablero=1 las cuentas de un período
+   —de cada vivienda, su visita más reciente— con filtros de EBS, comuna y
+   territorio; volver a abrirlo pinta sin pedir nada. El servidor manda
+   códigos de catálogo y aquí se nombran con catalogos.js, la misma fuente
+   que el formulario.
 
    Cada panel se describe primero como datos (una «especificación») y
    después se pinta; la tabla de cada panel y la descarga para Excel salen
@@ -97,12 +97,6 @@
     { valor: 'primera_infancia', etiqueta: 'Primera infancia (0 a 5)' }
   ];
 
-  /* Grupos de cinco años, del mayor al menor; el último abierto. */
-  const QUINQUENIOS = [];
-  for (let edad = 80; edad >= 0; edad -= 5) {
-    QUINQUENIOS.push({ valor: String(edad), etiqueta: edad === 80 ? '80 y más' : edad + ' a ' + (edad + 4) });
-  }
-
   /* RN-221: la misma escala y los mismos nombres del semáforo del plan. */
   const RIESGO_FAMILIAR = [
     { valor: 'sin_riesgo', etiqueta: 'Sin riesgo', tono: 'ok' },
@@ -110,15 +104,6 @@
     { valor: 'medio', etiqueta: 'Riesgo medio', tono: 'medio' },
     { valor: 'alto', etiqueta: 'Riesgo alto', tono: 'alto' }
   ];
-
-  const INTEGRANTES_FAMILIA = [];
-  for (let n = 1; n <= 10; n++) INTEGRANTES_FAMILIA.push({ valor: String(n), etiqueta: n === 10 ? '10 o más' : String(n) });
-
-  /* En la escala de estudios, «Ninguno» es el primer peldaño, no un resto. */
-  function nivelesEducativos() {
-    return CAT_NIVEL_EDUCATIVO.filter(function (o) { return o.valor === 'ninguno'; })
-      .concat(CAT_NIVEL_EDUCATIVO.filter(function (o) { return o.valor !== 'ninguno'; }));
-  }
 
   /* Lo que no es una categoría del dato sino su ausencia: va al final y
      apagado, para que no compita con lo que sí se registró. */
@@ -135,6 +120,10 @@
     return valor === 'Rural' ? 'Zona rural' : 'Comuna ' + valor;
   }
 
+  function nombreTerritorio(valor) {
+    return typeof etiquetaTerritorio === 'function' ? etiquetaTerritorio(valor) : valor;
+  }
+
   /* ---------------------------------------------------------
      De la respuesta a las filas de un panel
      --------------------------------------------------------- */
@@ -144,22 +133,21 @@
   function total(d, clave) { return (d.totales && d.totales[clave]) || 0; }
 
   /* Cuenta por valor, sumando los sexos. */
-  function conteoPorValor(d, dim, filtro) {
+  function conteoPorValor(d, dim) {
     const conteo = new Map();
     serie(d, dim).forEach(function (f) {
-      if (filtro && !filtro(f)) return;
       conteo.set(f.valor, (conteo.get(f.valor) || 0) + f.n);
     });
     return conteo;
   }
 
   /* Filas con la etiqueta del catálogo. `escala`: la dimensión es una escala
-     ordenada (estrato, curso de vida…) y se muestra completa, en su orden y
-     con sus ceros; si no, sólo lo registrado, de mayor a menor. Lo residual
+     ordenada (el riesgo familiar) y se muestra completa, en su orden y con
+     sus ceros; si no, sólo lo registrado, de mayor a menor. Lo residual
      siempre al final. */
   function filasDe(d, dim, lista, opciones) {
     const o = opciones || {};
-    const conteo = conteoPorValor(d, dim, o.filtro);
+    const conteo = conteoPorValor(d, dim);
     const filas = [];
     (lista || []).forEach(function (op, i) {
       if (o.excluir && o.excluir.indexOf(op.valor) !== -1) return;
@@ -216,288 +204,113 @@
   function sumaDe(filas) { return filas.reduce(function (s, f) { return s + f.n; }, 0); }
 
   /* ---------------------------------------------------------
-     Los tableros y sus paneles
+     El tablero y sus paneles
      ---------------------------------------------------------
-     Cada panel: id, ancho (columnas de 12) y construir(d) → especificación
-     { tipo, titulo, sub, item, nota, ... } que pinta y tabula lo mismo. */
+     Sólo lo que sirve para el seguimiento, en una página. Cada panel: id,
+     ancho (columnas de 12) y construir(d) → especificación { tipo, titulo,
+     sub, item, ... } que pinta y tabula lo mismo. El ítem del instrumento
+     va sólo en la descarga, para cruzarla con el anexo; en pantalla, cada
+     panel dice en palabras qué cuenta. */
 
-  const TABLEROS = {
-    principal: {
-      titulo: 'Tablero principal',
-      descripcion: 'La población caracterizada en el período y quiénes requieren atención prioritaria.',
-      paginas: [{ id: 'principal', titulo: 'Tablero principal' }]
-    },
-    hogares: {
-      titulo: 'Hogares',
-      descripcion: 'Cómo son las familias caracterizadas: su estructura, su funcionalidad, el cuidado y sus prácticas protectoras.',
-      paginas: [
-        { id: 'estructura', titulo: 'Estructura y contexto' },
-        { id: 'desafios', titulo: 'Desafíos de salud' },
-        { id: 'practicas', titulo: 'Prácticas protectoras' }
-      ]
-    },
-    personas: {
-      titulo: 'Personas',
-      descripcion: 'Los integrantes caracterizados: edad y sexo, salud materna, afiliación, condiciones de salud y pertenencia étnica.',
-      paginas: [
-        { id: 'demografia', titulo: 'Condiciones demográficas' },
-        { id: 'materna', titulo: 'Salud materna e infantil' },
-        { id: 'cobertura', titulo: 'Cobertura y acceso' },
-        { id: 'salud', titulo: 'Hábitos y condiciones de salud' },
-        { id: 'etnia', titulo: 'Población étnica' }
-      ]
-    }
+  const TABLERO = {
+    titulo: 'Tablero de población',
+    descripcion: 'Lo esencial para el seguimiento: cuánto se ha caracterizado, quiénes requieren atención primero y qué necesidades hay por atender.'
   };
 
-  const PANELES = {
-    principal: [
-      { id: 'cadena', ancho: 12, construir: function (d) {
-        const viviendas = total(d, 'viviendas');
-        const hogares = total(d, 'hogares');
-        const familias = total(d, 'familias');
-        const personas = total(d, 'personas');
-        const razon = function (parte, todo, de) {
-          const r = typeof formatearRazon === 'function' ? formatearRazon(parte, todo) : null;
-          return r ? r + ' por ' + de : '';
-        };
-        const sinCaracterizar = Math.max(0, total(d, 'hogaresDeclarados') - hogares);
-        return {
-          tipo: 'cadena', titulo: 'Población caracterizada', sub: 'Según la última visita a cada vivienda',
-          niveles: [
-            { clave: 'viviendas', etiqueta: 'Viviendas', icono: 'ph-house-line', valor: viviendas, detalle: '' },
-            { clave: 'hogares', etiqueta: 'Hogares', icono: 'ph-door-open', valor: hogares, detalle: razon(hogares, viviendas, 'vivienda'),
-              aviso: sinCaracterizar ? cantidad(sinCaracterizar) + segun(sinCaracterizar, ' hogar declarado sin caracterizar', ' hogares declarados sin caracterizar') : '' },
-            { clave: 'familias', etiqueta: 'Familias', icono: 'ph-users-three', valor: familias, detalle: razon(familias, hogares, 'hogar') },
-            { clave: 'personas', etiqueta: 'Personas', icono: 'ph-user', valor: personas, detalle: razon(personas, familias, 'familia') }
-          ]
-        };
-      } },
-      { id: 'prioritarios', ancho: 12, construir: function (d) {
-        const personas = total(d, 'personas');
-        const parte = function (n) { return porcentaje(n, personas) + ' de las personas'; };
-        const preguntadas = total(d, 'preguntadasGestacion');
-        return {
-          tipo: 'tejas', titulo: 'Atención prioritaria', sub: 'Personas de los grupos que el plan de cuidado atiende primero',
-          tejas: [
-            { etiqueta: 'Gestantes', icono: 'ph-baby-carriage', valor: total(d, 'gestantes'),
-              detalle: preguntadas ? 'de ' + cantidad(preguntadas) + segun(preguntadas, ' mujer a quien se preguntó', ' mujeres a quienes se preguntó') : 'nadie respondió la pregunta' },
-            { etiqueta: 'Con discapacidad', icono: 'ph-wheelchair', valor: total(d, 'discapacidad'), detalle: parte(total(d, 'discapacidad')) },
-            { etiqueta: 'Primera infancia', icono: 'ph-baby', valor: total(d, 'primeraInfancia'), detalle: '0 a 5 años · ' + porcentaje(total(d, 'primeraInfancia'), personas) },
-            { etiqueta: 'Personas mayores', icono: 'ph-person-simple-walk', valor: total(d, 'mayores'), detalle: '60 años y más · ' + porcentaje(total(d, 'mayores'), personas) },
-            { etiqueta: 'Víctimas del conflicto armado', icono: 'ph-hand-heart', valor: total(d, 'victimas'), detalle: parte(total(d, 'victimas')) }
-          ]
-        };
-      } },
-      { id: 'cursoVida', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Personas por curso de vida y sexo', sub: 'Edad cumplida a la fecha de la visita',
-          item: '64 y 66', filas: filasPorSexo(d, 'cursoVida', CURSOS_DE_VIDA, { escala: true }) };
-      } },
-      { id: 'comunas', ancho: 5, construir: function (d) {
-        const filas = filasDe(d, 'comuna', [], { nombrar: etiquetaComuna });
-        return { tipo: 'barras', titulo: 'Viviendas por comuna', sub: 'Dónde están las viviendas caracterizadas',
-          filas: filas, base: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] };
-      } },
-      { id: 'estrato', ancho: 5, construir: function (d) {
-        return { tipo: 'columnas', titulo: 'Estrato socioeconómico', sub: 'Viviendas por estrato', item: '27',
-          filas: filasDe(d, 'estrato', CAT_ESTRATO, { escala: true }), base: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] };
-      } },
-      { id: 'etnia', ancho: 7, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Pertenencia étnica', sub: 'Personas según su autorreconocimiento', item: '79',
-          filas: filasDe(d, 'etnia', CAT_PERTENENCIA_ETNICA), base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } },
-      { id: 'visita', ancho: 12, construir: function (d) {
-        return { tipo: 'medidores', titulo: 'Lo que encontró la visita', sub: 'Proporciones sobre lo caracterizado en el período',
-          medidores: [
-            { etiqueta: 'Menores de 6 meses con lactancia materna exclusiva', item: '91',
-              n: conteoPorValor(d, 'lactancia').get('si') || 0, total: total(d, 'menores6m'), unidad: ['menor de 6 meses', 'menores de 6 meses'] },
-            { etiqueta: 'Viviendas con hacinamiento', item: '33',
-              n: total(d, 'hacinamiento'), total: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] },
-            { etiqueta: 'Familias con cuidador principal identificado', item: '52',
-              n: total(d, 'conCuidador'), total: total(d, 'familias'), unidad: ['familia', 'familias'] }
-          ] };
-      } }
-    ],
+  /* Suma las cuentas de una dimensión cuyos valores cumplen la condición. */
+  function sumaSi(d, dim, condicion) {
+    let n = 0;
+    conteoPorValor(d, dim).forEach(function (cuenta, valor) { if (condicion(valor)) n += cuenta; });
+    return n;
+  }
 
-    'hogares/estructura': [
-      { id: 'tipoFamilia', ancho: 7, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Tipo de familia', sub: 'Familias por su composición', item: '50',
-          filas: filasDe(d, 'tipoFamilia', CAT_TIPO_FAMILIA), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'apgar', ancho: 5, construir: function (d) {
-        const tonos = { alta: 'ok', moderada: 'aviso', disfuncion: 'alerta' };
-        const lista = CAT_APGAR.map(function (o) { return { valor: o.valor, etiqueta: o.etiqueta, tono: tonos[o.valor] }; });
-        return { tipo: 'composicion', titulo: 'Funcionalidad familiar', sub: 'Resultado del APGAR familiar', item: 'A2.113',
-          filas: filasDe(d, 'apgar', lista, { escala: true }), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'integrantes', ancho: 7, construir: function (d) {
-        return { tipo: 'columnas', titulo: 'Personas que conforman la familia', sub: 'Familias según su número de integrantes', item: '51',
-          filas: filasDe(d, 'integrantesFamilia', INTEGRANTES_FAMILIA, { escala: true }), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'riesgo', ancho: 5, construir: function (d) {
-        return { tipo: 'composicion', titulo: 'Riesgo familiar', sub: 'Clasificación que calcula la ficha con lo registrado',
-          filas: filasDe(d, 'riesgoFamiliar', RIESGO_FAMILIAR, { escala: true }), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'agua', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Fuente de agua para consumo humano', sub: 'Viviendas según de dónde toman el agua', item: '46',
-          filas: filasDe(d, 'fuenteAgua', CAT_FUENTE_AGUA), base: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] };
-      } }
-    ],
+  function es() {
+    const valores = Array.prototype.slice.call(arguments);
+    return function (valor) { return valores.indexOf(valor) !== -1; };
+  }
 
-    'hogares/desafios': [
-      { id: 'cuidador', ancho: 5, construir: function (d) {
-        return { tipo: 'medidores', titulo: 'Cuidador principal', sub: 'Niñas y niños, personas mayores u otros que dependen de alguien',
-          medidores: [{ etiqueta: 'Familias con cuidador principal identificado', item: '52',
-            n: total(d, 'conCuidador'), total: total(d, 'familias'), unidad: ['familia', 'familias'] }] };
-      } },
-      { id: 'zarit', ancho: 7, construir: function (d) {
-        const tonos = { ausencia: 'ok', ligera: 'aviso', intensa: 'alerta' };
-        const lista = CAT_ZARIT.map(function (o) { return { valor: o.valor, etiqueta: o.etiqueta, tono: tonos[o.valor] }; });
-        return { tipo: 'composicion', titulo: 'Sobrecarga del cuidador', sub: 'Escala de Zarit, en las familias con cuidador principal', item: '53',
-          filas: filasDe(d, 'zarit', lista, { escala: true }), base: total(d, 'conCuidador'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'situaciones', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Situaciones o condiciones de riesgo para la salud', sub: 'Familias que las viven; una familia puede marcar varias', item: '54',
-          filas: filasDe(d, 'situacionesRiesgo', CAT_SITUACIONES_RIESGO_FAMILIAR), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'redes', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Redes de apoyo social', sub: 'Familias según sus redes para el cuidado de la salud', item: '56',
-          filas: filasDe(d, 'redesApoyo', CAT_REDES_APOYO, { escala: true }), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } }
-    ],
+  /* Las clasificaciones antropométricas que el catálogo marca con una
+     prioridad de atención: déficit o exceso de peso. */
+  function conAlertaNutricional(valor) {
+    return CAT_CLASIFICACION_ANTROPOMETRICA.some(function (o) { return o.valor === valor && !!o.prioridad; });
+  }
 
-    'hogares/practicas': [
-      { id: 'vinculo', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Prácticas que favorecen los vínculos familiares', sub: 'Familias que las realizan; una familia puede marcar varias', item: '55',
-          filas: filasDe(d, 'practicasVinculo', CAT_PRACTICAS_VINCULO), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } },
-      { id: 'hogar', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Prácticas para el cuidado de la salud y protección en el hogar', sub: 'Familias que las realizan; una familia puede marcar varias', item: '57',
-          filas: filasDe(d, 'practicasHogar', CAT_PRACTICAS_CUIDADO_HOGAR), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
-      } }
-    ],
-
-    'personas/demografia': [
-      { id: 'piramide', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Pirámide poblacional', sub: 'Personas por grupo de edad y sexo', item: '64 y 66',
-          filas: filasPorSexo(d, 'quinquenio', QUINQUENIOS, { escala: true }) };
-      } },
-      { id: 'fertil', ancho: 5, construir: function (d) {
-        const grupos = QUINQUENIOS.filter(function (q) { return Number(q.valor) >= 10 && Number(q.valor) <= 50; }).reverse();
-        const filas = filasDe(d, 'quinquenio', grupos, { escala: true, filtro: function (f) { return f.sexo === 'mujer'; } });
-        return { tipo: 'barras', titulo: 'Mujeres en edad fértil', sub: 'Mujeres de 10 a 54 años por grupo de edad', item: '64 y 66',
-          filas: filas, base: sumaDe(filas), unidad: ['mujer', 'mujeres'] };
-      } },
-      { id: 'educacion', ancho: 12, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Nivel educativo', sub: 'Personas de 5 años o más por nivel alcanzado y sexo', item: '74',
-          filas: filasPorSexo(d, 'nivelEducativo', nivelesEducativos(), { escala: true }) };
-      } },
-      { id: 'discapacidad', ancho: 6, construir: function (d) {
-        const sin = conteoPorValor(d, 'discapacidad').get('sin_discapacidad') || 0;
-        return { tipo: 'espejo', titulo: 'Discapacidad', sub: 'Personas por tipo de discapacidad y sexo', item: '82',
-          filas: filasPorSexo(d, 'discapacidad', CAT_DISCAPACIDAD, { excluir: ['sin_discapacidad'] }),
-          nota: sin ? cantidad(sin) + segun(sin, ' persona no se reconoce', ' personas no se reconocen') + ' con discapacidad.' : '' };
-      } },
-      { id: 'proteccion', ancho: 6, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Sujetos de especial protección', sub: 'Personas por condición; una persona puede tener varias', item: '77',
-          filas: filasDe(d, 'sujetoProteccion', CAT_SUJETO_ESPECIAL_PROTECCION), base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } }
-    ],
-
-    'personas/materna': [
-      { id: 'indicadores', ancho: 5, construir: function (d) {
-        return { tipo: 'medidores', titulo: 'Gestación y lactancia', sub: 'Sobre quienes respondieron cada pregunta',
-          medidores: [
-            { etiqueta: 'Gestación actual confirmada', item: '85',
-              n: total(d, 'gestantes'), total: total(d, 'preguntadasGestacion'), unidad: ['mujer a quien se preguntó', 'mujeres a quienes se preguntó'] },
-            { etiqueta: 'Lactancia materna exclusiva en menores de 6 meses', item: '91',
-              n: conteoPorValor(d, 'lactancia').get('si') || 0, total: total(d, 'menores6m'), unidad: ['menor de 6 meses', 'menores de 6 meses'] }
-          ] };
-      } },
-      { id: 'lactancia', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Lactancia materna exclusiva', sub: 'Menores de 6 meses por respuesta y sexo', item: '91',
-          filas: filasPorSexo(d, 'lactancia', CAT_SI_NO_NA, { escala: true }) };
-      } },
-      { id: 'atenciones', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Atenciones pendientes de la ruta materno perinatal', sub: 'Personas que respondieron la pregunta; una persona puede tener varias pendientes', item: '88',
-          filas: filasDe(d, 'atencionesMaterno', CAT_ATENCIONES_MATERNO), base: total(d, 'respondieronMaterno'), unidad: ['persona', 'personas'] };
-      } }
-    ],
-
-    'personas/cobertura': [
-      { id: 'regimen', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Régimen de afiliación', sub: 'Personas por régimen y sexo', item: '75',
-          filas: filasPorSexo(d, 'regimen', CAT_REGIMEN_AFILIACION, { escala: true }) };
-      } },
-      { id: 'acceso', ancho: 5, construir: function (d) {
-        return { tipo: 'medidores', titulo: 'Acceso a los servicios', sub: 'Proporciones sobre las personas caracterizadas',
-          medidores: [
-            { etiqueta: 'Personas sin afiliación al sistema de salud', item: '75',
-              n: conteoPorValor(d, 'regimen').get('no_afiliado') || 0, total: total(d, 'personas'), unidad: ['persona', 'personas'] },
-            { etiqueta: 'Personas con alguna barrera para recibir sus atenciones', item: '89',
-              n: total(d, 'conBarreras'), total: total(d, 'respondieronBarreras'), unidad: ['persona que respondió', 'personas que respondieron'] }
-          ] };
-      } },
-      { id: 'barreras', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Motivos por los que no ha recibido las atenciones', sub: 'Personas que respondieron; una persona puede marcar varios', item: '89',
-          filas: filasDe(d, 'barreras', CAT_BARRERAS_ACCESO), base: total(d, 'respondieronBarreras'), unidad: ['persona', 'personas'] };
-      } }
-    ],
-
-    'personas/salud': [
-      { id: 'practicas', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Prácticas rutinarias para el cuidado de la salud', sub: 'Personas que las realizan, entre ellas la actividad física; una persona puede marcar varias', item: '86',
-          filas: filasDe(d, 'practicasCuidado', CAT_PRACTICAS_CUIDADO), base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } },
-      { id: 'nutricion', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Estado nutricional', sub: 'Clasificación antropométrica por sexo', item: '96',
-          filas: filasPorSexo(d, 'antropometria', CAT_CLASIFICACION_ANTROPOMETRICA) };
-      } },
-      { id: 'conEnfermedad', ancho: 5, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Enfermedad no transmisible diagnosticada', sub: '¿Algún profesional le ha dicho que tiene alguna? Personas por respuesta y sexo', item: '100',
-          filas: filasPorSexo(d, 'conEnfermedadNT', CAT_SI_NO, { escala: true }) };
-      } },
-      { id: 'enfermedades', ancho: 7, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Enfermedades no transmisibles diagnosticadas', sub: 'Personas por enfermedad; una persona puede tener varias', item: '100',
-          filas: filasDe(d, 'enfermedadesNT', CAT_ENFERMEDADES_NO_TRANSMISIBLES, { excluir: ['ninguna'] }),
-          base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } },
-      { id: 'tratamiento', ancho: 5, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Atención y tratamiento', sub: '¿Recibe atención y tratamiento para la enfermedad actual? Personas por respuesta y sexo', item: '103',
-          filas: filasPorSexo(d, 'tratamiento', CAT_SI_NO_NA, { escala: true }) };
-      } },
-      { id: 'transmisibles', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Situaciones o condiciones de salud transmisible', sub: 'Personas por condición', item: '101',
-          filas: filasDe(d, 'transmisibles', CAT_CONDICIONES_TRANSMISIBLES), base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } }
-    ],
-
-    'personas/etnia': [
-      { id: 'etnia', ancho: 7, construir: function (d) {
-        return { tipo: 'espejo', titulo: 'Pertenencia étnica', sub: 'Personas según su autorreconocimiento y sexo', item: '79',
-          filas: filasPorSexo(d, 'etnia', CAT_PERTENENCIA_ETNICA) };
-      } },
-      { id: 'reconocimiento', ancho: 5, construir: function (d) {
-        const conteo = conteoPorValor(d, 'etnia');
-        let con = 0;
-        conteo.forEach(function (n, valor) { if (valor !== 'ninguna') con += n; });
-        const saberes = conteoPorValor(d, 'saberes');
-        let practican = 0;
-        saberes.forEach(function (n, valor) { if (valor !== 'ninguna') practican += n; });
-        return { tipo: 'medidores', titulo: 'Reconocimiento étnico', sub: 'Proporciones sobre las personas caracterizadas',
-          medidores: [
-            { etiqueta: 'Personas que se reconocen en un grupo étnico', item: '79', n: con, total: total(d, 'personas'), unidad: ['persona', 'personas'] },
-            { etiqueta: 'Prácticas desde los saberes ancestrales registradas', item: '81', n: practican, total: 0, soloCifra: true,
-              detalle: 'una persona puede tener varias' }
-          ] };
-      } },
-      { id: 'saberes', ancho: 12, construir: function (d) {
-        return { tipo: 'barras', titulo: 'Prácticas de cuidado desde los saberes ancestrales o tradicionales', sub: 'Personas que las realizan; una persona puede marcar varias', item: '81',
-          filas: filasDe(d, 'saberes', CAT_SABERES_ANCESTRALES), base: total(d, 'personas'), unidad: ['persona', 'personas'] };
-      } }
-    ]
-  };
-
-  function clavePagina(tablero, pagina) { return tablero === 'principal' ? 'principal' : tablero + '/' + pagina; }
+  const PANELES = [
+    { id: 'cadena', ancho: 12, construir: function (d) {
+      const sinCaracterizar = Math.max(0, total(d, 'hogaresDeclarados') - total(d, 'hogares'));
+      return {
+        tipo: 'cadena', titulo: 'Población caracterizada', sub: 'De cada vivienda cuenta su visita más reciente',
+        niveles: [
+          { etiqueta: 'Viviendas', icono: 'ph-house-line', valor: total(d, 'viviendas') },
+          { etiqueta: 'Hogares', icono: 'ph-door-open', valor: total(d, 'hogares'),
+            aviso: sinCaracterizar ? cantidad(sinCaracterizar) + segun(sinCaracterizar, ' hogar declarado sin caracterizar', ' hogares declarados sin caracterizar') : '' },
+          { etiqueta: 'Familias', icono: 'ph-users-three', valor: total(d, 'familias') },
+          { etiqueta: 'Personas', icono: 'ph-user', valor: total(d, 'personas') }
+        ]
+      };
+    } },
+    { id: 'prioritarios', ancho: 12, construir: function (d) {
+      const personas = total(d, 'personas');
+      const parte = function (n) { return porcentaje(n, personas) + ' de las personas'; };
+      const preguntadas = total(d, 'preguntadasGestacion');
+      return {
+        tipo: 'tejas', titulo: 'Atención prioritaria', sub: 'Personas de los grupos que el plan de cuidado atiende primero',
+        tejas: [
+          { etiqueta: 'Gestantes', icono: 'ph-baby-carriage', valor: total(d, 'gestantes'),
+            detalle: preguntadas ? 'de ' + cantidad(preguntadas) + segun(preguntadas, ' mujer a quien se preguntó', ' mujeres a quienes se preguntó') : 'nadie respondió la pregunta' },
+          { etiqueta: 'Con discapacidad', icono: 'ph-wheelchair', valor: total(d, 'discapacidad'), detalle: parte(total(d, 'discapacidad')) },
+          { etiqueta: 'Primera infancia', icono: 'ph-baby', valor: total(d, 'primeraInfancia'), detalle: '0 a 5 años · ' + porcentaje(total(d, 'primeraInfancia'), personas) },
+          { etiqueta: 'Personas mayores', icono: 'ph-person-simple-walk', valor: total(d, 'mayores'), detalle: '60 años y más · ' + porcentaje(total(d, 'mayores'), personas) },
+          { etiqueta: 'Víctimas del conflicto armado', icono: 'ph-hand-heart', valor: total(d, 'victimas'), detalle: parte(total(d, 'victimas')) }
+        ]
+      };
+    } },
+    { id: 'cursoVida', ancho: 7, construir: function (d) {
+      return { tipo: 'espejo', titulo: 'Personas por curso de vida y sexo', sub: 'Edad cumplida el día de la visita (Resolución 3280)',
+        item: '64 y 66', filas: filasPorSexo(d, 'cursoVida', CURSOS_DE_VIDA, { escala: true }) };
+    } },
+    { id: 'riesgo', ancho: 5, construir: function (d) {
+      return { tipo: 'composicion', titulo: 'Riesgo familiar', sub: 'Familias según el riesgo que calcula la ficha con lo registrado',
+        filas: filasDe(d, 'riesgoFamiliar', RIESGO_FAMILIAR, { escala: true }), base: total(d, 'familias'), unidad: ['familia', 'familias'] };
+    } },
+    /* Cada medidor dice qué parte de un grupo necesita una gestión; el total
+       es quien respondió la pregunta, no toda la población. */
+    { id: 'necesidades', ancho: 12, construir: function (d) {
+      return { tipo: 'medidores', titulo: 'Necesidades por atender', sub: 'Qué parte de cada grupo necesita una gestión del equipo',
+        medidores: [
+          { etiqueta: 'Personas sin afiliación al sistema de salud', item: '75',
+            n: sumaSi(d, 'regimen', es('no_afiliado')), total: total(d, 'personas'), unidad: ['persona', 'personas'] },
+          { etiqueta: 'Personas con alguna barrera para recibir sus atenciones', item: '89',
+            n: total(d, 'conBarreras'), total: total(d, 'respondieronBarreras'), unidad: ['persona que respondió', 'personas que respondieron'] },
+          { etiqueta: 'Personas con una condición de salud que no reciben atención ni tratamiento', item: '103',
+            n: sumaSi(d, 'tratamiento', es('no')), total: sumaSi(d, 'tratamiento', es('si', 'no')),
+            unidad: ['persona con alguna condición', 'personas con alguna condición'] },
+          { etiqueta: 'Personas con alerta nutricional por déficit o exceso de peso', item: '96',
+            n: sumaSi(d, 'antropometria', conAlertaNutricional), total: sumaSi(d, 'antropometria', function () { return true; }),
+            unidad: ['persona valorada', 'personas valoradas'] },
+          { etiqueta: 'Menores de 6 meses sin lactancia materna exclusiva', item: '91',
+            n: sumaSi(d, 'lactancia', es('no')), total: sumaSi(d, 'lactancia', es('si', 'no')), unidad: ['menor de 6 meses', 'menores de 6 meses'] },
+          { etiqueta: 'Viviendas con hacinamiento', item: '33',
+            n: total(d, 'hacinamiento'), total: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] }
+        ] };
+    } },
+    { id: 'enfermedades', ancho: 7, construir: function (d) {
+      return { tipo: 'barras', titulo: 'Enfermedades crónicas diagnosticadas', sub: 'Personas con cada enfermedad no transmisible; una persona puede tener varias', item: '100',
+        filas: filasDe(d, 'enfermedadesNT', CAT_ENFERMEDADES_NO_TRANSMISIBLES, { excluir: ['ninguna'] }),
+        base: total(d, 'personas'), unidad: ['persona', 'personas'] };
+    } },
+    /* Con una comuna elegida, una barra por comuna ya no dice nada: se abre
+       en sus territorios. */
+    { id: 'ubicacion', ancho: 5, construir: function (d) {
+      const comuna = d.filtros && d.filtros.comuna;
+      if (comuna) {
+        return { tipo: 'barras', titulo: 'Viviendas por territorio', sub: 'Dónde están las viviendas caracterizadas · ' + etiquetaComuna(comuna),
+          filas: filasDe(d, 'territorio', [], { nombrar: nombreTerritorio }), base: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] };
+      }
+      return { tipo: 'barras', titulo: 'Viviendas por comuna', sub: 'Dónde están las viviendas caracterizadas',
+        filas: filasDe(d, 'comuna', [], { nombrar: etiquetaComuna }), base: total(d, 'viviendas'), unidad: ['vivienda', 'viviendas'] };
+    } }
+  ];
 
   /* ---------------------------------------------------------
      Tabla de una especificación (la misma para la vista de tabla y el CSV)
@@ -505,8 +318,8 @@
 
   function tablaDe(spec) {
     if (spec.tipo === 'cadena') {
-      return { columnas: ['Nivel', 'Cantidad', 'Razón'],
-        filas: spec.niveles.map(function (n) { return [n.etiqueta, n.valor, n.detalle || '']; }) };
+      return { columnas: ['Nivel', 'Cantidad'],
+        filas: spec.niveles.map(function (n) { return [n.etiqueta, n.valor]; }) };
     }
     if (spec.tipo === 'tejas') {
       return { columnas: ['Grupo', 'Personas', 'Detalle'],
@@ -514,9 +327,7 @@
     }
     if (spec.tipo === 'medidores') {
       return { columnas: ['Indicador', 'Cantidad', 'De', 'Porcentaje'],
-        filas: spec.medidores.map(function (m) {
-          return [m.etiqueta, m.n, m.soloCifra ? '' : m.total, m.soloCifra ? '' : porcentaje(m.n, m.total)];
-        }) };
+        filas: spec.medidores.map(function (m) { return [m.etiqueta, m.n, m.total, porcentaje(m.n, m.total)]; }) };
     }
     if (spec.tipo === 'espejo') {
       const conIntersexual = spec.filas.some(function (f) { return f.intersexual > 0; });
@@ -560,7 +371,6 @@
       valor.dataset.cifra = String(n.valor);
       li.appendChild(valor);
       li.appendChild(elemento('span', 'cadena__etiqueta', n.etiqueta));
-      li.appendChild(elemento('span', 'cadena__detalle', n.detalle || ''));
       if (n.aviso) {
         const aviso = elemento('span', 'cadena__aviso');
         const punto = elemento('span', 'cadena__aviso-punto');
@@ -618,29 +428,6 @@
     return lista;
   }
 
-  /* Columnas para las escalas cortas (estrato, integrantes): la cifra en la
-     punta y la categoría debajo. */
-  function pintarColumnas(spec) {
-    const bloque = elemento('div', 'tcolumnas');
-    bloque.style.setProperty('--columnas', spec.filas.length);
-    const maximo = spec.filas.reduce(function (m, f) { return Math.max(m, f.n); }, 0) || 1;
-    spec.filas.forEach(function (f, i) {
-      const col = elemento('div', 'tcolumna' + (f.n === 0 ? ' is-cero' : ''));
-      col.style.setProperty('--orden', i);
-      const area = elemento('div', 'tcolumna__area');
-      const valor = elemento('span', 'tcolumna__valor', cantidad(f.n));
-      const barra = elemento('span', 'tcolumna__barra');
-      barra.setAttribute('aria-hidden', 'true');
-      barra.style.setProperty('--proporcion', (f.n / maximo).toFixed(4));
-      area.appendChild(valor);
-      area.appendChild(barra);
-      col.appendChild(area);
-      col.appendChild(elemento('span', 'tcolumna__nombre', f.etiqueta));
-      bloque.appendChild(col);
-    });
-    return bloque;
-  }
-
   /* Espejo: hombres a la izquierda (azul Ladera), mujeres a la derecha
      (frambuesa), la categoría en el eje. Las dos alas comparten la escala.
      Con etiquetas largas, la categoría pasa encima de las barras. */
@@ -696,7 +483,7 @@
     return bloque;
   }
 
-  /* Composición de una escala graduada (APGAR, Zarit, riesgo): una barra
+  /* Composición de una escala graduada (el riesgo familiar): una barra
      partida con los colores del semáforo y, debajo, cada grado con su
      punto, su nombre y su cifra. El color nunca va solo. */
   function pintarComposicion(spec) {
@@ -735,21 +522,17 @@
     spec.medidores.forEach(function (m, i) {
       const li = elemento('li', 'medidor' + (m.n === 0 ? ' is-cero' : ''));
       li.style.setProperty('--orden', i);
-      const cabeza = elemento('div', 'medidor__cabeza');
-      cabeza.appendChild(elemento('span', 'medidor__valor', m.soloCifra ? cantidad(m.n) : porcentaje(m.n, m.total)));
-      cabeza.appendChild(elemento('span', 'medidor__etiqueta', m.etiqueta));
-      li.appendChild(cabeza);
-      if (!m.soloCifra) {
-        const pista = elemento('span', 'medidor__pista');
-        pista.setAttribute('aria-hidden', 'true');
-        const relleno = elemento('span', 'medidor__relleno');
-        relleno.style.setProperty('--proporcion', m.total ? Math.min(1, m.n / m.total).toFixed(4) : '0');
-        pista.appendChild(relleno);
-        li.appendChild(pista);
-      }
-      const detalle = m.soloCifra ? (m.detalle || '') :
-        cantidad(m.n) + ' de ' + cantidad(m.total) + ' ' + (m.unidad ? segun(m.total, m.unidad[0], m.unidad[1]) : '');
-      li.appendChild(elemento('span', 'medidor__detalle', detalle));
+      li.appendChild(elemento('span', 'medidor__valor', porcentaje(m.n, m.total)));
+      const pista = elemento('span', 'medidor__pista');
+      pista.setAttribute('aria-hidden', 'true');
+      const relleno = elemento('span', 'medidor__relleno');
+      relleno.style.setProperty('--proporcion', m.total ? Math.min(1, m.n / m.total).toFixed(4) : '0');
+      pista.appendChild(relleno);
+      li.appendChild(pista);
+      li.appendChild(elemento('span', 'medidor__etiqueta', m.etiqueta));
+      li.appendChild(elemento('span', 'medidor__detalle', m.total
+        ? cantidad(m.n) + ' de ' + cantidad(m.total) + ' ' + segun(m.total, m.unidad[0], m.unidad[1])
+        : 'Nada registrado en el período'));
       lista.appendChild(li);
     });
     return lista;
@@ -785,7 +568,7 @@
   }
 
   const PINTORES = {
-    cadena: pintarCadena, tejas: pintarTejas, barras: pintarBarras, columnas: pintarColumnas,
+    cadena: pintarCadena, tejas: pintarTejas, barras: pintarBarras,
     espejo: pintarEspejo, composicion: pintarComposicion, medidores: pintarMedidores
   };
 
@@ -808,7 +591,6 @@
     cabecera.appendChild(textos);
 
     const acciones = elemento('div', 'tpanel__acciones');
-    if (spec.item) acciones.appendChild(elemento('span', 'tpanel__item', 'Ítem ' + spec.item));
     const vacio = sinDatos(spec);
     let alternar = null;
     if (!vacio && spec.tipo !== 'cadena' && spec.tipo !== 'tejas') {
@@ -825,14 +607,12 @@
 
     if (vacio) {
       seccion.appendChild(elemento('p', 'tpanel__vacio', 'Nada registrado en este período con estos filtros.'));
-      if (spec.nota) seccion.appendChild(elemento('p', 'tpanel__nota', spec.nota));
       return seccion;
     }
 
     const grafico = elemento('div', 'tpanel__grafico');
     grafico.appendChild(PINTORES[spec.tipo](spec));
     seccion.appendChild(grafico);
-    if (spec.nota) seccion.appendChild(elemento('p', 'tpanel__nota', spec.nota));
 
     if (alternar) {
       const tabla = pintarTabla(spec);
@@ -856,17 +636,11 @@
      --------------------------------------------------------- */
 
   const estado = {
-    tablero: 'principal',
-    pagina: { hogares: 'estructura', personas: 'demografia' },
     datos: null,
     version: 0,
     consultando: false,
     consultadoEn: null
   };
-
-  function paginaActual() {
-    return estado.tablero === 'principal' ? 'principal' : estado.pagina[estado.tablero];
-  }
 
   function mostrarError(texto) {
     $('tableroError').textContent = texto;
@@ -897,28 +671,6 @@
     return null;
   }
 
-  function pintarPaginas() {
-    const def = TABLEROS[estado.tablero];
-    const nav = $('tableroPaginas');
-    nav.innerHTML = '';
-    nav.hidden = def.paginas.length < 2;
-    if (nav.hidden) return;
-    def.paginas.forEach(function (p, i) {
-      const boton = elemento('button', 'tablero-paginas__item');
-      boton.type = 'button';
-      boton.dataset.pagina = p.id;
-      boton.appendChild(elemento('span', 'tablero-paginas__numero', String(i + 1)));
-      boton.appendChild(elemento('span', null, p.titulo));
-      if (p.id === paginaActual()) boton.setAttribute('aria-current', 'page');
-      boton.addEventListener('click', function () {
-        if (p.id === paginaActual()) return;
-        estado.pagina[estado.tablero] = p.id;
-        pintar('pagina');
-      });
-      nav.appendChild(boton);
-    });
-  }
-
   function pintarFuente() {
     const fuente = $('tableroFuente');
     const d = estado.datos;
@@ -947,14 +699,12 @@
     });
   }
 
-  /* `motivo`: 'pagina' (otro tablero u otra página: los paneles entran),
-     'datos' (respuesta nueva con los mismos paneles: las cifras cuentan y las
-     barras crecen, sin volver a entrar) o 'primera' (las dos cosas). */
+  /* `motivo`: 'abrir' (se vuelve al tablero: los paneles entran), 'datos'
+     (respuesta nueva: las cifras cuentan y las barras crecen, sin volver a
+     entrar) o 'primera' (las dos cosas). */
   function pintar(motivo) {
-    const def = TABLEROS[estado.tablero];
-    $('tableroTitulo').textContent = def.titulo;
-    $('tableroDescripcion').textContent = def.descripcion;
-    pintarPaginas();
+    $('tableroTitulo').textContent = TABLERO.titulo;
+    $('tableroDescripcion').textContent = TABLERO.descripcion;
 
     const destino = $('tableroContenido');
     destino.innerHTML = '';
@@ -978,8 +728,8 @@
       return;
     }
 
-    const entra = motivo === 'pagina' || motivo === 'primera';
-    (PANELES[clavePagina(estado.tablero, paginaActual())] || []).forEach(function (panel, i) {
+    const entra = motivo === 'abrir' || motivo === 'primera';
+    PANELES.forEach(function (panel, i) {
       destino.appendChild(pintarPanel(panel, panel.construir(d), i, entra));
     });
     /* Las barras crecen desde su base al pintarse: una vez por pintado, nunca
@@ -1095,8 +845,9 @@
   }
 
   /* ---------------------------------------------------------
-     Descarga para Excel: todos los paneles del tablero abierto, en todas sus
-     páginas. «;» como separador y BOM, como el CSV de productividad.
+     Descarga para Excel: todos los paneles del tablero, con el ítem del
+     instrumento de cada uno. «;» como separador y BOM, como el CSV de
+     productividad.
      --------------------------------------------------------- */
 
   function celdaCsv(valor) {
@@ -1118,28 +869,25 @@
   function descargar() {
     const d = estado.datos;
     if (!d) return;
-    const def = TABLEROS[estado.tablero];
     const lineas = [];
     const fila = function (celdas) { lineas.push(celdas.map(celdaCsv).join(';')); };
-    fila(['Tablero de población · ' + def.titulo]);
+    fila([TABLERO.titulo]);
     fila(['Período', d.periodo.desde + ' a ' + d.periodo.hasta]);
     fila(['Filtros', describirFiltros()]);
     fila(['Fuente', 'Fichas con consentimiento; de cada vivienda, su visita más reciente']);
-    def.paginas.forEach(function (pagina) {
-      (PANELES[clavePagina(estado.tablero, pagina.id)] || []).forEach(function (panel) {
-        const spec = panel.construir(d);
-        const t = tablaDe(spec);
-        lineas.push('');
-        fila([(def.paginas.length > 1 ? pagina.titulo + ' · ' : '') + spec.titulo + (spec.item ? ' (ítem ' + spec.item + ')' : '')]);
-        fila(t.columnas);
-        t.filas.forEach(fila);
-      });
+    PANELES.forEach(function (panel) {
+      const spec = panel.construir(d);
+      const t = tablaDe(spec);
+      lineas.push('');
+      fila([spec.titulo + (spec.item ? ' (ítem ' + spec.item + ')' : '')]);
+      fila(t.columnas);
+      t.filas.forEach(fila);
     });
     const blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const enlace = document.createElement('a');
     enlace.href = url;
-    enlace.download = 'tablero_' + estado.tablero + '_' + d.periodo.desde + '_' + d.periodo.hasta + '.csv';
+    enlace.download = 'tablero_poblacion_' + d.periodo.desde + '_' + d.periodo.hasta + '.csv';
     document.body.appendChild(enlace);
     enlace.click();
     enlace.remove();
@@ -1151,9 +899,7 @@
      --------------------------------------------------------- */
 
   const DESTINOS = {
-    principal: { vista: 'tableros', tablero: 'principal', permiso: PERMISO },
-    hogares: { vista: 'tableros', tablero: 'hogares', permiso: PERMISO },
-    personas: { vista: 'tableros', tablero: 'personas', permiso: PERMISO },
+    poblacion: { vista: 'tableros', permiso: PERMISO },
     productividad: { vista: 'productividad', permiso: 'productividad.ver' },
     descargas: { vista: 'reporte', permiso: 'reporte.generar' }
   };
@@ -1162,13 +908,12 @@
     return Object.keys(DESTINOS).some(function (k) { return SESION.puede(DESTINOS[k].permiso); });
   }
 
-  function abrirTablero(cual) {
+  function abrirTablero() {
     if (!SESION.puede(PERMISO)) return;
-    estado.tablero = TABLEROS[cual] ? cual : 'principal';
     cambiarVista('tableros');
     if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
     if (!estado.datos && !estado.consultando) consultar();
-    else pintar('pagina');
+    else pintar('abrir');
   }
 
   function abrirReportes(destino) {
@@ -1176,7 +921,7 @@
     if (disponibles.length === 0) return;
     const clave = disponibles.indexOf(destino) !== -1 ? destino : disponibles[0];
     const d = DESTINOS[clave];
-    if (d.vista === 'tableros') abrirTablero(d.tablero);
+    if (d.vista === 'tableros') abrirTablero();
     else if (d.vista === 'productividad' && window.PRODUCTIVIDAD) window.PRODUCTIVIDAD.abrir();
     else if (d.vista === 'reporte' && window.REPORTE_SISPRO) window.REPORTE_SISPRO.abrir();
   }
@@ -1191,7 +936,7 @@
     const menu = $('reportesMenu');
     if (!menu) return;
     menu.hidden = !enApartado;
-    const actual = nombre === 'tableros' ? estado.tablero : nombre === 'productividad' ? 'productividad' :
+    const actual = nombre === 'tableros' ? 'poblacion' : nombre === 'productividad' ? 'productividad' :
       nombre === 'reporte' ? 'descargas' : null;
     menu.querySelectorAll('[data-reporte]').forEach(function (item) {
       if (item.dataset.reporte === actual) item.setAttribute('aria-current', 'page');
