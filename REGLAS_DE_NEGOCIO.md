@@ -1300,6 +1300,8 @@ La aplicación debe operar **de forma autónoma sin conexión a internet**, cond
 5. Las alertas de prioridad INMEDIATA (RN-201 a RN-204, RN-206) deben notificarse por el canal disponible más rápido **sin esperar la sincronización completa** de la ficha.
 6. El dispositivo debe **bloquearse automáticamente por inactividad** y exigir autenticación del responsable para reanudar.
 
+> **Cómo se cumple hoy.** La aplicación se instala en el teléfono y abre sin señal (`sw.js`). El bloqueo (punto 6) sobrevive a cerrar la aplicación y, sin señal, la contraseña se verifica contra una derivación que queda en el dispositivo al ingresar con señal, vigente 7 días desde la última confirmación del servidor. **Siguen abiertos:** el punto 1 —las fichas están en `localStorage` sin cifrar— y el punto 2 —la sincronización es manual, con «Sincronizar ahora»—. Si el dispositivo se queda sin espacio se sueltan las copias más antiguas de lo ya subido, nunca lo pendiente (punto 3).
+
 ### RN-224 — Protección de datos y confidencialidad
 
 Conforme a la Ley 1581 de 2012, el Decreto 1377 de 2013 y la Ley 1751 de 2015:

@@ -1080,8 +1080,42 @@ function obtenerEncuestas() {
   }
 }
 
+/* El almacenamiento del navegador es pequeño (2,5 a 5 millones de caracteres
+   según el navegador) y cada ficha guardada se quedaba en él para siempre, aun ya
+   subida: con el uso se llenaba, y entonces ni una ficha nueva se podía guardar.
+   Si no cabe, se sueltan las copias más antiguas de lo que ya está en la base, de
+   donde el historial y la corrección lo traen igual. Lo que no ha subido nunca se
+   toca (RN-223.3). Devuelve la lista sin la soltada, o null si no hay qué soltar. */
+function sinLaCopiaYaSubidaMasAntigua(encuestas) {
+  for (let i = encuestas.length - 1; i >= 0; i--) {
+    if (encuestas[i].sincronizada === true) {
+      return encuestas.slice(0, i).concat(encuestas.slice(i + 1));
+    }
+  }
+  return null;
+}
+
+/** @throws si no cabe ni soltando todo lo ya subido: lo que queda son pendientes. */
 function guardarEncuestas(encuestas) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(encuestas));
+  let lista = encuestas;
+  for (;;) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+      return;
+    } catch (error) {
+      const menos = sinLaCopiaYaSubidaMasAntigua(lista);
+      if (!menos) throw error;
+      lista = menos;
+    }
+  }
+}
+
+/** Libera espacio para otra escritura (ver captura_local.js). Dice si pudo. */
+function soltarCopiaYaSubida() {
+  const menos = sinLaCopiaYaSubidaMasAntigua(obtenerEncuestas());
+  if (!menos) return false;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(menos));
+  return true;
 }
 
 function agregarEncuesta(encuesta) {
@@ -4850,18 +4884,32 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      no se pudo guardar, sí se conserva aquí, pendiente de sincronizar, para
      no perder la corrección. */
   const eraCorreccion = Boolean(encuestaEnCorreccion);
-  if (encuestaEnCorreccion) {
-    /* El plan se evoluciona desde la base; si además hay una copia en el
-       dispositivo, se pone al día para que el historial no muestre el plan
-       de antes. */
-    const hayCopiaLocal = obtenerEncuestas().some(function (e) { return e.id === encuestaEnCorreccion; });
-    if (!(correccionDesdeServidor && encuesta.sincronizada) || ((enPlan || enCompletar) && hayCopiaLocal)) {
-      reemplazarEncuesta(encuestaEnCorreccion, encuesta);
+  try {
+    if (encuestaEnCorreccion) {
+      /* El plan se evoluciona desde la base; si además hay una copia en el
+         dispositivo, se pone al día para que el historial no muestre el plan
+         de antes. */
+      const hayCopiaLocal = obtenerEncuestas().some(function (e) { return e.id === encuestaEnCorreccion; });
+      if (!(correccionDesdeServidor && encuesta.sincronizada) || ((enPlan || enCompletar) && hayCopiaLocal)) {
+        reemplazarEncuesta(encuestaEnCorreccion, encuesta);
+      }
+    } else {
+      agregarEncuesta(encuesta);
     }
-    salirDeCorreccion();
-  } else {
-    agregarEncuesta(encuesta);
+  } catch (error) {
+    /* No cupo ni soltando lo ya subido: sólo quedan pendientes. Si tampoco llegó
+       a la base, esta ficha no está en ninguna parte más que en pantalla, y
+       limpiar el formulario la perdería. */
+    console.error('No fue posible guardar la ficha en el dispositivo:', error);
+    if (!encuesta.sincronizada) {
+      mostrarNotificacion(
+        'No hay espacio en este equipo para guardar la ficha, y no hubo conexión con el servidor. ' +
+        'Sincronice las fichas pendientes cuando tenga señal para liberar espacio. ' +
+        'La ficha sigue en pantalla: no cierre la aplicación.', 'error');
+      return false;
+    }
   }
+  if (encuestaEnCorreccion) salirDeCorreccion();
 
   if (encuesta.sincronizada && enPlan) {
     mostrarNotificacion(mensaje + ' Lo registrado ya no se puede cambiar sin autorización de la coordinación del ' +

@@ -3592,11 +3592,15 @@ button.atencion__fila:focus-visible {
   align-items: flex-start;
   align-content: flex-start;
 }
-.radio-group--compacto .radio-pill { 
-  padding: 6px 11px; 
-  font-size: 12.5px; 
+.radio-group--compacto .radio-pill {
+  padding: 6px 11px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
+/* `.plan-table input` es para los campos de texto, y a los botones de opción también
+   les daba ancho 100 % y relleno: Chromium los encogía a su tamaño, pero WebKit los
+   dejaba en ancho 0 y la opción se veía sin su círculo. */
+.plan-table .radio-pill input { flex: none; width: auto; padding: 0; box-shadow: none; }
 
 /* =========================================================
    PLAN DE CUIDADO (sección 6)
@@ -5419,6 +5423,7 @@ button.atencion__fila:focus-visible {
 .swal2-styled.swal2-deny {
   border-radius: var(--r-chip) !important;
   padding: 10px var(--s-5) !important;
+  font-family: inherit !important;
   font-size: var(--fs-label) !important;
   font-weight: 600 !important;
   letter-spacing: -0.005em !important;
@@ -7253,4 +7258,195 @@ html.nivel-administrador #sincronia { display: none; }
   .tablero-filtros { padding: var(--s-4); }
   .tablero-filtros__campos input,
   .tablero-filtros__campos select { font-size: 16px; }
+}
+
+/* =========================================================================
+   Aplicación instalada: pantalla bloqueada, versión nueva, instalación
+   ========================================================================= */
+
+/* Lo que hay detrás del velo de bloqueo no se ve. Se pone desde la cabecera
+   (sesion.js) para que, al abrir bloqueada, no alcance a pintarse. */
+html.pantalla-bloqueada .app-header,
+html.pantalla-bloqueada .app-main { visibility: hidden; }
+
+/* iOS acerca la página al enfocar un control con letra de menos de 16 px, y no la
+   devuelve sola. Ya valía para el formulario; quedaban los filtros del historial,
+   los usuarios y los campos en letra monoespaciada. Lo de sólo lectura no se
+   escribe ni acerca, y su texto largo (los códigos) cabe mejor como está. */
+@media (max-width: 720px), (max-width: 1024px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([readonly]):not(:disabled),
+  select:not(:disabled),
+  textarea:not([readonly]):not(:disabled) { font-size: 16px !important; }
+}
+
+/* ---- Versión nueva: se avisa sin interrumpir, abajo y debajo del velo ---- */
+.aviso-version {
+  position: fixed;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: calc(var(--s-3) + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  max-width: 560px;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  border-radius: var(--r-card);
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--fs-label);
+  line-height: 1.45;
+  box-shadow: var(--sh-3);
+}
+.aviso-version__texto { flex: 1 1 240px; min-width: 0; }
+.aviso-version__acciones { flex: none; display: flex; gap: var(--s-2); margin-left: auto; }
+.aviso-version__boton {
+  min-height: 44px;
+  padding: 8px var(--s-3);
+  border: none;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+.aviso-version__boton--principal { background: #fff; color: var(--brand-700); font-weight: 700; }
+
+/* ---- Enlace a la instalación, bajo la tarjeta de acceso ------------------ */
+.acceso__instalar {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--brand-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--brand-300);
+}
+.acceso__instalar[hidden] { display: none; }
+.acceso__instalar i { font-size: 18px; }
+
+/* ---- Página de instalación ----------------------------------------------- */
+.cuerpo-instalar {
+  min-height: 100vh;
+  padding: var(--s-6) var(--s-4) var(--s-10);
+  background: var(--bg-page);
+}
+
+.instalar {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.instalar__cabecera { display: flex; flex-direction: column; align-items: center; gap: var(--s-2); text-align: center; }
+.instalar__logo { width: auto; height: 72px; }
+.instalar__titulo { margin: var(--s-2) 0 0; font-size: var(--fs-h1); font-weight: 800; letter-spacing: -0.02em; color: var(--ink-900); }
+.instalar__texto { margin: 0; font-size: var(--fs-body); line-height: 1.55; color: var(--ink-600); }
+
+.instalar__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-control);
+  background: var(--warn-50);
+  box-shadow: inset 0 0 0 1px var(--warn-100);
+  color: var(--warn-700);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.instalar__aviso[hidden] { display: none; }
+.instalar__aviso i { flex: none; font-size: 18px; margin-top: 1px; }
+.instalar__aviso--ok { background: var(--ok-50); box-shadow: inset 0 0 0 1px var(--ok-100); color: var(--ok-700); }
+
+.instalar__selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-control);
+  background: var(--bg-panel);
+}
+.instalar__opcion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-600);
+  font-family: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+.instalar__opcion i { font-size: 18px; }
+.instalar__opcion[aria-pressed="true"] { background: #fff; color: var(--brand-700); box-shadow: var(--sh-1); }
+
+.instalar__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  border-radius: var(--r-card);
+  background: var(--bg-card);
+  box-shadow: var(--sh-hair), var(--sh-1);
+}
+.instalar__bloque.is-oculto { display: none; }
+.instalar__bloque--cuidado { background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand-100); }
+.instalar__subtitulo { margin: 0; font-size: var(--fs-h2); font-weight: 700; letter-spacing: -0.01em; color: var(--ink-900); }
+
+.instalar__boton { width: 100%; justify-content: space-between; margin: 0; }
+.instalar__boton[hidden] { display: none; }
+
+.instalar__pasos,
+.instalar__notas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0 0 0 var(--s-5);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-700);
+}
+.instalar__pasos li::marker { font-weight: 700; color: var(--brand-600); }
+.instalar__pasos strong,
+.instalar__notas strong { font-weight: 700; color: var(--ink-900); }
+
+.instalar__pie { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-2); }
+.instalar__entrar { width: 100%; justify-content: space-between; margin: 0; text-decoration: none; }
+.instalar__ayuda { margin: 0; font-size: var(--fs-small); line-height: 1.5; text-align: center; color: var(--ink-500); }
+
+/* Impresa o en PDF es una hoja para repartir: salen los dos sistemas y nada que
+   haya que tocar. */
+@media print {
+  .cuerpo-instalar { padding: 0; background: #fff; }
+  .instalar { max-width: none; gap: 10px; font-size: 12px; }
+  .instalar__logo { height: 54px; }
+  .instalar__selector,
+  .instalar__aviso,
+  .instalar__boton,
+  .instalar__entrar { display: none !important; }
+  .instalar__bloque.is-oculto { display: flex; }
+  .instalar__bloque { padding: 10px 14px; gap: 6px; box-shadow: none; border: 1px solid var(--ink-200); break-inside: avoid; }
+  .instalar__bloque--cuidado { background: #fff; }
+  .instalar__pasos, .instalar__notas { gap: 4px; font-size: 12.5px; }
+  .instalar__titulo { font-size: 22px; }
+  .instalar__subtitulo { font-size: 15px; }
 }

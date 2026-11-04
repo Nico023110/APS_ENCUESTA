@@ -38,6 +38,7 @@ const TIPOS = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.csv': 'text/csv; charset=utf-8',
   '.pdf': 'application/pdf',
   '.md': 'text/plain; charset=utf-8',
@@ -52,16 +53,16 @@ const TIPOS = {
 /* Tipos de texto: se comprimen con gzip si el navegador lo acepta. El JS y
    el CSS de la aplicación suman ~1,2 MB y bajan a ~300 KB; en un teléfono
    con datos móviles es la diferencia que más se nota. */
-const COMPRIMIBLES = ['.html', '.js', '.css', '.json', '.csv', '.md', '.svg'];
+const COMPRIMIBLES = ['.html', '.js', '.css', '.json', '.webmanifest', '.csv', '.md', '.svg'];
 
 /* Nunca se sirven por HTTP, aunque estén en la carpeta del proyecto. */
 const VETADOS = [/^\.env/, /^\.git/, /^node_modules/, /^bd\//, /^pruebas\//, /^\.claude/, /^\.impeccable/];
 
 /* Cabeceras de seguridad. Las mismas que declara vercel.json para producción;
    aquí se aplican en desarrollo para que lo que rompa la CSP rompa antes de
-   desplegar. Los orígenes permitidos son exactamente los CDN que index.html
-   ya carga: iconos y SweetAlert2 (jsdelivr) y Google Fonts. unpkg salió en
-   octubre de 2026, cuando los iconos pasaron a una hoja fija de jsdelivr. */
+   desplegar. Fuentes, iconos y avisos se sirven desde la aplicación (vendor/)
+   para que abra sin señal, así que ya no hay ningún CDN permitido: lo único
+   externo es la geocodificación. */
 const CABECERAS_SEGURIDAD = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
@@ -69,11 +70,11 @@ const CABECERAS_SEGURIDAD = {
   'Permissions-Policy': 'camera=(), microphone=(), payment=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     "img-src 'self' data:",
-    "connect-src 'self' https://nominatim.openstreetmap.org https://cdn.jsdelivr.net",
+    "connect-src 'self' https://nominatim.openstreetmap.org",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
@@ -344,6 +345,11 @@ const servidor = http.createServer(function (peticion, respuesta) {
 
   if (ruta === '/login' || ruta === '/login/') {
     atenderEstatico(peticion, respuesta, 'login.html');
+    return;
+  }
+
+  if (ruta === '/instalar' || ruta === '/instalar/') {
+    atenderEstatico(peticion, respuesta, 'instalar.html');
     return;
   }
 

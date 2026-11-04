@@ -12,8 +12,10 @@
    2. fetch. Toda llamada a /api/ lleva la cabecera anti-CSRF y la cookie;
       un 401 cierra la sesión local y vuelve al inicio de sesión.
    3. Bloqueo por inactividad (RN-223.6). Tras 20 minutos sin tocar la
-      pantalla se cubre la aplicación y se pide la contraseña de nuevo. La
-      ficha en curso no se pierde: sigue debajo.
+      pantalla se cubre la aplicación y se pide la contraseña de nuevo; también
+      si se cerró y se vuelve a abrir. Sin señal, la contraseña se verifica
+      contra la copia del dispositivo (acceso_local.js). La ficha en curso no se
+      pierde: sigue debajo.
    4. Firma. Los ítems 10 y 12-14 (equipo y responsable) se escriben desde la
       sesión y quedan fijos; el servidor los impone igual, esto sólo evita que
       el encuestador los teclee.
@@ -23,12 +25,33 @@
   'use strict';
 
   const CLAVE_CACHE = 'aps_sesion_usuario';
+  const CLAVE_ACTIVIDAD = 'aps_ultima_actividad';
+  const CLAVE_BLOQUEADA = 'aps_pantalla_bloqueada';
   const RUTA_LOGIN = '/login.html';
   const INACTIVIDAD_BLOQUEO_MS = 20 * 60 * 1000;
   const REVISION_INACTIVIDAD_MS = 30 * 1000;
+  const ANOTAR_ACTIVIDAD_CADA_MS = 15 * 1000;
+
+  /* Cuánto se le espera al servidor antes de seguir como si no hubiera señal.
+     Con una rayita de cobertura navigator.onLine dice que hay red y la petición
+     se queda colgada varios minutos: quien está en la vivienda no puede esperar
+     a que el sistema se rinda, y la ficha se conserva igual. Un reenvío no
+     duplica nada: el servidor reconoce la ficha por su código. Lo demás (los
+     reportes, que tardan) no lleva límite. */
+  const LIMITE_API_MS = {
+    '/api/guardar_encuesta': 45000,
+    '/api/listar_fichas': 20000,
+    '/api/sesion': 15000,
+    '/api/cerrar_sesion': 8000,
+    '/api/catalogo_acciones': 20000,
+    '/api/catalogo_dinamico': 20000,
+    '/api/buscar_cups': 10000
+  };
+  const LIMITE_DESBLOQUEO_MS = 10000;
 
   let usuario = leerCache();
-  let ultimaActividad = Date.now();
+  let ultimaActividad = leerUltimaActividad();
+  let actividadAnotada = ultimaActividad;
   let bloqueada = false;
 
   /* ---------------------------------------------------------
@@ -54,6 +77,40 @@
     try { localStorage.removeItem(CLAVE_CACHE); } catch (error) { /* sin almacenamiento */ }
   }
 
+  /* Sin marca se cuenta desde ahora: es un ingreso recién hecho (login.js la
+     retira) o una sesión de antes de que existiera. */
+  function leerUltimaActividad() {
+    try {
+      const marca = parseInt(localStorage.getItem(CLAVE_ACTIVIDAD), 10);
+      return Number.isFinite(marca) && marca > 0 ? marca : Date.now();
+    } catch (error) {
+      return Date.now();
+    }
+  }
+
+  function anotarUltimaActividad() {
+    actividadAnotada = ultimaActividad;
+    try { localStorage.setItem(CLAVE_ACTIVIDAD, String(ultimaActividad)); } catch (error) { /* sin almacenamiento */ }
+  }
+
+  function anotarBloqueo(activo) {
+    try {
+      if (activo) localStorage.setItem(CLAVE_BLOQUEADA, 'si');
+      else localStorage.removeItem(CLAVE_BLOQUEADA);
+    } catch (error) { /* sin almacenamiento */ }
+  }
+
+  /* El bloqueo vivía sólo en la memoria de la página: cerrar la aplicación y
+     volver a abrirla entraba sin contraseña, y un teléfono devuelve la
+     aplicación recargada cada vez que el sistema la saca de memoria. Abre
+     bloqueada si quedó bloqueada o si pasó el tiempo sin usarla. */
+  function debeAbrirBloqueada() {
+    try {
+      if (localStorage.getItem(CLAVE_BLOQUEADA) === 'si') return true;
+    } catch (error) { /* sin almacenamiento */ }
+    return Date.now() - ultimaActividad >= INACTIVIDAD_BLOQUEO_MS;
+  }
+
   function irAlInicioDeSesion(motivo) {
     const destino = RUTA_LOGIN + (motivo ? '?motivo=' + encodeURIComponent(motivo) : '');
     document.documentElement.classList.add('sin-sesion');
@@ -72,19 +129,51 @@
 
   document.documentElement.classList.add('con-sesion', 'nivel-' + usuario.nivel);
 
+  /* Antes de pintar nada: lo que hay en pantalla no se ve hasta dar la clave. */
+  const abrirBloqueada = debeAbrirBloqueada();
+  if (abrirBloqueada) document.documentElement.classList.add('pantalla-bloqueada');
+
   /* ---------------------------------------------------------
      2. FETCH
      --------------------------------------------------------- */
 
   const fetchOriginal = window.fetch.bind(window);
 
-  function esApiPropia(url) {
+  function rutaDe(url) {
     try {
       const resuelta = new URL(url, window.location.origin);
-      return resuelta.origin === window.location.origin && resuelta.pathname.indexOf('/api/') === 0;
+      return resuelta.origin === window.location.origin ? resuelta.pathname : null;
     } catch (error) {
-      return false;
+      return null;
     }
+  }
+
+  function esApiPropia(url) {
+    const ruta = rutaDe(url);
+    return ruta !== null && ruta.indexOf('/api/') === 0;
+  }
+
+  /* Pone tope de tiempo a una petición, respetando la señal que ya traiga (la
+     búsqueda de CUPS cancela la anterior). Devuelve con qué soltar el tope. */
+  function ponerLimite(conf, limiteMs) {
+    if (!limiteMs || typeof AbortController !== 'function') return function () {};
+
+    const control = new AbortController();
+    const propia = conf.signal;
+    if (propia) {
+      if (propia.aborted) control.abort(propia.reason);
+      else propia.addEventListener('abort', function () { control.abort(propia.reason); }, { once: true });
+    }
+    conf.signal = control.signal;
+
+    /* Con otro nombre que el de una cancelación: el buscador de CUPS calla las
+       cancelaciones, y esto sí es «no hubo respuesta». */
+    const temporizador = setTimeout(function () {
+      const error = new Error('El servidor no respondió a tiempo');
+      error.name = 'TimeoutError';
+      control.abort(error);
+    }, limiteMs);
+    return function () { clearTimeout(temporizador); };
   }
 
   window.fetch = function (entrada, opciones) {
@@ -96,9 +185,12 @@
     cabeceras.set('X-Requested-With', 'fetch');
     conf.headers = cabeceras;
     conf.credentials = 'same-origin';
+    const soltarLimite = ponerLimite(conf, LIMITE_API_MS[rutaDe(url)]);
 
     return fetchOriginal(entrada, conf).then(function (respuesta) {
+      soltarLimite();
       if (respuesta.status === 401) {
+        if (window.ACCESO_LOCAL) window.ACCESO_LOCAL.olvidarSesion();
         cerrarLocalmente('expirada');
       } else if (respuesta.status === 403) {
         respuesta.clone().json().then(function (cuerpo) {
@@ -106,6 +198,9 @@
         }).catch(function () {});
       }
       return respuesta;
+    }, function (error) {
+      soltarLimite();
+      throw error;
     });
   };
 
@@ -135,8 +230,15 @@
       return respuesta.json();
     }).then(function (cuerpo) {
       if (cuerpo && cuerpo.usuario) {
+        /* La sesión de otra persona no se adopta en silencio: lo que se guardara
+           de aquí en adelante saldría firmado por ella. */
+        if (String(cuerpo.usuario.documento) !== String(usuario.documento)) {
+          cerrarSesion();
+          return;
+        }
         usuario = cuerpo.usuario;
         guardarCache(usuario);
+        if (window.ACCESO_LOCAL) window.ACCESO_LOCAL.confirmar(usuario.documento, usuario);
         aplicarEnInterfaz();
       }
     }).catch(function () { /* sin red: la caché manda */ });
@@ -147,7 +249,11 @@
      --------------------------------------------------------- */
 
   function anotarActividad() {
-    if (!bloqueada) ultimaActividad = Date.now();
+    if (bloqueada) return;
+    ultimaActividad = Date.now();
+    /* No en cada toque: escribir en el dispositivo cuesta, y un scroll dispara
+       decenas de eventos por segundo. */
+    if (ultimaActividad - actividadAnotada >= ANOTAR_ACTIVIDAD_CADA_MS) anotarUltimaActividad();
   }
 
   ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (evento) {
@@ -159,11 +265,22 @@
     if (Date.now() - ultimaActividad >= INACTIVIDAD_BLOQUEO_MS) bloquear();
   }
 
+  /* En segundo plano los temporizadores se duermen: al volver a la aplicación
+     se revisa ya, no al siguiente tic, para no dejar ver la ficha unos segundos. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') anotarUltimaActividad();
+    else revisarInactividad();
+  });
+  window.addEventListener('pageshow', revisarInactividad);
+
   function bloquear() {
     const velo = document.getElementById('bloqueoSesion');
     if (!velo) return;
     bloqueada = true;
+    anotarUltimaActividad();
+    anotarBloqueo(true);
     velo.hidden = false;
+    document.documentElement.classList.add('pantalla-bloqueada');
     document.querySelectorAll('.app-header, .app-main').forEach(function (el) { el.setAttribute('inert', ''); });
     const nombre = velo.querySelector('[data-bloqueo="nombre"]');
     if (nombre) nombre.textContent = usuario.nombre;
@@ -175,9 +292,12 @@
   function desbloquear() {
     const velo = document.getElementById('bloqueoSesion');
     if (velo) velo.hidden = true;
+    document.documentElement.classList.remove('pantalla-bloqueada');
     document.querySelectorAll('.app-header, .app-main').forEach(function (el) { el.removeAttribute('inert'); });
     bloqueada = false;
     ultimaActividad = Date.now();
+    anotarUltimaActividad();
+    anotarBloqueo(false);
   }
 
   function mostrarErrorBloqueo(texto) {
@@ -187,29 +307,67 @@
     aviso.hidden = !texto;
   }
 
+  /* Sin servidor, contra la copia del dispositivo (acceso_local.js): sólo deja
+     seguir capturando. Al volver la señal, la API dirá si la sesión sigue viva. */
+  function verificarEnElDispositivo(clave) {
+    if (!window.ACCESO_LOCAL) {
+      mostrarErrorBloqueo('Sin conexión: no es posible verificar la contraseña ahora.');
+      return Promise.resolve();
+    }
+    return window.ACCESO_LOCAL.verificar(usuario.documento, clave).then(function (resultado) {
+      if (resultado.ok) desbloquear();
+      else mostrarErrorBloqueo(resultado.mensaje);
+    });
+  }
+
+  function verificarConElServidor(clave) {
+    const conf = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ documento: usuario.documento, clave: clave })
+    };
+    const soltarLimite = ponerLimite(conf, LIMITE_DESBLOQUEO_MS);
+
+    /* Sin pasar por window.fetch: ahí un 401 cierra la sesión, y aquí sólo quiere
+       decir que la contraseña está mal escrita. */
+    return fetchOriginal('/api/iniciar_sesion', conf).then(function (respuesta) {
+      soltarLimite();
+      /* Un servidor caído es como no tener señal; un rechazo no. */
+      if (respuesta.status >= 500) return verificarEnElDispositivo(clave);
+
+      return respuesta.json().catch(function () { return {}; }).then(function (cuerpo) {
+        if (!respuesta.ok || !cuerpo.usuario) {
+          mostrarErrorBloqueo(cuerpo.error || 'No fue posible verificar la contraseña.');
+          return;
+        }
+        usuario = cuerpo.usuario;
+        guardarCache(usuario);
+        const recordada = window.ACCESO_LOCAL
+          ? window.ACCESO_LOCAL.recordar(usuario.documento, clave, usuario)
+          : Promise.resolve();
+        return recordada.then(desbloquear);
+      });
+    }, function () {
+      soltarLimite();
+      return verificarEnElDispositivo(clave);
+    });
+  }
+
   function reingresar(evento) {
     evento.preventDefault();
     const formulario = evento.currentTarget;
     const clave = formulario.querySelector('input[name="clave"]').value;
     const boton = formulario.querySelector('button[type="submit"]');
     boton.disabled = true;
+    mostrarErrorBloqueo('');
 
-    window.fetch('/api/iniciar_sesion', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: usuario.documento, clave: clave })
-    }).then(function (respuesta) {
-      return respuesta.json().catch(function () { return {}; }).then(function (cuerpo) {
-        if (respuesta.ok && cuerpo.usuario) {
-          usuario = cuerpo.usuario;
-          guardarCache(usuario);
-          desbloquear();
-          return;
-        }
-        mostrarErrorBloqueo(cuerpo.error || 'No fue posible verificar la contraseña.');
-      });
-    }).catch(function () {
-      mostrarErrorBloqueo('Sin conexión: no es posible verificar la contraseña ahora.');
+    const verificacion = window.navigator.onLine === false
+      ? verificarEnElDispositivo(clave)
+      : verificarConElServidor(clave);
+
+    verificacion.catch(function () {
+      mostrarErrorBloqueo('No fue posible verificar la contraseña. Intente de nuevo.');
     }).then(function () { boton.disabled = false; });
   }
 
@@ -291,6 +449,12 @@
         if (window.REPORTES) window.REPORTES.abrir();
       } });
     }
+    /* En teléfono o tableta, mientras no esté instalada. */
+    if (window.PWA && !window.PWA.instalada() && window.PWA.esTactil()) {
+      opciones.push({ icono: 'ph-download-simple', texto: 'Instalar la aplicación', accion: function () {
+        window.location.assign('/instalar');
+      } });
+    }
     opciones.push({ icono: 'ph-lock-key', texto: 'Bloquear pantalla', accion: bloquear });
     opciones.push({ icono: 'ph-sign-out', texto: 'Cerrar sesión', accion: cerrarSesion, peligro: true });
 
@@ -329,9 +493,14 @@
   }
 
   function cerrarSesion() {
-    window.fetch('/api/cerrar_sesion', { method: 'POST' })
-      .catch(function () {})
-      .then(function () { cerrarLocalmente(''); });
+    window.fetch('/api/cerrar_sesion', { method: 'POST' }).then(function (respuesta) {
+      if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+      if (window.ACCESO_LOCAL) window.ACCESO_LOCAL.olvidarSesion();
+    }).catch(function () {
+      /* Sin señal el servidor no se entera y la cookie sigue viva: con señal, el
+         acceso la cierra antes de dejar entrar a nadie (login.js). */
+      if (window.ACCESO_LOCAL) window.ACCESO_LOCAL.anotarCierrePendiente();
+    }).then(function () { cerrarLocalmente(''); });
   }
 
   const CAMPOS_FIRMA = ['equipoSaludId', 'responsableTipoId', 'responsableNumeroId', 'perfilProfesional', 'perfilProfesionalOtro'];
@@ -444,6 +613,8 @@
     if (formularioBloqueo) formularioBloqueo.addEventListener('submit', reingresar);
     const cambiar = document.querySelector('#bloqueoSesion [data-bloqueo="salir"]');
     if (cambiar) cambiar.addEventListener('click', cerrarSesion);
+    if (abrirBloqueada) bloquear();
+    else anotarUltimaActividad();
     setInterval(revisarInactividad, REVISION_INACTIVIDAD_MS);
     confirmarConServidor();
   });

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instalar · Encuesta APS</title>
+  <meta name="description" content="Cómo instalar Encuesta APS en un teléfono o una tableta, con Android o iPhone.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="iconos/icono-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Encuesta APS">
+  <link rel="stylesheet" href="vendor/fuentes/fuentes.css">
+  <link rel="stylesheet" href="vendor/phosphor/style.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="pwa.js"></script>
+</head>
+
+<body class="cuerpo-instalar">
+
+  <main class="instalar">
+
+    <header class="instalar__cabecera">
+      <img class="instalar__logo" src="logo-ladera.png" alt="Red de Salud de Ladera E.S.E." width="400" height="368">
+      <h1 class="instalar__titulo">Instalar Encuesta APS</h1>
+      <p class="instalar__texto">Queda como una aplicación más: se abre con un ícono y funciona sin señal. Es gratis, no
+        pasa por la tienda de aplicaciones, no pide cuenta y se actualiza sola.</p>
+    </header>
+
+    <p class="instalar__aviso instalar__aviso--ok" id="avisoInstalada" role="status" hidden>
+      <i class="ph ph-check-circle" aria-hidden="true"></i>
+      <span>La aplicación ya está instalada en este equipo.</span>
+    </p>
+
+    <p class="instalar__aviso" id="avisoPendientes" role="alert" hidden>
+      <i class="ph ph-warning" aria-hidden="true"></i>
+      <span id="avisoPendientesTexto"></span>
+    </p>
+
+    <div class="instalar__selector" id="selectorSistema" role="group" aria-label="Sistema del equipo">
+      <button type="button" class="instalar__opcion" data-sistema="android" aria-pressed="false">
+        <i class="ph ph-android-logo" aria-hidden="true"></i><span>Android</span>
+      </button>
+      <button type="button" class="instalar__opcion" data-sistema="ios" aria-pressed="false">
+        <i class="ph ph-apple-logo" aria-hidden="true"></i><span>iPhone o iPad</span>
+      </button>
+    </div>
+
+    <section class="instalar__bloque" data-pasos="android" aria-labelledby="tituloAndroid">
+      <h2 class="instalar__subtitulo" id="tituloAndroid">En Android</h2>
+
+      <button type="button" class="btn-cta instalar__boton" id="btnInstalar" hidden>
+        <span>Instalar la aplicación</span>
+        <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-download-simple"></i></span>
+      </button>
+
+      <ol class="instalar__pasos">
+        <li>Abra en <strong>Chrome</strong> el enlace que le envió la coordinación. Si se abrió dentro de WhatsApp, toque el menú
+          <strong>⋮</strong> y elija <strong>Abrir en Chrome</strong>.</li>
+        <li>Abra el menú <strong>⋮</strong> de Chrome, arriba a la derecha, y toque <strong>Instalar aplicación</strong>
+          o <strong>Agregar a la pantalla principal</strong>.</li>
+        <li>Confirme con <strong>Instalar</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="instalar__bloque" data-pasos="ios" aria-labelledby="tituloIos">
+      <h2 class="instalar__subtitulo" id="tituloIos">En iPhone o iPad</h2>
+
+      <ol class="instalar__pasos">
+        <li>Abra en <strong>Safari</strong> el enlace que le envió la coordinación.</li>
+        <li>Toque el botón <strong>Compartir</strong>: el cuadro con la flecha hacia arriba. Si no lo ve, toque primero
+          los tres puntos <strong>•••</strong> y luego <strong>Compartir</strong>.</li>
+        <li>Baje por la lista y toque <strong>Agregar a Inicio</strong>.</li>
+        <li>Deje activado <strong>Abrir como app web</strong>, si aparece, y toque <strong>Agregar</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="instalar__bloque" aria-labelledby="tituloTerreno">
+      <h2 class="instalar__subtitulo" id="tituloTerreno">Antes de salir a terreno</h2>
+
+      <ol class="instalar__pasos">
+        <li>Con señal, abra <strong>Encuesta APS</strong> desde el ícono de la pantalla de inicio e ingrese con su
+          documento y su contraseña.</li>
+        <li>Espere el aviso <strong>«La aplicación quedó lista para trabajar sin señal»</strong>. Ya puede salir.</li>
+        <li>Cuando vuelva la señal, toque <strong>Sincronizar ahora</strong> en Inicio para subir lo que guardó.</li>
+      </ol>
+    </section>
+
+    <section class="instalar__bloque instalar__bloque--cuidado" aria-labelledby="tituloCuidado">
+      <h2 class="instalar__subtitulo" id="tituloCuidado">Para no perder fichas</h2>
+
+      <ul class="instalar__notas">
+        <li><strong>Trabaje siempre desde el ícono</strong>, no desde el navegador.</li>
+        <li><strong>Si ya usaba el navegador,</strong> sincronice antes de instalar: en iPhone y iPad lo guardado en
+          Safari no pasa a la aplicación.</li>
+        <li><strong>No borre el ícono ni los datos del navegador</strong> mientras tenga fichas sin subir: se perderían.
+        </li>
+        <li><strong>Conéctese al menos una vez por semana.</strong> Sin señal, la contraseña se puede verificar hasta 7
+          días después de la última conexión.</li>
+      </ul>
+    </section>
+
+    <footer class="instalar__pie">
+      <a class="btn-cta instalar__entrar" href="/" id="enlaceEntrar">
+        <span>Ir a la aplicación</span>
+        <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+      </a>
+      <p class="instalar__ayuda">¿Problemas para instalarla? Comuníquese con el coordinador de su EBS.</p>
+    </footer>
+
+  </main>
+
+  <script src="instalar.js"></script>
+</body>
+
+</html>

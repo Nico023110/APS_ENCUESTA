@@ -49,12 +49,19 @@ function leerLocal(clave) {
 }
 
 function escribirLocal(clave, valor) {
-  try {
-    localStorage.setItem(clave, valor);
-    return true;
-  } catch (error) {
-    console.warn('No fue posible escribir ' + clave + ' en el dispositivo:', error);
-    return false;
+  for (;;) {
+    try {
+      localStorage.setItem(clave, valor);
+      return true;
+    } catch (error) {
+      /* Antes de rendirse se suelta lo que ya está en la base (app.js): la ficha
+         en curso vale más que una copia de lo ya subido. */
+      let libero = false;
+      try { libero = typeof soltarCopiaYaSubida === 'function' && soltarCopiaYaSubida(); } catch (e) { /* tampoco cupo */ }
+      if (libero) continue;
+      console.warn('No fue posible escribir ' + clave + ' en el dispositivo:', error);
+      return false;
+    }
   }
 }
 

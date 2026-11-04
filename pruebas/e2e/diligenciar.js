@@ -76,7 +76,9 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
 
   await seccion('0. Apertura de la aplicación');
 
-  await ayudas.iniciarSesion(page, diario);
+  /* Sin señal no se puede iniciar sesión contra el servidor: pwa.spec.js llega
+     con la sesión ya abierta en el dispositivo. */
+  if (!ficha.sesionYaAbierta) await ayudas.iniciarSesion(page, diario);
   await page.goto('/');
   await expect(page.locator('#appTabs')).toBeVisible();
 
@@ -801,7 +803,9 @@ async function diligenciarAnexo(page, diario) {
           lista.value = o.value; disparar(lista);
         } else if (texto) {
           if (texto.value) return;
-          texto.value = texto.type === 'number' ? (texto.min || '0') : (texto.type === 'date' ? iso :
+          /* El atributo, no la propiedad: WebKit en Windows no tiene selector de fecha y
+             dice que el campo es de texto (iOS sí lo tiene). */
+          texto.value = texto.type === 'number' ? (texto.min || '0') : (texto.getAttribute('type') === 'date' ? iso :
             (texto.inputMode === 'numeric' ? '3157684920' : 'Prueba automática'));
           disparar(texto);
         } else {

@@ -26,6 +26,12 @@
         ],
         "createdAt": "2026-09-21T18:44:08.892Z",
         "reason": "DESIGN.md names the carcasa+núcleo pattern (radios concéntricos, marcador): the access card is shell 20 with core 14"
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-11-04T17:09:26.032Z",
+        "reason": "Decisión de diseño del proyecto: DESIGN.md fija Plus Jakarta Sans como tipografía de toda la aplicación; instalar.html solo la reutiliza"
       }
     ]
   }

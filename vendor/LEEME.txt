@@ -1,0 +1,12 @@
+Librerías de interfaz servidas desde la propia aplicación, para que abra sin red.
+Antes venían de CDN. Son copias sin modificar, salvo lo que se indica:
+
+  phosphor/     @phosphor-icons/web 2.1.2, src/regular (MIT).
+                En style.css se dejó sólo el formato woff2.
+  sweetalert2/  sweetalert2 11.26.25, dist/sweetalert2.all.min.js (MIT).
+  fuentes/      Plus Jakarta Sans y JetBrains Mono de Google Fonts (SIL OFL 1.1).
+                fuentes.css es la hoja de Google, sólo latin y latin-ext,
+                con las direcciones cambiadas a estos archivos.
+
+Al cambiar o agregar un archivo aquí, actualice la lista de sw.js:
+pruebas/pwa.test.js falla si queda algo por fuera.

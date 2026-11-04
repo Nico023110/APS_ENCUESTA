@@ -215,6 +215,19 @@ function motivoOculto(estado) {
     : 'el campo está oculto y no se puede diligenciar';
 }
 
+/* WebKit en Windows pierde de vez en cuando un cuadro de animación, y la espera de
+   Playwright a que el elemento esté «estable» se queda hasta agotar el tiempo aunque
+   la página responda (visto: una acción de 1400). Un segundo intento descarta eso: lo
+   que de verdad está tapado o escondido falla las dos veces y se anota igual. */
+async function conSegundoIntento(accion) {
+  try {
+    await accion();
+  } catch (error) {
+    if (error.name !== 'TimeoutError') throw error;
+    await accion();
+  }
+}
+
 /* Milisegundos entre tecla y tecla. Se escribe carácter a carácter, no de
    un golpe, por dos razones: se ve el proceso, y cada pulsación dispara los
    `input` que el formulario escucha para recalcular edad, IMC y hacinamiento.
@@ -258,7 +271,7 @@ async function escribir(page, diario, campo, valor, etiqueta, opciones) {
          año) y no aceptan una cadena ISO tecleada de corrido. */
       await locator.fill(String(valor));
     } else {
-      await locator.click();
+      await conSegundoIntento(function () { return locator.click(); });
       await locator.press('Control+a');
       await locator.press('Delete');
       await locator.pressSequentially(String(valor), { delay: DEMORA_TECLA });
@@ -435,7 +448,7 @@ async function marcar(page, diario, nombre, valores, etiqueta, opciones) {
 
     try {
       await opcion.first().scrollIntoViewIfNeeded();
-      await opcion.first().check();
+      await conSegundoIntento(function () { return opcion.first().check(); });
     } catch (error) {
       /* El caso interesante: la opción existe pero algo la tapa. Sobre
          JSDOM esto es invisible; aquí es justo el fallo que se busca. */

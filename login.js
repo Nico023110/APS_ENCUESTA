@@ -5,13 +5,24 @@
    ingreso, creación de la contraseña propia. Al terminar guarda el perfil
    público en localStorage (sesion.js lo lee para abrir la app sin red) y
    pasa a index.html.
+
+   Sin señal, o con el servidor caído, la contraseña se compara contra la
+   copia que dejó el último ingreso con señal en este equipo (acceso_local.js).
+   Eso sólo deja seguir capturando: para sincronizar hay que entrar con señal.
    ========================================================= */
 
 (function () {
   'use strict';
 
   const CLAVE_CACHE = 'aps_sesion_usuario';
+  const CLAVES_DE_LA_SESION_ANTERIOR = ['aps_ultima_actividad', 'aps_pantalla_bloqueada'];
   const DESTINO = '/';
+  const ACCESO_LOCAL = window.ACCESO_LOCAL;
+
+  /* Con una rayita de señal la petición se queda colgada: pasado esto se sigue
+     como si no hubiera red. */
+  const LIMITE_INGRESO_MS = 15000;
+  const LIMITE_CONSULTA_MS = 10000;
 
   const formAcceso = document.getElementById('formAcceso');
   const formClave = document.getElementById('formClave');
@@ -27,18 +38,26 @@
      Utilidades
      --------------------------------------------------------- */
 
-  function api(ruta, cuerpo) {
+  function api(ruta, cuerpo, limiteMs) {
+    const control = limiteMs && typeof AbortController === 'function' ? new AbortController() : null;
+    const temporizador = control ? setTimeout(function () { control.abort(); }, limiteMs) : null;
+
     return fetch(ruta, {
       method: cuerpo ? 'POST' : 'GET',
       credentials: 'same-origin',
       headers: cuerpo
         ? { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }
         : { 'X-Requested-With': 'fetch' },
-      body: cuerpo ? JSON.stringify(cuerpo) : undefined
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+      signal: control ? control.signal : undefined
     }).then(function (respuesta) {
       return respuesta.json().catch(function () { return {}; }).then(function (datos) {
+        clearTimeout(temporizador);
         return { ok: respuesta.ok, estado: respuesta.status, datos: datos };
       });
+    }, function (error) {
+      clearTimeout(temporizador);
+      throw error;
     });
   }
 
@@ -61,14 +80,38 @@
 
   function entrar(perfil) {
     guardarPerfil(perfil);
+    /* Un ingreso recién hecho no abre bloqueado por la inactividad de antes. */
+    try {
+      CLAVES_DE_LA_SESION_ANTERIOR.forEach(function (clave) { localStorage.removeItem(clave); });
+    } catch (error) { /* sin almacenamiento */ }
     window.location.replace(DESTINO);
+  }
+
+  /* El servidor acaba de confirmar esta contraseña: queda lista para verificar
+     sin señal antes de salir de la página, que interrumpiría la derivación. */
+  function recordarYEntrar(clave, perfil) {
+    return ACCESO_LOCAL.recordar(perfil.documento, clave, perfil).then(function () { entrar(perfil); });
+  }
+
+  /* El formulario ya está a la vista y se puede haber empezado a escribir
+     mientras se esperaba al servidor: no se le quita el foco a nadie. */
+  function dejarEscribir() {
+    if (!formAcceso.contains(document.activeElement)) mostrarPaso('acceso');
   }
 
   function mostrarPaso(paso) {
     formAcceso.hidden = paso !== 'acceso';
     formClave.hidden = paso !== 'clave';
-    const primero = (paso === 'acceso' ? formAcceso : formClave).querySelector('input:not([hidden]):not([disabled])');
-    if (primero) setTimeout(function () { primero.focus(); }, 40);
+    const formulario = paso === 'acceso' ? formAcceso : formClave;
+    const primero = formulario.querySelector('input:not([hidden]):not([disabled])');
+    /* Si ya se está escribiendo en el formulario el foco no se mueve: lo que siguiera
+       tecleando caería en otro campo, y la contraseña podría quedar a la vista en el
+       del documento. */
+    if (primero) {
+      setTimeout(function () {
+        if (!formulario.contains(document.activeElement)) primero.focus();
+      }, 40);
+    }
   }
 
   /* Mostrar / ocultar contraseña */
@@ -124,15 +167,28 @@
   /* Si ya hay sesión con clave temporal (por ejemplo, se recargó la página
      a mitad del primer ingreso), se salta directo al paso 2. Si hay sesión
      completa, no hay nada que hacer aquí. */
-  api('/api/sesion').then(function (r) {
-    if (!r.ok || !r.datos.usuario) { mostrarPaso('acceso'); return; }
-    usuario = r.datos.usuario;
-    if (usuario.debeCambiarClave) {
-      prepararCambioDeClave(true);
-    } else {
-      entrar(usuario);
-    }
-  }).catch(function () { mostrarPaso('acceso'); });
+  if (ACCESO_LOCAL.hayCierrePendiente()) {
+    /* Alguien cerró sesión sin señal y el servidor no se enteró: la cookie sigue
+       viva, y preguntar por ella dejaría entrar sin contraseña. Se cierra primero. */
+    api('/api/cerrar_sesion', {}, LIMITE_CONSULTA_MS).then(function (r) {
+      if (r.ok) ACCESO_LOCAL.olvidarSesion();
+    }).catch(function () { /* sigue pendiente: será con la próxima señal */ }).then(dejarEscribir);
+  } else {
+    api('/api/sesion', null, LIMITE_CONSULTA_MS).then(function (r) {
+      if (!r.ok || !r.datos.usuario) {
+        if (r.estado === 401) ACCESO_LOCAL.olvidarSesion();
+        dejarEscribir();
+        return;
+      }
+      usuario = r.datos.usuario;
+      if (usuario.debeCambiarClave) {
+        prepararCambioDeClave(true);
+      } else {
+        ACCESO_LOCAL.confirmar(usuario.documento, usuario);
+        entrar(usuario);
+      }
+    }).catch(dejarEscribir);
+  }
 
   /* ---------------------------------------------------------
      Paso 1: credenciales
@@ -160,22 +216,43 @@
     ocupado(boton, true, 'Verificando…');
     guardarDocumentoSiSePidio(documento);
 
-    api('/api/iniciar_sesion', { documento: documento, clave: clave }).then(function (r) {
-      if (!r.ok || !r.datos.usuario) {
-        mostrarError(errorAcceso, r.datos.error || 'No fue posible iniciar sesión. Intente de nuevo.');
-        formAcceso.clave.value = '';
-        formAcceso.clave.focus();
-        return;
-      }
-      usuario = r.datos.usuario;
-      if (usuario.debeCambiarClave) {
-        claveTemporalEnMemoria = clave;
-        prepararCambioDeClave(false);
-      } else {
-        entrar(usuario);
-      }
-    }).catch(function () {
-      mostrarError(errorAcceso, 'Sin conexión con el servidor. Revise la red e intente de nuevo.');
+    function rechazar(texto) {
+      mostrarError(errorAcceso, texto);
+      formAcceso.clave.value = '';
+      formAcceso.clave.focus();
+    }
+
+    function verificarSinSenal() {
+      return ACCESO_LOCAL.verificar(documento, clave).then(function (resultado) {
+        if (resultado.ok) entrar(resultado.perfil);
+        else rechazar(resultado.mensaje);
+      });
+    }
+
+    const intento = window.navigator.onLine === false
+      ? verificarSinSenal()
+      : api('/api/iniciar_sesion', { documento: documento, clave: clave }, LIMITE_INGRESO_MS).then(function (r) {
+        /* Un servidor caído es como no tener señal; un rechazo no. */
+        if (r.estado >= 500) return verificarSinSenal();
+
+        if (!r.ok || !r.datos.usuario) {
+          /* Cuenta desactivada: tampoco vuelve a abrir sin señal en este equipo. */
+          if (r.datos.codigo === 'inactivo') ACCESO_LOCAL.olvidar(documento);
+          rechazar(r.datos.error || 'No fue posible iniciar sesión. Intente de nuevo.');
+          return undefined;
+        }
+
+        usuario = r.datos.usuario;
+        if (usuario.debeCambiarClave) {
+          claveTemporalEnMemoria = clave;
+          prepararCambioDeClave(false);
+          return undefined;
+        }
+        return recordarYEntrar(clave, usuario);
+      }, verificarSinSenal);
+
+    intento.catch(function () {
+      mostrarError(errorAcceso, 'No fue posible iniciar sesión. Intente de nuevo.');
     }).then(function () { ocupado(boton, false); });
   });
 
@@ -248,7 +325,7 @@
         return;
       }
       claveTemporalEnMemoria = '';
-      entrar(r.datos.usuario);
+      return recordarYEntrar(formClave.claveNueva.value, r.datos.usuario);
     }).catch(function () {
       mostrarError(errorClave, 'Sin conexión con el servidor. Revise la red e intente de nuevo.');
     }).then(function () { ocupado(boton, false); });

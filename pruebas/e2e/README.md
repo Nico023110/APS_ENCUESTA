@@ -5,6 +5,32 @@ saben nada de pintado, desplazamiento, campos tapados ni permisos del
 navegador. Estas otras abren Chromium de verdad contra `servidor.js` y
 recorren el formulario como lo recorre quien encuesta en campo.
 
+## La aplicación instalada y sin señal
+
+`npm run e2e:pwa` recorre, en un teléfono emulado y siempre contra la copia local
+`aps_encuesta` (`playwright.config.pwa.js` se niega a otra cosa): instalar, primer
+ingreso, abrir sin red, una ficha completa sin red, bloqueo y reingreso sin red, volver
+la señal con la sesión vencida y sincronizar, señal débil, versión nueva sin perder lo
+guardado, zoom y anchos en el teléfono. `pwa_banco.js` sirve una copia temporal detrás
+de un proxy propio: «sin red» es que el proxy corta de verdad, y «publicar» es editar
+esa copia. Dos proyectos: `android-chromium` e `ios-webkit`.
+
+**Lo que esto no prueba.** Son motores de navegador en Windows, no teléfonos. Chromium
+con perfil de Pixel no instala un WebAPK, y WebKit en Windows es el motor de Safari, no
+iOS: no hay pantalla de inicio, ni «Agregar a Inicio», ni el almacenamiento aparte de la
+aplicación instalada, ni la política con que iOS libera espacio. Hay que probar en un
+iPhone y en un Android reales antes de repartirla al personal de campo.
+
+Tres rarezas de las herramientas, ya resueltas en el banco y que no son de la aplicación:
+el contexto normal de Playwright en WebKit es privado y vacía el Cache Storage (por eso
+WebKit usa perfil en disco); Playwright se engancha a cada service worker y a veces deja
+colgada una navegación en Chromium (sin él, 150 ciclos de actualización sin ninguna); y
+WebKit en Windows no tiene selector de fecha ni emula «sin conexión» sin bloquear también
+al service worker (por eso ahí el corte es sólo el del proxy).
+
+No corra `playwright.config.js` para esto ni `encuesta_completa.spec.js` sin pensarlo:
+su servidor arranca con `.env.local`, que apunta a la base en uso.
+
 ## Cómo se corren
 
 | Orden | Qué hace | Dura |

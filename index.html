@@ -6,24 +6,27 @@
 <title>Encuesta APS · Red de Salud de Ladera E.S.E.</title>
 <meta name="description" content="Captura de la ficha de caracterización SI-APS por los Equipos Básicos de Salud de la Red de Salud de Ladera E.S.E.">
 <meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ccircle cx='16' cy='36' r='8' fill='%23009858'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23e02828'/%3E%3Ccircle cx='48' cy='36' r='8' fill='%230060a0'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<!-- Iconos: sólo el peso regular, que es el único que usa la aplicación. El
-     cargador de @phosphor-icons/web traía los seis pesos (~640 KB de CSS) y
-     bloqueaba el primer pintado. Versiones fijas con integridad (SRI): el
-     navegador rechaza el archivo si el CDN lo entrega alterado. -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"
-      integrity="sha384-6p9AefaqUhEVheRlj1mpAkbngHXy9mbYMrIdcIt4Jlc9lOLIablJq3bBsLOjGwZ7" crossorigin="anonymous">
+<!-- Aplicación instalada: Android toma todo del manifiesto; iOS, además, de estas
+     etiquetas. Ver instalar.html. -->
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Encuesta APS">
+<!-- Fuentes, iconos y avisos se sirven desde la aplicación, no desde un CDN: sin
+     señal no habría de dónde traerlos. Ver vendor/LEEME.txt. -->
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css">
+<link rel="stylesheet" href="vendor/phosphor/style.css">
 <!-- Avisos: con defer no detiene el pintado; se usa sólo dentro de funciones
      (y con respaldo si no cargó), y defer corre antes de DOMContentLoaded. -->
-<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"
-        integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
+<script defer src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 <!-- La sesión va antes del cuerpo: sin perfil en caché redirige a /login
      antes de pintar nada, y envuelve fetch para todo lo que sigue. -->
+<script src="pwa.js"></script>
+<script src="acceso_local.js"></script>
 <script src="sesion.js"></script>
 </head>
 <body>
@@ -41,15 +44,16 @@
     </div>
   </div>
   <nav class="app-tabs" id="appTabs">
-    <button class="app-tabs__btn is-active" data-view="inicio">
+    <!-- En el teléfono las pestañas son sólo el ícono: aria-label las sigue nombrando. -->
+    <button class="app-tabs__btn is-active" data-view="inicio" aria-label="Inicio">
       <i class="ph ph-house app-tabs__icon"></i>
       <span class="app-tabs__label">Inicio</span>
     </button>
-    <button class="app-tabs__btn" data-view="nueva">
+    <button class="app-tabs__btn" data-view="nueva" aria-label="Nueva Encuesta">
       <i class="ph ph-file-text app-tabs__icon"></i>
       <span class="app-tabs__label">Nueva Encuesta</span>
     </button>
-    <button class="app-tabs__btn" data-view="historial">
+    <button class="app-tabs__btn" data-view="historial" aria-label="Historial">
       <i class="ph ph-folder app-tabs__icon"></i>
       <span class="app-tabs__label">Historial</span>
     </button>
