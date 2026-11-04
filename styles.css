@@ -2185,6 +2185,17 @@ button.atencion__fila:focus-visible {
   margin-top: 6px;
 }
 
+/* Tres salidas de un diálogo: textos largos, uno debajo del otro. */
+.form-actions.form-actions--apiladas { flex-direction: column; align-items: stretch; gap: 8px; }
+.modal-confirmar__alterna,
+.modal-confirmar__alterna:hover { color: var(--color-danger-text); }
+.btn--ghost.modal-confirmar__alterna:hover {
+  color: var(--color-danger-text);
+  background: var(--color-danger-light);
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+.modal-confirmar__alterna[hidden] { display: none; }
+
 /* ================= TABLES ================= */
 .table-wrapper { overflow-x: auto; }
 

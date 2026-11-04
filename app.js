@@ -3370,7 +3370,10 @@ let confirmacionPendiente = null;
 /**
  * Muestra el modal de confirmación.
  * @param {{titulo:string, mensaje:string, textoConfirmar?:string,
- *          alConfirmar:Function, alCancelar?:Function}} opciones
+ *          alConfirmar:Function, alCancelar?:Function,
+ *          alterna?:{texto:string, alElegir:Function}}} opciones
+ *        Con `alterna`, una tercera salida que destruye algo; las tres
+ *        opciones van apiladas, la recomendada primero.
  */
 const LARGO_MINIMO_MOTIVO = 10;
 
@@ -3396,10 +3399,29 @@ function pedirConfirmacion(opciones) {
   document.getElementById('modalConfirmarTitulo').textContent = opciones.titulo;
   document.getElementById('modalConfirmarMensaje').textContent = opciones.mensaje;
   confirmar.textContent = opciones.textoConfirmar || 'Eliminar';
-  document.getElementById('btnCancelarEliminar').textContent = opciones.textoCancelar || 'Cancelar';
+  const cancelar = document.getElementById('btnCancelarEliminar');
+  cancelar.textContent = opciones.textoCancelar || 'Cancelar';
+
+  const alterna = document.getElementById('btnConfirmarAlterna');
+  alterna.hidden = !opciones.alterna;
+  alterna.textContent = opciones.alterna ? opciones.alterna.texto : '';
+  const acciones = confirmar.parentNode;
+  acciones.classList.toggle('form-actions--apiladas', Boolean(opciones.alterna));
+  /* En el DOM, no sólo a la vista: el tabulador sigue el orden que se lee. */
+  (opciones.alterna ? [confirmar, alterna, cancelar] : [cancelar, alterna, confirmar]).forEach(function (boton) {
+    acciones.appendChild(boton);
+  });
+
   document.getElementById('modalConfirmar').hidden = false;
   if (opciones.pedirMotivo === true) motivo.focus();
   else if (primario) confirmar.focus();
+}
+
+function elegirAlternaDeConfirmacion() {
+  const pendiente = confirmacionPendiente;
+  confirmacionPendiente = null;
+  document.getElementById('modalConfirmar').hidden = true;
+  if (pendiente && pendiente.alterna) pendiente.alterna.alElegir();
 }
 
 function motivoDeConfirmacion() {
@@ -5263,6 +5285,7 @@ function inicializarModales() {
   document.getElementById('btnConfirmarEliminar').addEventListener('click', function () {
     resolverConfirmacion(true);
   });
+  document.getElementById('btnConfirmarAlterna').addEventListener('click', elegirAlternaDeConfirmacion);
   document.getElementById('modalConfirmar').addEventListener('click', function (evento) {
     if (evento.target.id === 'modalConfirmar') cancelar();
   });

@@ -427,7 +427,9 @@ en la base, no un error—: cada ficha en su tarjeta blanca con el distintivo
 «Sin terminar», el código en mono, qué tiene y cuándo se guardó, y «Continuar»
 (fantasma azul) y «Descartar». «Guardar avance» y «Empezar otra» viven en la
 isla del índice del formulario, con el estado («Avance guardado… a las 10:42»)
-en verde debajo.
+en verde debajo. «Empezar otra» abre un solo diálogo con las salidas apiladas:
+«Guardar borrador y empezar otra» (primario, con el foco), «Descartar y empezar
+otra» (fantasma en rojo) y «Seguir en esta encuesta».
 
 ### Apartado Reportes (`tableros.js`)
 Un solo tablero de población, en una página, con lo esencial para el

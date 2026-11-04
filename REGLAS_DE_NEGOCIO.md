@@ -173,7 +173,7 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 **Código de la visita a la familia (CF).** Además, cada familia de cada ficha recibe su código `CFnnn` (`aps.familia_ficha.codigo_cf`): `CF001` en la primera visita a esa familia, `CF002` en la siguiente, y así. Lo asigna el servidor al guardar —el dispositivo no conoce las visitas de otros equipos—, no se digita, y una corrección o un reenvío conservan el que ya tenía. El formulario lo muestra de sólo lectura en el bloque de la familia y el detalle de la ficha lo enseña junto al código de la familia.
 
-**Fichas sin terminar.** Una ficha que se deja a medias en el equipo («Guardar avance» o «Empezar otra») conserva su código, y su consecutivo queda usado: la siguiente ficha nace con el que sigue. Si después se descarta, el consecutivo no se reutiliza.
+**Fichas sin terminar.** Una ficha que se deja a medias en el equipo («Guardar avance» o «Empezar otra») conserva su código, y su consecutivo queda usado: la siguiente ficha nace con el que sigue. Si después se descarta, el consecutivo no se reutiliza. «Empezar otra» pregunta antes en un solo diálogo: guardar la ficha como borrador y empezar otra, descartarla y empezar otra, o seguir en ella. Una ficha en blanco no pregunta.
 
 **Código repetido en otra vivienda.** Una visita nueva cuyo código ya pertenece a la ficha de **otra vivienda** —por ejemplo, una ficha antigua con código digitado a mano— se rechaza con bloqueo sobre el ítem 15, en lugar de tomarse como corrección de la ficha ajena y reescribirla. Una corrección (marcada por el formulario) o el reenvío de la misma visita —mismo hogar— no se rechazan.
 

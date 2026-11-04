@@ -488,10 +488,8 @@ function descartarFichaEnCurso(clave, alTerminar) {
   });
 }
 
-/* «Empezar otra ficha»: la de pantalla queda sin terminar en el historial y
-   el formulario vuelve a empezar. */
-function empezarOtraFicha() {
-  if (fichaTieneDatos()) guardarBorradorAhora();
+/* El formulario queda en blanco, sin tocar la lista de fichas sin terminar. */
+function abrirFichaNueva() {
   if (encuestaEnCorreccion) salirDeCorreccion();
   clearTimeout(temporizadorBorrador);
   borrarLocal(claveBorrador());
@@ -501,6 +499,75 @@ function empezarOtraFicha() {
   actualizarEstadoAvance(null);
   const inicio = document.getElementById('seccion-1');
   if (inicio) inicio.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function guardarBorradorYEmpezarOtra() {
+  /* Sin espacio en el dispositivo, limpiar el formulario perdería la ficha. */
+  if (!guardarBorradorAhora()) {
+    mostrarNotificacion('No se pudo guardar el borrador en este equipo. La encuesta sigue en pantalla.', 'warning');
+    return;
+  }
+  abrirFichaNueva();
+  mostrarAvisoBreve('Borrador guardado. Puede retomarlo desde el Historial.', 'success');
+}
+
+function descartarYEmpezarOtra() {
+  reiniciarFichaEnCurso();
+  const inicio = document.getElementById('seccion-1');
+  if (inicio) inicio.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* «Empezar otra»: las dos preguntas —si está seguro y qué hacer con la de
+   pantalla— van en un solo diálogo, para resolverlas con un toque. Sólo se
+   pregunta lo que hace falta: una ficha en blanco no tiene nada que perder, y
+   sin autorización (RN-001) no hay borrador que ofrecer. */
+function empezarOtraFicha() {
+  const enCorreccion = Boolean(encuestaEnCorreccion);
+  const titulo = '¿Empezar otra encuesta?';
+  const seguir = 'Seguir en esta encuesta';
+
+  if (!fichaTieneDatos()) {
+    if (!enCorreccion) {
+      abrirFichaNueva();
+      const estado = document.getElementById('estadoAvance');
+      if (estado) estado.textContent = 'Esta encuesta está en blanco: ya puede diligenciarla.';
+      return;
+    }
+    pedirConfirmacion({
+      titulo: titulo,
+      mensaje: '¿Está seguro? Saldrá de esta ficha, que no tiene cambios y queda como estaba.',
+      textoConfirmar: 'Sí, empezar otra',
+      textoCancelar: seguir,
+      tono: 'primario',
+      alConfirmar: abrirFichaNueva
+    });
+    return;
+  }
+
+  if (obtenerConsentimiento() === 'no') {
+    pedirConfirmacion({
+      titulo: titulo,
+      mensaje: '¿Está seguro? Esta encuesta no tiene autorización, así que no se guarda como borrador.',
+      textoConfirmar: 'Sí, empezar otra',
+      textoCancelar: seguir,
+      alConfirmar: descartarYEmpezarOtra
+    });
+    return;
+  }
+
+  pedirConfirmacion({
+    titulo: titulo,
+    mensaje: enCorreccion
+      ? '¿Está seguro? Puede guardar sus cambios como borrador y retomarlos desde el Historial. ' +
+        'Si los descarta, no se podrán recuperar; la ficha registrada queda como estaba.'
+      : '¿Está seguro? Puede guardar esta encuesta como borrador y retomarla desde el Historial. ' +
+        'Si la descarta, no se podrá recuperar.',
+    textoConfirmar: 'Guardar borrador y empezar otra',
+    textoCancelar: seguir,
+    tono: 'primario',
+    alConfirmar: guardarBorradorYEmpezarOtra,
+    alterna: { texto: 'Descartar y empezar otra', alElegir: descartarYEmpezarOtra }
+  });
 }
 
 /* --- 2.1 Recuperación ---------------------------------------------------- */

@@ -150,8 +150,29 @@ function marcar(el) {
     $('#estadoAvance').textContent);
   const codigoPrimera = $('#codigoFicha').value;
   $('#btnEmpezarOtraFicha').click();
-  check('«Empezar otra» limpia el formulario sin perder la anterior',
+  check('«Empezar otra» pregunta antes, en un solo diálogo',
+    !$('#modalConfirmar').hidden && $('#divisionTerritorial').value === 'Barrio de prueba' &&
+    !$('#btnConfirmarAlterna').hidden && $('#modalConfirmar .form-actions').firstElementChild === $('#btnConfirmarEliminar'));
+  $('#btnCancelarEliminar').click();
+  check('  «Seguir en esta encuesta» no toca nada',
+    $('#modalConfirmar').hidden && $('#divisionTerritorial').value === 'Barrio de prueba' && enCurso().length === 1);
+  $('#btnEmpezarOtraFicha').click();
+  $('#btnConfirmarEliminar').click();
+  check('  «Guardar borrador» limpia el formulario sin perder la anterior',
     $('#divisionTerritorial').value === '' && enCurso().length === 1 && $('#codigoFicha').value !== codigoPrimera);
+
+  $('#btnEmpezarOtraFicha').click();
+  check('  en blanco no pregunta: no hay nada que perder',
+    $('#modalConfirmar').hidden && /en blanco/.test($('#estadoAvance').textContent) && enCurso().length === 1);
+
+  escribir($('#divisionTerritorial'), 'Barrio que se descarta');
+  $('#btnGuardarAvance').click();
+  check('  (otra ficha empezada)', enCurso().length === 2, String(enCurso().length));
+  $('#btnEmpezarOtraFicha').click();
+  $('#btnConfirmarAlterna').click();
+  check('  «Descartar» la borra de verdad y deja la otra',
+    $('#modalConfirmar').hidden && $('#divisionTerritorial').value === '' && enCurso().length === 1 &&
+    enCurso()[0].codigoFicha === codigoPrimera, String(enCurso().length));
 
   api.renderizarHistorial();
   check('El historial muestra la ficha sin terminar', !$('#fichasEnCurso').hidden &&

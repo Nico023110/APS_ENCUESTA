@@ -256,7 +256,7 @@
                   title="Guarda lo diligenciado en este equipo, aunque no haya señal. Queda en el historial como sin terminar hasta «Guardar todo».">
             <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
           <button type="button" class="btn btn--ghost btn--icon" id="btnEmpezarOtraFicha"
-                  title="Deja esta ficha sin terminar en el historial y empieza otra">
+                  title="Empieza otra encuesta: antes pregunta si guarda esta como borrador">
             <i class="ph ph-plus" aria-hidden="true"></i> Empezar otra</button>
           <span class="form-nav__estado" id="estadoAvance" role="status"></span>
         </span>
@@ -2407,6 +2407,7 @@
       </div>
       <div class="form-actions">
         <button class="btn btn--ghost" id="btnCancelarEliminar">Cancelar</button>
+        <button class="btn btn--ghost modal-confirmar__alterna" id="btnConfirmarAlterna" hidden></button>
         <button class="btn btn--danger" id="btnConfirmarEliminar">Eliminar</button>
       </div>
     </div>
