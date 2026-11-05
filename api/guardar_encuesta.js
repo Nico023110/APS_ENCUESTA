@@ -1031,6 +1031,27 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'La petición no trae una ficha' });
   }
 
+  /* La ficha dice quién la guardó en el dispositivo (app.js) y aquí se firma con
+     la sesión. Si no son la misma persona —otra pestaña cambió de usuario, o un
+     cierre de sesión no alcanzó a llegar—, quedaría a nombre de quien no hizo la
+     visita. Se rechaza y sigue pendiente en el dispositivo. Una petición sin este
+     campo se firma con la sesión, como siempre: el cuerpo no decide la firma. */
+  const capturadaPor = texto(req.body.capturadaPor);
+  if (capturadaPor && capturadaPor !== String(usuario.documento)) {
+    console.error('  Ficha rechazada: ' + texto(req.body.codigoFicha) + ' no es de quien tiene la sesión');
+    const mensaje = 'La sesión abierta en este equipo no es de quien capturó esta ficha, y no se subió para no ' +
+      'firmarla a nombre de otra persona. Cierre sesión y vuelva a ingresar con la cuenta de quien la capturó.';
+    return res.status(409).json({
+      error: mensaje,
+      codigo: 'ficha_de_otra_persona',
+      total: 1,
+      bloqueos: [{
+        codigo: 'RN-013', ruta: 'responsableNumeroId', campo: 'responsableNumeroId', severidad: 'bloqueo', mensaje: mensaje
+      }],
+      advertencias: []
+    });
+  }
+
   let cliente;
 
   try {

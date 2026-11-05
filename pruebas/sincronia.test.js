@@ -7,7 +7,8 @@
        lanzar una segunda subida;
      - al terminar marca las fichas, anota cuándo y lo dice sin aviso modal;
      - con un rechazo, la ficha sigue pendiente;
-     - con nada pendiente, el toque sólo trae lo que hay en la base. */
+     - con nada pendiente, el toque sólo trae lo que hay en la base;
+     - lo que se guarda, corrige o elimina mientras sube no se pierde ni vuelve. */
 
 const fs = require('fs');
 const path = require('path');
@@ -77,7 +78,7 @@ function montar(locales, guardar) {
   const avisos = [];
   const errores = [];
   window.addEventListener('error', (e) => errores.push(e.message));
-  window.eval(fuentes + ';\nwindow.__api = { sincronizarEncuestas, renderizarEstadoSync };');
+  window.eval(fuentes + ';\nwindow.__api = { sincronizarEncuestas, renderizarEstadoSync, agregarEncuesta, reemplazarEncuesta, eliminarEncuestaPorId };');
   window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
   /* Los avisos modales salen por SweetAlert; en jsdom no existe y la app los
      deja en consola. Se cuentan los que se abrirían. */
@@ -188,6 +189,57 @@ async function asentar(app) {
     !vacia.peticiones.includes('/api/guardar_encuesta'));
   check('  y lo anota: «Sincronizado hoy a las …»', /^Sincronizado hoy a las \d{2}:\d{2}$/.test(vacia.detalle()), vacia.detalle());
   check('  sin aviso modal', vacia.avisos.length === 0, JSON.stringify(vacia.avisos));
+
+  console.log('\n=== 6. Lo que pasa en el equipo mientras sube ===');
+  /* Con poca señal una subida tarda minutos, y nada impide seguir trabajando. Cada
+     petición se queda esperando hasta que la prueba la suelta. */
+  const sueltas = [];
+  const cuerpos = [];
+  const durante = await asentar(montar([ficha('v', false), ficha('w', false), ficha('x', false), ficha('y', false)], (cuerpo) => {
+    cuerpos.push(cuerpo);
+    return new Promise((resolver) => sueltas.push((codigos) => resolver({ estado: 200, cuerpo: { codigos: codigos || null } })));
+  }));
+  const enLista = () => JSON.parse(durante.almacen.aps_encuestas);
+  const laFicha = (id) => enLista().find((e) => e.id === id);
+  const conHogares = (id, n) => Object.assign(ficha(id, false), { hogaresEnVivienda: n });
+
+  const subiendo = durante.api.sincronizarEncuestas();
+  await esperar();
+  check('Primero sale la primera', cuerpos.length === 1 && cuerpos[0].id === 'v', JSON.stringify(cuerpos.map((e) => e.id)));
+
+  durante.api.agregarEncuesta(ficha('nueva', false));
+  durante.api.reemplazarEncuesta('w', conHogares('w', 2));
+  durante.api.eliminarEncuestaPorId('x');
+
+  sueltas.shift()({ idHogar: 'T49MT01H0001', nuv: 'NUV0001' });
+  await esperar(5);
+  check('Lo ya subido queda anotado de una vez, sin esperar al final', laFicha('v').sincronizada === true);
+  check('  con los códigos que asignó el servidor', laFicha('v').idHogar === 'T49MT01H0001' && laFicha('v').nuv === 'NUV0001');
+  check('Una ficha corregida antes de su turno sube corregida', cuerpos.length === 2 && cuerpos[1].id === 'w' && cuerpos[1].hogaresEnVivienda === 2,
+    JSON.stringify(cuerpos.map((e) => [e.id, e.hogaresEnVivienda])));
+
+  /* Corregida mientras viaja: lo que llegó a la base es la versión de antes. */
+  durante.api.reemplazarEncuesta('w', conHogares('w', 3));
+  sueltas.shift()();
+  await esperar(5);
+  check('Una ficha eliminada antes de su turno no sube', cuerpos.length === 3 && cuerpos[2].id === 'y',
+    JSON.stringify(cuerpos.map((e) => e.id)));
+
+  /* Se suelta lo que vaya saliendo hasta que termine: si sale una ficha de más, la
+     prueba tiene que fallar, no quedarse esperando y salir como si hubiera pasado. */
+  let termino = false;
+  subiendo.then(() => { termino = true; });
+  while (!termino) {
+    if (sueltas.length > 0) sueltas.shift()();
+    await esperar(5);
+  }
+  check('La ficha guardada durante la subida no se pierde', Boolean(laFicha('nueva')));
+  check('  y sigue pendiente, para la próxima', laFicha('nueva').sincronizada === false);
+  check('La corregida mientras viajaba conserva la corrección', laFicha('w').hogaresEnVivienda === 3);
+  check('  y sigue pendiente: esa versión no ha llegado', laFicha('w').sincronizada === false);
+  check('La eliminada no vuelve', !laFicha('x'));
+  check('Las demás quedan subidas', laFicha('v').sincronizada === true && laFicha('y').sincronizada === true);
+  check('El módulo lo dice', durante.estado() === 'pendiente' && durante.titulo() === '2 fichas sin subir', durante.titulo());
 
   console.log('\n' + ok + ' OK, ' + fail + ' FALLAS');
   process.exit(fail ? 1 : 0);

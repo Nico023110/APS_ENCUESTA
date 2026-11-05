@@ -23,6 +23,7 @@
   const ENTRE_BUSQUEDAS_MS = 30 * 60 * 1000;
   const ESPERA_CAMBIO_DE_WORKER_MS = 3000;
   const CLAVE_LISTA_AVISADA = 'aps_pwa_lista_avisada';
+  const CLAVE_ENCUESTAS = 'aps_encuestas';
 
   let ultimaBusqueda = 0;
 
@@ -169,6 +170,17 @@
     }).catch(function () { /* el navegador decide; no hay nada más que hacer */ });
   }
 
+  /* Cuántas fichas no han subido en este navegador, de cualquier persona. Es lo
+     único que se dice en el acceso y en la guía: ahí nadie ha dicho quién es. */
+  function fichasSinSubir() {
+    try {
+      const lista = JSON.parse(localStorage.getItem(CLAVE_ENCUESTAS) || '[]');
+      return Array.isArray(lista) ? lista.filter(function (f) { return f && f.sincronizada !== true; }).length : 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
   /* ---------------------------------------------------------
      Enlaces a la instalación
      --------------------------------------------------------- */
@@ -184,6 +196,7 @@
     instalada: instalada,
     sistema: sistema,
     esTactil: esTactil,
+    fichasSinSubir: fichasSinSubir,
     buscarVersionNueva: function () { buscarVersionNueva(true); },
     /* Resuelve cuando la aplicación ya está guardada en el dispositivo. */
     lista: function () {

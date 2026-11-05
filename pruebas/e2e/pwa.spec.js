@@ -17,6 +17,7 @@
       9. versión nueva sin perder lo guardado
      10. el teléfono: controles y anchos
      11. cuánto cabe en el dispositivo
+     12. dos personas en un mismo equipo
 
    Lo que esto NO prueba: un teléfono de verdad. Ver pruebas/e2e/README.md.
    ========================================================================= */
@@ -46,6 +47,8 @@ let perfil = null;
 let contexto = null;
 let pagina = null;
 let codigoFicha = null;
+/* La ficha real tal como quedó esperando señal, de molde para la prueba 12. */
+let fichaSinSubir = null;
 
 const externas = [];
 const excepciones = [];
@@ -433,7 +436,8 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
       sincronizada: nuestra ? nuestra.sincronizada : null,
       integrantes: nuestra ? nuestra.familias[0].integrantes.length : 0,
       largo: crudo.length,
-      borradores: borradores
+      borradores: borradores,
+      ficha: nuestra
     };
   }, ficha.codigo);
 
@@ -441,7 +445,10 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
   expect(estado.sincronizada).toBe(false);
   expect(estado.integrantes).toBe(3);
   expect(estado.borradores).toEqual([]);
+  /* Queda a nombre de quien tiene la sesión. */
+  expect(estado.ficha.capturadaPor).toBe(DOCUMENTO);
   codigoFicha = ficha.codigo;
+  fichaSinSubir = estado.ficha;
   console.log('   Tamaño de la ficha en el dispositivo: ' + estado.largo + ' caracteres');
 
   /* Cerrar y volver a abrir sin red: sigue ahí. */
@@ -933,6 +940,218 @@ test('11. Dispositivo lleno: se sueltan copias ya subidas, nunca lo pendiente', 
   await foto('11-sin-espacio');
   await pagina.getByRole('button', { name: 'Entendido' }).click();
   await devolverRed();
+});
+
+/* -------------------------------------------------------------------------
+   12. DOS PERSONAS EN UN MISMO EQUIPO
+   ------------------------------------------------------------------------- */
+
+test('12. Dos personas en un mismo equipo: cada una ve y sube sólo lo suyo', async function () {
+  const { Client } = require('pg');
+  const { opcionesConexion } = require('../../api/_db');
+  const { asegurarUsuarioDePrueba } = require('../_sesion_prueba');
+
+  const OTRA = { documento: '1144099002', nombre: 'Prueba Auxiliar', rol: 'auxiliar_enfermeria', equipo: 'EBS12', clave: CLAVE };
+
+  const conBase = async function (tarea) {
+    const cliente = new Client(opcionesConexion(process.env.DATABASE_URL));
+    await cliente.connect();
+    try {
+      return await tarea(cliente);
+    } finally {
+      await cliente.end();
+    }
+  };
+  const firmaDe = function (codigo) {
+    return conBase(async function (cliente) {
+      const r = await cliente.query(`
+        SELECT fu.numero_id FROM aps.ficha f JOIN aps.funcionario fu ON fu.id = f.responsable_id
+         WHERE f.codigo = $1`, [codigo]);
+      return r.rows.length ? r.rows[0].numero_id : null;
+    });
+  };
+  await conBase(function (cliente) { return asegurarUsuarioDePrueba(cliente, OTRA); });
+
+  /* Otro código del mismo dispositivo: un consecutivo que la prueba no usa. */
+  const otroCodigo = function (consecutivo) {
+    return codigoFicha.replace(/-\d{4}-(\d{8})$/, '-' + consecutivo + '-$1');
+  };
+  const CODIGO_UNA = otroCodigo('9001');
+  const CODIGO_OTRA = otroCodigo('9002');
+  const CODIGO_RECHAZADA = otroCodigo('9003');
+  expect(CODIGO_UNA).not.toBe(codigoFicha);
+
+  /* Una ficha real que se queda esperando señal, en la cola de quien tiene la sesión. */
+  const dejarPendiente = function (codigo, responsable) {
+    return pagina.evaluate(function (datos) {
+      window.agregarEncuesta(Object.assign({}, datos.ficha, {
+        id: 'enc_' + datos.codigo, codigoFicha: datos.codigo, sincronizada: false, responsableNumeroId: datos.responsable
+      }));
+      window.renderizarInicio();
+    }, { ficha: fichaSinSubir, codigo: codigo, responsable: responsable });
+  };
+  const propias = function () {
+    return pagina.evaluate(function () {
+      return window.obtenerEncuestas().map(function (e) { return e.codigoFicha; });
+    });
+  };
+  const cerrarSesionDesdeElMenu = async function () {
+    await pagina.locator('.app-usuario').click();
+    await pagina.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
+    await pagina.waitForURL(/login/);
+  };
+  const entrar = async function (documento, clave) {
+    await entrarCon(documento, clave);
+    await pagina.waitForURL(function (url) { return !/login/.test(url.pathname); });
+    await expect(pagina.locator('#appTabs')).toBeVisible();
+  };
+  const desborde = function () {
+    return pagina.evaluate(function () {
+      return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    });
+  };
+
+  const modulo = function () { return pagina.locator('#sincronia'); };
+  const titulo = function () { return pagina.locator('#sincronia .sincronia__titulo'); };
+  const avisoAjenas = function () { return pagina.locator('#fichasAjenas'); };
+
+  /* Lo que sale hacia la base, sea cual sea la pestaña. */
+  const subidas = [];
+  const espiar = function (peticion) {
+    if (peticion.method() === 'POST' && /\/api\/guardar_encuesta/.test(peticion.url())) {
+      subidas.push(JSON.parse(peticion.postData()).codigoFicha);
+    }
+  };
+  contexto.on('request', espiar);
+
+  /* --- Una persona deja una ficha sin subir y cierra sesión. --- */
+  await abrir('/');
+  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await dejarPendiente(CODIGO_UNA, DOCUMENTO);
+  await expect(modulo()).toHaveAttribute('data-estado', 'pendiente');
+  await expect(avisoAjenas()).toBeHidden();
+  await cerrarSesionDesdeElMenu();
+
+  /* Al salir ve que quedó allí. Sólo la cantidad: aquí nadie ha dicho quién es. */
+  const avisoAcceso = pagina.locator('#avisoPendientes');
+  await expect(avisoAcceso).toContainText('1 ficha sin subir');
+  await expect(avisoAcceso).not.toContainText(DOCUMENTO);
+  expect(await desborde(), 'acceso con el aviso').toBeLessThanOrEqual(0);
+  await foto('12-acceso-con-pendientes');
+
+  /* --- Entra la otra, con señal. --- */
+  await entrar(OTRA.documento, OTRA.clave);
+
+  await expect(titulo()).toHaveText('Nada suyo por subir');
+  await expect(avisoAjenas()).toBeVisible();
+  await expect(avisoAjenas()).toContainText('1 ficha sin subir de ' + USUARIO_PRUEBA.nombre);
+  await expect(modulo()).not.toContainText(DOCUMENTO);
+  expect(await desborde(), 'Inicio con el aviso').toBeLessThanOrEqual(0);
+  await avisoAjenas().scrollIntoViewIfNeeded();
+  await foto('12-aviso-de-fichas-ajenas');
+
+  /* No ve lo de la otra persona: ni lo pendiente, ni la copia ya subida con todo su detalle. */
+  expect(await propias()).toEqual([]);
+  await irA('historial');
+  await expect(pagina.locator('#view-historial')).not.toContainText(CODIGO_UNA);
+  await irA('inicio');
+
+  /* Sincronizar no se lleva nada ajeno. */
+  await pagina.locator('#btnSincronizar').click();
+  await expect(modulo()).toHaveAttribute('data-estado', 'listo', { timeout: 30000 });
+  expect(subidas).toEqual([]);
+  expect(await firmaDe(CODIGO_UNA)).toBeNull();
+  await expect(avisoAjenas()).toBeVisible();
+
+  /* Lo suyo sí sube, firmado por ella, y el módulo no dice que todo está en la base. */
+  await dejarPendiente(CODIGO_OTRA, OTRA.documento);
+  await expect(modulo()).toHaveAttribute('data-estado', 'pendiente');
+  await expect(titulo()).toHaveText('1 ficha sin subir');
+  await pagina.locator('#btnSincronizar').click();
+  await expect(titulo()).toHaveText('Sus fichas están en la base', { timeout: 30000 });
+  expect(subidas).toEqual([CODIGO_OTRA]);
+  expect(await firmaDe(CODIGO_OTRA)).toBe(OTRA.documento);
+  expect(await firmaDe(CODIGO_UNA)).toBeNull();
+
+  /* --- Una pestaña que queda abierta no sigue mostrando a quien ya salió. --- */
+  const otraPestana = await contexto.newPage();
+  await otraPestana.goto('/');
+  await expect(otraPestana.locator('#appTabs')).toBeVisible();
+  await pagina.bringToFront();
+  await cerrarSesionDesdeElMenu();
+  await otraPestana.waitForURL(/login/, { timeout: 15000 });
+  await otraPestana.close();
+
+  /* --- Vuelve la primera: encuentra lo suyo y lo sube con su firma. --- */
+  await entrar(DOCUMENTO, CLAVE);
+  await expect(titulo()).toHaveText('1 ficha sin subir');
+  await expect(avisoAjenas()).toBeHidden();
+  const deLaPrimera = await propias();
+  expect(deLaPrimera).toContain(CODIGO_UNA);
+  expect(deLaPrimera).toContain(codigoFicha);
+  expect(deLaPrimera).not.toContain(CODIGO_OTRA);
+  await irA('historial');
+  await expect(pagina.locator('#view-historial')).toContainText(CODIGO_UNA);
+  await irA('inicio');
+
+  await pagina.locator('#btnSincronizar').click();
+  await expect(titulo()).toHaveText('Todo está en la base', { timeout: 30000 });
+  expect(subidas).toEqual([CODIGO_OTRA, CODIGO_UNA]);
+  expect(await firmaDe(CODIGO_UNA)).toBe(DOCUMENTO);
+  expect(await firmaDe(CODIGO_OTRA)).toBe(OTRA.documento);
+
+  /* --- El servidor no firma lo que no es de la sesión, aunque la página se equivoque. --- */
+  const rechazo = await pagina.evaluate(function (datos) {
+    return fetch('/api/guardar_encuesta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({}, datos.ficha, { codigoFicha: datos.codigo, capturadaPor: datos.otra }))
+    }).then(function (r) {
+      return r.json().then(function (cuerpo) { return { estado: r.status, codigo: cuerpo.codigo }; });
+    });
+  }, { ficha: fichaSinSubir, codigo: CODIGO_RECHAZADA, otra: OTRA.documento });
+  expect(rechazo).toEqual({ estado: 409, codigo: 'ficha_de_otra_persona' });
+  expect(await firmaDe(CODIGO_RECHAZADA)).toBeNull();
+
+  contexto.off('request', espiar);
+
+  /* --- Lo que ya estaba en un teléfono, sin ninguna marca de dueño. --- */
+  const original = await pagina.evaluate(function (datos) {
+    const guardada = localStorage.getItem('aps_encuestas');
+    const vieja = function (codigo, responsable) {
+      const ficha = Object.assign({}, datos.ficha, { id: 'vieja-' + codigo, codigoFicha: codigo, sincronizada: false });
+      delete ficha.capturadaPor;
+      delete ficha.responsableNumeroId;
+      if (responsable) ficha.responsableNumeroId = responsable;
+      return ficha;
+    };
+    localStorage.setItem('aps_encuestas', JSON.stringify([
+      vieja('VIEJA-PROPIA', datos.yo), vieja('VIEJA-AJENA', datos.otra),
+      vieja('VIEJA-TERCERA', '1144000009'), vieja('VIEJA-SIN-DUENO', null)
+    ]));
+    return guardada;
+  }, { ficha: fichaSinSubir, yo: DOCUMENTO, otra: OTRA.documento });
+
+  await abrir('/');
+  await expect(pagina.locator('.swal2-popup')).toContainText('sin responsable');
+  await pagina.getByRole('button', { name: 'Entendido' }).click();
+
+  const trasMigrar = await pagina.evaluate(function () {
+    const nombres = function (lista) { return lista.map(function (e) { return e.codigoFicha; }).sort(); };
+    return {
+      todas: nombres(JSON.parse(localStorage.getItem('aps_encuestas'))),
+      propias: nombres(window.obtenerEncuestas())
+    };
+  });
+  expect(trasMigrar.todas, 'se perdió una ficha al migrar').toEqual(['VIEJA-AJENA', 'VIEJA-PROPIA', 'VIEJA-SIN-DUENO', 'VIEJA-TERCERA']);
+  expect(trasMigrar.propias).toEqual(['VIEJA-PROPIA', 'VIEJA-SIN-DUENO']);
+  await expect(avisoAjenas()).toContainText(OTRA.nombre + ' (1)');
+  await expect(avisoAjenas()).toContainText('documento terminado en 0009 (1)');
+  await expect(avisoAjenas()).not.toContainText('1144000009');
+  await foto('12-migradas');
+
+  await pagina.evaluate(function (guardada) { localStorage.setItem('aps_encuestas', guardada); }, original);
+  expect(excepciones, 'hubo excepciones con dos personas en el equipo').toEqual([]);
 });
 
 test('Nada salió a terceros en todo el recorrido', async function () {

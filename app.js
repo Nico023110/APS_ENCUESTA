@@ -1067,17 +1067,51 @@ function actualizarCalculoHacinamientoEnFormulario() {
 
 /* ---------------------------------------------------------
    10. PERSISTENCIA (localStorage)
-   --------------------------------------------------------- */
+   ---------------------------------------------------------
+   Todas las fichas del dispositivo están en una sola lista, y cada una dice de
+   quién es. Un equipo se puede compartir: antes, quien sincronizaba subía
+   también lo de los demás, y el servidor, que firma con la sesión, se lo
+   atribuía a quien no hizo la visita; además lo veía en su historial.
 
-function obtenerEncuestas() {
+   El dueño es quien guardó la ficha en el dispositivo: `capturadaPor`, el
+   documento de su sesión. Las fichas de antes de esta marca se leen por su ítem
+   13 (`responsableNumeroId`), que la sesión escribe y deja fijo. Por eso pasar a
+   esta forma no mueve ni reescribe nada: copiar la lista a una llave por persona
+   pediría, mientras dura la copia, el doble del espacio que tal vez no hay, y
+   una ficha no se juega a eso. Una corrección de la ficha de otra persona es de
+   quien corrige, y el ítem 13 sigue siendo el de la ficha original.
+
+   `obtenerEncuestas` y `guardarEncuestas` sólo ven las de la sesión. Lo que no
+   tiene por qué fijarse en la persona (el espacio, los datos de demostración, el
+   aviso de lo ajeno) usa leerFichasDelDispositivo. Sin documento en la sesión no
+   hay a quién separarle nada, como el borrador «local» de captura_local.js. */
+
+function documentoDeLaSesion() {
+  const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
+  return usuario && usuario.documento ? String(usuario.documento).trim() : null;
+}
+
+function duenoDeFicha(encuesta) {
+  const dueno = encuesta.capturadaPor || encuesta.responsableNumeroId;
+  return dueno ? String(dueno).trim() : null;
+}
+
+function leerFichasDelDispositivo() {
   const datos = localStorage.getItem(STORAGE_KEY);
   if (!datos) return [];
   try {
-    return JSON.parse(datos);
+    const lista = JSON.parse(datos);
+    return Array.isArray(lista) ? lista : [];
   } catch (error) {
     console.error('No fue posible leer las encuestas almacenadas:', error);
     return [];
   }
+}
+
+function obtenerEncuestas() {
+  const yo = documentoDeLaSesion();
+  const todas = leerFichasDelDispositivo();
+  return yo ? todas.filter(function (encuesta) { return duenoDeFicha(encuesta) === yo; }) : todas;
 }
 
 /* El almacenamiento del navegador es pequeño (2,5 a 5 millones de caracteres
@@ -1096,7 +1130,7 @@ function sinLaCopiaYaSubidaMasAntigua(encuestas) {
 }
 
 /** @throws si no cabe ni soltando todo lo ya subido: lo que queda son pendientes. */
-function guardarEncuestas(encuestas) {
+function escribirFichasDelDispositivo(encuestas) {
   let lista = encuestas;
   for (;;) {
     try {
@@ -1110,12 +1144,85 @@ function guardarEncuestas(encuestas) {
   }
 }
 
+/**
+ * Reemplaza las fichas de la sesión; las de los demás siguen como estaban. Lo
+ * ajeno va al final, así que si falta espacio lo primero que sale es la copia ya
+ * subida de otra persona: a quien está trabajando le sirve menos que la suya.
+ * @throws lo mismo que escribirFichasDelDispositivo.
+ */
+function guardarEncuestas(encuestas) {
+  const yo = documentoDeLaSesion();
+  if (!yo) {
+    escribirFichasDelDispositivo(encuestas);
+    return;
+  }
+  const propias = encuestas.map(function (encuesta) {
+    return encuesta.capturadaPor === yo ? encuesta : Object.assign({}, encuesta, { capturadaPor: yo });
+  });
+  const ajenas = leerFichasDelDispositivo().filter(function (encuesta) { return duenoDeFicha(encuesta) !== yo; });
+  escribirFichasDelDispositivo(propias.concat(ajenas));
+}
+
 /** Libera espacio para otra escritura (ver captura_local.js). Dice si pudo. */
 function soltarCopiaYaSubida() {
-  const menos = sinLaCopiaYaSubidaMasAntigua(obtenerEncuestas());
+  const menos = sinLaCopiaYaSubidaMasAntigua(leerFichasDelDispositivo());
   if (!menos) return false;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(menos));
   return true;
+}
+
+/**
+ * Una ficha sin `capturadaPor` ni ítem 13 no se puede devolver a nadie. RN-013
+ * exige el ítem para guardar, así que sólo la dejaría una versión muy anterior.
+ * Queda a nombre de quien entra, porque si no nadie la vería ni la subiría, y se
+ * le dice: subirla es firmarla. Si no cabe la marca sigue como estaba, sin
+ * perderse, y se intenta en la próxima apertura.
+ */
+function adoptarFichasSinDueno() {
+  const yo = documentoDeLaSesion();
+  if (!yo) return;
+
+  const todas = leerFichasDelDispositivo();
+  const sinDueno = todas.filter(function (encuesta) { return duenoDeFicha(encuesta) === null; });
+  if (sinDueno.length === 0) return;
+
+  try {
+    escribirFichasDelDispositivo(todas.map(function (encuesta) {
+      return duenoDeFicha(encuesta) === null ? Object.assign({}, encuesta, { capturadaPor: yo }) : encuesta;
+    }));
+  } catch (error) {
+    console.warn('No fue posible asignar las fichas sin responsable:', error);
+    return;
+  }
+
+  const pendientes = sinDueno.filter(function (encuesta) { return encuesta.sincronizada !== true; }).length;
+  if (pendientes > 0) {
+    mostrarNotificacion(
+      'Había ' + textoCantidad(pendientes, 'ficha', 'fichas') + ' sin responsable en este equipo y ' +
+      (pendientes === 1 ? 'quedó' : 'quedaron') + ' a su nombre. Revise el Historial antes de sincronizar: lo que ' +
+      'suba queda firmado por usted.', 'warning');
+  }
+}
+
+/**
+ * Las fichas sin subir de otras personas en este dispositivo, agrupadas por
+ * persona. Una sin dueño no cuenta: es que no cupo su marca al abrir, y se le
+ * asigna a quien entra en la próxima apertura.
+ */
+function pendientesDeOtrasPersonas() {
+  const yo = documentoDeLaSesion();
+  if (!yo) return [];
+
+  const cantidades = new Map();
+  leerFichasDelDispositivo().forEach(function (encuesta) {
+    const dueno = duenoDeFicha(encuesta);
+    if (encuesta.sincronizada === true || dueno === yo || dueno === null) return;
+    cantidades.set(dueno, (cantidades.get(dueno) || 0) + 1);
+  });
+
+  return Array.from(cantidades, function (par) {
+    return { documento: par[0], cantidad: par[1] };
+  });
 }
 
 function agregarEncuesta(encuesta) {
@@ -1327,16 +1434,47 @@ let ultimoResultadoSync = null;
    pierde, el módulo sólo deja de decirlo. */
 const CLAVE_ULTIMA_SINCRONIZACION = 'aps_ultima_sincronizacion';
 
+/* Por persona: cada una sincroniza lo suyo, y lo que otra subió aquí no dice nada
+   de lo de quien está mirando. */
+function claveUltimaSincronizacion() {
+  const yo = documentoDeLaSesion();
+  return CLAVE_ULTIMA_SINCRONIZACION + (yo ? '_' + yo : '');
+}
+
 function leerUltimaSincronizacion() {
-  try { return localStorage.getItem(CLAVE_ULTIMA_SINCRONIZACION); } catch (e) { return null; }
+  try { return localStorage.getItem(claveUltimaSincronizacion()); } catch (e) { return null; }
 }
 
 function anotarUltimaSincronizacion() {
-  try { localStorage.setItem(CLAVE_ULTIMA_SINCRONIZACION, new Date().toISOString()); } catch (e) { /* sin almacenamiento */ }
+  try { localStorage.setItem(claveUltimaSincronizacion(), new Date().toISOString()); } catch (e) { /* sin almacenamiento */ }
 }
 
 function haySenal() {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+function esLaMismaFicha(a, b) {
+  return a.id === b.id && a.codigoFicha === b.codigoFicha;
+}
+
+/**
+ * La ficha llegó a la base. Se anota sobre lo que hay ahora en el dispositivo:
+ * al escribir al final la lista del principio de la subida, se perdía lo guardado
+ * mientras tanto. Se hace una a una para que, si el sistema cierra la aplicación a
+ * mitad de camino, lo ya subido no quede como pendiente.
+ *
+ * Una ficha corregida mientras viajaba sigue pendiente: lo que llegó a la base es
+ * la versión de antes. Una que ya no está no vuelve: la eliminaron.
+ */
+function marcarComoSubida(enviada, codigos) {
+  const encuestas = obtenerEncuestas();
+  const actual = encuestas.find(function (e) { return esLaMismaFicha(e, enviada); });
+  if (!actual) return;
+  if (JSON.stringify(actual.fechasModificacion || []) !== JSON.stringify(enviada.fechasModificacion || [])) return;
+
+  actual.sincronizada = true;
+  aplicarCodigosAsignados(actual, codigos);
+  guardarEncuestas(encuestas);
 }
 
 /* Sincronizar es subir lo que sólo está en este equipo y, después, traer lo
@@ -1354,13 +1492,14 @@ async function sincronizarEncuestas() {
     return;
   }
 
-  const encuestasLocales = obtenerEncuestas();
+  const yo = documentoDeLaSesion();
 
   /* Sólo lo que falta por subir. Antes se reenviaba todo el historial en cada
      pulsación —incluidas las fichas ya guardadas en la base—, así que un
      rechazo antiguo volvía a contarse como error nuevo y el resumen final
-     nunca reflejaba lo que acababa de pasar. */
-  const pendientes = encuestasLocales.filter(function (e) { return e.sincronizada !== true; });
+     nunca reflejaba lo que acababa de pasar. Y sólo las de la sesión: la firma
+     del servidor es la de quien sube, y lo de otra persona quedaría a su nombre. */
+  const pendientes = obtenerEncuestas().filter(function (e) { return e.sincronizada !== true; });
 
   /* El progreso se ve en el módulo de Inicio, donde se pulsó: un aviso
      modal de «sincronizando…» lo tapaba durante toda la subida. */
@@ -1371,20 +1510,30 @@ async function sincronizarEncuestas() {
   const rechazadas = [];
 
   try {
-    for (const encuesta of pendientes) {
+    for (const pendiente of pendientes) {
+      /* Se sube lo que hay ahora. Con poca señal la lista tarda minutos en pasar, y
+         mientras tanto la ficha se puede haber corregido o eliminado. */
+      const encuesta = obtenerEncuestas().find(function (e) { return esLaMismaFicha(e, pendiente); });
+      if (!encuesta || encuesta.sincronizada === true) {
+        sincronizacionEnCurso.hechas++;
+        renderizarEstadoSync();
+        continue;
+      }
+
       try {
+        /* `capturadaPor` también en las de antes de la marca: el servidor la
+           coteja con la sesión (api/guardar_encuesta.js). */
         const respuesta = await fetch('/api/guardar_encuesta', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(encuesta)
+          body: JSON.stringify(yo ? Object.assign({}, encuesta, { capturadaPor: yo }) : encuesta)
         });
 
         if (respuesta.ok) {
-          encuesta.sincronizada = true;
           ultimaSubidaALaBase = Date.now();
           /* Una ficha capturada sin señal recibe aquí sus códigos. */
           const cuerpo = await respuesta.json().catch(function () { return {}; });
-          aplicarCodigosAsignados(encuesta, cuerpo.codigos);
+          marcarComoSubida(encuesta, cuerpo.codigos);
           exitosas++;
         } else {
           const errorData = await respuesta.json().catch(function () { return {}; });
@@ -1409,9 +1558,6 @@ async function sincronizarEncuestas() {
       sincronizacionEnCurso.hechas++;
       renderizarEstadoSync();
     }
-
-    // Guardar los estados actualizados en localStorage
-    guardarEncuestas(encuestasLocales);
 
     /* Lo que hay en la base, incluido lo que acaba de subir y lo que otros
        dispositivos del equipo guardaron. */
@@ -1492,7 +1638,8 @@ const CODIGOS_SEMILLA = ['F-00123', 'F-00456', 'F-00789'];
 function retirarDatosDemostracion() {
   if (localStorage.getItem(CLAVE_SEMILLA_RETIRADA) === 'si') return;
 
-  const encuestas = obtenerEncuestas();
+  /* De todo el dispositivo: la marca es una sola, y una semilla no es de nadie. */
+  const encuestas = leerFichasDelDispositivo();
 
   /* Sólo las de demostración que nunca llegaron a la base. Si alguna se
      sincronizó, es un registro real que reutilizó el código y no se toca. */
@@ -1503,7 +1650,7 @@ function retirarDatosDemostracion() {
 
   const retiradas = encuestas.length - conservadas.length;
   if (retiradas > 0) {
-    guardarEncuestas(conservadas);
+    escribirFichasDelDispositivo(conservadas);
     console.info('Se retiraron ' + retiradas + ' ficha(s) de demostración del almacenamiento local.');
   }
 
@@ -2001,6 +2148,9 @@ const VISTA_SINCRONIA = {
  *   sin-red    las fichas esperan la señal, botón deshabilitado.
  * Sólo se parchea el marcado fijo de index.html: el estado cambia en cada
  * ficha que sube y reescribirlo haría parpadear el botón bajo el dedo.
+ *
+ * Lo de otra persona no cuenta aquí, porque no se puede subir desde esta
+ * sesión. Se dice aparte: si nadie lo dice, se queda olvidado en el equipo.
  */
 function renderizarEstadoSync() {
   const modulo = document.getElementById('sincronia');
@@ -2008,6 +2158,7 @@ function renderizarEstadoSync() {
 
   const locales = obtenerEncuestas();
   const pendientes = locales.filter(function (e) { return e.sincronizada !== true; }).length;
+  const ajenas = pendientesDeOtrasPersonas();
   const curso = sincronizacionEnCurso;
   const ultima = leerUltimaSincronizacion();
 
@@ -2040,16 +2191,16 @@ function renderizarEstadoSync() {
   } else {
     estado = 'listo';
     if (locales.length === 0 && !ultima) {
-      titulo = 'Nada por subir';
+      titulo = ajenas.length > 0 ? 'Nada suyo por subir' : 'Nada por subir';
       detalle = 'Lo que guarde sin señal esperará aquí';
     } else {
-      titulo = 'Todo está en la base';
+      titulo = ajenas.length > 0 ? 'Sus fichas están en la base' : 'Todo está en la base';
       if (ultimoResultadoSync && ultimoResultadoSync.subidas > 0 && ultima) {
         detalle = textoCantidad(ultimoResultadoSync.subidas, 'ficha subida', 'fichas subidas') + ' ' + textoCuando(ultima);
       } else if (ultima) {
         detalle = 'Sincronizado ' + textoCuando(ultima);
       } else {
-        detalle = 'Las fichas de este equipo ya subieron';
+        detalle = ajenas.length > 0 ? 'Sus fichas de este equipo ya subieron' : 'Las fichas de este equipo ya subieron';
       }
     }
   }
@@ -2063,6 +2214,12 @@ function renderizarEstadoSync() {
   modulo.querySelector('.sincronia__titulo').textContent = titulo;
   modulo.querySelector('.sincronia__detalle').textContent = detalle;
 
+  const avisoAjenas = document.getElementById('fichasAjenas');
+  if (avisoAjenas) {
+    avisoAjenas.hidden = ajenas.length === 0;
+    avisoAjenas.querySelector('span').textContent = ajenas.length > 0 ? textoDePendientesAjenas(ajenas) : '';
+  }
+
   const barra = modulo.querySelector('.sincronia__barra');
   barra.hidden = estado !== 'subiendo';
   barra.querySelector('.sincronia__avance').style.transform = 'scaleX(' + avance + ')';
@@ -2073,6 +2230,35 @@ function renderizarEstadoSync() {
   const isla = boton.querySelector('.btn-sync__icono');
   isla.hidden = !vista.botonIcono;
   if (vista.botonIcono) isla.firstElementChild.className = 'ph ' + vista.botonIcono;
+}
+
+/* A quién buscar para que suba lo suyo. Por su nombre, si ya entró en este equipo
+   y por eso está guardado aquí; si no, por el final de su documento, que alcanza
+   para reconocerlo en un equipo de trabajo sin dejar el número a la vista. */
+function nombreEnElEquipo(documento) {
+  return typeof ACCESO_LOCAL !== 'undefined' && ACCESO_LOCAL.nombreDe ? ACCESO_LOCAL.nombreDe(documento) : null;
+}
+
+function finDeDocumento(documento) {
+  return 'documento terminado en ' + documento.slice(-4);
+}
+
+function textoDePendientesAjenas(grupos) {
+  const total = grupos.reduce(function (suma, grupo) { return suma + grupo.cantidad; }, 0);
+  const cuantas = 'En este equipo hay ' + textoCantidad(total, 'ficha sin subir', 'fichas sin subir');
+
+  if (grupos.length === 1) {
+    const documento = grupos[0].documento;
+    return cuantas + ' de ' + (nombreEnElEquipo(documento) || 'otra persona (' + finDeDocumento(documento) + ')') +
+      '. Sólo esa persona puede ' + (total === 1 ? 'subirla' : 'subirlas') +
+      ': pídale que ingrese aquí con señal y toque «Sincronizar ahora».';
+  }
+
+  const personas = grupos.map(function (grupo) {
+    return (nombreEnElEquipo(grupo.documento) || finDeDocumento(grupo.documento)) + ' (' + grupo.cantidad + ')';
+  }).join(', ');
+  return cuantas + ' de otras personas: ' + personas +
+    '. Sólo quien las capturó puede subirlas: pídales que ingresen aquí con señal y toquen «Sincronizar ahora».';
 }
 
 function badgeHacinamiento(valor) {
@@ -4836,6 +5022,11 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
      el registro, la segunda no puede pisarlo (ver guardar_encuesta.js). */
   encuesta.esCorreccion = !!encuestaEnCorreccion;
 
+  /* De quién es en este dispositivo. El servidor la coteja con la sesión: esta
+     página puede creer que la sesión es de alguien y la cookie ser ya de otro. */
+  const yo = documentoDeLaSesion();
+  if (yo) encuesta.capturadaPor = yo;
+
   /* RN-228: evolucionando el plan, el servidor escribe sólo los planes. */
   const enPlan = typeof enEvolucionDePlan === 'function' && enEvolucionDePlan();
   if (enPlan) {
@@ -5474,6 +5665,7 @@ function inicializarAplicacion() {
   inicializarNavegadorPendientes();
   inicializarValidacionEnVivo();
   retirarDatosDemostracion();
+  adoptarFichasSinDueno();
   inicializarNavegacion();
   /* El módulo de sincronización dice si hay señal: se repinta al perderla y
      al recuperarla. */

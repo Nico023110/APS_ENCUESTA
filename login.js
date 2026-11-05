@@ -164,6 +164,19 @@
     avisoMotivo.hidden = false;
   }
 
+  /* Cada persona sube sólo lo suyo. Quien acaba de cerrar sesión con fichas sin
+     subir lo ve al salir. Sólo la cantidad: aquí todavía nadie ha dicho quién es. */
+  const sinSubir = window.PWA ? window.PWA.fichasSinSubir() : 0;
+  if (sinSubir > 0) {
+    const avisoPendientes = document.getElementById('avisoPendientes');
+    avisoPendientes.textContent = sinSubir === 1
+      ? 'En este equipo hay 1 ficha sin subir. Sólo quien la capturó puede subirla: ingrese con su cuenta cuando ' +
+        'tenga señal y toque «Sincronizar ahora».'
+      : 'En este equipo hay ' + sinSubir + ' fichas sin subir. Sólo quien las capturó puede subirlas: ingrese con su ' +
+        'cuenta cuando tenga señal y toque «Sincronizar ahora».';
+    avisoPendientes.hidden = false;
+  }
+
   /* Si ya hay sesión con clave temporal (por ejemplo, se recargó la página
      a mitad del primer ingreso), se salta directo al paso 2. Si hay sesión
      completa, no hay nada que hacer aquí. */

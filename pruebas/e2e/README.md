@@ -11,7 +11,8 @@ recorren el formulario como lo recorre quien encuesta en campo.
 `aps_encuesta` (`playwright.config.pwa.js` se niega a otra cosa): instalar, primer
 ingreso, abrir sin red, una ficha completa sin red, bloqueo y reingreso sin red, volver
 la señal con la sesión vencida y sincronizar, señal débil, versión nueva sin perder lo
-guardado, zoom y anchos en el teléfono. `pwa_banco.js` sirve una copia temporal detrás
+guardado, zoom y anchos en el teléfono, cuánto cabe y dos personas en un mismo equipo.
+`pwa_banco.js` sirve una copia temporal detrás
 de un proxy propio: «sin red» es que el proxy corta de verdad, y «publicar» es editar
 esa copia. Dos proyectos: `android-chromium` e `ios-webkit`.
 

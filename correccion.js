@@ -950,7 +950,7 @@ function desenrutarPlanes(encuesta) {
    valores que el propio formulario recalcula. Ponerlas sería inofensivo pero
    ensucia el diagnóstico de lo que no se pudo aplicar. */
 const CLAVES_NO_EDITABLES = [
-  'id', 'fechaRegistro', 'fechasModificacion', 'sincronizada', 'esCorreccion',
+  'id', 'fechaRegistro', 'fechasModificacion', 'sincronizada', 'esCorreccion', 'capturadaPor',
   'departamento', 'municipio', 'microterritorioNombre', 'comuna',
   'direccion', 'direccionLegible', 'direccionComponentes', 'direccionNormalizada',
   'consultaGeocodificacion', 'origenCoordenadas', 'precisionCoordenadas',

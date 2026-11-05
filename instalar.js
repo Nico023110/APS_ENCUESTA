@@ -9,8 +9,6 @@
 (function () {
   'use strict';
 
-  const CLAVE_ENCUESTAS = 'aps_encuestas';
-
   /* iOS puede tomar como inicio la página desde la que se agregó el ícono. Dentro
      de la aplicación instalada esta guía no tiene nada que hacer. */
   if (window.PWA && window.PWA.instalada()) {
@@ -71,22 +69,15 @@
   window.addEventListener('appinstalled', marcarInstalada);
 
   /* En iPhone y iPad la aplicación instalada tiene su propio almacenamiento: lo
-     que está guardado en Safari no pasa a ella. Se avisa antes de que suceda. */
-  function fichasSinSubirEnEsteNavegador() {
-    try {
-      const lista = JSON.parse(localStorage.getItem(CLAVE_ENCUESTAS) || '[]');
-      return Array.isArray(lista) ? lista.filter(function (f) { return f && f.sincronizada !== true; }).length : 0;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  const pendientes = fichasSinSubirEnEsteNavegador();
+     que está guardado en Safari no pasa a ella. Se avisa antes de que suceda. Cada
+     persona sube sólo lo suyo, así que hace falta la cuenta de quien la capturó. */
+  const pendientes = window.PWA ? window.PWA.fichasSinSubir() : 0;
   if (sistema === 'ios' && pendientes > 0) {
     document.getElementById('avisoPendientesTexto').textContent =
-      (pendientes === 1 ? 'Tiene 1 ficha sin subir' : 'Tiene ' + pendientes + ' fichas sin subir') +
-      ' en este navegador. Antes de instalar, ábrala y toque «Sincronizar ahora»: la aplicación instalada no verá ' +
-      'lo guardado aquí.';
+      (pendientes === 1 ? 'Hay 1 ficha sin subir' : 'Hay ' + pendientes + ' fichas sin subir') +
+      ' en este navegador. Antes de instalar, ingrese aquí con la cuenta de quien ' +
+      (pendientes === 1 ? 'la capturó' : 'las capturó') + ' y toque «Sincronizar ahora»: la aplicación instalada no ' +
+      'verá lo guardado aquí.';
     document.getElementById('avisoPendientes').hidden = false;
   }
 })();

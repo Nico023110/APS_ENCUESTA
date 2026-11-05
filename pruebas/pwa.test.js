@@ -14,6 +14,8 @@
    5. El bloqueo: sobrevive a cerrar la aplicación y no saca a nadie por escribir
       mal la contraseña.
    6. El acceso: con señal manda el servidor; sin ella, la copia del dispositivo.
+   7. Otra pestaña que cambia de usuario, y lo que el acceso dice de las fichas sin
+      subir. La cola por persona es pruebas/cola_por_usuario.test.js.
    ========================================================================= */
 
 'use strict';
@@ -324,6 +326,7 @@ function montarAcceso(opciones) {
     });
   });
 
+  if (opciones.conPwa) v.eval(leer('pwa.js'));
   v.eval(leer('login.js'));
 
   return {
@@ -634,6 +637,8 @@ async function principal() {
   const OTRO = Object.assign({}, PERFIL, { id: 8, documento: '1144099002' });
   await dos.acceso.recordar('1144099002', 'OtraClave2026', OTRO);
   await dos.acceso.recordar('1144099001', CLAVE, PERFIL);
+  verificar('dice el nombre de quien ya entró en este equipo', dos.acceso.nombreDe('1144099002') === OTRO.nombre);
+  verificar('y de quien no, nada', dos.acceso.nombreDe('1144000000') === null);
   verificar('sin señal, el dueño de la sesión entra', (await dos.acceso.verificar('1144099001', CLAVE)).ok === true);
   const intruso = await dos.acceso.verificar('1144099002', 'OtraClave2026');
   verificar('sin señal, otra persona no entra aunque su contraseña sea correcta: firmaría como el dueño de la cookie',
@@ -1031,7 +1036,7 @@ async function principal() {
     const contexto = { localStorage: almacen, console: { warn: function () {}, error: function () {} } };
     vm.runInNewContext(
       "const STORAGE_KEY = 'aps_encuestas';\n" +
-      trozo('app.js', 'function obtenerEncuestas()', '/**\n * Sustituye una ficha') +
+      trozo('app.js', 'function documentoDeLaSesion()', '/**\n * Sustituye una ficha') +
       trozo('captura_local.js', 'function escribirLocal', 'function borrarLocal') +
       'this.api = { obtenerEncuestas, agregarEncuesta, guardarEncuestas, escribirLocal };',
       contexto
@@ -1070,6 +1075,78 @@ async function principal() {
   cola = montarCola(1500, [fichaDe('P1', false)]);
   verificar('si no hay qué soltar, el borrador dice que no pudo', cola.api.escribirLocal('aps_borrador_7', 'y'.repeat(1200)) === false);
   verificar('sin tocar la pendiente', codigos(cola.api.obtenerEncuestas()).join() === 'P1');
+
+  console.log('\n=== 14. Otra pestaña cambió de usuario ===');
+
+  /* La cookie y el perfil guardado son de todo el navegador: esta pestaña seguiría
+     mostrando las fichas de quien ya no está, y las subiría con la sesión nueva. */
+  const avisarDeOtraPestana = function (pestana, clave) {
+    pestana.v.dispatchEvent(new pestana.v.StorageEvent('storage', { key: clave }));
+  };
+  const OTRA_CUENTA = JSON.stringify(Object.assign({}, PERFIL, { id: 8, documento: '1144099002' }));
+
+  let pestana = await montarSesion({ acceso: accesoSinFallo() });
+  avisarDeOtraPestana(pestana, 'aps_ultima_actividad');
+  verificar('un cambio en otra clave no la saca', !pestana.fuera());
+  pestana.v.localStorage.setItem('aps_sesion_usuario', JSON.stringify(Object.assign({}, PERFIL, { nombre: 'Prueba al día' })));
+  avisarDeOtraPestana(pestana, 'aps_sesion_usuario');
+  verificar('la misma persona entrando en otra pestaña no la saca', !pestana.fuera());
+  pestana.v.localStorage.setItem('aps_sesion_usuario', OTRA_CUENTA);
+  avisarDeOtraPestana(pestana, 'aps_sesion_usuario');
+  verificar('si entró otra persona, vuelve al acceso', pestana.fuera());
+
+  pestana = await montarSesion({ acceso: accesoSinFallo() });
+  pestana.v.localStorage.removeItem('aps_sesion_usuario');
+  avisarDeOtraPestana(pestana, 'aps_sesion_usuario');
+  verificar('si cerraron la sesión en otra pestaña, también', pestana.fuera());
+
+  pestana = await montarSesion({ acceso: accesoSinFallo() });
+  pestana.v.localStorage.clear();
+  avisarDeOtraPestana(pestana, null);
+  verificar('si borraron el almacenamiento, también', pestana.fuera());
+
+  /* Volver de la memoria del navegador no dispara `storage`: lo que cambió mientras
+     tanto se revisa al mostrarse. */
+  pestana = await montarSesion({ acceso: accesoSinFallo() });
+  verificar('abrir normalmente no la saca', !pestana.fuera());
+  pestana.v.localStorage.setItem('aps_sesion_usuario', OTRA_CUENTA);
+  pestana.v.dispatchEvent(new pestana.v.Event('pageshow'));
+  verificar('una pestaña que vuelve de la memoria del navegador no sigue con la sesión de antes', pestana.fuera());
+
+  pestana = await montarSesion({ acceso: accesoSinFallo() });
+  pestana.v.localStorage.setItem('aps_sesion_usuario', OTRA_CUENTA);
+  pestana.v.document.dispatchEvent(new pestana.v.Event('visibilitychange'));
+  verificar('una pestaña que vuelve a primer plano, tampoco', pestana.fuera());
+
+  console.log('\n=== 15. Las fichas sin subir, antes de ingresar ===');
+
+  const sinContestar = function () { return new Promise(function () {}); };
+  const fichasEnElEquipo = function (lista) { return { aps_encuestas: JSON.stringify(lista) }; };
+  const FICHAS_DE_DOS = [
+    { id: 'a', codigoFicha: 'COD-A', sincronizada: false, capturadaPor: '1144099001', cabezaFamilia: 'Nombre De Familia' },
+    { id: 'b', codigoFicha: 'COD-B', responsableNumeroId: '1144099002' },
+    { id: 'c', codigoFicha: 'COD-C', sincronizada: true, capturadaPor: '1144099001' }
+  ];
+  const avisoDelAcceso = function (lista) {
+    const acceso = montarAcceso({ acceso: accesoSinFallo(), conPwa: true, servidor: sinContestar, almacen: lista });
+    return { acceso: acceso, nodo: acceso.v.document.getElementById('avisoPendientes') };
+  };
+
+  let enAcceso = avisoDelAcceso(fichasEnElEquipo(FICHAS_DE_DOS));
+  verificar('el acceso cuenta las pendientes de todas las personas, no lo ya subido',
+    !enAcceso.nodo.hidden && /hay 2 fichas sin subir/.test(enAcceso.nodo.textContent), enAcceso.nodo.textContent);
+  verificar('  sólo la cantidad: ni documentos, ni códigos, ni nombres',
+    !/1144099|COD-|Nombre/.test(enAcceso.nodo.textContent), enAcceso.nodo.textContent);
+  verificar('  y es lo mismo que cuenta la guía de instalación', enAcceso.acceso.v.PWA.fichasSinSubir() === 2);
+
+  enAcceso = avisoDelAcceso(fichasEnElEquipo([FICHAS_DE_DOS[0]]));
+  verificar('  en singular si es una', /hay 1 ficha sin subir\. Sólo quien la capturó puede subirla/.test(enAcceso.nodo.textContent), enAcceso.nodo.textContent);
+
+  enAcceso = avisoDelAcceso(fichasEnElEquipo([FICHAS_DE_DOS[2]]));
+  verificar('sin pendientes no dice nada', enAcceso.nodo.hidden && enAcceso.nodo.textContent === '');
+
+  enAcceso = avisoDelAcceso({ aps_encuestas: '{no es JSON' });
+  verificar('una lista ilegible no impide entrar', enAcceso.nodo.hidden && enAcceso.acceso.v.PWA.fichasSinSubir() === 0);
 
   console.log('\n---------------------------------------------');
   console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);

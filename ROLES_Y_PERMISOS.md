@@ -265,6 +265,7 @@ máximo 128, y al cambiarla debe ser distinta de la anterior.
 | Bloqueo por inactividad (RN‑223.6) | A los 20 minutos sin actividad la aplicación se cubre y pide la contraseña de nuevo; la ficha en curso no se pierde. El bloqueo queda anotado en el dispositivo: cerrar la aplicación y volver a abrirla no se lo salta. |
 | Sin red (RN‑223) | El perfil público (nombre, rol, equipo; nunca el token) queda en `localStorage` para abrir la aplicación sin señal; el servidor confirma o cierra la sesión cuando vuelve la red. |
 | Contraseña sin red (RN‑223.6) | Cuando el servidor confirma una contraseña, en el dispositivo queda una derivación de ella (PBKDF2‑SHA‑256, 600 000 rondas, sal propia), nunca la contraseña, con la que se desbloquea o se vuelve a entrar sin señal (`acceso_local.js`). Sólo deja seguir capturando: sin sesión válida la API sigue respondiendo 401. Vale 7 días desde la última confirmación del servidor; 5 fallos esperan 15 minutos; una cuenta desactivada la pierde al primer intento con señal. Sin señal sólo entra quien tiene la sesión abierta en ese equipo: la cookie no se puede leer desde JavaScript, y otra persona firmaría con la sesión ajena. Un cierre de sesión hecho sin señal se completa en el servidor apenas haya red, antes de dejar entrar a nadie. Riesgo aceptado: quien extraiga el almacenamiento de un teléfono podría probar contraseñas contra esa derivación sin límite de intentos. |
+| Equipo compartido (RN‑223) | Cada ficha del dispositivo es de quien la capturó (`capturadaPor`, y en las anteriores a esa marca el ítem 13): sólo esa persona la ve y la sube, porque el servidor firma con la sesión. El servidor rechaza con 409 la ficha que llega con una sesión que no es la de su dueño. Una pestaña abierta vuelve al acceso si en otra se cierra la sesión o entra otra persona. El aviso de pendientes ajenas nombra a la persona, o da sólo los últimos cuatro dígitos de su documento si nunca entró en ese equipo; el acceso, antes de ingresar, sólo dice cuántas hay. |
 | CSRF | Toda petición que muta exige la cabecera `X-Requested-With: fetch`; con `SameSite=Strict` la cookie no viaja desde otro origen. |
 | Cabeceras | CSP sin ningún CDN (todo se sirve desde la aplicación; lo único externo es la geocodificación), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`, HSTS en producción, `Cache-Control: no-store` en la API (`servidor.js` y `vercel.json`). |
 | Publicación | `.vercelignore` deja fuera `bd/`, `pruebas/`, documentos y configuración de agentes; el servidor local tampoco los sirve. |
@@ -272,10 +273,14 @@ máximo 128, y al cambiarla debe ser distinta de la anterior.
 
 ## 5. Límites conocidos
 
-- Las fichas pendientes de sincronizar se guardan en el navegador bajo una sola
-  clave por dispositivo, no por usuario: un dispositivo es de un equipo. Si dos
-  personas de equipos distintos comparten un dispositivo, el historial local
-  mezcla sus fichas hasta que se sincronizan.
+- Una ficha pendiente sólo la sube quien la capturó (RN‑223). Si esa persona no
+  vuelve al dispositivo —dejó la entidad, le desactivaron la cuenta—, la ficha se
+  queda allí, a salvo y avisada en Inicio y en el acceso, pero hoy nadie más
+  tiene cómo subirla.
+- Una corrección que estaba sin subir antes de la marca de dueño (`capturadaPor`)
+  queda a nombre de quien firmó la ficha original, porque no hay dato de quién la
+  corrigió. Si esa persona no puede corregirla por su rol, el servidor la rechaza
+  y sigue pendiente en su cola.
 - La asignación de **territorios** a un equipo (RN‑224.3 habla de territorios
   asignados) todavía no se modela; el alcance se aplica por equipo, que es la
   unidad que la ficha registra.

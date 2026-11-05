@@ -268,10 +268,29 @@
   /* En segundo plano los temporizadores se duermen: al volver a la aplicación
      se revisa ya, no al siguiente tic, para no dejar ver la ficha unos segundos. */
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') anotarUltimaActividad();
-    else revisarInactividad();
+    if (document.visibilityState === 'hidden') {
+      anotarUltimaActividad();
+    } else {
+      revisarQueSigueSiendoSuSesion();
+      revisarInactividad();
+    }
   });
-  window.addEventListener('pageshow', revisarInactividad);
+  window.addEventListener('pageshow', function () {
+    revisarQueSigueSiendoSuSesion();
+    revisarInactividad();
+  });
+
+  /* La cookie y el perfil guardado son de todo el navegador. Si en otra pestaña se
+     cerró la sesión o entró otra persona, ésta seguiría mostrando las fichas de
+     quien ya no está y, al sincronizar, las subiría con la sesión nueva. */
+  function revisarQueSigueSiendoSuSesion() {
+    const guardado = leerCache();
+    if (!guardado || String(guardado.documento) !== String(usuario.documento)) irAlInicioDeSesion('');
+  }
+
+  window.addEventListener('storage', function (evento) {
+    if (evento.key === CLAVE_CACHE || evento.key === null) revisarQueSigueSiendoSuSesion();
+  });
 
   function bloquear() {
     const velo = document.getElementById('bloqueoSesion');

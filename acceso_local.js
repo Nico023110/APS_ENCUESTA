@@ -242,6 +242,11 @@
     confirmar: confirmar,
     verificar: verificar,
     olvidar: olvidar,
+    /* Para nombrar a quien dejó fichas sin subir en este equipo (app.js). */
+    nombreDe: function (documento) {
+      const copia = leer(documento);
+      return copia && copia.perfil.nombre ? String(copia.perfil.nombre) : null;
+    },
     anotarSesion: anotarSesion,
     olvidarSesion: olvidarSesion,
     anotarCierrePendiente: function () { escribirMarca(CLAVE_CIERRE_PENDIENTE, 'si'); },
