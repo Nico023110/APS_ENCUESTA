@@ -426,17 +426,6 @@ function inicializarCatalogosDelFormulario() {
   // Bloques 4 a 12: se resuelven por data-catalogo, sin ids fijos.
   renderizarCatalogosDeclarativos(document);
 
-  /* Ítem 73 — ocupaciones CIUO de SISPRO (catalogos_sispro.js). Una sola
-     lista para todos los integrantes: el navegador la ofrece al escribir,
-     por código o por nombre, y deja en el campo el código. */
-  const listaCiuo = document.getElementById('listaOcupacionesCiuo');
-  if (listaCiuo) {
-    listaCiuo.innerHTML = CAT_OCUPACION_CIUO.map(function (ocupacion) {
-      return '<option value="' + escaparHtml(ocupacion.valor) + '" label="' +
-        escaparHtml(ocupacion.valor + ' — ' + ocupacion.etiqueta) + '"></option>';
-    }).join('');
-  }
-
   /* El catálogo de acciones vive en la base, no en `catalogos.js`. Se pide sin
      bloquear el arranque: los selects se repintan cuando llegue. */
   cargarCatalogoDeAcciones();
@@ -5693,3 +5682,4 @@ function inicializarAplicacion() {
 }
 
 document.addEventListener('DOMContentLoaded', inicializarAplicacion);
+  if (typeof inicializarBuscadorOcupacion === 'function') inicializarBuscadorOcupacion();

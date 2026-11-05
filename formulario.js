@@ -958,7 +958,8 @@ function actualizarNombreOcupacion(bloque) {
   if (!campo || !nombre) return;
   const codigo = campo.value.trim();
   const ocupacion = CAT_OCUPACION_CIUO.find(function (o) { return o.valor === codigo; });
-  nombre.textContent = codigo === '' ? '' : ocupacion ? ocupacion.etiqueta : 'Código no encontrado en la tabla CIUO.';
+  nombre.textContent = codigo === '' ? '' : ocupacion ? ocupacion.etiqueta
+    : /^\d+$/.test(codigo) ? 'Código no encontrado en la tabla CIUO.' : 'Elija una ocupación de la lista.';
   nombre.classList.toggle('field-hint--error', codigo !== '' && !ocupacion);
 }
 

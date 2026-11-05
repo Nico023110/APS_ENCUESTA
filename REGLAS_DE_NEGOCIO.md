@@ -613,7 +613,7 @@ Debe existir exactamente un "Responsable económico" por familia (RN-051).
 
 ### RN-073 — Ocupación
 
-**Ítem 73.** Código **CIUO** obligatorio de la tabla **SGDCIUO** de SISPRO (variable 18 del registro tipo 3), que registra la actividad u oficio principal desempeñado. Se busca por nombre o por código y el formulario muestra el nombre de la ocupación elegida; no admite texto libre. **9998 — Sin ocupación** cubre a quien no trabaja; para menores de 15 años sin ocupación registrada el reporte envía 9998.
+**Ítem 73.** Código **CIUO** obligatorio de la tabla **SGDCIUO** de SISPRO (variable 18 del registro tipo 3), que registra la actividad u oficio principal desempeñado. Se busca por nombre o por código —sin importar tildes, género ni plural, y también por palabras de uso común como «vigilante» o «taxista»— y el formulario muestra el nombre de la ocupación elegida; no admite texto libre. **9998 — Sin ocupación** cubre a quien no trabaja; para menores de 15 años sin ocupación registrada el reporte envía 9998.
 
 Las fichas de cuando la ocupación era texto libre conservan el texto; al corregirlas, el sistema pide cambiarlo por un código y el reporte lo señala como incidencia.
 

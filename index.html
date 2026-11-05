@@ -1120,8 +1120,8 @@
                       </div>
                       <div class="field field--lg" data-campo="ocupacion">
                         <label><span class="item-num">73.</span> Ocupación (código CIUO):</label>
-                        <span class="field-hint field-hint--inline">Obligatoria desde los 15 años. Escriba el código o parte del nombre y elija de la lista. Desempleado, ama de casa o estudiante: 9998.</span>
-                        <input type="text" name="familias[0].integrantes[0].ocupacion" list="listaOcupacionesCiuo" maxlength="120" autocomplete="off" placeholder="Ej. 5321" data-rol="ocupacion">
+                        <span class="field-hint field-hint--inline">Obligatoria desde los 15 años. Escriba el oficio o el código y elija de la lista. Desempleado, ama de casa o estudiante: 9998.</span>
+                        <input type="text" name="familias[0].integrantes[0].ocupacion" role="combobox" aria-autocomplete="list" aria-expanded="false" maxlength="120" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Ej. vendedor o 5223" data-rol="ocupacion">
                         <span class="field-hint field-hint--inline" data-rol="nombreOcupacion"></span>
                       </div>
                       <div class="form-grid">
@@ -2425,7 +2425,6 @@
 <!-- ===================== CONTENEDOR DE NOTIFICACIONES ===================== -->
 <div class="toast-container" id="toastContainer"></div>
 
-<datalist id="listaOcupacionesCiuo"></datalist>
 <datalist id="listaEquiposEbs"></datalist>
 <datalist id="listaBarrios"></datalist>
 <script src="catalogos_sispro.js"></script>
@@ -2443,6 +2442,7 @@
 <script src="roles.js"></script>
 <script src="usuarios.js"></script>
 <script src="reporte.js"></script>
+<script src="ocupacion.js"></script>
 <script src="productividad.js"></script>
 <script src="tableros.js"></script>
 </body>

@@ -3694,7 +3694,8 @@ button.atencion__fila:focus-visible {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
 }
 
-.combo-cups__opcion {
+.combo-cups__opcion,
+.combo-ocupacion__opcion {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -3706,8 +3707,20 @@ button.atencion__fila:focus-visible {
 }
 
 .combo-cups__opcion:hover,
-.combo-cups__opcion--activa {
+.combo-cups__opcion--activa,
+.combo-ocupacion__opcion:hover,
+.combo-ocupacion__opcion--activa {
   background: var(--bg-page);
+}
+
+/* Ítem 73: el campo no tiene envoltura propia, ocupacion.js ubica la lista. */
+.field[data-campo="ocupacion"] { position: relative; }
+.field[data-campo="ocupacion"] > input {
+  scroll-margin-top: calc(var(--alto-cabecera) + var(--alto-indice) + var(--s-2));
+}
+.combo-ocupacion__lista { top: auto; right: auto; min-width: 0; }
+@media (pointer: coarse) {
+  .combo-ocupacion__opcion { padding: 11px 10px; font-size: 14px; }
 }
 
 .combo-cups__codigo {

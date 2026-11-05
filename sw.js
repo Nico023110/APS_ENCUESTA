@@ -76,6 +76,7 @@ const ARCHIVOS = [
   '/usuarios.js',
   '/reporte.js',
   '/productividad.js',
+  '/ocupacion.js',
   '/tableros.js',
 
   '/iconos/apple-touch-icon.png',
