@@ -3,7 +3,9 @@
    -------------------------------------------------------------------------
    Cuerpo: { documento, clave }. Responde el perfil público y deja la cookie
    de sesión. Los motivos de rechazo por credenciales se funden en un solo
-   mensaje: no se confirma si el documento existe (ver _auth.js).
+   mensaje: no se confirma si el documento existe (ver _auth.js). También responde
+   la llave de custodia de las fichas del dispositivo (boveda.js), porque aquí la
+   contraseña ya se verificó.
    ========================================================================= */
 
 'use strict';
@@ -34,7 +36,7 @@ module.exports = async (req, res) => {
     await auth.revocarSesionActual(req, res, 'reemplazada');
     await auth.crearSesion(req, res, resultado.usuario.id);
 
-    return res.status(200).json({ usuario: resultado.usuario });
+    return res.status(200).json({ usuario: resultado.usuario, llaveCustodia: auth.llaveDeCustodia(resultado.usuario.id) });
   } catch (error) {
     console.error('Error al iniciar sesión:', error.message);
     return res.status(500).json({ error: 'No fue posible iniciar sesión. Intente de nuevo.' });

@@ -17,7 +17,7 @@ const { cambiosEnPlanRegistrado } = require('../api/_plan_bloqueo');
 const BASE = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(BASE, 'index.html'), 'utf8');
 const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js',
-  'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
+  'formulario.js', 'cups.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
 

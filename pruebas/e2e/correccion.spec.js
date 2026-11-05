@@ -85,14 +85,14 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   diario.entrarA('1. Se estropea el código de acción, como estaba la ficha real');
 
   const estropeada = await page.evaluate(function (datos) {
-    const todas = JSON.parse(localStorage.getItem('aps_encuestas') || '[]');
+    const todas = window.obtenerEncuestas();
     const ficha = todas.find(function (e) { return e.codigoFicha === datos.codigo; });
     if (!ficha) return null;
 
     ficha.planVivienda.acciones[0].codigoAccion = datos.invalido;
     ficha.sincronizada = false;   // vuelve a quedar pendiente
 
-    localStorage.setItem('aps_encuestas', JSON.stringify(todas));
+    window.guardarEncuestas(todas);
     return { id: ficha.id, codigoAccion: ficha.planVivienda.acciones[0].codigoAccion };
   }, { codigo: FICHA.codigo, invalido: CODIGO_INVALIDO });
 
@@ -107,6 +107,7 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   await ayudas.anunciar(page, 'La ficha guardada ya no es válida: sincronizar la rechaza');
 
   await page.reload();
+  await ayudas.entrarSiLoPide(page);
   await esperarCatalogos(page);
   await page.getByRole('button', { name: 'Inicio' }).click();
   await page.getByRole('button', { name: 'Sincronizar ahora' }).click();
@@ -276,7 +277,7 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   diario.entrarA('5. El historial no quedó con copias');
 
   const estadoFinal = await page.evaluate(function (codigo) {
-    const todas = JSON.parse(localStorage.getItem('aps_encuestas') || '[]');
+    const todas = window.obtenerEncuestas();
     const nuestras = todas.filter(function (e) { return e.codigoFicha === codigo; });
     return {
       copias: nuestras.length,

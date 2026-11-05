@@ -4886,6 +4886,20 @@ button.atencion__fila:focus-visible {
 }
 .sincronia__ajenas[hidden] { display: none; }
 .sincronia__ajenas i { flex: none; font-size: 16px; line-height: 1.3; color: var(--warn-600); }
+.sincronia__ajenas span { flex: 1; min-width: 0; }
+
+.sincronia__abrir {
+  flex: none;
+  margin: -6px calc(var(--s-2) * -1) -6px 0;
+  padding: 6px var(--s-2);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* Avance real de la subida: una ficha por tramo. */
 .sincronia__barra {

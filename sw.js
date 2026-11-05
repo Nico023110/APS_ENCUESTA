@@ -13,6 +13,13 @@
      borra.
    - No sincroniza. La sincronización sigue siendo la de «Sincronizar ahora».
 
+   LO ÚNICO QUE GUARDA EN MEMORIA
+
+   La llave de las fichas vive sólo en la memoria de la página, y el acceso y la
+   aplicación son dos páginas. Este worker sobrevive a esa navegación: guarda la
+   llave unos segundos, en una variable, y se la da una sola vez a la primera que la
+   pida (boveda.js). Nunca va a la caché ni al disco.
+
    CÓMO SE ACTUALIZA
 
    Lo habitual es poner un número de versión en este archivo y subirlo con cada
@@ -57,6 +64,7 @@ const ARCHIVOS = [
 
   '/pwa.js',
   '/acceso_local.js',
+  '/boveda.js',
   '/sesion.js',
   '/login.js',
   '/instalar.js',
@@ -92,7 +100,8 @@ const ARCHIVOS = [
   '/vendor/fuentes/jetbrains-mono-latin-ext.woff2',
   '/vendor/phosphor/style.css',
   '/vendor/phosphor/Phosphor.woff2',
-  '/vendor/sweetalert2/sweetalert2.all.min.js'
+  '/vendor/sweetalert2/sweetalert2.all.min.js',
+  '/vendor/noble-ciphers/xchacha20poly1305.js'
 ];
 
 /* Direcciones que el servidor resuelve a un archivo (vercel.json, servidor.js). */
@@ -117,6 +126,11 @@ const CABECERAS_QUE_NO_SE_GUARDAN = ['content-encoding', 'content-length', 'tran
    worker cuando quiere, y al despertar se vuelve a buscar. */
 let vigente = null;
 let busquedaEnCurso = null;
+
+/* La llave de camino del acceso a la aplicación (ver arriba). Lo normal es que no
+   pase de unas decenas de milisegundos: esto sólo cubre una página que no llegó. */
+const VIGENCIA_ENTREGA_MS = 10 * 1000;
+let llaveEnTransito = null;
 
 /* ---------------------------------------------------------
    1. EL NÚCLEO: DESCARGAR, GUARDAR, PASAR A LA VERSIÓN NUEVA
@@ -275,7 +289,30 @@ self.addEventListener('message', function (evento) {
   }
   /* Lo pide «Actualizar», con la página ya cargada y a punto de recargarse. */
   if (datos.tipo === 'activar') evento.waitUntil(self.skipWaiting());
+
+  if (datos.tipo === 'llave-dejar') {
+    olvidarLlaveEnTransito();
+    const dejada = { documento: datos.documento, id: datos.id, llave: datos.llave };
+    llaveEnTransito = dejada;
+    evento.ports[0].postMessage({ ok: true });
+    /* Sin esto, el navegador puede apagar el worker antes de que llegue la página. */
+    evento.waitUntil(new Promise(function (resolver) {
+      setTimeout(function () {
+        if (llaveEnTransito === dejada) olvidarLlaveEnTransito();
+        resolver();
+      }, VIGENCIA_ENTREGA_MS);
+    }));
+  }
+  if (datos.tipo === 'llave-tomar') {
+    evento.ports[0].postMessage(llaveEnTransito);
+    olvidarLlaveEnTransito();
+  }
 });
+
+function olvidarLlaveEnTransito() {
+  if (llaveEnTransito && llaveEnTransito.llave) llaveEnTransito.llave.fill(0);
+  llaveEnTransito = null;
+}
 
 /* ---------------------------------------------------------
    3. RESPONDER

@@ -51,7 +51,9 @@ module.exports = async (req, res) => {
     await auth.revocarOtrasSesiones(usuario.id, token, 'cambio_de_clave');
 
     usuario.debeCambiarClave = false;
-    return res.status(200).json({ usuario: usuario });
+    /* La clave actual se acaba de verificar. Es lo que permite pasar las fichas sin
+       subir a la contraseña nueva tras un restablecimiento (boveda.js). */
+    return res.status(200).json({ usuario: usuario, llaveCustodia: auth.llaveDeCustodia(usuario.id) });
   } catch (error) {
     console.error('Error al cambiar la contraseña:', error.message);
     return res.status(500).json({ error: 'No fue posible cambiar la contraseña. Intente de nuevo.' });

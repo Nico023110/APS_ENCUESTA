@@ -249,6 +249,24 @@ persona; en el primer ingreso la aplicación exige reemplazarla por una propia.
 No hay restablecimiento por correo: quien olvida su contraseña acude al
 administrador.
 
+Olvidarla no pierde lo que no ha subido. Las fichas del dispositivo van cifradas con
+una llave que sale de la contraseña (`boveda.js`), y el dispositivo guarda esa llave
+también con una de custodia, que el servidor sólo entrega tras verificar una contraseña,
+nunca a quien sólo trae la cookie (`api/_auth.js`). Al entrar con señal y crear la
+contraseña nueva, las fichas vuelven solas.
+
+La llave de custodia sale de la variable `CUSTODIA_SECRETO` del despliegue, que no
+está en la base. Se genera una vez, de al menos 32 caracteres:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Sin ella todo funciona igual, pero quien olvide la contraseña sólo recupera sus fichas
+si recuerda la anterior: quedan selladas en el dispositivo, sin borrarse, y Inicio
+ofrece abrirlas. Quien tenga a la vez el teléfono y este secreto puede abrir lo que hay
+en ese teléfono: se guarda como se guardan las credenciales de la base.
+
 Política de contraseñas (`api/_auth.js`, `requisitosIncumplidos`): mínimo 10
 caracteres, al menos una letra y un número, no contiene el número de documento,
 máximo 128, y al cambiarla debe ser distinta de la anterior.
@@ -262,7 +280,8 @@ máximo 128, y al cambiarla debe ser distinta de la anterior.
 | Fuerza bruta | 5 fallos seguidos bloquean la cuenta 15 minutos; más de 30 fallos desde una misma IP en 15 minutos responden 429. Ambos contadores viven en la base (`aps.usuario`, `aps.intento_acceso`), no en memoria: en Vercel cada petición puede caer en un proceso distinto. |
 | Token de sesión | 32 bytes aleatorios; en la base sólo su SHA‑256 (`aps.sesion.id`). Cookie `aps_sesion` con `HttpOnly`, `SameSite=Strict`, `Path=/` y `Secure` fuera de localhost. |
 | Vigencia | Tope absoluto 12 h; caduca a las 4 h sin uso de la API. Cerrar sesión y cambiar la contraseña revocan en la base (la segunda cierra además las otras sesiones del usuario). |
-| Bloqueo por inactividad (RN‑223.6) | A los 20 minutos sin actividad la aplicación se cubre y pide la contraseña de nuevo; la ficha en curso no se pierde. El bloqueo queda anotado en el dispositivo: cerrar la aplicación y volver a abrirla no se lo salta. |
+| Bloqueo por inactividad (RN‑223.6) | A los 20 minutos sin actividad la aplicación se cubre, borra de la memoria la llave de las fichas y pide la contraseña de nuevo; la ficha en curso no se pierde. Abrir la aplicación desde cero también la pide, salvo recién ingresada: la llave sólo vive en la memoria de la página. |
+| Fichas en el dispositivo (RN‑223.1, RN‑224.2) | Cifradas ficha por ficha con XChaCha20‑Poly1305 y una llave al azar por persona y dispositivo (`boveda.js`). Esa llave queda envuelta con una derivada de la contraseña (PBKDF2‑SHA‑256, 600 000 rondas, sal propia) y con la de custodia; sin envolver sólo existe en memoria. En claro sólo queda de quién es cada ficha y si subió. Lo que otra persona dejó antes de esta versión sigue en claro hasta que esa persona entre: nadie puede cifrarlo sin su contraseña. |
 | Sin red (RN‑223) | El perfil público (nombre, rol, equipo; nunca el token) queda en `localStorage` para abrir la aplicación sin señal; el servidor confirma o cierra la sesión cuando vuelve la red. |
 | Contraseña sin red (RN‑223.6) | Cuando el servidor confirma una contraseña, en el dispositivo queda una derivación de ella (PBKDF2‑SHA‑256, 600 000 rondas, sal propia), nunca la contraseña, con la que se desbloquea o se vuelve a entrar sin señal (`acceso_local.js`). Sólo deja seguir capturando: sin sesión válida la API sigue respondiendo 401. Vale 7 días desde la última confirmación del servidor; 5 fallos esperan 15 minutos; una cuenta desactivada la pierde al primer intento con señal. Sin señal sólo entra quien tiene la sesión abierta en ese equipo: la cookie no se puede leer desde JavaScript, y otra persona firmaría con la sesión ajena. Un cierre de sesión hecho sin señal se completa en el servidor apenas haya red, antes de dejar entrar a nadie. Riesgo aceptado: quien extraiga el almacenamiento de un teléfono podría probar contraseñas contra esa derivación sin límite de intentos. |
 | Equipo compartido (RN‑223) | Cada ficha del dispositivo es de quien la capturó (`capturadaPor`, y en las anteriores a esa marca el ítem 13): sólo esa persona la ve y la sube, porque el servidor firma con la sesión. El servidor rechaza con 409 la ficha que llega con una sesión que no es la de su dueño. Una pestaña abierta vuelve al acceso si en otra se cierra la sesión o entra otra persona. El aviso de pendientes ajenas nombra a la persona, o da sólo los últimos cuatro dígitos de su documento si nunca entró en ese equipo; el acceso, antes de ingresar, sólo dice cuántas hay. |

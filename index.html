@@ -27,6 +27,8 @@
      antes de pintar nada, y envuelve fetch para todo lo que sigue. -->
 <script src="pwa.js"></script>
 <script src="acceso_local.js"></script>
+<script src="vendor/noble-ciphers/xchacha20poly1305.js"></script>
+<script src="boveda.js"></script>
 <script src="sesion.js"></script>
 </head>
 <body>
@@ -114,6 +116,11 @@
           <p class="sincronia__ajenas" id="fichasAjenas" hidden>
             <i class="ph ph-warning" aria-hidden="true"></i>
             <span></span>
+          </p>
+          <p class="sincronia__ajenas" id="fichasDeOtraLlave" hidden>
+            <i class="ph ph-lock-key" aria-hidden="true"></i>
+            <span></span>
+            <button type="button" class="sincronia__abrir" id="btnAbrirOtraLlave">Abrir</button>
           </p>
         </div>
       </section>
@@ -2235,8 +2242,8 @@
 <div class="bloqueo" id="bloqueoSesion" hidden role="dialog" aria-modal="true" aria-labelledby="bloqueoTitulo">
   <form class="bloqueo__tarjeta" novalidate>
     <span class="bloqueo__icono" aria-hidden="true"><i class="ph ph-lock-key"></i></span>
-    <h2 class="bloqueo__titulo" id="bloqueoTitulo">Sesión bloqueada por inactividad</h2>
-    <p class="bloqueo__texto">La ficha en curso sigue abajo, tal como la dejó. Escriba su contraseña para continuar como <strong data-bloqueo="nombre"></strong>.</p>
+    <h2 class="bloqueo__titulo" id="bloqueoTitulo" data-bloqueo="titulo">Sesión bloqueada por inactividad</h2>
+    <p class="bloqueo__texto"><span data-bloqueo="intro">La ficha en curso sigue abajo, tal como la dejó.</span> Escriba su contraseña para continuar como <strong data-bloqueo="nombre"></strong>.</p>
     <label class="bloqueo__campo">
       <span>Contraseña</span>
       <input type="password" name="clave" autocomplete="current-password" required>

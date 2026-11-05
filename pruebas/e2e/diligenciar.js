@@ -80,6 +80,7 @@ async function diligenciarEncuesta(page, diario, ficha, personas) {
      con la sesión ya abierta en el dispositivo. */
   if (!ficha.sesionYaAbierta) await ayudas.iniciarSesion(page, diario);
   await page.goto('/');
+  await ayudas.entrarSiLoPide(page);
   await expect(page.locator('#appTabs')).toBeVisible();
 
   /* Los catálogos pueblan los selects al cargar. Empezar antes haría fallar
@@ -694,7 +695,7 @@ async function cerrarYGuardar(page, diario, ficha) {
   /* La ficha tiene que haber quedado marcada como sincronizada: es lo que
      distingue «se guardó en la base» de «se guardó en el dispositivo». */
   const estadoLocal = await page.evaluate(function (codigo) {
-    const todas = JSON.parse(localStorage.getItem('aps_encuestas') || '[]');
+    const todas = window.obtenerEncuestas();
     const nuestra = todas.find(function (e) { return e.codigoFicha === codigo; });
     return {
       existe: !!nuestra,
@@ -716,7 +717,7 @@ async function cerrarYGuardar(page, diario, ficha) {
      comprueba en vez de limpiarlo: si reaparecieran, este paso volvería a
      medir el rechazo de unas fichas de ejemplo en lugar del de la ficha real. */
   const soloLaNuestra = await page.evaluate(function (codigo) {
-    const todas = JSON.parse(localStorage.getItem('aps_encuestas') || '[]');
+    const todas = window.obtenerEncuestas();
     return {
       total: todas.length,
       ajenas: todas.filter(function (e) { return e.codigoFicha !== codigo; })

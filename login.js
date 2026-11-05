@@ -9,6 +9,10 @@
    Sin señal, o con el servidor caído, la contraseña se compara contra la
    copia que dejó el último ingreso con señal en este equipo (acceso_local.js).
    Eso sólo deja seguir capturando: para sincronizar hay que entrar con señal.
+
+   Con la contraseña verificada se abren las fichas del dispositivo (boveda.js), y
+   la llave pasa a la aplicación sin escribirse en ninguna parte. Si eso no se puede,
+   la aplicación vuelve a pedir la contraseña.
    ========================================================= */
 
 (function () {
@@ -18,6 +22,7 @@
   const CLAVES_DE_LA_SESION_ANTERIOR = ['aps_ultima_actividad', 'aps_pantalla_bloqueada'];
   const DESTINO = '/';
   const ACCESO_LOCAL = window.ACCESO_LOCAL;
+  const BOVEDA = window.BOVEDA;
 
   /* Con una rayita de señal la petición se queda colgada: pasado esto se sigue
      como si no hubiera red. */
@@ -84,13 +89,19 @@
     try {
       CLAVES_DE_LA_SESION_ANTERIOR.forEach(function (clave) { localStorage.removeItem(clave); });
     } catch (error) { /* sin almacenamiento */ }
-    window.location.replace(DESTINO);
+    return BOVEDA.entregar().then(function () { window.location.replace(DESTINO); });
   }
 
   /* El servidor acaba de confirmar esta contraseña: queda lista para verificar
-     sin señal antes de salir de la página, que interrumpiría la derivación. */
-  function recordarYEntrar(clave, perfil) {
-    return ACCESO_LOCAL.recordar(perfil.documento, clave, perfil).then(function () { entrar(perfil); });
+     sin señal, y abiertas las fichas, antes de salir de la página, que interrumpiría
+     las derivaciones. Corren a la vez: una después de la otra tardaría el doble. */
+  function recordarYEntrar(clave, perfil, llaveCustodia) {
+    const apertura = BOVEDA.prepararApertura(perfil.documento, clave);
+    return ACCESO_LOCAL.recordar(perfil.documento, clave, perfil).then(function () {
+      return apertura.abrir({ custodia: llaveCustodia });
+    }).then(function () {
+      return entrar(perfil);
+    });
   }
 
   /* El formulario ya está a la vista y se puede haber empezado a escribir
@@ -236,9 +247,13 @@
     }
 
     function verificarSinSenal() {
+      const apertura = BOVEDA.prepararApertura(documento, clave);
       return ACCESO_LOCAL.verificar(documento, clave).then(function (resultado) {
-        if (resultado.ok) entrar(resultado.perfil);
-        else rechazar(resultado.mensaje);
+        if (!resultado.ok) {
+          rechazar(resultado.mensaje);
+          return undefined;
+        }
+        return apertura.abrir().then(function () { return entrar(resultado.perfil); });
       });
     }
 
@@ -261,7 +276,7 @@
           prepararCambioDeClave(false);
           return undefined;
         }
-        return recordarYEntrar(clave, usuario);
+        return recordarYEntrar(clave, usuario, r.datos.llaveCustodia);
       }, verificarSinSenal);
 
     intento.catch(function () {
@@ -338,7 +353,7 @@
         return;
       }
       claveTemporalEnMemoria = '';
-      return recordarYEntrar(formClave.claveNueva.value, r.datos.usuario);
+      return recordarYEntrar(formClave.claveNueva.value, r.datos.usuario, r.datos.llaveCustodia);
     }).catch(function () {
       mostrarError(errorClave, 'Sin conexión con el servidor. Revise la red e intente de nuevo.');
     }).then(function () { ocupado(boton, false); });

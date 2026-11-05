@@ -122,7 +122,9 @@ async function montarBanco(opciones) {
   /* Sin las variables de Neon que .env.local haya dejado en este proceso. */
   const entorno = Object.assign({}, process.env, {
     PUERTO: String(puertoServidor),
-    NODE_PATH: path.join(RAIZ, 'node_modules')
+    NODE_PATH: path.join(RAIZ, 'node_modules'),
+    /* Sólo para esta prueba: lo que en producción es una variable de Vercel. */
+    CUSTODIA_SECRETO: 'secreto-de-la-prueba-de-navegador-no-es-de-nadie'
   });
   ['PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGPORT', 'DATABASE_URL', 'POSTGRES_URL', 'NODE_ENV', 'VERCEL']
     .forEach(function (variable) { delete entorno[variable]; });

@@ -96,7 +96,8 @@
         </button>
 
         <p class="acceso__ayuda" id="ayudaAcceso" hidden>¿Sin acceso o sin contraseña? Solicítela al coordinador de su
-          EBS o al administrador. No se restablece por correo.</p>
+          EBS o al administrador. No se restablece por correo. Sus fichas sin subir no se pierden: vuelven al
+          entrar con la contraseña nueva, con señal.</p>
       </form>
 
       <!-- Paso 2: primer ingreso, crear contraseña propia -->
@@ -174,6 +175,8 @@
   </main>
 
   <script src="acceso_local.js"></script>
+  <script src="vendor/noble-ciphers/xchacha20poly1305.js"></script>
+  <script src="boveda.js"></script>
   <script src="login.js"></script>
 </body>
 

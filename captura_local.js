@@ -34,6 +34,10 @@
       formulario. Se borra al guardarla, al limpiar el formulario o al
       descartarlo. Guarda también si la ficha era una corrección, para
       reabrirla como corrección y no como una visita nueva.
+
+      Borradores y fichas sin terminar van cifrados (boveda.js). Sin la llave no
+      se lee ni se escribe nada, y por eso, antes de soltarla al bloquear, se
+      escribe lo que haya en el formulario.
    ========================================================================= */
 
 'use strict';
@@ -67,6 +71,30 @@ function escribirLocal(clave, valor) {
 
 function borrarLocal(clave) {
   try { localStorage.removeItem(clave); } catch (error) { /* sin almacenamiento */ }
+}
+
+/* Lo mismo para lo que tiene datos de personas: cifrado. Lo que no se alcanzó a
+   cifrar por falta de espacio (cifrarBorradoresEnClaro) se sigue leyendo en claro,
+   antes que perderlo de vista. */
+function leerPrivado(clave) {
+  const texto = BOVEDA.leerTexto(clave);
+  return texto !== null || !BOVEDA.abierta() ? texto : leerLocal(clave);
+}
+
+function escribirPrivado(clave, texto) {
+  let sello;
+  try {
+    sello = BOVEDA.sellarTexto(clave, texto);
+  } catch (error) {
+    console.warn('No fue posible cifrar lo que había que guardar:', error);
+    return false;
+  }
+  return escribirLocal(sello.clave, sello.valor);
+}
+
+function borrarPrivado(clave) {
+  try { BOVEDA.borrarTexto(clave); } catch (error) { console.warn('No fue posible borrar lo guardado:', error); }
+  if (BOVEDA.abierta()) borrarLocal(clave);
 }
 
 /* =========================================================
@@ -300,14 +328,14 @@ function marcarFormularioLimpio() {
 }
 
 function leerBorrador() {
-  const crudo = leerLocal(claveBorrador());
+  const crudo = leerPrivado(claveBorrador());
   if (!crudo) return null;
   try {
     const borrador = JSON.parse(crudo);
     return borrador && borrador.version === VERSION_BORRADOR && borrador.datos ? borrador : null;
   } catch (error) {
     console.warn('El borrador guardado no se pudo leer y se descarta:', error);
-    borrarLocal(claveBorrador());
+    borrarPrivado(claveBorrador());
     return null;
   }
 }
@@ -317,7 +345,7 @@ function descartarBorrador() {
   /* Guardada en la base, descartada o cancelada: deja de estar sin terminar. */
   const actual = leerBorrador();
   if (actual) olvidarEnCurso(claveDeBorrador(actual));
-  borrarLocal(claveBorrador());
+  borrarPrivado(claveBorrador());
   ocultarAvisoBorrador();
   actualizarEstadoAvance(null);
 }
@@ -331,6 +359,9 @@ function guardarBorradorAhora() {
   clearTimeout(temporizadorBorrador);
   const formulario = formularioDeCaptura();
   if (!formulario || valoresDeReferencia === null) return;
+
+  /* Bloqueada: lo que había se escribió al bloquear, y debajo del velo no cambia. */
+  if (!BOVEDA.abierta()) return;
 
   /* Sin autorización no hay captura (RN-001): nada que conservar. */
   if (obtenerConsentimiento() === 'no') return;
@@ -359,7 +390,7 @@ function guardarBorradorAhora() {
     datos: datos
   };
 
-  const escrito = escribirLocal(claveBorrador(), JSON.stringify(borrador)) && recordarEnCurso(borrador);
+  const escrito = escribirPrivado(claveBorrador(), JSON.stringify(borrador)) && recordarEnCurso(borrador);
   if (!escrito && !avisoSinEspacioMostrado) {
     avisoSinEspacioMostrado = true;
     mostrarNotificacion(
@@ -393,7 +424,7 @@ function claveDeBorrador(borrador) {
 }
 
 function leerFichasEnCurso() {
-  const crudo = leerLocal(claveEnCurso());
+  const crudo = leerPrivado(claveEnCurso());
   if (!crudo) return [];
   try {
     const lista = JSON.parse(crudo);
@@ -402,7 +433,7 @@ function leerFichasEnCurso() {
       : [];
   } catch (error) {
     console.warn('La lista de fichas sin terminar no se pudo leer y se descarta:', error);
-    borrarLocal(claveEnCurso());
+    borrarPrivado(claveEnCurso());
     return [];
   }
 }
@@ -412,13 +443,13 @@ function recordarEnCurso(borrador) {
   const clave = claveDeBorrador(borrador);
   const lista = leerFichasEnCurso().filter(function (b) { return claveDeBorrador(b) !== clave; });
   lista.unshift(borrador);
-  return escribirLocal(claveEnCurso(), JSON.stringify(lista));
+  return escribirPrivado(claveEnCurso(), JSON.stringify(lista));
 }
 
 function olvidarEnCurso(clave) {
   const lista = leerFichasEnCurso();
   const quedan = lista.filter(function (b) { return claveDeBorrador(b) !== clave; });
-  if (quedan.length !== lista.length) escribirLocal(claveEnCurso(), JSON.stringify(quedan));
+  if (quedan.length !== lista.length) escribirPrivado(claveEnCurso(), JSON.stringify(quedan));
 }
 
 /** Las fichas sin terminar de este usuario en este dispositivo, la más reciente primero. */
@@ -473,7 +504,7 @@ function continuarFichaEnCurso(clave) {
   if (encuestaEnCorreccion) salirDeCorreccion();
   formularioDeCaptura().reset();
   reiniciarEstadoFormulario();
-  escribirLocal(claveBorrador(), JSON.stringify(elegida));
+  escribirPrivado(claveBorrador(), JSON.stringify(elegida));
   restaurarBorrador(elegida);
 }
 
@@ -499,7 +530,7 @@ function descartarFichaEnCurso(clave, alTerminar) {
 function abrirFichaNueva() {
   if (encuestaEnCorreccion) salirDeCorreccion();
   clearTimeout(temporizadorBorrador);
-  borrarLocal(claveBorrador());
+  borrarPrivado(claveBorrador());
   ocultarAvisoBorrador();
   formularioDeCaptura().reset();
   reiniciarEstadoFormulario();
@@ -663,7 +694,7 @@ function confirmarAntesDeReemplazarBorrador(idCorreccion, continuar) {
      terminar, y se sigue con la otra sin preguntar. */
   if (fichaTieneDatos()) guardarBorradorAhora();
   clearTimeout(temporizadorBorrador);
-  borrarLocal(claveBorrador());
+  borrarPrivado(claveBorrador());
   ocultarAvisoBorrador();
   return true;
 }
@@ -740,7 +771,63 @@ function pedirDescartarFichaEnCurso() {
   });
 }
 
-/* --- 2.4 Arranque -------------------------------------------------------- */
+/* --- 2.4 Lo que quedó en claro o con otra llave --------------------------- */
+
+function fechaDeBorrador(borrador) {
+  const fecha = borrador ? new Date(borrador.guardadoEn).getTime() : NaN;
+  return Number.isFinite(fecha) ? fecha : 0;
+}
+
+function leerJson(texto) {
+  try { return JSON.parse(texto); } catch (error) { return null; }
+}
+
+/* Si hay de los dos es que una pestaña con la versión anterior siguió escribiendo.
+   Nada de esto se descarta a ciegas: un borrador es una visita. */
+function borradorMasReciente(claro, cifrado) {
+  return fechaDeBorrador(leerJson(claro)) > fechaDeBorrador(leerJson(cifrado)) ? claro : cifrado;
+}
+
+function unirFichasEnCurso(claro, cifrado) {
+  const porClave = new Map();
+  [leerJson(cifrado), leerJson(claro)].forEach(function (lista) {
+    (Array.isArray(lista) ? lista : []).forEach(function (borrador) {
+      const clave = claveDeBorrador(borrador);
+      const hay = porClave.get(clave);
+      if (!hay || fechaDeBorrador(borrador) > fechaDeBorrador(hay)) porClave.set(clave, borrador);
+    });
+  });
+  return JSON.stringify(Array.from(porClave.values()).sort(function (a, b) {
+    return fechaDeBorrador(b) - fechaDeBorrador(a);
+  }));
+}
+
+/* Lo de la persona que acaba de entrar y lo de nadie más: los borradores de los demás
+   siguen como estaban, hasta que entren ellos, y sólo si caben. Lo que no cabe se sigue
+   leyendo en claro (leerPrivado), y se reintenta en cada apertura. */
+function cifrarBorradoresEnClaro() {
+  BOVEDA.pasarACifrado(claveBorrador(), borradorMasReciente);
+  BOVEDA.pasarACifrado(claveEnCurso(), unirFichasEnCurso);
+}
+
+function hayBorradoresDeOtraLlave() {
+  return BOVEDA.tieneDeOtraLlave(claveBorrador()) || BOVEDA.tieneDeOtraLlave(claveEnCurso());
+}
+
+/* Ya se abrió la llave anterior (app.js): lo que había vuelve como fichas sin terminar. */
+function recogerBorradoresDeOtraLlave() {
+  [claveBorrador(), claveEnCurso()].forEach(function (clave) {
+    BOVEDA.textosDeOtraLlave(clave).forEach(function (recogido) {
+      const datos = leerJson(recogido.texto);
+      const borradores = (Array.isArray(datos) ? datos : [datos]).filter(function (borrador) {
+        return borrador && borrador.version === VERSION_BORRADOR && borrador.datos;
+      });
+      if (borradores.every(recordarEnCurso)) recogido.retirar();
+    });
+  });
+}
+
+/* --- 2.5 Arranque -------------------------------------------------------- */
 
 function inicializarCapturaLocal() {
   const formulario = formularioDeCaptura();
@@ -779,6 +866,13 @@ function inicializarCapturaLocal() {
     if (document.visibilityState === 'hidden') guardarBorradorAhora();
   });
   window.addEventListener('pagehide', guardarBorradorAhora);
+  BOVEDA.antesDeCerrar(guardarBorradorAhora);
 
-  restaurarBorradorSiHay();
+  /* La primera vez que se abren las fichas en esta página, porque al arrancar
+     todavía no se ha dado la contraseña. Si se bloquea y se desbloquea, el formulario
+     sigue ahí tal como estaba. */
+  BOVEDA.alAbrir(function (primera) {
+    cifrarBorradoresEnClaro();
+    if (primera) restaurarBorradorSiHay();
+  });
 }

@@ -621,12 +621,29 @@ async function iniciarSesion(page, diario) {
   await page.locator('#clave').fill(clave);
   await page.locator('#btnIngresar').click();
   await page.waitForURL(function (url) { return !/login/.test(url.pathname); }, { timeout: 20000 });
+  await entrarSiLoPide(page);
   if (diario) diario.hito('Sesión iniciada como ' + documento);
+}
+
+/* Abrir la aplicación desde cero pide la contraseña: la llave de las fichas vive en
+   la memoria de la página (boveda.js). Recién ingresada pasa sola, salvo que el
+   service worker no alcanzara a estar listo. */
+async function entrarSiLoPide(page) {
+  const velo = page.locator('#bloqueoSesion');
+  await Promise.race([
+    velo.waitFor({ state: 'visible', timeout: 20000 }),
+    page.locator('#appTabs').waitFor({ state: 'visible', timeout: 20000 })
+  ]);
+  if (!await velo.isVisible()) return;
+  await velo.locator('input[name="clave"]').fill(process.env.APS_E2E_CLAVE || 'ClavePrueba2026');
+  await velo.locator('button[type="submit"]').click();
+  await velo.waitFor({ state: 'hidden', timeout: 30000 });
 }
 
 module.exports = {
   crearDiario: crearDiario,
   iniciarSesion: iniciarSesion,
+  entrarSiLoPide: entrarSiLoPide,
   vigilar: vigilar,
   anunciar: anunciar,
   escribir: escribir,

@@ -18,6 +18,10 @@
      10. el teléfono: controles y anchos
      11. cuánto cabe en el dispositivo
      12. dos personas en un mismo equipo
+     13. olvidó la contraseña
+
+   Las fichas van cifradas: por eso casi nunca se abre el almacenamiento directamente
+   y sí obtenerEncuestas, y abrir desde cero siempre pide la contraseña (abrirYEntrar).
 
    Lo que esto NO prueba: un teléfono de verdad. Ver pruebas/e2e/README.md.
    ========================================================================= */
@@ -126,7 +130,7 @@ function fotoDelAlmacenamiento() {
     const salida = {};
     for (let i = 0; i < localStorage.length; i++) {
       const clave = localStorage.key(i);
-      if (/^aps_(encuestas|borrador_|en_curso_|dispositivo|consecutivo_ficha)/.test(clave)) {
+      if (/^aps_(encuestas|borrador_|en_curso_|cifrado_|boveda_|dispositivo|consecutivo_ficha)/.test(clave)) {
         salida[clave] = localStorage.getItem(clave);
       }
     }
@@ -148,6 +152,33 @@ async function entrarCon(documento, clave) {
 }
 
 const velo = function () { return pagina.locator('#bloqueoSesion'); };
+
+/* Abrir desde cero pide la contraseña: la llave vive en la memoria de la página. */
+async function abrirYEntrar(ruta, clave) {
+  await abrir(ruta);
+  await desbloquearCon(clave || CLAVE);
+  await expect(velo()).toBeHidden({ timeout: 30000 });
+  await expect(pagina.locator('#appTabs')).toBeVisible();
+  return pagina;
+}
+
+function fichasPendientes() {
+  return pagina.evaluate(function () {
+    return window.obtenerEncuestas().filter(function (e) { return e.sincronizada !== true; }).length;
+  });
+}
+
+/* Lo que está guardado de verdad, tal cual, para ver qué se puede leer sin la llave. Sin
+   los catálogos: hay barrios que se llaman como una persona (Laureano Gómez). */
+function almacenamientoCrudo() {
+  return pagina.evaluate(function () {
+    const salida = {};
+    Object.keys(localStorage).forEach(function (clave) {
+      if (!/^aps_(catalogo|cups)/.test(clave)) salida[clave] = localStorage.getItem(clave);
+    });
+    return JSON.stringify(salida);
+  });
+}
 
 async function desbloquearCon(clave) {
   await velo().locator('input[name="clave"]').fill(clave);
@@ -336,6 +367,26 @@ test('2. Primer ingreso con señal: queda lista para trabajar sin señal', async
   expect(copia.iteraciones).toBeGreaterThanOrEqual(600000);
   expect(copia.hash.length).toBeGreaterThan(20);
 
+  /* La llave de las fichas queda envuelta dos veces y en ninguna parte en claro. */
+  const boveda = await pagina.evaluate(function (documento) {
+    return JSON.parse(localStorage.getItem('aps_boveda_' + documento));
+  }, DOCUMENTO);
+  expect(boveda.iteraciones).toBeGreaterThanOrEqual(600000);
+  expect(boveda.envuelta.length).toBeGreaterThan(40);
+  expect(boveda.custodia.length, 'el servidor debía dar la custodia al verificar la contraseña').toBeGreaterThan(40);
+
+  /* La custodia sólo se entrega con la contraseña: con la cookie sola, no. */
+  const sinContrasena = await pagina.evaluate(function () {
+    return fetch('/api/sesion', { headers: { 'X-Requested-With': 'fetch' } }).then(function (r) { return r.json(); });
+  });
+  expect(sinContrasena.usuario.documento).toBe(DOCUMENTO);
+  expect(JSON.stringify(sinContrasena)).not.toContain('llaveCustodia');
+
+  /* Recién ingresada no pidió la contraseña otra vez, y la llave no pasó por el disco. */
+  await expect(velo()).toBeHidden();
+  expect(await pagina.evaluate(function () { return window.BOVEDA.abierta(); })).toBe(true);
+  expect(await pagina.evaluate(function () { return sessionStorage.length; })).toBe(0);
+
   /* La sesión sigue en la cookie que el JavaScript no puede leer. */
   const cookie = (await contexto.cookies()).find(function (c) { return c.name === 'aps_sesion'; });
   expect(cookie.httpOnly).toBe(true);
@@ -349,9 +400,7 @@ test('2. Primer ingreso con señal: queda lista para trabajar sin señal', async
 
 test('3. Abre sin red: la aplicación, sus fuentes, sus iconos y sus avisos', async function () {
   await quitarRed();
-  await abrir('/');
-
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
 
   const recursos = await pagina.evaluate(async function () {
     await document.fonts.ready;
@@ -385,8 +434,7 @@ test('3. Abre sin red: la aplicación, sus fuentes, sus iconos y sus avisos', as
 
 test('3b. Sin red, cerrar y volver a abrir la aplicación', async function () {
   for (let i = 0; i < 3; i++) {
-    await abrir('/');
-    await expect(pagina.locator('#appTabs')).toBeVisible();
+    await abrirYEntrar('/');
   }
 });
 
@@ -398,7 +446,7 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
   const diario = ayudas.crearDiario();
   const ficha = Object.assign({}, FICHA, { sesionYaAbierta: true });
 
-  await abrir('/');
+  await abrirYEntrar('/');
   /* El recorrido navega al empezar: con la emulación activa WebKit no navega (ver navegar). La red sigue cortada en el proxy. */
   await contexto.setOffline(false);
   await flujo.diligenciarEncuesta(pagina, diario, ficha, PERSONAS);
@@ -427,10 +475,10 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
   await pagina.getByRole('button', { name: 'Entendido' }).click();
 
   const estado = await pagina.evaluate(function (codigo) {
-    const todas = JSON.parse(localStorage.getItem('aps_encuestas') || '[]');
+    const todas = window.obtenerEncuestas();
     const nuestra = todas.find(function (e) { return e.codigoFicha === codigo; });
     const crudo = localStorage.getItem('aps_encuestas') || '';
-    const borradores = Object.keys(localStorage).filter(function (k) { return k.indexOf('aps_borrador_') === 0; });
+    const borradores = Object.keys(localStorage).filter(function (k) { return /^aps_(cifrado_)?borrador_/.test(k); });
     return {
       existe: Boolean(nuestra),
       sincronizada: nuestra ? nuestra.sincronizada : null,
@@ -452,11 +500,24 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
   console.log('   Tamaño de la ficha en el dispositivo: ' + estado.largo + ' caracteres');
 
   /* Cerrar y volver a abrir sin red: sigue ahí. */
-  await abrir('/');
+  await abrirYEntrar('/');
   await expect(pagina.locator('#sincronia')).toHaveAttribute('data-estado', /sin-red|pendiente/);
-  expect(await pagina.evaluate(function () {
-    return JSON.parse(localStorage.getItem('aps_encuestas')).filter(function (e) { return e.sincronizada !== true; }).length;
-  })).toBe(1);
+  expect(await fichasPendientes()).toBe(1);
+
+  /* Cifrada: lo único que se puede leer sin la llave es de quién es y si subió. */
+  const sobres = await pagina.evaluate(function () { return JSON.parse(localStorage.getItem('aps_encuestas')); });
+  expect(sobres.length).toBe(1);
+  expect(Object.keys(sobres[0]).sort()).toEqual(['capturadaPor', 'sellada', 'sincronizada']);
+  expect(sobres[0].capturadaPor).toBe(DOCUMENTO);
+  const crudoTrasCerrar = await almacenamientoCrudo();
+  PERSONAS.forEach(function (persona) {
+    expect(persona.primerApellido.length).toBeGreaterThan(0);
+    expect(crudoTrasCerrar, 'se lee un apellido en el almacenamiento').not.toContain(persona.primerApellido);
+    expect(crudoTrasCerrar, 'se lee un nombre en el almacenamiento').not.toContain(persona.primerNombre);
+  });
+  expect(crudoTrasCerrar, 'se lee la ficha en el almacenamiento').not.toContain('"familias"');
+  expect(crudoTrasCerrar, 'se lee el código de la ficha').not.toContain(codigoFicha);
+
   await irA('historial');
   await expect(pagina.locator('#view-historial')).toContainText(codigoFicha);
   await foto('04-historial-sin-red');
@@ -465,15 +526,112 @@ test('4. Sin red se diligencia y se guarda una ficha completa de tres integrante
 });
 
 /* -------------------------------------------------------------------------
+   4b. LO QUE YA ESTABA EN EL TELÉFONO
+   ------------------------------------------------------------------------- */
+
+test('4b. Lo que una versión anterior dejó en claro pasa a cifrado sin perder nada', async function () {
+  await abrirYEntrar('/');
+
+  /* Una ficha a medias, para tener un borrador y una ficha sin terminar de verdad. */
+  await irA('nueva');
+  await ayudas.marcar(pagina, ayudas.crearDiario(), 'consentimiento', 'si', 'Consentimiento informado');
+  await pagina.locator('#cabezaFamilia').fill('Nombre de prueba en claro');
+  await pagina.evaluate(function () { window.guardarBorradorAhora(); });
+
+  /* El teléfono, tal como lo dejaba la versión anterior: todo en claro, sin capturadaPor. */
+  const antes = await pagina.evaluate(function () {
+    const usuario = window.SESION.usuario();
+    const borrador = 'aps_borrador_' + usuario.id;
+    const enCurso = 'aps_en_curso_' + usuario.id;
+    const fichas = window.obtenerEncuestas().map(function (ficha) {
+      const vieja = Object.assign({}, ficha);
+      delete vieja.capturadaPor;
+      return vieja;
+    });
+    const textoBorrador = window.BOVEDA.leerTexto(borrador);
+    const textoEnCurso = window.BOVEDA.leerTexto(enCurso);
+    window.addEventListener('pagehide', function (evento) { evento.stopImmediatePropagation(); }, true);
+    document.addEventListener('visibilitychange', function (evento) { evento.stopImmediatePropagation(); }, true);
+    localStorage.setItem('aps_encuestas', JSON.stringify(fichas));
+    localStorage.setItem(borrador, textoBorrador);
+    localStorage.setItem(enCurso, textoEnCurso);
+    localStorage.removeItem('aps_cifrado_borrador_' + usuario.id);
+    localStorage.removeItem('aps_cifrado_en_curso_' + usuario.id);
+    return { fichas: fichas, borrador: borrador, enCurso: enCurso };
+  });
+  expect(antes.fichas.length).toBe(1);
+  expect(antes.fichas[0].sincronizada).toBe(false);
+  expect(await almacenamientoCrudo()).toContain('Nombre de prueba en claro');
+
+  /* Llega esta versión. Sin la contraseña no se lee ni se toca. */
+  await abrir('/');
+  await expect(velo()).toBeVisible();
+  expect(await pagina.evaluate(function () { return window.obtenerEncuestas().length; })).toBe(0);
+  const crudoCerrado = await pagina.evaluate(function () { return JSON.parse(localStorage.getItem('aps_encuestas')); });
+  expect(crudoCerrado[0].familias, 'sin la contraseña nada debía cambiar').toBeTruthy();
+
+  await desbloquearCon(CLAVE);
+  await expect(velo()).toBeHidden({ timeout: 30000 });
+
+  /* Ya no se lee en claro. */
+  const crudo = await almacenamientoCrudo();
+  expect(crudo, 'quedó el borrador en claro').not.toContain('Nombre de prueba en claro');
+  expect(crudo, 'quedó la ficha en claro').not.toContain('"familias"');
+  expect(crudo).not.toContain(codigoFicha);
+  const quedaron = await pagina.evaluate(function (claves) {
+    return [localStorage.getItem(claves.borrador), localStorage.getItem(claves.enCurso)];
+  }, antes);
+  expect(quedaron).toEqual([null, null]);
+
+  /* Y no se perdió nada: la misma ficha, ahora con su dueño. */
+  const despues = await pagina.evaluate(function () { return window.obtenerEncuestas(); });
+  expect(despues.length).toBe(1);
+  expect(Object.assign({}, despues[0], { capturadaPor: undefined })).toEqual(Object.assign({}, antes.fichas[0], { capturadaPor: undefined }));
+  expect(despues[0].capturadaPor).toBe(DOCUMENTO);
+
+  /* El borrador vuelve al formulario. */
+  await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Nombre de prueba en claro');
+  await expect(pagina.locator('#avisoBorrador')).toBeVisible();
+
+  await pagina.evaluate(function () { window.reiniciarFichaEnCurso(); });
+  expect(excepciones, 'hubo excepciones al migrar').toEqual([]);
+});
+
+/* -------------------------------------------------------------------------
    5. BLOQUEO SIN RED
    ------------------------------------------------------------------------- */
 
 test('5. El bloqueo por inactividad se resuelve sin red', async function () {
-  await abrir('/');
+  await abrirYEntrar('/');
+
+  /* Lo que se está escribiendo no se pierde al bloquear, y queda cifrado. */
+  await irA('nueva');
+  await ayudas.marcar(pagina, ayudas.crearDiario(), 'consentimiento', 'si', 'Consentimiento informado');
+  await pagina.locator('#cabezaFamilia').fill('Escrito justo antes de bloquear');
 
   await pagina.evaluate(function () { window.SESION.bloquear(); });
   await expect(velo()).toBeVisible();
   await expect(pagina.locator('.app-main')).toBeHidden();
+
+  /* Bloqueada, la llave ya no está en memoria: no se lee nada. */
+  const bloqueada = await pagina.evaluate(function () {
+    return {
+      abierta: window.BOVEDA.abierta(),
+      fichas: window.obtenerEncuestas().length,
+      borrador: window.BOVEDA.leerTexto('aps_borrador_' + window.SESION.usuario().id)
+    };
+  });
+  expect(bloqueada).toEqual({ abierta: false, fichas: 0, borrador: null });
+  expect(await almacenamientoCrudo()).not.toContain('Escrito justo antes de bloquear');
+
+  /* Escribir falla, en vez de pisar lo guardado con una lista vacía. */
+  const intento = await pagina.evaluate(function () {
+    const antes = localStorage.getItem('aps_encuestas');
+    let error = null;
+    try { window.agregarEncuesta({ id: 'x', codigoFicha: 'X' }); } catch (e) { error = e.name; }
+    return { error: error, igual: localStorage.getItem('aps_encuestas') === antes };
+  });
+  expect(intento).toEqual({ error: 'BovedaCerrada', igual: true });
 
   /* Mal escrita: sigue bloqueada, dice por qué y no saca de la aplicación. */
   await desbloquearCon('NoEsLaClave2026');
@@ -482,8 +640,12 @@ test('5. El bloqueo por inactividad se resuelve sin red', async function () {
   await foto('05-bloqueo-clave-mala');
 
   await desbloquearCon(CLAVE);
-  await expect(velo()).toBeHidden();
+  await expect(velo()).toBeHidden({ timeout: 30000 });
   await expect(pagina.locator('.app-main')).toBeVisible();
+
+  /* Al desbloquear todo sigue donde estaba. */
+  await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Escrito justo antes de bloquear');
+  expect(await fichasPendientes()).toBe(1);
 
   /* Cerrar la aplicación no se salta el bloqueo. */
   await pagina.evaluate(function () { window.SESION.bloquear(); });
@@ -491,25 +653,20 @@ test('5. El bloqueo por inactividad se resuelve sin red', async function () {
   await expect(velo()).toBeVisible();
   await expect(pagina.locator('.app-main')).toBeHidden();
   await desbloquearCon(CLAVE);
-  await expect(velo()).toBeHidden();
+  await expect(velo()).toBeHidden({ timeout: 30000 });
 
-  /* Tampoco se salta si el sistema mató la aplicación mientras estaba quieta. */
-  await pagina.evaluate(function () {
-    const veinteYUnMinutos = String(Date.now() - 21 * 60 * 1000);
-    const antigua = function () { localStorage.setItem('aps_ultima_actividad', veinteYUnMinutos); };
-    window.addEventListener('pagehide', antigua);
-    document.addEventListener('visibilitychange', antigua);
-    antigua();
-  });
+  /* Abrir desde cero la pide siempre, aunque se haya usado hace un instante: lo que
+     el sistema saca de memoria se lleva la llave. Y la ficha a medias vuelve. */
   await abrir('/');
   await expect(velo()).toBeVisible();
+  await expect(velo()).toContainText('Sus fichas están protegidas');
+  await foto('05-abrir-pide-la-contrasena');
+  await expect(pagina.locator('.app-main')).toBeHidden();
   await desbloquearCon(CLAVE);
-  await expect(velo()).toBeHidden();
+  await expect(velo()).toBeHidden({ timeout: 30000 });
+  await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Escrito justo antes de bloquear');
 
-  /* Y usarla un rato no la bloquea. */
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
-  await expect(velo()).toBeHidden();
+  await pagina.evaluate(function () { window.reiniciarFichaEnCurso(); });
 });
 
 /* -------------------------------------------------------------------------
@@ -517,7 +674,7 @@ test('5. El bloqueo por inactividad se resuelve sin red', async function () {
    ------------------------------------------------------------------------- */
 
 test('6. Se puede cerrar sesión y volver a entrar sin red', async function () {
-  await abrir('/');
+  await abrirYEntrar('/');
   await pagina.locator('.app-usuario').click();
   await pagina.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
   await pagina.waitForURL(/login/);
@@ -538,10 +695,7 @@ test('6. Se puede cerrar sesión y volver a entrar sin red', async function () {
   /* Lo guardado sigue ahí. El texto depende de si la emulación alcanzó a decir
      «sin señal» en esta página nueva: lo que importa es que sigue pendiente. */
   await expect(pagina.locator('#sincronia')).toHaveAttribute('data-estado', /sin-red|pendiente/);
-  const pendientes = await pagina.evaluate(function () {
-    return JSON.parse(localStorage.getItem('aps_encuestas')).filter(function (e) { return e.sincronizada !== true; }).length;
-  });
-  expect(pendientes).toBe(1);
+  expect(await fichasPendientes()).toBe(1);
 });
 
 /* -------------------------------------------------------------------------
@@ -591,7 +745,7 @@ test('7. Vuelve la señal con la sesión vencida: entra de nuevo y la ficha sube
   expect(await enLaBase()).toBe(1);
 
   const local = await pagina.evaluate(function (codigo) {
-    const nuestra = JSON.parse(localStorage.getItem('aps_encuestas')).find(function (e) { return e.codigoFicha === codigo; });
+    const nuestra = window.obtenerEncuestas().find(function (e) { return e.codigoFicha === codigo; });
     return { sincronizada: nuestra.sincronizada, idHogar: nuestra.idHogar };
   }, codigoFicha);
   expect(local.sincronizada).toBe(true);
@@ -600,8 +754,7 @@ test('7. Vuelve la señal con la sesión vencida: entra de nuevo y la ficha sube
 });
 
 test('7b. Cerrar sesión sin señal no deja la sesión abierta para el siguiente', async function () {
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
 
   /* La sesión está viva. */
   const estadoSesion = function () {
@@ -638,17 +791,23 @@ test('7b. Cerrar sesión sin señal no deja la sesión abierta para el siguiente
    ------------------------------------------------------------------------- */
 
 test('8. Señal débil: con el servidor sin contestar nada se queda esperando', async function () {
-  await abrir('/');
+  await abrirYEntrar('/');
   await expect(pagina.locator('#sincronia')).toHaveAttribute('data-estado', /listo|pendiente/);
 
   /* navigator.onLine sigue diciendo que hay red: es lo que engaña. */
   banco.colgada();
 
+  /* Abre de una vez, y la contraseña se resuelve en el dispositivo. */
   await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible({ timeout: 8000 });
+  await expect(velo()).toBeVisible({ timeout: 8000 });
   expect(await pagina.evaluate(function () { return navigator.onLine; })).toBe(true);
+  const inicioApertura = Date.now();
+  await desbloquearCon(CLAVE);
+  await expect(velo()).toBeHidden({ timeout: 30000 });
+  console.log('   Abrir con el servidor sin contestar: ' + (Date.now() - inicioApertura) + ' ms');
+  await expect(pagina.locator('#appTabs')).toBeVisible();
 
-  /* El bloqueo se resuelve en el dispositivo cuando el servidor no contesta. */
+  /* El bloqueo también. */
   await pagina.evaluate(function () { window.SESION.bloquear(); });
   const inicioBloqueo = Date.now();
   await desbloquearCon(CLAVE);
@@ -683,17 +842,29 @@ test('8. Señal débil: con el servidor sin contestar nada se queda esperando', 
    ------------------------------------------------------------------------- */
 
 test('9. Una versión nueva llega sola y no toca lo guardado', async function () {
-  await abrir('/');
+  await abrirYEntrar('/');
   await pagina.waitForFunction(function () { return navigator.serviceWorker.controller !== null; });
-  await expect(pagina.locator('#appTabs')).toBeVisible();
 
-  /* Una ficha a medias en el formulario, además de la ya subida. */
+  /* Una ficha pendiente de subir, además de la ya subida. */
+  const CODIGO_PENDIENTE = codigoFicha.replace(/-\d{4}-(\d{8})$/, '-9201-$1');
+  await pagina.evaluate(function (datos) {
+    window.agregarEncuesta(Object.assign({}, datos.ficha, { id: 'enc_' + datos.codigo, codigoFicha: datos.codigo, sincronizada: false }));
+  }, { ficha: fichaSinSubir, codigo: CODIGO_PENDIENTE });
+  const sigueLaPendiente = function () {
+    return pagina.evaluate(function (codigo) {
+      const ficha = window.obtenerEncuestas().find(function (e) { return e.codigoFicha === codigo; });
+      return Boolean(ficha) && ficha.sincronizada === false && ficha.familias.length > 0;
+    }, CODIGO_PENDIENTE);
+  };
+  expect(await sigueLaPendiente()).toBe(true);
+
+  /* Y una ficha a medias en el formulario. */
   await irA('nueva');
   await ayudas.marcar(pagina, ayudas.crearDiario(), 'consentimiento', 'si', 'Consentimiento informado');
   await pagina.locator('#cabezaFamilia').fill('Prueba de actualización');
   await expect.poll(function () {
     return pagina.evaluate(function () {
-      return Object.keys(localStorage).filter(function (k) { return k.indexOf('aps_borrador_') === 0; }).length;
+      return Object.keys(localStorage).filter(function (k) { return k.indexOf('aps_cifrado_borrador_') === 0; }).length;
     });
   }, { timeout: 10000 }).toBe(1);
 
@@ -723,8 +894,12 @@ test('9. Una versión nueva llega sola y no toca lo guardado', async function ()
   await expect.poll(function () {
     return pagina.evaluate(function () { return window.__VERSION_PRUEBA__; }).catch(function () { return null; });
   }, { timeout: 20000 }).toBe(2);
+  /* Abrió desde cero: pide la contraseña, y lo cifrado antes de actualizar se abre. */
+  await desbloquearCon(CLAVE);
+  await expect(velo()).toBeHidden({ timeout: 30000 });
   await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Prueba de actualización');
   await expect(pagina.locator('#avisoBorrador')).toBeVisible();
+  expect(await sigueLaPendiente(), 'una ficha pendiente se perdió al actualizar').toBe(true);
 
   const trasActualizar = await fotoDelAlmacenamiento();
   expect(Object.keys(trasActualizar).sort()).toEqual(Object.keys(antes).sort());
@@ -742,8 +917,7 @@ test('9. Una versión nueva llega sola y no toca lo guardado', async function ()
 
   /* Y abre sin red en la versión nueva. */
   await quitarRed();
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
   expect(await pagina.evaluate(function () { return window.__VERSION_PRUEBA__; })).toBe(3);
   await devolverRed();
 
@@ -765,7 +939,7 @@ test('9. Una versión nueva llega sola y no toca lo guardado', async function ()
   await pagina.evaluate(function () { window.PWA.buscarVersionNueva(); });
   await expect(pagina.locator('#avisoVersion')).toBeVisible({ timeout: 30000 });
   await esperarWorkerNuevo();
-  await abrir('/');
+  await abrirYEntrar('/');
   expect(await pagina.evaluate(function () { return window.__VERSION_PRUEBA__; })).toBe(4);
   await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Prueba de actualización');
 
@@ -781,14 +955,20 @@ test('9. Una versión nueva llega sola y no toca lo guardado', async function ()
   await expect.poll(function () {
     return pagina.evaluate(function () { return window.__VERSION_PRUEBA__; }).catch(function () { return null; });
   }, { timeout: 20000 }).toBe(5);
+  await desbloquearCon(CLAVE);
+  await expect(velo()).toBeHidden({ timeout: 30000 });
   await expect(pagina.locator('#appTabs')).toBeVisible();
   await expect(pagina.locator('#cabezaFamilia')).toHaveValue('Prueba de actualización');
 
   expect((await fotoDelAlmacenamiento()).aps_encuestas).toEqual(antes.aps_encuestas);
+  expect(await sigueLaPendiente(), 'una ficha pendiente se perdió al actualizar').toBe(true);
   expect(excepciones, 'hubo excepciones al actualizar').toEqual([]);
 
-  /* Se retira el borrador de prueba. */
-  await pagina.evaluate(function () { window.reiniciarFichaEnCurso(); });
+  /* Se retiran el borrador y la ficha de prueba. */
+  await pagina.evaluate(function (codigo) {
+    window.reiniciarFichaEnCurso();
+    window.eliminarEncuestaPorId('enc_' + codigo);
+  }, CODIGO_PENDIENTE);
 });
 
 /* -------------------------------------------------------------------------
@@ -828,8 +1008,7 @@ test('10. En el teléfono: sin zoom al escribir y sin desbordes de ancho', async
   await abrir('/instalar');
   expect(await desborde(pagina), 'instalar').toBeLessThanOrEqual(0);
 
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
   expect(await desborde(pagina), 'inicio').toBeLessThanOrEqual(0);
   await foto('10-inicio');
 
@@ -848,23 +1027,24 @@ test('10. En el teléfono: sin zoom al escribir y sin desbordes de ancho', async
    ------------------------------------------------------------------------- */
 
 test('11. Dispositivo lleno: se sueltan copias ya subidas, nunca lo pendiente', async function () {
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
 
-  /* El navegador de verdad, con su cupo de verdad y copias de la ficha real. */
+  /* El navegador de verdad, con su cupo de verdad y copias de la ficha real, cifradas
+     como queda cualquier ficha. */
   const medida = await pagina.evaluate(function () {
     const original = localStorage.getItem('aps_encuestas');
-    const modelo = JSON.parse(original).find(function (e) { return e.sincronizada === true; });
+    const modelo = window.obtenerEncuestas().find(function (e) { return e.sincronizada === true; });
     const copia = function (codigo, subida) {
       return Object.assign({}, modelo, { id: 'copia-' + codigo, codigoFicha: 'COPIA-' + codigo, sincronizada: subida });
     };
+    const sobre = function (codigo, subida) { return window.BOVEDA.sellarFichas([copia(codigo, subida)])[0]; };
 
     /* Diez pendientes y, hasta el borde, copias ya subidas. */
     const pendientes = [];
-    for (let i = 0; i < 10; i++) pendientes.push(copia('P' + i, false));
+    for (let i = 0; i < 10; i++) pendientes.push(sobre('P' + i, false));
     const subidas = [];
     for (let i = 0; i < 5000; i++) {
-      subidas.push(copia('S' + i, true));
+      subidas.push(sobre('S' + i, true));
       try {
         localStorage.setItem('aps_encuestas', JSON.stringify(pendientes.concat(subidas)));
       } catch (error) {
@@ -876,14 +1056,20 @@ test('11. Dispositivo lleno: se sueltan copias ya subidas, nunca lo pendiente', 
 
     const cuantas = pendientes.length + subidas.length;
     let lanzo = null;
+    const inicioGuardado = performance.now();
     /* Hay que pedir sitio de sobra: el borde deja algo libre. */
     for (let i = 0; i < 3 && !lanzo; i++) {
       try { window.agregarEncuesta(copia('NUEVA' + i, false)); } catch (error) { lanzo = error.name; }
     }
+    const msGuardar = (performance.now() - inicioGuardado) / 3;
+    const inicioLectura = performance.now();
     const despues = window.obtenerEncuestas();
+    const msLeer = performance.now() - inicioLectura;
     const salida = {
       fichaCaracteres: JSON.stringify(modelo).length,
       cuantas: cuantas,
+      msGuardar: Math.round(msGuardar),
+      msLeer: Math.round(msLeer),
       lanzo: lanzo,
       nuevas: despues.filter(function (e) { return /^COPIA-NUEVA/.test(e.codigoFicha); }).length,
       pendientes: despues.filter(function (e) { return e.sincronizada !== true; }).length,
@@ -895,7 +1081,8 @@ test('11. Dispositivo lleno: se sueltan copias ya subidas, nunca lo pendiente', 
   });
 
   console.log('   Una ficha de tres integrantes: ' + medida.fichaCaracteres + ' caracteres. ' +
-    'Caben ~' + medida.cuantas + ' fichas como ésta en este motor.');
+    'Caben ~' + medida.cuantas + ' fichas como ésta en este motor. Con el dispositivo lleno, guardar una tarda ~' +
+    medida.msGuardar + ' ms y leerlas todas ' + medida.msLeer + ' ms.');
   expect(medida.lanzo).toBeNull();
   expect(medida.nuevas).toBe(3);
   expect(medida.pendientes, 'una pendiente se perdió').toBe(13);
@@ -904,14 +1091,13 @@ test('11. Dispositivo lleno: se sueltan copias ya subidas, nunca lo pendiente', 
   /* Lleno sólo de pendientes y sin red: la ficha de la pantalla no se pierde y se
      dice qué hacer. */
   await quitarRed();
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
   const lleno = await pagina.evaluate(async function () {
     const original = localStorage.getItem('aps_encuestas');
-    const modelo = JSON.parse(original).find(function (e) { return e.sincronizada === true; });
+    const modelo = window.obtenerEncuestas().find(function (e) { return e.sincronizada === true; });
     const lista = [];
     for (let i = 0; i < 5000; i++) {
-      lista.push(Object.assign({}, modelo, { id: 'copia-' + i, codigoFicha: 'COPIA-' + i, sincronizada: false }));
+      lista.push(window.BOVEDA.sellarFichas([Object.assign({}, modelo, { id: 'copia-' + i, codigoFicha: 'COPIA-' + i, sincronizada: false })])[0]);
       try {
         localStorage.setItem('aps_encuestas', JSON.stringify(lista));
       } catch (error) {
@@ -1025,8 +1211,7 @@ test('12. Dos personas en un mismo equipo: cada una ve y sube sólo lo suyo', as
   contexto.on('request', espiar);
 
   /* --- Una persona deja una ficha sin subir y cierra sesión. --- */
-  await abrir('/');
-  await expect(pagina.locator('#appTabs')).toBeVisible();
+  await abrirYEntrar('/');
   await dejarPendiente(CODIGO_UNA, DOCUMENTO);
   await expect(modulo()).toHaveAttribute('data-estado', 'pendiente');
   await expect(avisoAjenas()).toBeHidden();
@@ -1076,7 +1261,9 @@ test('12. Dos personas en un mismo equipo: cada una ve y sube sólo lo suyo', as
   /* --- Una pestaña que queda abierta no sigue mostrando a quien ya salió. --- */
   const otraPestana = await contexto.newPage();
   await otraPestana.goto('/');
-  await expect(otraPestana.locator('#appTabs')).toBeVisible();
+  await otraPestana.locator('#bloqueoSesion input[name="clave"]').fill(OTRA.clave);
+  await otraPestana.locator('#bloqueoSesion button[type="submit"]').click();
+  await expect(otraPestana.locator('#appTabs')).toBeVisible({ timeout: 30000 });
   await pagina.bringToFront();
   await cerrarSesionDesdeElMenu();
   await otraPestana.waitForURL(/login/, { timeout: 15000 });
@@ -1132,18 +1319,24 @@ test('12. Dos personas en un mismo equipo: cada una ve y sube sólo lo suyo', as
     return guardada;
   }, { ficha: fichaSinSubir, yo: DOCUMENTO, otra: OTRA.documento });
 
-  await abrir('/');
+  await abrirYEntrar('/');
   await expect(pagina.locator('.swal2-popup')).toContainText('sin responsable');
   await pagina.getByRole('button', { name: 'Entendido' }).click();
 
   const trasMigrar = await pagina.evaluate(function () {
     const nombres = function (lista) { return lista.map(function (e) { return e.codigoFicha; }).sort(); };
+    const crudas = JSON.parse(localStorage.getItem('aps_encuestas'));
     return {
-      todas: nombres(JSON.parse(localStorage.getItem('aps_encuestas'))),
+      cuantas: crudas.length,
+      /* Quien entra no puede cifrar lo de otra persona: espera a que entre. */
+      enClaro: nombres(crudas.filter(function (e) { return !e.sellada; })),
+      selladas: crudas.filter(function (e) { return e.sellada; }).map(function (e) { return e.capturadaPor; }),
       propias: nombres(window.obtenerEncuestas())
     };
   });
-  expect(trasMigrar.todas, 'se perdió una ficha al migrar').toEqual(['VIEJA-AJENA', 'VIEJA-PROPIA', 'VIEJA-SIN-DUENO', 'VIEJA-TERCERA']);
+  expect(trasMigrar.cuantas, 'se perdió una ficha al migrar').toBe(4);
+  expect(trasMigrar.enClaro).toEqual(['VIEJA-AJENA', 'VIEJA-TERCERA']);
+  expect(trasMigrar.selladas).toEqual([DOCUMENTO, DOCUMENTO]);
   expect(trasMigrar.propias).toEqual(['VIEJA-PROPIA', 'VIEJA-SIN-DUENO']);
   await expect(avisoAjenas()).toContainText(OTRA.nombre + ' (1)');
   await expect(avisoAjenas()).toContainText('documento terminado en 0009 (1)');
@@ -1152,6 +1345,141 @@ test('12. Dos personas en un mismo equipo: cada una ve y sube sólo lo suyo', as
 
   await pagina.evaluate(function (guardada) { localStorage.setItem('aps_encuestas', guardada); }, original);
   expect(excepciones, 'hubo excepciones con dos personas en el equipo').toEqual([]);
+});
+
+/* -------------------------------------------------------------------------
+   13. OLVIDÓ LA CONTRASEÑA
+   ------------------------------------------------------------------------- */
+
+test('13. Olvidó la contraseña: se la restablecen y sus fichas sin subir siguen ahí', async function () {
+  const { Client } = require('pg');
+  const { opcionesConexion } = require('../../api/_db');
+  const { asegurarUsuarioDePrueba } = require('../_sesion_prueba');
+  const { restablecerClave } = require('../../api/_usuarios');
+
+  const conBase = async function (tarea) {
+    const cliente = new Client(opcionesConexion(process.env.DATABASE_URL));
+    await cliente.connect();
+    try {
+      return await tarea(cliente);
+    } finally {
+      await cliente.end();
+    }
+  };
+  /* Lo que hace el administrador, contra la copia local de la base. */
+  const restablecer = function (temporal) {
+    return conBase(async function (cliente) {
+      const id = (await cliente.query('SELECT id FROM aps.usuario WHERE documento = $1', [DOCUMENTO])).rows[0].id;
+      await restablecerClave(cliente, id, { clave: temporal });
+    });
+  };
+  const crearLaPropia = async function (temporal, nueva) {
+    await abrir('/login.html');
+    await entrarCon(DOCUMENTO, temporal);
+    await pagina.locator('#claveNueva').fill(nueva);
+    await pagina.locator('#claveRepetida').fill(nueva);
+    await pagina.locator('#btnGuardarClave').click();
+    await pagina.waitForURL(function (url) { return !/login/.test(url.pathname); }, { timeout: 30000 });
+  };
+  const codigos = function () {
+    return pagina.evaluate(function () { return window.obtenerEncuestas().map(function (e) { return e.codigoFicha; }); });
+  };
+  const otroCodigo = function (consecutivo) { return codigoFicha.replace(/-\d{4}-(\d{8})$/, '-' + consecutivo + '-$1'); };
+  const dejarPendiente = function (codigo) {
+    return pagina.evaluate(function (datos) {
+      window.agregarEncuesta(Object.assign({}, datos.ficha, { id: 'enc_' + datos.codigo, codigoFicha: datos.codigo, sincronizada: false }));
+      window.renderizarInicio();
+    }, { ficha: fichaSinSubir, codigo: codigo });
+  };
+
+  const NUEVA = 'ClaveTrasOlvidarla2026';
+  const OTRA_NUEVA = 'OtraClaveTrasOlvidarla2026';
+  const CODIGO = otroCodigo('9101');
+  const CODIGO_SIN_CUSTODIA = otroCodigo('9102');
+
+  try {
+    await abrirYEntrar('/');
+    await dejarPendiente(CODIGO);
+    expect(await codigos()).toContain(CODIGO);
+    const llaveAntes = await pagina.evaluate(function (documento) {
+      return JSON.parse(localStorage.getItem('aps_boveda_' + documento)).id;
+    }, DOCUMENTO);
+
+    /* El administrador le da una temporal; ella entra con señal y crea la suya. */
+    await restablecer('TemporalDeLaPrueba2026');
+    await crearLaPropia('TemporalDeLaPrueba2026', NUEVA);
+
+    /* Recién ingresada, no pide otra vez, y lo de antes se lee: es la misma llave. */
+    await expect(velo()).toBeHidden({ timeout: 30000 });
+    await expect(pagina.locator('#appTabs')).toBeVisible();
+    expect(await codigos()).toContain(CODIGO);
+    await expect(pagina.locator('#fichasDeOtraLlave')).toBeHidden();
+    const meta = await pagina.evaluate(function (documento) {
+      return JSON.parse(localStorage.getItem('aps_boveda_' + documento));
+    }, DOCUMENTO);
+    expect(meta.id).toBe(llaveAntes);
+    expect(meta.anteriores).toEqual([]);
+
+    /* Sin señal abre con la nueva y ya no con la vieja. */
+    await quitarRed();
+    await pagina.evaluate(function () { window.SESION.bloquear(); });
+    await desbloquearCon(CLAVE);
+    await expect(velo().locator('[data-bloqueo="error"]')).toContainText('incorrect');
+    await expect(velo()).toBeVisible();
+    await desbloquearCon(NUEVA);
+    await expect(velo()).toBeHidden({ timeout: 30000 });
+    await devolverRed();
+
+    /* Y sube. */
+    await pagina.locator('#btnSincronizar').click();
+    await expect(pagina.locator('#sincronia .sincronia__titulo')).toContainText('Todo está en la base', { timeout: 30000 });
+    expect(await fichasPendientes()).toBe(0);
+
+    /* Sin custodia que sirva (no hubo señal desde que se creó, o falta el secreto en el
+       servidor): nada se borra, y se abre si recuerda la contraseña anterior. */
+    await dejarPendiente(CODIGO_SIN_CUSTODIA);
+    await pagina.evaluate(function (documento) {
+      const meta = JSON.parse(localStorage.getItem('aps_boveda_' + documento));
+      meta.custodia = null;
+      localStorage.setItem('aps_boveda_' + documento, JSON.stringify(meta));
+    }, DOCUMENTO);
+    await restablecer('TemporalDeLaPrueba2027');
+    await crearLaPropia('TemporalDeLaPrueba2027', OTRA_NUEVA);
+    await expect(velo()).toBeHidden({ timeout: 30000 });
+
+    expect(await codigos(), 'sin la contraseña anterior no se debía leer').not.toContain(CODIGO_SIN_CUSTODIA);
+    const aviso = pagina.locator('#fichasDeOtraLlave');
+    await expect(aviso).toContainText('1 ficha sin subir guardada con su contraseña anterior');
+    await expect(pagina.locator('#sincronia .sincronia__titulo')).toHaveText('Falta abrir lo guardado antes');
+    await aviso.scrollIntoViewIfNeeded();
+    await foto('13-fichas-con-la-contrasena-anterior');
+    /* Sigue contando como pendiente en el aviso del acceso. */
+    expect(await pagina.evaluate(function () { return window.PWA.fichasSinSubir(); })).toBeGreaterThan(0);
+
+    await pagina.locator('#btnAbrirOtraLlave').click();
+    const dialogo = pagina.locator('.swal2-popup');
+    await dialogo.locator('input[type="password"]').fill('NoEsLaClave2026');
+    await dialogo.locator('.swal2-confirm').click();
+    await expect(dialogo.locator('.swal2-validation-message')).toContainText('no es su contraseña anterior');
+    await dialogo.locator('input[type="password"]').fill(NUEVA);
+    await dialogo.locator('.swal2-confirm').click();
+    await expect(dialogo).toContainText('ya está disponible', { timeout: 30000 });
+    await pagina.getByRole('button', { name: 'Entendido' }).click();
+
+    expect(await codigos()).toContain(CODIGO_SIN_CUSTODIA);
+    await expect(aviso).toBeHidden();
+    const llaves = await pagina.evaluate(function (documento) {
+      const meta = JSON.parse(localStorage.getItem('aps_boveda_' + documento));
+      const mias = JSON.parse(localStorage.getItem('aps_encuestas')).filter(function (e) { return e.capturadaPor === documento; });
+      return { anteriores: meta.anteriores.length, id: meta.id, deLaLlaveDeHoy: mias.every(function (e) { return e.sellada.split('.')[1] === meta.id; }) };
+    }, DOCUMENTO);
+    expect(llaves.anteriores).toBe(0);
+    expect(llaves.deLaLlaveDeHoy).toBe(true);
+
+    expect(excepciones, 'hubo excepciones al recuperar').toEqual([]);
+  } finally {
+    await conBase(function (cliente) { return asegurarUsuarioDePrueba(cliente); });
+  }
 });
 
 test('Nada salió a terceros en todo el recorrido', async function () {

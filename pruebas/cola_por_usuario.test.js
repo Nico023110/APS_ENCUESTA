@@ -34,7 +34,7 @@ const leer = function (archivo) { return fs.readFileSync(path.join(RAIZ, archivo
 
 const html = leer('index.html');
 const fuentes = ['roles.js', 'acceso_local.js', 'catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js',
-  'geocodificacion.js', 'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js']
+  'geocodificacion.js', 'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'app.js']
   .map(leer)
   .join('\n;\n');
 
@@ -221,6 +221,7 @@ function montarCola(usuario, fichas, holgura) {
     console: { warn: function () {}, error: function () {} }
   };
   vm.runInNewContext(
+    leer('pruebas/_boveda_abierta.js') +
     "const STORAGE_KEY = 'aps_encuestas';\n" +
     trozo('app.js', 'function documentoDeLaSesion()', '/**\n * Sustituye una ficha') +
     trozo('captura_local.js', 'function escribirLocal', 'function borrarLocal') +

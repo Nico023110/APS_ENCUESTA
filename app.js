@@ -1073,7 +1073,15 @@ function actualizarCalculoHacinamientoEnFormulario() {
    `obtenerEncuestas` y `guardarEncuestas` sólo ven las de la sesión. Lo que no
    tiene por qué fijarse en la persona (el espacio, los datos de demostración, el
    aviso de lo ajeno) usa leerFichasDelDispositivo. Sin documento en la sesión no
-   hay a quién separarle nada, como el borrador «local» de captura_local.js. */
+   hay a quién separarle nada, como el borrador «local» de captura_local.js.
+
+   Cada ficha va cifrada con la llave de su dueño (boveda.js). Lo que queda en la
+   lista es su sobre: { capturadaPor, sincronizada, sellada }. Por eso, de lo que
+   devuelve leerFichasDelDispositivo sólo se puede contar con de quién es y si subió:
+   puede ser un sobre o, si su dueño no ha entrado desde antes del cifrado, la ficha en
+   claro. Sin la llave, obtenerEncuestas no da nada y guardarEncuestas falla antes de
+   escribir. Lo que no se puede abrir (de una llave anterior o dañado) sigue en la
+   lista sin tocarse: se trata como si fuera de otra persona. */
 
 function documentoDeLaSesion() {
   const usuario = typeof SESION !== 'undefined' && SESION.usuario ? SESION.usuario() : null;
@@ -1100,7 +1108,7 @@ function leerFichasDelDispositivo() {
 function obtenerEncuestas() {
   const yo = documentoDeLaSesion();
   const todas = leerFichasDelDispositivo();
-  return yo ? todas.filter(function (encuesta) { return duenoDeFicha(encuesta) === yo; }) : todas;
+  return BOVEDA.abrirFichas(yo ? todas.filter(function (encuesta) { return duenoDeFicha(encuesta) === yo; }) : todas);
 }
 
 /* El almacenamiento del navegador es pequeño (2,5 a 5 millones de caracteres
@@ -1137,19 +1145,22 @@ function escribirFichasDelDispositivo(encuestas) {
  * Reemplaza las fichas de la sesión; las de los demás siguen como estaban. Lo
  * ajeno va al final, así que si falta espacio lo primero que sale es la copia ya
  * subida de otra persona: a quien está trabajando le sirve menos que la suya.
- * @throws lo mismo que escribirFichasDelDispositivo.
+ * @throws lo mismo que escribirFichasDelDispositivo; y si falta la llave, sin escribir.
  */
 function guardarEncuestas(encuestas) {
   const yo = documentoDeLaSesion();
   if (!yo) {
-    escribirFichasDelDispositivo(encuestas);
+    escribirFichasDelDispositivo(BOVEDA.sellarFichas(encuestas));
     return;
   }
   const propias = encuestas.map(function (encuesta) {
     return encuesta.capturadaPor === yo ? encuesta : Object.assign({}, encuesta, { capturadaPor: yo });
   });
-  const ajenas = leerFichasDelDispositivo().filter(function (encuesta) { return duenoDeFicha(encuesta) !== yo; });
-  escribirFichasDelDispositivo(propias.concat(ajenas));
+  const sobres = BOVEDA.sellarFichas(propias);
+  const ajenas = leerFichasDelDispositivo().filter(function (encuesta) {
+    return duenoDeFicha(encuesta) !== yo || !BOVEDA.esLegible(encuesta);
+  });
+  escribirFichasDelDispositivo(sobres.concat(ajenas));
 }
 
 /** Libera espacio para otra escritura (ver captura_local.js). Dice si pudo. */
@@ -1212,6 +1223,90 @@ function pendientesDeOtrasPersonas() {
   return Array.from(cantidades, function (par) {
     return { documento: par[0], cantidad: par[1] };
   });
+}
+
+/* Lo que siga en claro de esta persona pasa a cifrado: de antes de esta versión, o de
+   una pestaña que sigue con la anterior. Se hace en el sitio, y escribir la lista
+   comprueba cada ficha antes (boveda.js). Si no cabe se sueltan copias ya subidas; si
+   aun así no cabe, la lista queda como estaba, se sigue leyendo y se reintenta en la
+   próxima apertura. Nunca se quita nada pendiente. */
+let avisoSinEspacioParaCifrar = false;
+
+function cifrarFichasEnClaro() {
+  const yo = documentoDeLaSesion();
+  const faltan = leerFichasDelDispositivo().filter(function (encuesta) {
+    return duenoDeFicha(encuesta) === yo && BOVEDA.faltaCifrar(encuesta);
+  });
+  if (faltan.length === 0) return;
+
+  try {
+    guardarEncuestas(obtenerEncuestas());
+  } catch (error) {
+    console.warn('No fue posible cifrar las fichas de este equipo:', error);
+    if (!avisoSinEspacioParaCifrar) {
+      avisoSinEspacioParaCifrar = true;
+      mostrarNotificacion(
+        'No hay espacio en este equipo para proteger ' + textoCantidad(faltan.length, 'ficha', 'fichas') + '. Siguen ' +
+        'guardadas, pero sin cifrar: sincronice en cuanto tenga señal.', 'warning');
+    }
+  }
+}
+
+/* Si la contraseña cambió y no hubo custodia que sirviera (boveda.js), lo de antes
+   sigue aquí con su llave, sin leerse. Se abre si la persona recuerda la anterior. */
+function textoDeLoQueQuedoConOtraLlave() {
+  if (!BOVEDA.abierta() || !BOVEDA.hayLlavesAnteriores()) return '';
+  const yo = documentoDeLaSesion();
+  const pendientes = leerFichasDelDispositivo().filter(function (encuesta) {
+    return duenoDeFicha(encuesta) === yo && encuesta.sincronizada !== true && !BOVEDA.esLegible(encuesta);
+  }).length;
+  if (pendientes > 0) {
+    return 'Hay ' + textoCantidad(pendientes, 'ficha sin subir guardada', 'fichas sin subir guardadas') +
+      ' con su contraseña anterior.';
+  }
+  return hayBorradoresDeOtraLlave() ? 'Hay fichas sin terminar guardadas con su contraseña anterior.' : '';
+}
+
+async function pedirContrasenaAnterior() {
+  if (typeof Swal === 'undefined') return;
+
+  const respuesta = await Swal.fire({
+    title: 'Su contraseña anterior',
+    text: 'Lo que guardó antes de que le cambiaran la contraseña se abre con la que tenía entonces.',
+    input: 'password',
+    inputAttributes: { autocomplete: 'off', 'aria-label': 'Contraseña anterior' },
+    showCancelButton: true,
+    confirmButtonText: 'Abrir',
+    cancelButtonText: 'Ahora no',
+    showLoaderOnConfirm: true,
+    allowOutsideClick: function () { return !Swal.isLoading(); },
+    preConfirm: function (clave) {
+      if (!clave) {
+        Swal.showValidationMessage('Escriba la contraseña.');
+        return false;
+      }
+      return BOVEDA.recuperarAnteriores(clave).then(function (abiertas) {
+        if (abiertas === 0) Swal.showValidationMessage('Ésa no es su contraseña anterior.');
+        return abiertas > 0;
+      });
+    }
+  });
+  if (!respuesta.isConfirmed) return;
+
+  /* Primero a salvo con la llave de hoy; sólo entonces se olvida la anterior. */
+  try {
+    guardarEncuestas(obtenerEncuestas());
+    recogerBorradoresDeOtraLlave();
+    BOVEDA.confirmarRecuperacion();
+  } catch (error) {
+    console.error('No fue posible pasar las fichas a la contraseña de hoy:', error);
+    mostrarNotificacion('No hay espacio en este equipo para terminar. Lo guardado sigue aquí: sincronice lo que ' +
+      'pueda y vuelva a intentarlo.', 'error');
+    return;
+  }
+  renderizarInicio();
+  renderizarHistorial();
+  mostrarNotificacion('Lo que tenía guardado ya está disponible. Sincronícelo cuando tenga señal.', 'success');
 }
 
 function agregarEncuesta(encuesta) {
@@ -1472,6 +1567,9 @@ function marcarComoSubida(enviada, codigos) {
 async function sincronizarEncuestas() {
   if (sincronizacionEnCurso) return;
 
+  /* Debajo del velo no hay fichas que subir, y no es que no haya pendientes. */
+  if (!BOVEDA.abierta()) return;
+
   /* Sin señal no se intenta: cada ficha fallaría por separado y el resumen
      lo achacaría al servidor. Las fichas siguen a salvo en el equipo. */
   if (!haySenal()) {
@@ -1494,6 +1592,9 @@ async function sincronizarEncuestas() {
      modal de «sincronizando…» lo tapaba durante toda la subida. */
   sincronizacionEnCurso = { hechas: 0, total: pendientes.length };
   renderizarEstadoSync();
+
+  /* Se puede bloquear a mitad de la subida, y al terminar hay que anotar lo subido. */
+  const soltarLlave = BOVEDA.retener();
 
   let exitosas = 0;
   const rechazadas = [];
@@ -1597,6 +1698,7 @@ async function sincronizarEncuestas() {
     console.error('Fallo en sincronización:', error);
     mostrarNotificacion('Error de red al sincronizar. Reintente cuando tenga conexión.', 'error');
   } finally {
+    soltarLlave();
     sincronizacionEnCurso = null;
     renderizarInicio();
     renderizarHistorial();
@@ -2148,6 +2250,7 @@ function renderizarEstadoSync() {
   const locales = obtenerEncuestas();
   const pendientes = locales.filter(function (e) { return e.sincronizada !== true; }).length;
   const ajenas = pendientesDeOtrasPersonas();
+  const conOtraLlave = textoDeLoQueQuedoConOtraLlave();
   const curso = sincronizacionEnCurso;
   const ultima = leerUltimaSincronizacion();
 
@@ -2179,7 +2282,11 @@ function renderizarEstadoSync() {
     detalle = 'Sólo están en este equipo';
   } else {
     estado = 'listo';
-    if (locales.length === 0 && !ultima) {
+    /* No se puede decir que todo subió: hay algo suyo que ni se puede leer ni subir. */
+    if (conOtraLlave) {
+      titulo = 'Falta abrir lo guardado antes';
+      detalle = 'Necesita su contraseña anterior';
+    } else if (locales.length === 0 && !ultima) {
       titulo = ajenas.length > 0 ? 'Nada suyo por subir' : 'Nada por subir';
       detalle = 'Lo que guarde sin señal esperará aquí';
     } else {
@@ -2207,6 +2314,12 @@ function renderizarEstadoSync() {
   if (avisoAjenas) {
     avisoAjenas.hidden = ajenas.length === 0;
     avisoAjenas.querySelector('span').textContent = ajenas.length > 0 ? textoDePendientesAjenas(ajenas) : '';
+  }
+
+  const avisoOtraLlave = document.getElementById('fichasDeOtraLlave');
+  if (avisoOtraLlave) {
+    avisoOtraLlave.hidden = !conOtraLlave;
+    avisoOtraLlave.querySelector('span').textContent = conOtraLlave;
   }
 
   const barra = modulo.querySelector('.sincronia__barra');
@@ -4998,7 +5111,18 @@ function esVacioTexto(valor) {
    cerrado la visita, sin el formulario delante para corregirla.
    --------------------------------------------------------- */
 
+/* Se puede bloquear mientras el servidor contesta, y la ficha hay que dejarla en el
+   dispositivo igual: no está en ninguna otra parte si no llegó a la base. */
 async function guardarYReiniciar(datos, formulario, mensaje) {
+  const soltarLlave = BOVEDA.retener();
+  try {
+    return await guardarFichaYReiniciar(datos, formulario, mensaje);
+  } finally {
+    soltarLlave();
+  }
+}
+
+async function guardarFichaYReiniciar(datos, formulario, mensaje) {
   const encuesta = construirEncuestaDesdeDatos(datos);
   const boton = document.getElementById('btnGuardar');
 
@@ -5654,8 +5778,9 @@ function inicializarAplicacion() {
   inicializarNavegadorPendientes();
   inicializarValidacionEnVivo();
   retirarDatosDemostracion();
-  adoptarFichasSinDueno();
   inicializarNavegacion();
+  const abrirOtraLlave = document.getElementById('btnAbrirOtraLlave');
+  if (abrirOtraLlave) abrirOtraLlave.addEventListener('click', pedirContrasenaAnterior);
   /* El módulo de sincronización dice si hay señal: se repinta al perderla y
      al recuperarla. */
   window.addEventListener('online', renderizarEstadoSync);
@@ -5672,6 +5797,15 @@ function inicializarAplicacion() {
      muestre lo que otros dispositivos hayan guardado y no sólo lo que hay en
      este navegador. */
   primeraLecturaDeLaBase.then(function () {
+    renderizarInicio();
+    renderizarHistorial();
+  });
+
+  /* Hasta dar la contraseña no hay fichas que leer: lo de esta persona se pinta al
+     abrir, también si estaba bloqueada y lo de arriba cambió debajo del velo. */
+  BOVEDA.alAbrir(function () {
+    adoptarFichasSinDueno();
+    cifrarFichasEnClaro();
     renderizarInicio();
     renderizarHistorial();
   });

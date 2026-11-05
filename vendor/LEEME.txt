@@ -7,6 +7,13 @@ Antes venían de CDN. Son copias sin modificar, salvo lo que se indica:
   fuentes/      Plus Jakarta Sans y JetBrains Mono de Google Fonts (SIL OFL 1.1).
                 fuentes.css es la hoja de Google, sólo latin y latin-ext,
                 con las direcciones cambiadas a estos archivos.
+  noble-ciphers/ @noble/ciphers 2.4.0, sólo xchacha20poly1305 (MIT). Cifra las
+                fichas en el dispositivo (boveda.js). No es una copia: es esa
+                función empaquetada con esbuild en un solo archivo, sin minificar
+                para que se pueda revisar; la cabecera dice cómo rehacerlo.
+                Cure53 auditó la versión 1.0.0 (septiembre de 2024); la 2.4.0 trae
+                cambios posteriores. pruebas/boveda.test.js la compara contra el
+                vector oficial del borrador IETF y contra OpenSSL.
 
 Al cambiar o agregar un archivo aquí, actualice la lista de sw.js:
 pruebas/pwa.test.js falla si queda algo por fuera.

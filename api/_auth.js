@@ -23,6 +23,12 @@
      desde una misma IP en 15 minutos devuelven 429. Ambos contadores viven
      en la base porque en Vercel cada petición puede caer en un proceso
      distinto: un contador en memoria no protegería nada.
+   - Las fichas sin subir van cifradas en el teléfono con una llave que sale de
+     la contraseña (boveda.js). Para que olvidarla no signifique perder la visita,
+     el dispositivo guarda esa llave envuelta también con una de custodia, que
+     sólo se entrega tras verificar la contraseña: nunca a quien sólo trae la
+     cookie, que puede venir en el mismo teléfono robado. Sale de un secreto que
+     no está en la base, así que leer la base no sirve para abrir nada.
    ========================================================================= */
 
 'use strict';
@@ -102,6 +108,28 @@ function requisitosIncumplidos(clave, documento) {
   }
   if (texto.length > 128) faltan.push('Máximo 128 caracteres.');
   return faltan;
+}
+
+/* Una por persona, siempre la misma mientras no cambie el secreto: el dispositivo
+   la vuelve a pedir en cada ingreso con señal, y abre lo que se envolvió antes.
+   Sin secreto (o uno muy corto) no hay custodia: todo sigue funcionando, pero quien
+   olvide la contraseña sólo recupera sus fichas si recuerda la anterior.
+
+   Cambiar el secreto invalida lo envuelto con el anterior hasta el siguiente
+   ingreso con señal de cada persona: quien la olvide en ese intervalo no recupera. */
+const LARGO_MINIMO_SECRETO_CUSTODIA = 32;
+let custodiaAvisada = false;
+
+function llaveDeCustodia(usuarioId) {
+  const secreto = process.env.CUSTODIA_SECRETO || '';
+  if (secreto.length < LARGO_MINIMO_SECRETO_CUSTODIA) {
+    if (!custodiaAvisada) {
+      custodiaAvisada = true;
+      console.warn('CUSTODIA_SECRETO no está configurado: quien olvide la contraseña no recupera sus fichas sin subir.');
+    }
+    return null;
+  }
+  return crypto.createHmac('sha256', secreto).update('aps-custodia-v1:' + usuarioId).digest('base64url');
 }
 
 /* ---------------------------------------------------------
@@ -415,6 +443,7 @@ module.exports = {
   hashDeClave,
   verificarClave,
   requisitosIncumplidos,
+  llaveDeCustodia,
   leerCookies,
   crearSesion,
   revocarSesionActual,

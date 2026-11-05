@@ -12,10 +12,11 @@
    2. fetch. Toda llamada a /api/ lleva la cabecera anti-CSRF y la cookie;
       un 401 cierra la sesión local y vuelve al inicio de sesión.
    3. Bloqueo por inactividad (RN-223.6). Tras 20 minutos sin tocar la
-      pantalla se cubre la aplicación y se pide la contraseña de nuevo; también
-      si se cerró y se vuelve a abrir. Sin señal, la contraseña se verifica
-      contra la copia del dispositivo (acceso_local.js). La ficha en curso no se
-      pierde: sigue debajo.
+      pantalla se cubre la aplicación, se borra de la memoria la llave de las
+      fichas (boveda.js) y se pide la contraseña de nuevo. Sin señal, la
+      contraseña se verifica contra la copia del dispositivo (acceso_local.js).
+      La ficha en curso no se pierde: sigue debajo. Una página nueva no tiene la
+      llave, así que abrir la aplicación siempre la pide, salvo recién ingresada.
    4. Firma. Los ítems 10 y 12-14 (equipo y responsable) se escriben desde la
       sesión y quedan fijos; el servidor los impone igual, esto sólo evita que
       el encuestador los teclee.
@@ -25,12 +26,9 @@
   'use strict';
 
   const CLAVE_CACHE = 'aps_sesion_usuario';
-  const CLAVE_ACTIVIDAD = 'aps_ultima_actividad';
-  const CLAVE_BLOQUEADA = 'aps_pantalla_bloqueada';
   const RUTA_LOGIN = '/login.html';
   const INACTIVIDAD_BLOQUEO_MS = 20 * 60 * 1000;
   const REVISION_INACTIVIDAD_MS = 30 * 1000;
-  const ANOTAR_ACTIVIDAD_CADA_MS = 15 * 1000;
 
   /* Cuánto se le espera al servidor antes de seguir como si no hubiera señal.
      Con una rayita de cobertura navigator.onLine dice que hay red y la petición
@@ -50,9 +48,8 @@
   const LIMITE_DESBLOQUEO_MS = 10000;
 
   let usuario = leerCache();
-  let ultimaActividad = leerUltimaActividad();
-  let actividadAnotada = ultimaActividad;
-  let bloqueada = false;
+  let ultimaActividad = Date.now();
+  let bloqueada = true;
 
   /* ---------------------------------------------------------
      1. PUERTA
@@ -77,40 +74,6 @@
     try { localStorage.removeItem(CLAVE_CACHE); } catch (error) { /* sin almacenamiento */ }
   }
 
-  /* Sin marca se cuenta desde ahora: es un ingreso recién hecho (login.js la
-     retira) o una sesión de antes de que existiera. */
-  function leerUltimaActividad() {
-    try {
-      const marca = parseInt(localStorage.getItem(CLAVE_ACTIVIDAD), 10);
-      return Number.isFinite(marca) && marca > 0 ? marca : Date.now();
-    } catch (error) {
-      return Date.now();
-    }
-  }
-
-  function anotarUltimaActividad() {
-    actividadAnotada = ultimaActividad;
-    try { localStorage.setItem(CLAVE_ACTIVIDAD, String(ultimaActividad)); } catch (error) { /* sin almacenamiento */ }
-  }
-
-  function anotarBloqueo(activo) {
-    try {
-      if (activo) localStorage.setItem(CLAVE_BLOQUEADA, 'si');
-      else localStorage.removeItem(CLAVE_BLOQUEADA);
-    } catch (error) { /* sin almacenamiento */ }
-  }
-
-  /* El bloqueo vivía sólo en la memoria de la página: cerrar la aplicación y
-     volver a abrirla entraba sin contraseña, y un teléfono devuelve la
-     aplicación recargada cada vez que el sistema la saca de memoria. Abre
-     bloqueada si quedó bloqueada o si pasó el tiempo sin usarla. */
-  function debeAbrirBloqueada() {
-    try {
-      if (localStorage.getItem(CLAVE_BLOQUEADA) === 'si') return true;
-    } catch (error) { /* sin almacenamiento */ }
-    return Date.now() - ultimaActividad >= INACTIVIDAD_BLOQUEO_MS;
-  }
-
   function irAlInicioDeSesion(motivo) {
     const destino = RUTA_LOGIN + (motivo ? '?motivo=' + encodeURIComponent(motivo) : '');
     document.documentElement.classList.add('sin-sesion');
@@ -129,9 +92,9 @@
 
   document.documentElement.classList.add('con-sesion', 'nivel-' + usuario.nivel);
 
-  /* Antes de pintar nada: lo que hay en pantalla no se ve hasta dar la clave. */
-  const abrirBloqueada = debeAbrirBloqueada();
-  if (abrirBloqueada) document.documentElement.classList.add('pantalla-bloqueada');
+  /* Antes de pintar nada: lo que hay en pantalla no se ve hasta tener la llave de
+     las fichas, y una página nueva no la tiene (ver abrirAlCargar). */
+  document.documentElement.classList.add('pantalla-bloqueada');
 
   /* ---------------------------------------------------------
      2. FETCH
@@ -220,6 +183,7 @@
 
   function cerrarLocalmente(motivo) {
     borrarCache();
+    if (window.BOVEDA) window.BOVEDA.cerrar();
     irAlInicioDeSesion(motivo);
   }
 
@@ -249,11 +213,7 @@
      --------------------------------------------------------- */
 
   function anotarActividad() {
-    if (bloqueada) return;
-    ultimaActividad = Date.now();
-    /* No en cada toque: escribir en el dispositivo cuesta, y un scroll dispara
-       decenas de eventos por segundo. */
-    if (ultimaActividad - actividadAnotada >= ANOTAR_ACTIVIDAD_CADA_MS) anotarUltimaActividad();
+    if (!bloqueada) ultimaActividad = Date.now();
   }
 
   ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (evento) {
@@ -268,12 +228,9 @@
   /* En segundo plano los temporizadores se duermen: al volver a la aplicación
      se revisa ya, no al siguiente tic, para no dejar ver la ficha unos segundos. */
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') {
-      anotarUltimaActividad();
-    } else {
-      revisarQueSigueSiendoSuSesion();
-      revisarInactividad();
-    }
+    if (document.visibilityState === 'hidden') return;
+    revisarQueSigueSiendoSuSesion();
+    revisarInactividad();
   });
   window.addEventListener('pageshow', function () {
     revisarQueSigueSiendoSuSesion();
@@ -292,12 +249,26 @@
     if (evento.key === CLAVE_CACHE || evento.key === null) revisarQueSigueSiendoSuSesion();
   });
 
-  function bloquear() {
+  const TEXTOS_DEL_VELO = {
+    bloqueo: { titulo: 'Sesión bloqueada por inactividad', intro: 'La ficha en curso sigue abajo, tal como la dejó.' },
+    apertura: { titulo: 'Sus fichas están protegidas', intro: 'Lo guardado en este equipo se abre con su contraseña.' }
+  };
+
+  function ponerTextosDelVelo(velo, textos) {
+    const titulo = velo.querySelector('[data-bloqueo="titulo"]');
+    const intro = velo.querySelector('[data-bloqueo="intro"]');
+    if (titulo) titulo.textContent = textos.titulo;
+    if (intro) intro.textContent = textos.intro;
+  }
+
+  /* Lo último antes de cubrir la pantalla es soltar la llave de las fichas: la ficha
+     en curso se escribe cifrada justo antes (captura_local.js). */
+  function bloquear(motivo) {
     const velo = document.getElementById('bloqueoSesion');
     if (!velo) return;
     bloqueada = true;
-    anotarUltimaActividad();
-    anotarBloqueo(true);
+    if (window.BOVEDA) window.BOVEDA.cerrar();
+    ponerTextosDelVelo(velo, motivo === 'apertura' ? TEXTOS_DEL_VELO.apertura : TEXTOS_DEL_VELO.bloqueo);
     velo.hidden = false;
     document.documentElement.classList.add('pantalla-bloqueada');
     document.querySelectorAll('.app-header, .app-main').forEach(function (el) { el.setAttribute('inert', ''); });
@@ -315,8 +286,41 @@
     document.querySelectorAll('.app-header, .app-main').forEach(function (el) { el.removeAttribute('inert'); });
     bloqueada = false;
     ultimaActividad = Date.now();
-    anotarUltimaActividad();
-    anotarBloqueo(false);
+    /* Es la que abre las fichas: no se queda en un campo escondido. */
+    const clave = velo && velo.querySelector('input[name="clave"]');
+    if (clave) clave.value = '';
+  }
+
+  /* Recién ingresada, la llave viene en camino desde el acceso (boveda.js): se espera
+     sin enseñar la contraseña. En cualquier otro caso, una página nueva no tiene con
+     qué abrir las fichas, y se pide de una vez. */
+  function abrirAlCargar() {
+    const boveda = window.BOVEDA;
+    if (boveda && boveda.abierta()) {
+      desbloquear();
+    } else if (boveda && boveda.hayEntregaEnCamino()) {
+      boveda.recibir(usuario.documento).then(function (recibida) {
+        if (recibida) desbloquear();
+        else bloquear('apertura');
+      });
+    } else {
+      bloquear('apertura');
+    }
+  }
+
+  /* La contraseña ya está verificada. Sin la llave de las fichas no se destapa nada:
+     no habría qué mostrar, y lo que se capturara no se podría guardar. */
+  function abrirFichasYEntrar(apertura, opciones) {
+    return apertura.abrir(opciones).then(function (resultado) {
+      if (resultado.ok) {
+        desbloquear();
+        return;
+      }
+      mostrarErrorBloqueo(resultado.codigo === 'no_disponible'
+        ? 'Este navegador no permite proteger las fichas. Abra la aplicación por su dirección https, en un navegador ' +
+          'actualizado.'
+        : 'No fue posible abrir las fichas de este equipo. Lo guardado sigue aquí: avise al administrador.');
+    });
   }
 
   function mostrarErrorBloqueo(texto) {
@@ -333,9 +337,12 @@
       mostrarErrorBloqueo('Sin conexión: no es posible verificar la contraseña ahora.');
       return Promise.resolve();
     }
+    /* Las dos derivaciones a la vez: una después de la otra tardaría el doble. */
+    const apertura = window.BOVEDA.prepararApertura(usuario.documento, clave);
     return window.ACCESO_LOCAL.verificar(usuario.documento, clave).then(function (resultado) {
-      if (resultado.ok) desbloquear();
-      else mostrarErrorBloqueo(resultado.mensaje);
+      if (resultado.ok) return abrirFichasYEntrar(apertura);
+      mostrarErrorBloqueo(resultado.mensaje);
+      return undefined;
     });
   }
 
@@ -362,10 +369,19 @@
         }
         usuario = cuerpo.usuario;
         guardarCache(usuario);
+        /* Una contraseña temporal no abre ni envuelve nada: sirve para crear la
+           definitiva, y las fichas se pasan a ésa (login.js). */
+        if (usuario.debeCambiarClave) {
+          irAlInicioDeSesion('clave');
+          return undefined;
+        }
+        const apertura = window.BOVEDA.prepararApertura(usuario.documento, clave);
         const recordada = window.ACCESO_LOCAL
           ? window.ACCESO_LOCAL.recordar(usuario.documento, clave, usuario)
           : Promise.resolve();
-        return recordada.then(desbloquear);
+        return recordada.then(function () {
+          return abrirFichasYEntrar(apertura, { custodia: cuerpo.llaveCustodia });
+        });
       });
     }, function () {
       soltarLimite();
@@ -632,8 +648,7 @@
     if (formularioBloqueo) formularioBloqueo.addEventListener('submit', reingresar);
     const cambiar = document.querySelector('#bloqueoSesion [data-bloqueo="salir"]');
     if (cambiar) cambiar.addEventListener('click', cerrarSesion);
-    if (abrirBloqueada) bloquear();
-    else anotarUltimaActividad();
+    abrirAlCargar();
     setInterval(revisarInactividad, REVISION_INACTIVIDAD_MS);
     confirmarConServidor();
   });

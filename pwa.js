@@ -105,7 +105,7 @@
 
   /* Si también hay un worker nuevo esperando, se le da paso antes de recargar. Al
      recargar, el borrador se escribe solo en `pagehide` (captura_local.js) y vuelve
-     al abrir. */
+     al dar la contraseña, que una página nueva siempre pide (boveda.js). */
   function aplicarVersionNueva() {
     let recargando = false;
     const recargar = function () {

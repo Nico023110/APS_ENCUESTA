@@ -107,7 +107,7 @@ function montar(rol) {
   };
 
   const fuentes = ['sesion.js', 'catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js',
-    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'app.js', 'roles.js', 'usuarios.js', 'reporte.js',
+    'reglas.js', 'formulario.js', 'cups.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'app.js', 'roles.js', 'usuarios.js', 'reporte.js',
     'productividad.js', 'tableros.js']
     .map(function (f) { return fs.readFileSync(path.join(RAIZ, f), 'utf8'); })
     .join('\n;\n');

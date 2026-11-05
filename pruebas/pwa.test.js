@@ -11,8 +11,8 @@
    3. El service worker y sus promesas: nunca tocar /api/, nunca cambiar de versión
       a medias, servir sin red.
    4. La verificación de la contraseña sin señal.
-   5. El bloqueo: sobrevive a cerrar la aplicación y no saca a nadie por escribir
-      mal la contraseña.
+   5. El bloqueo: sin la llave de las fichas no se destapa nada, y no saca a nadie
+      por escribir mal la contraseña. El cifrado en sí es pruebas/boveda.test.js.
    6. El acceso: con señal manda el servidor; sin ella, la copia del dispositivo.
    7. Otra pestaña que cambia de usuario, y lo que el acceso dice de las fichas sin
       subir. La cola por persona es pruebas/cola_por_usuario.test.js.
@@ -92,7 +92,7 @@ class CacheSimulada {
   async keys() { return Array.from(this.entradas.keys()); }
 }
 
-function montarTrabajador(sitio, almacenPrevio) {
+function montarTrabajador(sitio, almacenPrevio, temporizadorDePrueba) {
   const oyentes = {};
   /* El mismo almacén con otro worker es lo que pasa cuando el navegador lo apaga y
      lo vuelve a arrancar: la memoria se pierde, las cachés no. */
@@ -148,7 +148,7 @@ function montarTrabajador(sitio, almacenPrevio) {
   vm.runInNewContext(leer('sw.js'), {
     self: self, caches: caches, fetch: fetchSimulado, crypto: webcrypto, Request: PeticionLocal, Response: Response,
     Headers: Headers, URL: URL, TextEncoder: TextEncoder, AbortController: AbortController, console: console,
-    setTimeout: setTimeout, clearTimeout: clearTimeout
+    setTimeout: temporizadorDePrueba || setTimeout, clearTimeout: clearTimeout
   });
 
   async function disparar(tipo, extra) {
@@ -223,6 +223,8 @@ const CUERPO_SESION = `
   <div id="appUsuario"></div>
   <div id="bloqueoSesion" hidden>
     <form>
+      <h2 data-bloqueo="titulo"></h2>
+      <span data-bloqueo="intro"></span>
       <strong data-bloqueo="nombre"></strong>
       <input type="password" name="clave">
       <p data-bloqueo="error" hidden></p>
@@ -249,6 +251,36 @@ function accesoLocalSimulado(verificarResultado, opciones) {
   };
 }
 
+/* Lo que sesion.js y login.js esperan de boveda.js. Abierta salvo que se diga otra cosa. */
+function bovedaSimulada(opciones) {
+  opciones = opciones || {};
+  const llamadas = { cerrar: 0, preparadas: [], abiertas: [], entregar: 0, recibir: [] };
+  let abierta = opciones.abierta !== false;
+  return {
+    llamadas: llamadas,
+    abierta: function () { return abierta; },
+    cerrar: function () { llamadas.cerrar++; abierta = false; },
+    hayEntregaEnCamino: function () { return opciones.entrega === true; },
+    recibir: function (documento) {
+      llamadas.recibir.push(documento);
+      if (opciones.recibe === true) abierta = true;
+      return Promise.resolve(opciones.recibe === true);
+    },
+    prepararApertura: function (documento, clave) {
+      llamadas.preparadas.push([documento, clave]);
+      return {
+        abrir: function (conf) {
+          llamadas.abiertas.push(conf || null);
+          const resultado = opciones.resultado || { ok: true };
+          if (resultado.ok) abierta = true;
+          return Promise.resolve(resultado);
+        }
+      };
+    },
+    entregar: function () { llamadas.entregar++; return Promise.resolve(true); }
+  };
+}
+
 async function montarSesion(opciones) {
   const dom = new JSDOM('<!doctype html><html><head></head><body>' + CUERPO_SESION + '</body></html>', {
     url: ORIGEN + '/', runScripts: 'outside-only'
@@ -263,6 +295,7 @@ async function montarSesion(opciones) {
   v.Request = Request;
   Object.defineProperty(v.navigator, 'onLine', { configurable: true, get: function () { return opciones.enLinea !== false; } });
   v.ACCESO_LOCAL = opciones.acceso;
+  v.BOVEDA = opciones.boveda || bovedaSimulada({ abierta: opciones.cerrada !== true });
   v.fetch = function (url, conf) {
     const ruta = new URL(url, ORIGEN).pathname;
     pedidos.push({ ruta: ruta, conf: conf || {} });
@@ -282,14 +315,18 @@ async function montarSesion(opciones) {
   /* jsdom dispara DOMContentLoaded por su cuenta, un momento después. */
   while (v.document.readyState === 'loading') await esperar(1);
 
+  await esperar(1);
+
   return {
     v: v,
+    boveda: v.BOVEDA,
     pedidos: pedidos,
     temporizadores: temporizadores,
     velo: function () { return v.document.getElementById('bloqueoSesion'); },
     bloqueada: function () { return !v.document.getElementById('bloqueoSesion').hidden; },
     errorVelo: function () { return v.document.querySelector('[data-bloqueo="error"]').textContent; },
     fuera: function () { return v.document.documentElement.classList.contains('sin-sesion'); },
+    tituloVelo: function () { return v.document.querySelector('[data-bloqueo="titulo"]').textContent; },
     responderVelo: async function (clave) {
       v.document.querySelector('#bloqueoSesion input[name="clave"]').value = clave;
       v.document.querySelector('#bloqueoSesion form').dispatchEvent(new v.Event('submit', { cancelable: true, bubbles: true }));
@@ -326,11 +363,13 @@ function montarAcceso(opciones) {
     });
   });
 
+  v.BOVEDA = opciones.boveda || bovedaSimulada({ abierta: false });
   if (opciones.conPwa) v.eval(leer('pwa.js'));
   v.eval(leer('login.js'));
 
   return {
     v: v,
+    boveda: v.BOVEDA,
     pedidos: pedidos,
     error: function () { return v.document.getElementById('errorAcceso').textContent; },
     /* La salida de la página es por `location.replace`, que jsdom no ejecuta: se
@@ -662,56 +701,100 @@ async function principal() {
   verificar('una copia dañada no revienta: es como no tenerla',
     (await corrupta.acceso.verificar('1144099001', CLAVE)).codigo === 'sin_copia');
 
-  console.log('\n=== 8. El bloqueo sobrevive a cerrar la aplicación ===');
+  console.log('\n=== 7b. La llave, de camino del acceso a la aplicación ===');
 
-  const ABIERTA = { aps_ultima_actividad: String(Date.now() - 60 * 1000) };
-  const VENCIDA = { aps_ultima_actividad: String(Date.now() - 21 * 60 * 1000) };
+  {
+    const programados = [];
+    const conEntrega = montarTrabajador(sitioDePrueba(ARCHIVOS), null, function (funcion) { programados.push(funcion); return programados.length; });
+    const puerto = function () {
+      const recibidos = [];
+      return { recibidos: recibidos, postMessage: function (mensaje) { recibidos.push(structuredClone(mensaje)); } };
+    };
+    const dejar = function (documento) {
+      const respuesta = puerto();
+      const bytes = new Uint8Array(32).fill(7);
+      conEntrega.disparar('message', { data: { tipo: 'llave-dejar', documento: documento, id: 'abcd1234', llave: bytes }, ports: [respuesta] });
+      return { respuesta: respuesta, bytes: bytes };
+    };
+    const tomar = async function () {
+      const respuesta = puerto();
+      await conEntrega.disparar('message', { data: { tipo: 'llave-tomar' }, ports: [respuesta] });
+      return respuesta.recibidos[0];
+    };
+
+    verificar('sin nada guardado no da nada', await tomar() === null);
+    const dejada = dejar('1144099001');
+    verificar('confirma que la guardó', dejada.respuesta.recibidos[0].ok === true);
+    const tomada = await tomar();
+    verificar('la da a la primera página que la pida', tomada.documento === '1144099001' && tomada.llave[0] === 7 && tomada.id === 'abcd1234');
+    verificar('y la borra de su memoria', dejada.bytes.every(function (b) { return b === 0; }));
+    verificar('una sola vez', await tomar() === null);
+
+    const sinRecoger = dejar('1144099001');
+    programados.forEach(function (funcion) { funcion(); });
+    verificar('si nadie la pide, se borra sola', sinRecoger.bytes.every(function (b) { return b === 0; }) && await tomar() === null);
+
+    verificar('nada de esto toca la caché', Array.from(conEntrega.almacen.keys()).length === 0);
+  }
+
+  console.log('\n=== 8. Sin la llave de las fichas no se destapa nada ===');
+
   const resultadoOk = function (clave) {
     return clave === CLAVE ? { ok: true, perfil: PERFIL } : { ok: false, codigo: 'clave', mensaje: 'Documento o contraseña incorrectos.' };
   };
 
-  let s = await montarSesion({ almacen: ABIERTA, acceso: accesoLocalSimulado(resultadoOk) });
-  verificar('abierta hace un minuto: entra sin pedir nada', !s.bloqueada());
+  let s = await montarSesion({ cerrada: true, acceso: accesoLocalSimulado(resultadoOk) });
+  verificar('una página nueva abre bloqueada: la llave vive en la memoria de la página', s.bloqueada());
+  verificar('lo de atrás no se pinta', s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
+  verificar('y dice por qué se le pide', /protegidas/.test(s.tituloVelo()), s.tituloVelo());
+  verificar('sin marcas que dejen entrar: no hay ninguna que mirar',
+    s.v.localStorage.getItem('aps_ultima_actividad') === null && s.v.localStorage.getItem('aps_pantalla_bloqueada') === null);
+
+  /* Recién ingresada, la llave viene en camino y no se pide otra vez. */
+  let conLlave = bovedaSimulada({ abierta: false, entrega: true, recibe: true });
+  s = await montarSesion({ boveda: conLlave, acceso: accesoLocalSimulado(resultadoOk) });
+  await esperar(5);
+  verificar('recién ingresada entra sin pedir nada', !s.bloqueada() && conLlave.llamadas.recibir[0] === PERFIL.documento);
+  verificar('y se destapa', !s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
+
+  conLlave = bovedaSimulada({ abierta: false, entrega: true, recibe: false });
+  s = await montarSesion({ boveda: conLlave, acceso: accesoLocalSimulado(resultadoOk) });
+  await esperar(5);
+  verificar('si la llave no llegó, se pide la contraseña', s.bloqueada());
 
   s = await montarSesion({ acceso: accesoLocalSimulado(resultadoOk) });
-  verificar('sin marca de actividad (ingreso recién hecho): entra', !s.bloqueada());
-
-  s = await montarSesion({ almacen: VENCIDA, acceso: accesoLocalSimulado(resultadoOk) });
-  verificar('abierta tras 21 minutos: abre bloqueada', s.bloqueada());
-  verificar('lo de atrás no se pinta', s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
-
-  s = await montarSesion({ almacen: { aps_pantalla_bloqueada: 'si', aps_ultima_actividad: String(Date.now()) }, acceso: accesoLocalSimulado(resultadoOk) });
-  verificar('la dejó bloqueada y la reabre: sigue bloqueada', s.bloqueada());
-
-  s = await montarSesion({ almacen: ABIERTA, acceso: accesoLocalSimulado(resultadoOk) });
+  verificar('con la llave ya abierta no se pide nada', !s.bloqueada());
   s.v.SESION.bloquear();
-  verificar('bloquear queda anotado en el dispositivo', s.v.localStorage.getItem('aps_pantalla_bloqueada') === 'si');
-  verificar('el velo tapa lo de atrás', s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
+  verificar('al bloquear se borra la llave de la memoria', s.boveda.llamadas.cerrar === 1 && !s.boveda.abierta());
+  verificar('el velo tapa lo de atrás', s.bloqueada() && s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
+  verificar('y dice que fue por inactividad', /inactividad/.test(s.tituloVelo()), s.tituloVelo());
 
   console.log('\n=== 9. Desbloquear con y sin señal ===');
 
   /* Sin red: en el dispositivo, sin tocar el servidor. */
   let acc = accesoLocalSimulado(resultadoOk);
-  s = await montarSesion({ almacen: VENCIDA, enLinea: false, acceso: acc });
+  s = await montarSesion({ cerrada: true, enLinea: false, acceso: acc });
   const pedidosIniciales = s.pedidos.length;
   await s.responderVelo('mala');
   verificar('sin red, una contraseña mala no desbloquea y dice por qué', s.bloqueada() && /incorrect/.test(s.errorVelo()), s.errorVelo());
   verificar('sin red no se le pregunta al servidor', !s.pedidos.slice(pedidosIniciales).some(function (p) { return p.ruta === '/api/iniciar_sesion'; }));
+  verificar('una contraseña mala no abre las fichas', s.boveda.llamadas.abiertas.length === 0);
   await s.responderVelo(CLAVE);
   verificar('sin red, la correcta desbloquea', !s.bloqueada());
-  verificar('al desbloquear se retira la marca', s.v.localStorage.getItem('aps_pantalla_bloqueada') === null);
+  verificar('y abre las fichas con esa contraseña, sin custodia',
+    s.boveda.abierta() && s.boveda.llamadas.abiertas.length === 1 && s.boveda.llamadas.abiertas[0] === null);
   verificar('y se destapa lo de atrás', !s.v.document.documentElement.classList.contains('pantalla-bloqueada'));
 
   /* Con señal manda el servidor. */
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: VENCIDA,
+    cerrada: true,
     acceso: acc,
     servidor: function (ruta, conf) {
       if (ruta !== '/api/iniciar_sesion') return new Promise(function () {});
       const cuerpo = JSON.parse(conf.body);
       return cuerpo.clave === CLAVE
-        ? respuestaJson(200, { usuario: PERFIL })
+        ? respuestaJson(200, { usuario: PERFIL, llaveCustodia: 'LLAVE-DE-CUSTODIA' })
         : respuestaJson(401, { error: 'Documento o contraseña incorrectos.', codigo: 'credenciales' });
     }
   });
@@ -724,11 +807,36 @@ async function principal() {
   await s.responderVelo(CLAVE);
   verificar('con señal, la correcta desbloquea', !s.bloqueada());
   verificar('y deja lista la verificación sin señal', acc.llamadas.recordar.length === 1 && acc.llamadas.recordar[0][1] === CLAVE);
+  verificar('abre las fichas con la custodia que dio el servidor',
+    s.boveda.llamadas.abiertas.length === 1 && s.boveda.llamadas.abiertas[0].custodia === 'LLAVE-DE-CUSTODIA');
+
+  /* Si la contraseña es buena pero las fichas no abren, no se destapa nada. */
+  const noAbre = bovedaSimulada({ abierta: false, resultado: { ok: false, codigo: 'no_disponible' } });
+  s = await montarSesion({ boveda: noAbre, enLinea: false, acceso: accesoLocalSimulado(resultadoOk) });
+  await s.responderVelo(CLAVE);
+  verificar('sin poder abrir las fichas sigue bloqueada, y lo dice', s.bloqueada() && /proteger las fichas/.test(s.errorVelo()), s.errorVelo());
+
+  /* Una contraseña temporal no abre ni envuelve nada: primero se crea la definitiva. */
+  const conTemporal = bovedaSimulada({ abierta: false });
+  acc = accesoLocalSimulado(resultadoOk);
+  s = await montarSesion({
+    boveda: conTemporal,
+    acceso: acc,
+    servidor: function (ruta) {
+      return ruta === '/api/iniciar_sesion'
+        ? respuestaJson(200, { usuario: Object.assign({}, PERFIL, { debeCambiarClave: true }), llaveCustodia: 'LLAVE-DE-CUSTODIA' })
+        : new Promise(function () {});
+    }
+  });
+  await s.responderVelo('Temporal2026');
+  verificar('con una contraseña temporal va a crear la definitiva', s.fuera());
+  verificar('sin abrir las fichas con ella, ni recordarla',
+    conTemporal.llamadas.preparadas.length === 0 && conTemporal.llamadas.abiertas.length === 0 && acc.llamadas.recordar.length === 0);
 
   /* Sin respuesta: red caída o servidor caído. */
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: VENCIDA,
+    cerrada: true,
     acceso: acc,
     servidor: function (ruta) {
       return ruta === '/api/iniciar_sesion' ? Promise.reject(new TypeError('Failed to fetch')) : new Promise(function () {});
@@ -739,7 +847,7 @@ async function principal() {
 
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: VENCIDA,
+    cerrada: true,
     acceso: acc,
     servidor: function (ruta) {
       return ruta === '/api/iniciar_sesion' ? respuestaJson(503, { error: 'caído' }) : new Promise(function () {});
@@ -751,7 +859,7 @@ async function principal() {
   /* Señal débil: el servidor no contesta nunca. */
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: VENCIDA,
+    cerrada: true,
     acceso: acc,
     servidor: function (ruta, conf) {
       if (ruta !== '/api/iniciar_sesion') return new Promise(function () {});
@@ -772,7 +880,6 @@ async function principal() {
 
   /* Sigue la regla de la API. */
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: accesoLocalSimulado(resultadoOk),
     servidor: function (ruta) { return ruta === '/api/sesion' ? respuestaJson(401, { codigo: 'sin_sesion' }) : new Promise(function () {}); }
   });
@@ -782,7 +889,6 @@ async function principal() {
 
   let confirmada = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: confirmada,
     servidor: function (ruta) { return ruta === '/api/sesion' ? respuestaJson(200, { usuario: PERFIL }) : new Promise(function () {}); }
   });
@@ -792,7 +898,6 @@ async function principal() {
   /* Cerrar sesión. */
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: acc,
     servidor: function (ruta) { return ruta === '/api/cerrar_sesion' ? respuestaJson(200, { ok: true }) : new Promise(function () {}); }
   });
@@ -800,10 +905,10 @@ async function principal() {
   await esperar(20);
   verificar('cerrar sesión con señal olvida la sesión del dispositivo', acc.llamadas.olvidarSesion === 1 && acc.llamadas.cierrePendiente === 0);
   verificar('y sale', s.fuera());
+  verificar('sin dejar la llave en la memoria', !s.boveda.abierta());
 
   acc = accesoLocalSimulado(resultadoOk);
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: acc,
     enLinea: false,
     servidor: function () { return Promise.reject(new TypeError('Failed to fetch')); }
@@ -817,7 +922,6 @@ async function principal() {
   acc = accesoLocalSimulado(resultadoOk);
   let cerradas = 0;
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: acc,
     servidor: function (ruta) {
       if (ruta === '/api/cerrar_sesion') { cerradas++; return respuestaJson(200, { ok: true }); }
@@ -846,7 +950,6 @@ async function principal() {
   console.log('\n=== 10. Señal débil: las peticiones tienen tope ===');
 
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: accesoLocalSimulado(resultadoOk),
     servidor: function (ruta, conf) {
       if (ruta !== '/api/guardar_encuesta') return new Promise(function () {});
@@ -864,7 +967,7 @@ async function principal() {
   verificar('y luego falla como una caída de red: la ficha pasa a la cola', error !== null);
   verificar('sin confundirse con una cancelación, que el buscador de CUPS calla', error && error.name === 'TimeoutError', error && error.name);
 
-  s = await montarSesion({ almacen: ABIERTA, acceso: accesoLocalSimulado(resultadoOk) });
+  s = await montarSesion({ acceso: accesoLocalSimulado(resultadoOk) });
   const cuantosAntes = s.temporizadores.length;
   s.v.fetch('/api/reporte_sispro', { method: 'POST' });
   verificar('los reportes, que tardan, no llevan tope', s.temporizadores.length === cuantosAntes);
@@ -873,7 +976,6 @@ async function principal() {
   const canceladora = new AbortController();
   let canceladaEn = null;
   s = await montarSesion({
-    almacen: ABIERTA,
     acceso: accesoLocalSimulado(resultadoOk),
     servidor: function (ruta, conf) {
       if (ruta !== '/api/buscar_cups') return new Promise(function () {});
@@ -896,10 +998,13 @@ async function principal() {
   let l = montarAcceso({
     acceso: acc,
     almacen: { aps_ultima_actividad: '1', aps_pantalla_bloqueada: 'si' },
-    servidor: function (ruta) { return sinSesion(ruta) || respuestaJson(200, { usuario: PERFIL }); }
+    servidor: function (ruta) { return sinSesion(ruta) || respuestaJson(200, { usuario: PERFIL, llaveCustodia: 'LLAVE-DE-CUSTODIA' }); }
   });
   await l.ingresar(PERFIL.documento, CLAVE);
   verificar('con señal entra', l.entro());
+  verificar('abre las fichas con esa contraseña y la custodia del servidor',
+    l.boveda.llamadas.preparadas[0][1] === CLAVE && l.boveda.llamadas.abiertas[0].custodia === 'LLAVE-DE-CUSTODIA');
+  verificar('y pasa la llave a la aplicación', l.boveda.llamadas.entregar === 1);
   verificar('y deja lista la verificación sin señal', acc.llamadas.recordar.length === 1 && acc.llamadas.recordar[0][1] === CLAVE);
   verificar('no le pregunta a la copia', acc.llamadas.verificar.length === 0);
   verificar('un ingreso nuevo no hereda el bloqueo anterior',
@@ -912,6 +1017,7 @@ async function principal() {
   });
   await l.ingresar(PERFIL.documento, CLAVE);
   verificar('si el servidor dice que no, es que no: la copia no se consulta', !l.entro() && acc.llamadas.verificar.length === 0);
+  verificar('y las fichas no se abren', l.boveda.llamadas.abiertas.length === 0);
 
   acc = accesoSinFallo();
   l = montarAcceso({
@@ -928,6 +1034,27 @@ async function principal() {
   });
   await l.ingresar(PERFIL.documento, 'Temporal2026');
   verificar('una contraseña temporal no se recuerda', acc.llamadas.recordar.length === 0 && !l.entro());
+  verificar('ni abre las fichas', l.boveda.llamadas.abiertas.length === 0);
+
+  /* Con la definitiva, las fichas pasan a ella: es el camino de quien olvidó la suya. */
+  acc = accesoSinFallo();
+  l = montarAcceso({
+    acceso: acc,
+    servidor: function (ruta) {
+      if (ruta === '/api/cambiar_clave') return respuestaJson(200, { usuario: PERFIL, llaveCustodia: 'LLAVE-DE-CUSTODIA' });
+      return sinSesion(ruta) || respuestaJson(200, { usuario: Object.assign({}, PERFIL, { debeCambiarClave: true, nombre: 'Prueba' }), llaveCustodia: 'LLAVE-DE-CUSTODIA' });
+    }
+  });
+  await l.ingresar(PERFIL.documento, 'Temporal2026');
+  const formClave = l.v.document.getElementById('formClave');
+  formClave.claveNueva.value = 'MiClaveNueva2026';
+  formClave.claveRepetida.value = 'MiClaveNueva2026';
+  formClave.dispatchEvent(new l.v.Event('submit', { cancelable: true, bubbles: true }));
+  await esperar(30);
+  verificar('al crear la definitiva entra', l.entro());
+  verificar('y abre las fichas con ella y la custodia, no con la temporal',
+    l.boveda.llamadas.preparadas.length === 1 && l.boveda.llamadas.preparadas[0][1] === 'MiClaveNueva2026' &&
+    l.boveda.llamadas.abiertas[0].custodia === 'LLAVE-DE-CUSTODIA');
 
   console.log('\n=== 12. El acceso: sin señal, la copia del dispositivo ===');
 
@@ -943,6 +1070,8 @@ async function principal() {
   await l.ingresar(PERFIL.documento, CLAVE);
   verificar('sin señal, la correcta entra', l.entro());
   verificar('entrar sin señal no cuenta como confirmación del servidor', acc.llamadas.confirmar.length === 0);
+  verificar('abre las fichas, sin custodia, y pasa la llave',
+    l.boveda.llamadas.abiertas.length === 1 && l.boveda.llamadas.abiertas[0] === null && l.boveda.llamadas.entregar === 1);
 
   acc = accesoSinFallo();
   l = montarAcceso({
@@ -976,6 +1105,7 @@ async function principal() {
   });
   await esperar(30);
   verificar('con sesión viva al abrir el acceso, entra y corre la vigencia', l.entro() && acc.llamadas.confirmar.length === 1);
+  verificar('sin contraseña no abre las fichas: la aplicación la pedirá', l.boveda.llamadas.abiertas.length === 0);
 
   /* Un cierre de sesión pendiente. */
   acc = accesoLocalSimulado(resultadoOk, { cierrePendiente: true });
@@ -1035,6 +1165,7 @@ async function principal() {
     if (fichas) datos.set('aps_encuestas', JSON.stringify(fichas));
     const contexto = { localStorage: almacen, console: { warn: function () {}, error: function () {} } };
     vm.runInNewContext(
+      leer('pruebas/_boveda_abierta.js') +
       "const STORAGE_KEY = 'aps_encuestas';\n" +
       trozo('app.js', 'function documentoDeLaSesion()', '/**\n * Sustituye una ficha') +
       trozo('captura_local.js', 'function escribirLocal', 'function borrarLocal') +

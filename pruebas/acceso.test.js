@@ -39,6 +39,37 @@ async function principal() {
   verificar('con el documento dentro se rechaza', auth.requisitosIncumplidos('x1144012345y', '1144012345').length > 0);
   verificar('una clave que cumple pasa', auth.requisitosIncumplidos('Enfermeria2026', '1144012345').length === 0);
 
+  console.log('\n=== 2b. Custodia de las fichas del dispositivo ===');
+
+  const secretoAntes = process.env.CUSTODIA_SECRETO;
+  const avisoOriginal = console.warn;
+  console.warn = function () {};
+
+  delete process.env.CUSTODIA_SECRETO;
+  verificar('sin secreto no hay custodia', auth.llaveDeCustodia(7) === null);
+  process.env.CUSTODIA_SECRETO = 'corto';
+  verificar('con un secreto corto tampoco', auth.llaveDeCustodia(7) === null);
+
+  process.env.CUSTODIA_SECRETO = 'un-secreto-de-prueba-de-mas-de-32-caracteres';
+  const custodia7 = auth.llaveDeCustodia(7);
+  verificar('tiene la forma que espera boveda.js: 32 bytes en base64url', /^[A-Za-z0-9_-]{43}$/.test(custodia7), custodia7);
+  verificar('es siempre la misma para la misma persona', auth.llaveDeCustodia(7) === custodia7);
+  verificar('es otra para otra persona', auth.llaveDeCustodia(8) !== custodia7);
+  process.env.CUSTODIA_SECRETO = 'otro-secreto-de-prueba-de-mas-de-32-caracteres';
+  verificar('depende del secreto', auth.llaveDeCustodia(7) !== custodia7);
+
+  if (secretoAntes === undefined) delete process.env.CUSTODIA_SECRETO;
+  else process.env.CUSTODIA_SECRETO = secretoAntes;
+  console.warn = avisoOriginal;
+
+  /* Sólo tras verificar la contraseña: la cookie puede venir en el teléfono robado. */
+  const fs = require('fs');
+  const entrega = fs.readdirSync(path.join(__dirname, '..', 'api')).filter(function (archivo) {
+    return archivo !== '_auth.js' && /llaveDeCustodia/.test(fs.readFileSync(path.join(__dirname, '..', 'api', archivo), 'utf8'));
+  }).sort();
+  verificar('sólo la entregan los dos endpoints que verifican la contraseña',
+    entrega.join() === 'cambiar_clave.js,iniciar_sesion.js', entrega.join());
+
   console.log('\n=== 3. Roles y permisos ===');
 
   verificar('enfermería es nivel profesional', roles.nivelDe('enfermeria') === 'profesional');

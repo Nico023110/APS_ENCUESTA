@@ -34,7 +34,7 @@ w.addEventListener('error', (e) => erroresJs.push(e.message));
 const silencio = console.log;
 console.log = function () {};   // la app escribe avisos en consola sin Swal
 w.eval(['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js',
-  'formulario.js', 'cups.js', 'correccion.js', 'captura_local.js', 'guia_campos.js', 'app.js']
+  'formulario.js', 'cups.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'guia_campos.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8')).join('\n;\n') +
   ';\nwindow.__api = { recolectarDatosFormulario, CAT_TERRITORIOS: typeof CAT_TERRITORIOS !== "undefined" ? CAT_TERRITORIOS : null };');
 w.document.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
