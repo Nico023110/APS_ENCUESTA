@@ -286,10 +286,8 @@ test('Se registra una encuesta real y queda guardada en la base', async function
 
 async function leerDeLaBase(codigoFicha) {
   const { Client } = require('pg');
-  const cliente = new Client({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: false
-  });
+  const { opcionesConexion } = require('../../api/_db');
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
 
   await cliente.connect();
   try {

@@ -33,6 +33,7 @@ const { Client } = require('pg');
 const roles = require(path.join(__dirname, '..', 'roles.js'));
 const cuentas = require(path.join(__dirname, '..', 'api', '_usuarios.js'));
 const { crearLibro, ESTILO } = require(path.join(__dirname, '..', 'api', '_xlsx.js'));
+const { opcionesConexion } = require(path.join(__dirname, '..', 'api', '_db.js'));
 
 function salir(mensaje) {
   console.error('\nERROR: ' + mensaje + '\n');
@@ -140,7 +141,7 @@ async function principal() {
   if (!cadena) salir('no hay DATABASE_URL en .env.local');
   const host = new URL(cadena).hostname;
   const esLocal = host === 'localhost' || host === '127.0.0.1';
-  const cliente = new Client({ connectionString: cadena, ssl: esLocal ? false : true });
+  const cliente = new Client(opcionesConexion(cadena));
   await cliente.connect();
 
   console.log('\n  ' + (crear ? 'Creación de cuentas' : 'Ensayo (no se escribe nada)') + ' — base ' +

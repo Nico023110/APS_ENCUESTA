@@ -41,10 +41,8 @@ const DOCUMENTOS = ['1122334455'];
 
 async function limpiarBase() {
   const { Client } = require('pg');
-  const cliente = new Client({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: false
-  });
+  const { opcionesConexion } = require('../../api/_db');
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
   await cliente.connect();
   try {
     await cliente.query("DELETE FROM aps.ficha WHERE codigo LIKE 'F-COR-%'");
@@ -338,10 +336,8 @@ async function esperarCatalogos(page) {
 
 async function leerAccionGuardada(codigoFicha) {
   const { Client } = require('pg');
-  const cliente = new Client({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: false
-  });
+  const { opcionesConexion } = require('../../api/_db');
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
 
   await cliente.connect();
   try {

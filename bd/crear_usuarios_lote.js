@@ -34,6 +34,7 @@ const path = require('path');
 const { Client } = require('pg');
 const roles = require(path.join(__dirname, '..', 'roles.js'));
 const cuentas = require(path.join(__dirname, '..', 'api', '_usuarios.js'));
+const { opcionesConexion } = require(path.join(__dirname, '..', 'api', '_db.js'));
 
 function leerArgumentos(argv) {
   const salida = {};
@@ -107,10 +108,7 @@ async function principal() {
 
   const cadena = args.neon === true ? conexionDeNeon() : (process.env.DATABASE_URL || process.env.POSTGRES_URL);
   if (!cadena) salir('no hay DATABASE_URL en .env.local');
-  const cliente = new Client({
-    connectionString: cadena,
-    ssl: /localhost|127\.0\.0\.1/.test(cadena) ? false : { rejectUnauthorized: false }
-  });
+  const cliente = new Client(opcionesConexion(cadena));
   await cliente.connect();
 
   console.log('\n  ' + (probar ? 'Prueba (no se escribe nada)' : 'Creación de cuentas') + ' — base ' +

@@ -18,6 +18,7 @@ require('dotenv').config({ path: ['.env.local', '.env'] });
 const { spawn } = require('child_process');
 const path = require('path');
 const { Client } = require('pg');
+const { opcionesConexion } = require('../api/_db');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba, USUARIO_PRUEBA } = require('./_sesion_prueba');
 const { completarAnexo } = require('./_anexo_datos');
 
@@ -203,10 +204,7 @@ async function borrarFichasDePrueba(cliente) {
 /* Las comprobaciones de las tablas puente cuentan filas de toda la tabla, así
    que el estado tiene que partir limpio para ser determinista. */
 async function limpiar() {
-  const cliente = new Client({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: false
-  });
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
   await cliente.connect();
   await borrarFichasDePrueba(cliente);
   await cliente.query("DELETE FROM aps.persona WHERE numero_id IN ('1144099887','1144055099')");
@@ -274,7 +272,7 @@ async function correrPruebas() {
   verificar('Equipo y responsable ajenos en el cuerpo => 200 con la firma de la sesión',
     r.estado === 200, 'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
   if (r.estado === 200) {
-    const firmaDb = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    const firmaDb = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
     await firmaDb.connect();
     const firma = (await firmaDb.query(`
       SELECT eq.codigo AS equipo, fu.numero_id, fu.nombre_completo
@@ -482,7 +480,7 @@ async function correrPruebas() {
   verificar('Sin EBS propio, registra la ficha con el EBS que indica => 200', r.estado === 200,
     'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
   const equipoDeZona = await (async function () {
-    const c = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    const c = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
     await c.connect();
     const fila = (await c.query(`
       SELECT eq.codigo FROM aps.ficha f JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id WHERE f.codigo = $1`,
@@ -508,7 +506,7 @@ async function correrPruebas() {
   ajena.equipoSaludId = 'EBS99';
   r = await enviar(ajena, sesion.cabeceras);
   const equipoAjena = r.estado === 200 ? await (async function () {
-    const c = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    const c = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
     await c.connect();
     const fila = (await c.query(`
       SELECT eq.codigo FROM aps.ficha f JOIN aps.equipo_salud eq ON eq.id = f.equipo_salud_id WHERE f.codigo = $1`,
@@ -530,7 +528,7 @@ async function correrPruebas() {
   const listadoAsistencial = await usuariosApi(sesion.cabeceras);
   verificar('Una profesional no lista usuarios => 403', listadoAsistencial.estado === 403, 'estado ' + listadoAsistencial.estado);
 
-  const limpiarCuentas = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+  const limpiarCuentas = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
   await limpiarCuentas.connect();
   await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099010', nombre: 'Prueba Admin', rol: 'administrador', equipo: null });
   await asegurarUsuarioDePrueba(limpiarCuentas, { documento: '1144099011', nombre: 'Prueba Maestro Api', rol: 'maestro', equipo: 'EBS12' });
@@ -649,7 +647,7 @@ async function correrPruebas() {
   verificar('Un responsable con perfil «Otro» guarda una ficha => 200', r.estado === 200,
     'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 200));
   if (r.estado === 200) {
-    const perfilDb = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+    const perfilDb = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
     await perfilDb.connect();
     const responsable = (await perfilDb.query(`
       SELECT fu.perfil_profesional, fu.perfil_otro
@@ -669,10 +667,7 @@ async function correrPruebas() {
     'estado ' + r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 300));
 
   if (r.estado === 200) {
-    const cliente = new Client({
-      connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-      ssl: false
-    });
+    const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
     await cliente.connect();
 
     const fila = await cliente.query(`

@@ -21,6 +21,9 @@ const { Client } = require('pg');
 const { spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const tls = require('tls');
+const { opcionesConexion } = require(path.join(__dirname, '..', 'api', '_db.js'));
 
 const DIR_BD = __dirname;
 
@@ -106,10 +109,33 @@ function leerCadenaConexion() {
   };
 }
 
-/* Postgres local no habla SSL; Neon lo exige. Decidirlo por el host evita
-   tener que cambiar código al pasar de desarrollo a la nube. */
-function opcionesSsl(conexion) {
-  return conexion.esLocal ? false : { rejectUnauthorized: false };
+/* Las autoridades que aceptan las conexiones de node, en un archivo para psql:
+   así los dos confían en las mismas, y no en lo que encuentre el OpenSSL de
+   cada instalación, como con sslrootcert=system. Son certificados públicos. */
+let archivoDeRaices = null;
+
+function rutaDeRaices() {
+  if (!archivoDeRaices) {
+    const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), 'aps-raices-'));
+    archivoDeRaices = path.join(carpeta, 'raices.pem');
+    fs.writeFileSync(archivoDeRaices, tls.rootCertificates.join('\n') + '\n');
+    process.on('exit', function () { fs.rmSync(carpeta, { recursive: true, force: true }); });
+  }
+  return archivoDeRaices;
+}
+
+/* psql no pasa por opcionesConexion: con el sslmode=require que entrega Neon
+   cifra pero no mira el certificado. Contra un servidor remoto se le exige
+   verify-full. libpq no lee + como espacio, de ahí el %20. */
+function cadenaParaPsql(cadena) {
+  const opciones = opcionesConexion(cadena);
+  if (opciones.ssl === false) return cadena;
+
+  const url = new URL(opciones.connectionString);
+  url.searchParams.set('sslmode', 'verify-full');
+  url.searchParams.set('sslrootcert', rutaDeRaices());
+  url.search = url.search.replace(/\+/g, '%20');
+  return url.toString();
 }
 
 /* ---------------------------------------------------------
@@ -122,10 +148,7 @@ async function crearBaseSiNoExiste(conexion, recrear) {
   const urlMantenimiento = new URL(conexion.cadena);
   urlMantenimiento.pathname = '/postgres';
 
-  const cliente = new Client({
-    connectionString: urlMantenimiento.toString(),
-    ssl: opcionesSsl(conexion)
-  });
+  const cliente = new Client(opcionesConexion(urlMantenimiento.toString()));
 
   try {
     await cliente.connect();
@@ -182,7 +205,7 @@ function ejecutarScript(conexion, script) {
   /* cwd = bd/ porque el `\copy` de 04_cups.sql referencia 'cups.csv'
      por ruta relativa. */
   const resultado = spawnSync('psql', [
-    '--dbname=' + conexion.cadena,
+    '--dbname=' + cadenaParaPsql(conexion.cadena),
     '--file=' + script.archivo,
     '--set=ON_ERROR_STOP=1',
     '--quiet',
@@ -222,10 +245,7 @@ function ejecutarScript(conexion, script) {
    --------------------------------------------------------- */
 
 async function verificar(conexion) {
-  const cliente = new Client({
-    connectionString: conexion.cadena,
-    ssl: opcionesSsl(conexion)
-  });
+  const cliente = new Client(opcionesConexion(conexion.cadena));
   await cliente.connect();
 
   const tablas = await cliente.query(`
@@ -282,7 +302,7 @@ async function principal() {
   console.log('\n  APS APP — Base de datos');
   console.log('  ' + '-'.repeat(52));
   console.log('  Servidor: ' + conexion.host + ':' + conexion.puerto +
-    (conexion.esLocal ? '  (local, sin SSL)' : '  (remoto, con SSL)'));
+    (conexion.esLocal ? '  (local, sin SSL)' : '  (remoto, con SSL y certificado verificado)'));
   console.log('  Base:     ' + conexion.base);
   console.log('  Usuario:  ' + conexion.usuario);
   console.log('');
@@ -311,7 +331,11 @@ async function principal() {
   console.log('\n  Base de datos lista.\n');
 }
 
-principal().catch(function (error) {
-  console.error('\n  ERROR inesperado:', error.message, '\n');
-  process.exit(1);
-});
+if (require.main === module) {
+  principal().catch(function (error) {
+    console.error('\n  ERROR inesperado:', error.message, '\n');
+    process.exit(1);
+  });
+}
+
+module.exports = { cadenaParaPsql };

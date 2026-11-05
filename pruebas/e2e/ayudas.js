@@ -605,8 +605,9 @@ async function iniciarSesion(page, diario) {
   if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
     try {
       const { Client } = require('pg');
+      const { opcionesConexion } = require('../../api/_db');
       const { asegurarUsuarioDePrueba } = require('../_sesion_prueba');
-      const cliente = new Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: false });
+      const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
       await cliente.connect();
       await asegurarUsuarioDePrueba(cliente, { documento: documento, clave: clave });
       await cliente.end();

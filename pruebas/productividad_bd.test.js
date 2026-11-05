@@ -21,6 +21,7 @@ require('dotenv').config({ path: ['.env.local', '.env'] });
 
 const RAIZ = require('path').join(__dirname, '..');
 const { Client } = require('pg');
+const { opcionesConexion } = require(RAIZ + '/api/_db');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba } = require(RAIZ + '/pruebas/_sesion_prueba');
 
 const BASE = 'http://localhost:' + (process.env.PUERTO || 5173);
@@ -48,7 +49,7 @@ function iso(d) {
 }
 
 async function principal() {
-  const cliente = new Client({ connectionString: process.env.DATABASE_URL, ssl: /localhost/.test(process.env.DATABASE_URL) ? false : { rejectUnauthorized: false } });
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL));
   await cliente.connect();
   await asegurarUsuarioDePrueba(cliente, LIDER);
   await asegurarUsuarioDePrueba(cliente, ENFERMERA);

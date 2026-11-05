@@ -6,14 +6,16 @@
 
    SSL SEGÚN EL HOST
    Neon exige SSL; un PostgreSQL local no lo habla y rechaza el
-   intento. Antes estaba fijo en `rejectUnauthorized: false`, lo
-   que impedía trabajar contra una base local. Ahora se decide
-   por el host, y el mismo código sirve en ambos entornos.
+   intento. Se decide por el host, y el mismo código sirve en ambos
+   entornos. Contra un servidor que no sea local se verifica siempre
+   el certificado, su cadena y su nombre: por ahí viajan datos de
+   salud. Todas las conexiones del proyecto, también las de los
+   scripts de bd/ y las de las pruebas, salen de opcionesConexion().
    ========================================================= */
 
 'use strict';
 
-require('dotenv').config({ path: ['.env.local', '.env'] });
+require('dotenv').config({ path: ['.env.local', '.env'], quiet: true });
 
 const { Pool } = require('pg');
 
@@ -26,6 +28,34 @@ function esLocal(cadena) {
   } catch (error) {
     return false;
   }
+}
+
+/* Lo que la cadena puede decir sobre SSL. El controlador le hace caso a la
+   cadena antes que a la opción `ssl`: con sslmode=no-verify, ssl=0 o
+   uselibpqcompat=true no verificaría aunque aquí se le pida, y Neon entrega
+   sslmode=require, que con pg 9 dejará de verificar. Por eso se quitan; el
+   resto de la cadena (channel_binding, connect_timeout…) sigue igual. */
+const PARAMETROS_SSL = ['ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert', 'sslnegotiation', 'uselibpqcompat'];
+
+/* Las opciones para `new Client` o `new Pool`. rejectUnauthorized va explícito
+   porque así NODE_TLS_REJECT_UNAUTHORIZED=0 no puede apagarlo; el nombre del
+   host lo comprueba Node mientras nadie le cambie checkServerIdentity. */
+function opcionesConexion(cadena) {
+  let url;
+  try {
+    url = new URL(cadena);
+  } catch (error) {
+    /* Un error nuevo: el `input` del original lleva la clave. */
+    throw new Error('La cadena de conexión a la base no es una URL válida.');
+  }
+
+  /* El controlador prefiere `?host=` al host de la URL: con él ya no es local. */
+  if (esLocal(cadena) && !url.searchParams.has('host')) {
+    return { connectionString: cadena, ssl: false };
+  }
+
+  PARAMETROS_SSL.forEach(function (parametro) { url.searchParams.delete(parametro); });
+  return { connectionString: url.toString(), ssl: { rejectUnauthorized: true } };
 }
 
 let pool = null;
@@ -49,14 +79,12 @@ function obtenerPool() {
        no mantenerla despierta más de la cuenta; en Vercel, donde la función
        se congela entre peticiones, se mantiene el medio minuto de antes.
        keepAlive detecta las que el otro lado haya cerrado. */
-    pool = new Pool({
-      connectionString: CADENA,
-      ssl: esLocal(CADENA) ? false : { rejectUnauthorized: false },
+    pool = new Pool(Object.assign(opcionesConexion(CADENA), {
       max: 20,
       idleTimeoutMillis: process.env.VERCEL ? 30000 : 300000,
       keepAlive: true,
       connectionTimeoutMillis: 10000
-    });
+    }));
 
     pool.on('error', function (error) {
       console.error('Error inesperado en el pool de PostgreSQL:', error.message);
@@ -107,4 +135,4 @@ async function aLaVez(ejecutor, tareas) {
   return resultados;
 }
 
-module.exports = { obtenerPool, enTransaccion, consultar, esLocal, aLaVez };
+module.exports = { obtenerPool, enTransaccion, consultar, esLocal, opcionesConexion, aLaVez };

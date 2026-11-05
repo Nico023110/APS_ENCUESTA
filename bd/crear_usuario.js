@@ -29,6 +29,7 @@ const path = require('path');
 const { Client } = require('pg');
 const roles = require(path.join(__dirname, '..', 'roles.js'));
 const cuentas = require(path.join(__dirname, '..', 'api', '_usuarios.js'));
+const { opcionesConexion } = require(path.join(__dirname, '..', 'api', '_db.js'));
 
 function leerArgumentos(argv) {
   const salida = {};
@@ -60,10 +61,7 @@ async function principal() {
   const documento = String(args.documento || '').trim();
   if (!/^[A-Za-z0-9]{5,16}$/.test(documento)) salir('--documento debe tener entre 5 y 16 caracteres alfanuméricos');
 
-  const cliente = new Client({
-    connectionString: cadena,
-    ssl: /localhost|127\.0\.0\.1/.test(cadena) ? false : { rejectUnauthorized: false }
-  });
+  const cliente = new Client(opcionesConexion(cadena));
   await cliente.connect();
 
   try {

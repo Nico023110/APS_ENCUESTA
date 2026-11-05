@@ -19,6 +19,7 @@ require('dotenv').config({ path: ['.env.local', '.env'] });
 
 const RAIZ = require('path').join(__dirname, '..');
 const { Client } = require('pg');
+const { opcionesConexion } = require(RAIZ + '/api/_db');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba } = require(RAIZ + '/pruebas/_sesion_prueba');
 const { completarAnexo, integranteAnexo } = require(RAIZ + '/pruebas/_anexo_datos');
 
@@ -86,7 +87,7 @@ function ficha() {
 }
 
 async function principal() {
-  const cliente = new Client({ connectionString: process.env.DATABASE_URL, ssl: false });
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL));
   await cliente.connect();
   const base = (await cliente.query('SELECT current_database() AS b, inet_server_addr() AS h')).rows[0];
   console.log('Base: ' + base.b + ' en ' + (base.h || 'socket local') + ' · servidor ' + BASE);

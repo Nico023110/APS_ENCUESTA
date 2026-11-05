@@ -25,6 +25,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { JSDOM } = require('jsdom');
 const { Client } = require('pg');
+const { opcionesConexion } = require('../api/_db');
 const { asegurarUsuarioDePrueba, iniciarSesionDePrueba } = require('./_sesion_prueba');
 const { viviendaAnexo, familiaAnexo, integranteAnexo } = require('./_anexo_datos');
 
@@ -362,10 +363,7 @@ async function principal() {
 
   console.log('\n=== 2. Esa misma ficha llega a la base ===');
 
-  const cliente = new Client({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: false
-  });
+  const cliente = new Client(opcionesConexion(process.env.DATABASE_URL || process.env.POSTGRES_URL));
   await cliente.connect();
   await limpiar(cliente, sufijo);
 

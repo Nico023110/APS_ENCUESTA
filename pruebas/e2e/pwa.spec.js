@@ -543,8 +543,9 @@ test('6. Se puede cerrar sesión y volver a entrar sin red', async function () {
 
 test('7. Vuelve la señal con la sesión vencida: entra de nuevo y la ficha sube a la base', async function () {
   const { Client } = require('pg');
+  const { opcionesConexion } = require('../../api/_db');
   const enLaBase = async function () {
-    const cliente = new Client({ connectionString: process.env.DATABASE_URL, ssl: false });
+    const cliente = new Client(opcionesConexion(process.env.DATABASE_URL));
     await cliente.connect();
     try {
       const r = await cliente.query('SELECT count(*)::int AS n FROM aps.ficha WHERE codigo = $1', [codigoFicha]);
