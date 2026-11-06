@@ -3695,7 +3695,7 @@ button.atencion__fila:focus-visible {
 }
 
 .combo-cups__opcion,
-.combo-ocupacion__opcion {
+.combo-buscador__opcion {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -3708,19 +3708,29 @@ button.atencion__fila:focus-visible {
 
 .combo-cups__opcion:hover,
 .combo-cups__opcion--activa,
-.combo-ocupacion__opcion:hover,
-.combo-ocupacion__opcion--activa {
+.combo-buscador__opcion:hover,
+.combo-buscador__opcion--activa {
   background: var(--bg-page);
 }
 
-/* Ítem 73: el campo no tiene envoltura propia, ocupacion.js ubica la lista. */
-.field[data-campo="ocupacion"] { position: relative; }
-.field[data-campo="ocupacion"] > input {
+/* Ítems 9 y 73: el campo no tiene envoltura propia, buscador_lista.js ubica la lista. */
+.field:is([data-campo="ocupacion"], [data-campo="divisionTerritorial"]) { position: relative; }
+.field:is([data-campo="ocupacion"], [data-campo="divisionTerritorial"]) > input {
   scroll-margin-top: calc(var(--alto-cabecera) + var(--alto-indice) + var(--s-2));
 }
-.combo-ocupacion__lista { top: auto; right: auto; min-width: 0; }
+.combo-buscador__lista { top: auto; right: auto; min-width: 0; overscroll-behavior: contain; }
+/* En la rejilla de cinco pistas de .form-grid, una posición absoluta se mediría
+   desde la pista del elemento: sin pista, se mide desde el campo, como calcula
+   buscador_lista.js. */
+.form-grid > .field > .combo-buscador__lista,
+.form-grid > .anexo-grupo--en-linea > .field > .combo-buscador__lista { grid-row: auto; }
+.combo-buscador__nota {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
 @media (pointer: coarse) {
-  .combo-ocupacion__opcion { padding: 11px 10px; font-size: 14px; }
+  .combo-buscador__opcion { padding: 11px 10px; font-size: 14px; }
 }
 
 .combo-cups__codigo {

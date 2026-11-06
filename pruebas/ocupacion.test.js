@@ -12,7 +12,7 @@ const { JSDOM } = require('jsdom');
 const BASE = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(BASE, 'index.html'), 'utf8');
 const fuentes = ['catalogos_sispro.js', 'catalogos.js', 'anexo.js', 'direccion.js', 'geocodificacion.js', 'reglas.js',
-  'formulario.js', 'cups.js', 'ocupacion.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'app.js']
+  'formulario.js', 'cups.js', 'buscador_lista.js', 'ocupacion.js', 'correccion.js', 'pruebas/_boveda_abierta.js', 'captura_local.js', 'app.js']
   .map((f) => fs.readFileSync(path.join(BASE, f), 'utf8'))
   .join('\n;\n');
 
@@ -84,7 +84,7 @@ const doc = window.document;
   const campo = doc.querySelector('[data-rol="ocupacion"]');
   const nombre = doc.querySelector('[data-rol="nombreOcupacion"]');
   const lista = () => doc.getElementById('listaOcupacion');
-  const opciones = () => Array.from(doc.querySelectorAll('.combo-ocupacion__opcion'));
+  const opciones = () => Array.from(doc.querySelectorAll('.combo-buscador__opcion'));
   const teclear = (texto) => {
     campo.value = texto;
     campo.dispatchEvent(new window.Event('input', { bubbles: true }));
@@ -102,7 +102,10 @@ const doc = window.document;
   while (bloque) { bloque.hidden = false; bloque = bloque.parentElement; }
   campo.focus();
   check('El campo recibe el foco', doc.activeElement === campo);
-  check('Vacío, no abre ninguna lista', !lista());
+  check('Al entrar vacío despliega todas las ocupaciones', lista() && opciones().length === api.CAT_OCUPACION_CIUO.length,
+    String(opciones().length));
+  check('  en el orden de la tabla y diciendo que se puede acotar',
+    opciones()[0].dataset.valor === api.CAT_OCUPACION_CIUO[0].valor && /Escriba el oficio o el código/.test(lista().textContent));
 
   teclear('mecanico');
   check('Al escribir aparece la lista con varias ocupaciones', lista() && opciones().length > 1, String(opciones().length));
@@ -114,6 +117,14 @@ const doc = window.document;
   check('  el nombre aparece debajo', nombre.textContent.length > 5, nombre.textContent);
   check('  y la lista se cierra', !lista() && campo.getAttribute('aria-expanded') === 'false');
 
+  const elegido = campo.value;
+  campo.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  check('Tocar otra vez el campo vuelve a desplegar todas', lista() && opciones().length === api.CAT_OCUPACION_CIUO.length);
+  check('  con la elegida marcada', doc.querySelector('.combo-buscador__opcion--activa').dataset.valor === elegido);
+  presionar('Escape');
+  teclear('');
+  check('Borrar lo escrito vuelve a desplegar todas', lista() && opciones().length === api.CAT_OCUPACION_CIUO.length);
+
   teclear('9998');
   check('Con 9998 completo no hay lista que estorbe', !lista());
   check('  y su nombre se muestra', /Jubilado/.test(nombre.textContent), nombre.textContent);
@@ -121,16 +132,17 @@ const doc = window.document;
   campo.focus();
   check('Volver a un campo con 9998 lo deja listo para reemplazar',
     campo.selectionStart === 0 && campo.selectionEnd === 4, campo.selectionStart + '-' + campo.selectionEnd);
+  check('  y ofrece todas las ocupaciones, no sólo 9998', opciones().length === api.CAT_OCUPACION_CIUO.length);
   teclear('conductor');
   check('  y buscar otra ocupación ofrece otras, no sólo 9998',
-    opciones().length > 1 && opciones().every((o) => o.dataset.codigo !== '9998'));
+    opciones().length > 1 && opciones().every((o) => o.dataset.valor !== '9998'));
 
   presionar('ArrowDown');
-  const marcada = doc.querySelector('.combo-ocupacion__opcion--activa');
+  const marcada = doc.querySelector('.combo-buscador__opcion--activa');
   check('La flecha marca una opción', !!marcada);
   const enter = presionar('Enter');
   check('Enter elige la marcada y no envía el formulario',
-    enter.defaultPrevented && campo.value === marcada.dataset.codigo, campo.value);
+    enter.defaultPrevented && campo.value === marcada.dataset.valor, campo.value);
 
   teclear('conductor');
   check('Escape cierra la lista', (presionar('Escape'), !lista()));

@@ -381,7 +381,7 @@
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="ubicacion"></div>
             <div class="field field--xl" data-campo="divisionTerritorial">
               <label for="divisionTerritorial"><span class="item-num">9.</span> Nombre del corregimiento, centro poblado, vereda, localidad, barrio o resguardo indígena: *</label>
-              <input type="text" id="divisionTerritorial" name="divisionTerritorial" list="listaBarrios" autocomplete="off" placeholder="Escriba para buscar, ej. El Caney">
+              <input type="text" id="divisionTerritorial" name="divisionTerritorial" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Escriba para buscar, ej. El Caney">
             </div>
           </div>
           </div>
@@ -2433,7 +2433,6 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <datalist id="listaEquiposEbs"></datalist>
-<datalist id="listaBarrios"></datalist>
 <script src="catalogos_sispro.js"></script>
 <script src="catalogos.js"></script>
 <script src="anexo.js"></script>
@@ -2442,6 +2441,9 @@
 <script src="reglas.js"></script>
 <script src="formulario.js"></script>
 <script src="cups.js"></script>
+<script src="buscador_lista.js"></script>
+<script src="ocupacion.js"></script>
+<script src="barrios.js"></script>
 <script src="correccion.js"></script>
 <script src="captura_local.js"></script>
 <script src="guia_campos.js"></script>
@@ -2449,7 +2451,6 @@
 <script src="roles.js"></script>
 <script src="usuarios.js"></script>
 <script src="reporte.js"></script>
-<script src="ocupacion.js"></script>
 <script src="productividad.js"></script>
 <script src="tableros.js"></script>
 </body>

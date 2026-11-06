@@ -128,7 +128,7 @@ Si se modifica el territorio, el microterritorio previamente seleccionado se lim
 
 ### RN-009 — División territorial menor
 
-**Ítem 9.** Campo de texto alfanumérico libre y obligatorio que detalla la micro-localización de la vivienda dentro del microterritorio: Corregimiento, Centro poblado, Vereda, Localidad, Barrio o Resguardo Indígena.
+**Ítem 9.** Campo de texto alfanumérico libre y obligatorio que detalla la micro-localización de la vivienda dentro del microterritorio: Corregimiento, Centro poblado, Vereda, Localidad, Barrio o Resguardo Indígena. Al escribir, el formulario ofrece los barrios de Cali —sin importar tildes y en cualquier orden—; elegir uno es opcional y lo que no esté en la lista se guarda tal como se escribió.
 
 Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad; cuando es "Área rural" o "Centro poblado", corregimiento, vereda o resguardo.
 

@@ -76,6 +76,9 @@ const ARCHIVOS = [
   '/reglas.js',
   '/formulario.js',
   '/cups.js',
+  '/buscador_lista.js',
+  '/ocupacion.js',
+  '/barrios.js',
   '/correccion.js',
   '/captura_local.js',
   '/guia_campos.js',
@@ -84,7 +87,6 @@ const ARCHIVOS = [
   '/usuarios.js',
   '/reporte.js',
   '/productividad.js',
-  '/ocupacion.js',
   '/tableros.js',
 
   '/iconos/apple-touch-icon.png',
