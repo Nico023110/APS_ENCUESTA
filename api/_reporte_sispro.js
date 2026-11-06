@@ -414,7 +414,14 @@ function variablesTipo3(m, c) {
         return c.codigoDe('CAT_OCUPACION_CIUO', i(ctx).ocupacion);
       }
     },
-    19: { valor: function (ctx) { return c.codigoDe('CAT_NIVEL_EDUCATIVO', i(ctx).nivelEducativo); } },
+    /* Variable 19: el instrumento pregunta el nivel educativo desde los 5 años
+       (RN-074) y PISIS lo exige siempre: al menor sin dato va «Ninguno» (13). */
+    19: {
+      valor: function (ctx) {
+        if (vacio(i(ctx).nivelEducativo) && edad(ctx) !== null && edad(ctx) < 60) return c.codigoDe('CAT_NIVEL_EDUCATIVO', 'ninguno');
+        return c.codigoDe('CAT_NIVEL_EDUCATIVO', i(ctx).nivelEducativo);
+      }
+    },
     20: { valor: function (ctx) { return c.codigoDe('CAT_REGIMEN_AFILIACION', i(ctx).regimenAfiliacion); } },
     21: { valor: function (ctx) { return c.codigoDe('CAT_EAPB', i(ctx).eapb); }, tipo: 'A' },
     22: { valor: function (ctx) { return c.codigosDe('CAT_SUJETO_ESPECIAL_PROTECCION', i(ctx).sujetoEspecialProteccion); } },

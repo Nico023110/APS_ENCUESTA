@@ -45,7 +45,7 @@ function decodificar(texto) {
 }
 
 function leerGrilla(html) {
-  const tabla = /<table[^>]*grvGrid[^>]*>([\s\S]*?)<\/table>/i.exec(html);
+  const tabla = /<table[^>]*(?:grvGrid|grvTablaReferencia)[^>]*>([\s\S]*?)<\/table>/i.exec(html);
   if (!tabla) return [];
   const limpiar = function (celda) { return decodificar(celda.replace(/<[^>]+>/g, '')); };
   const cabeceras = Array.from(tabla[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)).map(function (m) { return limpiar(m[1]); });

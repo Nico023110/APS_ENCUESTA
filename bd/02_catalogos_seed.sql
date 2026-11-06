@@ -294,7 +294,7 @@ INSERT INTO cat.uzpe (codigo, municipio_codigo, nombre, vigente) VALUES
 ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, vigente = true;
 
 /* --- EAPB (ítem 76, RN-076, variable 21) -------------------------------
-   91 entidades de la tabla SGDCodigoEAPB de SISPRO. Las que
+   93 entidades de la tabla SGDCodigoEAPB de SISPRO. Las que
    no estén en ella quedan no vigentes: la base conserva las fichas que las
    usaron, pero el formulario ya no las ofrece.                             */
 INSERT INTO cat.eapb (codigo, nombre, regimen, nit, vigente) VALUES
@@ -341,8 +341,9 @@ INSERT INTO cat.eapb (codigo, nombre, regimen, nit, vigente) VALUES
   ('EPS008', 'COMPENSAR', 'contributivo', '860066942', true),
   ('EPS022', 'CONVIDA - ENTIDAD PROMOTORA DE SALUD DEL REGIMEN SUBSIDIADO EPSS CONVIDA', 'subsidiado', '899999107', true),
   ('EPS016', 'COOMEVA EPS S A', 'contributivo', '805000427', true),
+  ('EPS042', 'COOSALUD EPS S.A.', 'contributivo', '900226715', true),
+  ('EPSS42', 'COOSALUD EPS S.A.', 'subsidiado', '900226715', true),
   ('ESSC24', 'COOSALUD EPS S.A.', 'contributivo', '900226715', true),
-  ('ESSS24', 'COOSALUD EPS S.A.', 'subsidiado', '900226715', true),
   ('ESS024', 'COOSALUD ESS EPS-S', 'subsidiado', '800249241', true),
   ('EPS023', 'CRUZ BLANCA EPS', 'contributivo', '830009783', true),
   ('RES001', 'DIRECCION DE SANIDAD POLICIA NACIONAL', 'excepcion', '830041314', true),
@@ -352,6 +353,7 @@ INSERT INTO cat.eapb (codigo, nombre, regimen, nit, vigente) VALUES
   ('RES002', 'ECOPETROL S.A.', 'excepcion', '899999068', true),
   ('ESS002', 'EMDISALUD - EMPRESA MUTUAL PARA EL DESARROLLO INTEGRAL DE LA SALUD EMDISALUD ESS-EPS-S', 'subsidiado', '811004055', true),
   ('ESS118', 'EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS', 'subsidiado', '814000337', true),
+  ('ESSC18', 'EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS', 'contributivo', '814000337', true),
   ('EPSS18', 'ENTIDAD PROMOTORA DE SALUD SERVICIO OCCIDENTAL DE SALUD S.A. S.O.S.', 'subsidiado', '805001157', true),
   ('CCF027', 'EPS CAJA DE COMPENSACION FAMILIAR DE NARIÑO', 'subsidiado', '891280008', true),
   ('CCFC33', 'EPS FAMILIAR DE COLOMBIA', 'contributivo', '901543761', true),
@@ -390,7 +392,7 @@ INSERT INTO cat.eapb (codigo, nombre, regimen, nit, vigente) VALUES
   ('REUE06', 'UNIVERSIDAD DEL CAUCA UNIDAD DE SALUD', 'especial', '891500319', true),
   ('RES007', 'UNIVERSIDAD DEL VALLE SERVICIO DE SALUD', 'especial', '890399010', true)
 ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, regimen = EXCLUDED.regimen, nit = EXCLUDED.nit, vigente = true;
-UPDATE cat.eapb SET vigente = false WHERE codigo NOT IN ('EPSI03', 'EPS001', 'EPS040', 'EPSS40', 'EPSI04', 'ESS062', 'ESS076', 'ESC207', 'ESS207', 'CCF018', 'EPS003', 'EPSS03', 'CCF101', 'EPSS08', 'CCF015', 'CCF023', 'CCFC20', 'CCF045', 'CCF050', 'CCFS50', 'REUE04', 'REUE02', 'CCF055', 'CCFS55', 'EPSC34', 'EPSS34', 'EPS020', 'EPSS25', 'EPS025', 'CCF009', 'CCF102', 'CCF053', 'CCF002', 'CCF007', 'CCF024', 'CCF049', 'CCF033', 'EPS012', 'EPSS12', 'ESS133', 'EPS008', 'EPS022', 'EPS016', 'ESSC24', 'ESSS24', 'ESS024', 'EPS023', 'RES001', 'RES003', 'EPSI01', 'ESS091', 'RES002', 'ESS002', 'ESS118', 'EPSS18', 'CCF027', 'CCFC33', 'CCFS33', 'EPS017', 'EPSS17', 'EPS005', 'EPSS10', 'RES004', 'REUE05', 'EAS027', 'EPS046', 'EPSS46', 'EPS039', 'EPSI05', 'EPSI02', 'EPS037', 'EPS041', 'EPSS37', 'EPSI06', 'EPS002', 'EPSS02', 'EPS033', 'EPSS33', 'EPS013', 'EPST01', 'EPS018', 'EPS010', 'REUE99', 'REUE03', 'REUE09', 'RES014', 'RES008', 'EAS016', 'RES011', 'REUE06', 'RES007');
+UPDATE cat.eapb SET vigente = false WHERE codigo NOT IN ('EPSI03', 'EPS001', 'EPS040', 'EPSS40', 'EPSI04', 'ESS062', 'ESS076', 'ESC207', 'ESS207', 'CCF018', 'EPS003', 'EPSS03', 'CCF101', 'EPSS08', 'CCF015', 'CCF023', 'CCFC20', 'CCF045', 'CCF050', 'CCFS50', 'REUE04', 'REUE02', 'CCF055', 'CCFS55', 'EPSC34', 'EPSS34', 'EPS020', 'EPSS25', 'EPS025', 'CCF009', 'CCF102', 'CCF053', 'CCF002', 'CCF007', 'CCF024', 'CCF049', 'CCF033', 'EPS012', 'EPSS12', 'ESS133', 'EPS008', 'EPS022', 'EPS016', 'EPS042', 'EPSS42', 'ESSC24', 'ESS024', 'EPS023', 'RES001', 'RES003', 'EPSI01', 'ESS091', 'RES002', 'ESS002', 'ESS118', 'ESSC18', 'EPSS18', 'CCF027', 'CCFC33', 'CCFS33', 'EPS017', 'EPSS17', 'EPS005', 'EPSS10', 'RES004', 'REUE05', 'EAS027', 'EPS046', 'EPSS46', 'EPS039', 'EPSI05', 'EPSI02', 'EPS037', 'EPS041', 'EPSS37', 'EPSI06', 'EPS002', 'EPSS02', 'EPS033', 'EPSS33', 'EPS013', 'EPST01', 'EPS018', 'EPS010', 'REUE99', 'REUE03', 'REUE09', 'RES014', 'RES008', 'EAS016', 'RES011', 'REUE06', 'RES007');
 
 /* --- Ocupaciones CIUO (ítem 73, RN-073, variable 18) --------------------
    451 ocupaciones de la tabla SGDCIUO de SISPRO. Las de la

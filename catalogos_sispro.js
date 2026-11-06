@@ -6,7 +6,7 @@
 
      CAT_PAIS            249 países      — tabla Pais (ítem 65, variable 9)
      CAT_OCUPACION_CIUO  451 ocupaciones — tabla SGDCIUO (ítem 73, variable 18)
-     CAT_EAPB            91 entidades   — tabla SGDCodigoEAPB (ítem 76, variable 21)
+     CAT_EAPB            93 entidades   — tabla SGDCodigoEAPB (ítem 76, variable 21)
 
    `valor` es lo que guarda la ficha y `sispro` lo que se reporta en el
    archivo plano APS124CCFP. Coinciden salvo en el país: la ficha guarda el
@@ -766,8 +766,9 @@ const CAT_EAPB = [
   { valor: "EPS008", etiqueta: "COMPENSAR", regimen: "contributivo", nit: "860066942", sispro: "EPS008" },
   { valor: "EPS022", etiqueta: "CONVIDA - ENTIDAD PROMOTORA DE SALUD DEL REGIMEN SUBSIDIADO EPSS CONVIDA", regimen: "subsidiado", nit: "899999107", sispro: "EPS022" },
   { valor: "EPS016", etiqueta: "COOMEVA EPS S A", regimen: "contributivo", nit: "805000427", sispro: "EPS016" },
+  { valor: "EPS042", etiqueta: "COOSALUD EPS S.A.", regimen: "contributivo", nit: "900226715", sispro: "EPS042" },
+  { valor: "EPSS42", etiqueta: "COOSALUD EPS S.A.", regimen: "subsidiado", nit: "900226715", sispro: "EPSS42" },
   { valor: "ESSC24", etiqueta: "COOSALUD EPS S.A.", regimen: "contributivo", nit: "900226715", sispro: "ESSC24" },
-  { valor: "ESSS24", etiqueta: "COOSALUD EPS S.A.", regimen: "subsidiado", nit: "900226715", sispro: "ESSS24" },
   { valor: "ESS024", etiqueta: "COOSALUD ESS EPS-S", regimen: "subsidiado", nit: "800249241", sispro: "ESS024" },
   { valor: "EPS023", etiqueta: "CRUZ BLANCA EPS", regimen: "contributivo", nit: "830009783", sispro: "EPS023" },
   { valor: "RES001", etiqueta: "DIRECCION DE SANIDAD POLICIA NACIONAL", regimen: "excepcion", nit: "830041314", sispro: "RES001" },
@@ -777,6 +778,7 @@ const CAT_EAPB = [
   { valor: "RES002", etiqueta: "ECOPETROL S.A.", regimen: "excepcion", nit: "899999068", sispro: "RES002" },
   { valor: "ESS002", etiqueta: "EMDISALUD - EMPRESA MUTUAL PARA EL DESARROLLO INTEGRAL DE LA SALUD EMDISALUD ESS-EPS-S", regimen: "subsidiado", nit: "811004055", sispro: "ESS002" },
   { valor: "ESS118", etiqueta: "EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS", regimen: "subsidiado", nit: "814000337", sispro: "ESS118" },
+  { valor: "ESSC18", etiqueta: "EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS", regimen: "contributivo", nit: "814000337", sispro: "ESSC18" },
   { valor: "EPSS18", etiqueta: "ENTIDAD PROMOTORA DE SALUD SERVICIO OCCIDENTAL DE SALUD S.A. S.O.S.", regimen: "subsidiado", nit: "805001157", sispro: "EPSS18" },
   { valor: "CCF027", etiqueta: "EPS CAJA DE COMPENSACION FAMILIAR DE NARIÑO", regimen: "subsidiado", nit: "891280008", sispro: "CCF027" },
   { valor: "CCFC33", etiqueta: "EPS FAMILIAR DE COLOMBIA", regimen: "contributivo", nit: "901543761", sispro: "CCFC33" },

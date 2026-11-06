@@ -344,6 +344,14 @@
   "extra3": "900156264"
  },
  {
+  "codigo": "EPS042",
+  "nombre": "COOSALUD EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "900226715"
+ },
+ {
   "codigo": "EPS046",
   "nombre": "FUNDACION SALUD MIA EPS",
   "habilitado": "SI",
@@ -504,6 +512,14 @@
   "extra3": "900604350"
  },
  {
+  "codigo": "EPSS42",
+  "nombre": "COOSALUD EPS S.A.",
+  "habilitado": "SI",
+  "extra1": "S",
+  "extra2": "NI",
+  "extra3": "900226715"
+ },
+ {
   "codigo": "EPSS46",
   "nombre": "FUNDACION SALUD MIA EPS",
   "habilitado": "SI",
@@ -592,6 +608,14 @@
   "extra3": "806008394"
  },
  {
+  "codigo": "ESSC18",
+  "nombre": "EMSSANAR - ASOCIACION MUTIAL EMPRESA SOLIDARIA DE SALUD EMSSANAR ESS",
+  "habilitado": "SI",
+  "extra1": "C",
+  "extra2": "NI",
+  "extra3": "814000337"
+ },
+ {
   "codigo": "ESSC24",
   "nombre": "COOSALUD EPS S.A.",
   "habilitado": "SI",
@@ -602,7 +626,7 @@
  {
   "codigo": "ESSS24",
   "nombre": "COOSALUD EPS S.A.",
-  "habilitado": "SI",
+  "habilitado": "NO",
   "extra1": "S",
   "extra2": "NI",
   "extra3": "900226715"

@@ -623,7 +623,7 @@ Las ocupaciones asociadas a exposición a agroquímicos, minería, construcción
 
 ### RN-074 — Nivel educativo
 
-**Ítem 74.** Selección única obligatoria para personas de **5 años o más**, con las trece categorías del formulario: Preescolar, Básica Primaria, Básica Secundaria, Media Académica o Clásica, Media Técnica, Normalista, Técnica Profesional, Tecnológica, Profesional, Especialización, Maestría, Doctorado o Ninguno (tabla SGDNivEducativo, variable 19). **"Técnica Laboral" quedó retirada**: no está en el anexo.
+**Ítem 74.** Selección única obligatoria para personas de **5 años o más**, con las trece categorías del formulario: Preescolar, Básica Primaria, Básica Secundaria, Media Académica o Clásica, Media Técnica, Normalista, Técnica Profesional, Tecnológica, Profesional, Especialización, Maestría, Doctorado o Ninguno (tabla SGDNivEducativo, variable 19). **"Técnica Laboral" quedó retirada**: no está en el anexo. A quien tiene menos de 5 años no se le pregunta; como PISIS exige la variable 19, en el archivo plano va **13 — Ninguno**.
 
 **Coherencia con la edad:** el sistema advierte cuando el nivel declarado es incompatible con la edad calculada (por ejemplo, "Profesional" en un menor de 17 años, o "Doctorado" antes de los 24).
 
@@ -639,7 +639,7 @@ En personas de 18 años o más, "Ninguno" se registra como determinante social d
 
 **Ítem 76.** Selección **opcional** de la Entidad Administradora de Planes de Beneficios a la que está afiliado el individuo, de la tabla oficial **SGDCodigoEAPB** de SISPRO (variable 21 del registro tipo 3; 91 entidades habilitadas). El anexo técnico no la exige («Requerido» NO): un afiliado puede guardarse sin EAPB. Se desactiva automáticamente y queda vacía si en el ítem 75 se seleccionó "No afiliado"; un no afiliado con EAPB se bloquea, en la aplicación y en la base.
 
-Los códigos salen de la tabla oficial y no se escriben a mano: la carga manual anterior tenía errores (Coosalud figuraba como `EPS026`, que no existe —es `ESS024`, `ESSC24` o `ESSS24`— y Mallamas como `EPSI01`, que es Dusakawi —Mallamas es `EPSI05`—).
+Los códigos salen de la tabla oficial y no se escriben a mano: la carga manual anterior tenía errores (Coosalud figuraba como `EPS026`, que no existe —es `ESS024`, `ESSC24` o `EPSS42`— y Mallamas como `EPSI01`, que es Dusakawi —Mallamas es `EPSI05`—). Se ofrecen sólo las habilitadas: en noviembre de 2026 SISPRO deshabilitó `ESSS24` (Coosalud subsidiado), que pasó a `EPSS42`, y agregó `EPS042` y `ESSC18`. Una ficha guardada con una EAPB que dejó de estar habilitada se avisa como incidencia del reporte y se corrige eligiendo la vigente.
 
 ### RN-077 — Sujeto de especial protección constitucional
 

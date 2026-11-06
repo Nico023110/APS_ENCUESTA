@@ -272,6 +272,17 @@ verificar('Un consecutivo de 1 en 1 en todo el archivo: los tipo 3 siguen a los 
   t2.every(function (x, k) { return x[1] === String(k + 1); }) &&
   t3.every(function (x, k) { return x[1] === String(t2.length + k + 1); }));
 const nino = t3[2], bebe = t3[3], hombre = t3[0];
+/* RN-074: el formulario sólo pregunta el nivel educativo desde los 5 años y
+   PISIS lo exige siempre. */
+const sinNivel = JSON.parse(JSON.stringify(fichas));
+delete sinNivel[0].encuesta.familias[0].integrantes[3].nivelEducativo;
+delete sinNivel[0].encuesta.familias[0].integrantes[2].nivelEducativo;
+const conSinNivel = reporte.construirReporte({ fichas: sinNivel, desde: '2026-10-01', hasta: '2026-10-31',
+  entidad: { tipo: 'NI', numero: '805027289' } });
+const tipo3SinNivel = conSinNivel.contenido.split('\r\n').filter(function (l) { return l.startsWith('3|'); }).map(function (l) { return l.split('|'); });
+verificar('Menor de 5 años sin nivel educativo: va «Ninguno» (13) y no queda vacío', tipo3SinNivel[3][19] === '13', tipo3SinNivel[3][19]);
+verificar('Desde los 5 años sin nivel educativo: queda vacío y se avisa, no se inventa',
+  tipo3SinNivel[2][19] === '' && conSinNivel.resumen.incidencias.detalle.some(function (d) { return d.tipoRegistro === 3 && d.variable === 19; }));
 verificar('A quien no se le preguntó por su edad o sexo: orientación 5, intención y gestación 2',
   nino[14] === '5' && nino[32] === '2' && nino[33] === '2' && bebe[14] === '5' && hombre[33] === '2',
   [nino[14], nino[32], nino[33], bebe[14], hombre[33]].join('/'));
