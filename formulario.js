@@ -478,6 +478,13 @@ function actualizarTension(bloque) {
     elevada: ['badge badge--warning', 'Elevada'],
     normal: ['badge badge--success', 'Normal']
   };
+  /* La hipotensión no es una categoría de la clasificación (va como «Normal»
+     en el reporte), pero se avisa: RN-203. */
+  if (esHipotension(sistolica, diastolica)) {
+    badge.className = 'badge badge--warning';
+    badge.textContent = 'Normal · hipotensión';
+    return;
+  }
   badge.className = estilos[clasificacion][0];
   badge.textContent = estilos[clasificacion][1];
 }

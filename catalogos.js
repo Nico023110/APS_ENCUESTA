@@ -2234,6 +2234,14 @@ function clasificarTensionArterial(sistolica, diastolica) {
   return 'normal';
 }
 
+/* RN-203 — Hipotensión: menos de 90/60 sin ninguna categoría de hipertensión.
+   No es una clasificación de la AHA ni del reporte SI-APS (allí sigue siendo
+   «Normal»): sólo genera una alerta para el profesional. */
+function esHipotension(sistolica, diastolica) {
+  if (clasificarTensionArterial(sistolica, diastolica) !== 'normal') return false;
+  return sistolica < 90 || diastolica < 60;
+}
+
 /* ---------------------------------------------------------
    RN-100 — Enfermedades no transmisibles (variable 59)
    El anexo amplía la lista con seis enfermedades (11 a 16).

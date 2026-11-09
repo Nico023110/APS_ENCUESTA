@@ -16,7 +16,8 @@ const contexto = vm.createContext({ console: console });
 const { viviendaAnexo, familiaAnexo, integranteAnexo } = require('./_anexo_datos');
 
 const { validarReglas, evaluarAdvertencias, evaluarAlertas, validarCierre,
-        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno } = contexto;
+        evaluarHacinamiento, calcularEdad, calcularImc, atencionesRpmsExigibles, liderDelEntorno,
+        clasificarTensionArterial, esHipotension } = contexto;
 
 let pasadas = 0, fallidas = 0;
 function verificar(nombre, condicion, detalle) {
@@ -345,6 +346,25 @@ const hipertensoSinAdherencia = familiaValida([Object.assign(adultaValida(), {
 alertas = evaluarAlertas(Object.assign(fichaBase(), { familias: [hipertensoSinAdherencia] }));
 verificar('Hipertensión nivel 1 sin adherencia => sube a PRIORITARIA',
   alertas.some(a => a.codigo === 'RN-203' && a.prioridad === 'prioritaria'));
+
+/* Hipotensión: alerta sin cambiar la clasificación oficial. */
+verificar('Clasificación sin cruces en los límites',
+  clasificarTensionArterial(119, 79) === 'normal' && clasificarTensionArterial(120, 79) === 'elevada' &&
+  clasificarTensionArterial(119, 80) === 'nivel1' && clasificarTensionArterial(85, 55) === 'normal' &&
+  clasificarTensionArterial(150, 55) === 'nivel2');
+verificar('Hipotensión: menos de 90 o menos de 60, sólo si no hay hipertensión',
+  esHipotension(89, 70) && esHipotension(110, 59) && !esHipotension(90, 60) && !esHipotension(150, 55) && !esHipotension(130, 55));
+const conHipotension = familiaValida([Object.assign(adultaValida(), {
+  tensionSistolica: 85, tensionDiastolica: 55, clasificacionTension: 'normal'
+})]);
+const alertasHipotension = evaluarAlertas(Object.assign(fichaBase(), { familias: [conHipotension] }));
+verificar('85/55 => alerta de hipotensión REGULAR y sigue clasificada Normal',
+  alertasHipotension.some(a => a.codigo === 'RN-203' && a.titulo === 'Hipotensión' && a.prioridad === 'regular'));
+const conNormal = familiaValida([Object.assign(adultaValida(), {
+  tensionSistolica: 115, tensionDiastolica: 75, clasificacionTension: 'normal'
+})]);
+const alertasNormal = evaluarAlertas(Object.assign(fichaBase(), { familias: [conNormal] }));
+verificar('115/75 => sin alerta de tensión', !alertasNormal.some(a => a.codigo === 'RN-203'));
 verificar('Desabastecimiento => barrera administrativa RN-210',
   alertas.some(a => a.codigo === 'RN-210' && a.titulo.indexOf('administrativa') !== -1));
 

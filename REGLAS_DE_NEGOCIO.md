@@ -809,6 +809,8 @@ La presencia de **edema** constituye signo de desnutrición aguda severa y activ
 
 Para menores de 18 años: "No aplica". La conducta asociada se define en **RN-203**.
 
+Los límites no se cruzan: 120 de sistólica ya es «Elevada» y 80 de diastólica ya es «Hipertensión nivel 1»; ante dos criterios, gana la categoría más alta (150/55 es nivel 2). La hipotensión (menos de 90/60) no es una categoría de esta clasificación ni de la tabla de SISPRO: se reporta «Normal» y genera la alerta de RN-203.
+
 ### RN-100 — Diagnóstico de enfermedades no transmisibles
 
 **Ítem 100.** Selección múltiple de patologías crónicas diagnosticadas previamente: enfermedad obstétrica (trastornos hipertensivos, hemorragias, sepsis, diabetes gestacional, otra), enfermedades cardiovasculares (hipertensión, enfermedad cardiaca), diabetes, cáncer, EPOC, enfermedades raras y huérfanas, trastorno mental, epilepsia, secuelas de lesiones por causa externa. Si no padece ninguna: **"Ninguna"**.
@@ -1092,6 +1094,7 @@ Con base en la clasificación del **ítem 99**:
 | Hipertensión nivel 1 | 🟡 REGULAR | Ruta de riesgo cardiovascular |
 | Elevada | 🟡 REGULAR | Educación y control en 30 días |
 | Normal | — | Sin alerta |
+| Normal con hipotensión (sistólica < 90 o diastólica < 60) | 🟡 REGULAR | Preguntar por mareo, desmayo, visión borrosa o caídas; con síntomas, valoración médica (decisión de la E.S.E., 2026-11-09) |
 
 Toda clasificación distinta de "Normal" debe cruzarse con el ítem 100 (enfermedades no transmisibles) y el ítem 103 (adherencia): un hipertenso **ya diagnosticado y sin adherencia eleva su prioridad un nivel**.
 

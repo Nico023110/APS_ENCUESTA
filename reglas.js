@@ -2727,6 +2727,14 @@ function alertasIntegrante(integrante, contexto, familia, datos, referencia, rut
       clasificacionTension.etiqueta,
       { ruta: ruta + '.clasificacionTension', referencia: referencia }
     ));
+  } else if (esHipotension(integrante.tensionSistolica, integrante.tensionDiastolica)) {
+    alertas.push(crearAlerta(
+      'RN-203', PRIORIDAD.REGULAR, 'Hipotensión',
+      'Tensión de ' + integrante.tensionSistolica + '/' + integrante.tensionDiastolica + ' mm Hg, por debajo de 90/60. ' +
+      'Pregunte por mareo, desmayo, visión borrosa o caídas: si los hay, derive a valoración médica. ' +
+      'En el reporte SI-APS se clasifica como Normal.',
+      { ruta: ruta + '.tensionSistolica', referencia: referencia }
+    ));
   }
 
   /* RN-204 — Estado nutricional. Los signos físicos del ítem 97 alertan
