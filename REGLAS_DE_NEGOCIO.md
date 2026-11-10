@@ -605,7 +605,7 @@ Se recomienda su diligenciamiento en hogares con alertas de prioridad INMEDIATA 
 
 **Ítem 72.** Selección única obligatoria para determinar el parentesco del individuo dentro de la unidad de análisis del hogar: Responsable económico de la familia, Cónyuge o compañero(a), Hijo(a), Hermano(a), Padre o madre, u Otros.
 
-Debe existir exactamente un "Responsable económico" por familia (RN-051).
+Debe existir exactamente un "Responsable económico" por familia (RN-051). Excepción (2026-11-10): por ley sólo se caracteriza a quien está presente, así que si la familia tiene integrantes declarados en el ítem 51 sin caracterizar, la falta de responsable económico es una advertencia —puede ser quien no estaba— y se exige al completar los integrantes. Más de un responsable siempre bloquea.
 
 ---
 

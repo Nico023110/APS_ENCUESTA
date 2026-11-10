@@ -220,6 +220,24 @@ verificar('Marcar próstata en una mujer => bloqueo RN-087',
     .some(e => e.codigo === 'RN-087'));
 
 console.log('\n=== 6. RN-051 — El bloque 5 se repite por integrante ===');
+{
+  /* El responsable económico puede ser quien no estaba en la visita. */
+  const sinResponsable = Object.assign(adultaValida(), { rolFamiliar: 'conyuge' });
+  const faltaUno = familiaValida([sinResponsable]);
+  faltaUno.numeroIntegrantes = 2;
+  const fichaFalta = Object.assign(fichaBase(), { familias: [faltaUno], personasEnVivienda: 2 });
+  verificar('Sin responsable y con un integrante por caracterizar => advertencia, no bloqueo',
+    !validarReglas(fichaFalta).some(b => b.codigo === 'RN-051' && b.campo === 'rolFamiliar') &&
+    evaluarAdvertencias(fichaFalta).some(a => a.codigo === 'RN-051' && a.campo === 'rolFamiliar'));
+  const completa = familiaValida([Object.assign(adultaValida(), { rolFamiliar: 'conyuge' })]);
+  completa.numeroIntegrantes = 1;
+  verificar('Sin responsable y con todos caracterizados => sigue bloqueando',
+    validarReglas(Object.assign(fichaBase(), { familias: [completa] })).some(b => b.codigo === 'RN-051' && b.campo === 'rolFamiliar'));
+  const dos = familiaValida([adultaValida(), Object.assign(adultaValida(), { numeroId: '99887766' })]);
+  dos.numeroIntegrantes = 3;
+  verificar('Dos responsables bloquea aunque falten integrantes',
+    validarReglas(Object.assign(fichaBase(), { familias: [dos], personasEnVivienda: 3 })).some(b => b.codigo === 'RN-051' && b.campo === 'rolFamiliar'));
+}
 const familiaIncompleta = familiaValida([adultaValida()]);
 familiaIncompleta.numeroIntegrantes = 3;
 const fichaIncompleta = Object.assign(fichaBase(), { familias: [familiaIncompleta] });

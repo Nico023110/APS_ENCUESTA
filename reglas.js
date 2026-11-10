@@ -2248,13 +2248,21 @@ function evaluarResponsableEconomico(familia, rutaFamilia, referenciaFamilia, sa
   };
 
   if (indicesResponsables.length === 0) {
+    /* Por ley sólo se caracteriza a quien está presente (2026-11-10). Si
+       faltan integrantes por caracterizar (ítem 51), el responsable puede ser
+       uno de ellos: se avisa y se exige al completar los integrantes. */
+    const faltanIntegrantes = esEnteroPositivo(familia.numeroIntegrantes) &&
+      integrantes.length < familia.numeroIntegrantes;
     salida.push({
       codigo: 'RN-051',
       campo: 'rolFamiliar',
       ruta: rutaRol(0),
-      mensaje: 'Ningún integrante de esta familia tiene el rol «Responsable económico de la familia». ' +
-               'Asígnelo en el ítem 72 de quien corresponda (puede ser este u otro integrante).',
-      severidad: SEVERIDAD.BLOQUEO,
+      mensaje: faltanIntegrantes
+        ? 'Ningún integrante caracterizado tiene el rol «Responsable económico de la familia». Si es quien no ' +
+          'estaba en la visita, puede guardar así y asignárselo al agregarlo desde Historial → Completar integrantes.'
+        : 'Ningún integrante de esta familia tiene el rol «Responsable económico de la familia». ' +
+          'Asígnelo en el ítem 72 de quien corresponda (puede ser este u otro integrante).',
+      severidad: faltanIntegrantes ? SEVERIDAD.ADVERTENCIA : SEVERIDAD.BLOQUEO,
       ambito: AMBITO.FAMILIA,
       referencia: referenciaFamilia
     });
