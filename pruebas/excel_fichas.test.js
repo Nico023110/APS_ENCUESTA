@@ -147,7 +147,7 @@ const titulos = hFichas[2];
 const col = (nombre) => titulos.indexOf(nombre);
 verificar('Fila de secciones y fila de títulos con el número del ítem',
   hFichas[1][0] === 'Ficha' && titulos[0] === '15. Código de la ficha' && col('27. Estrato socioeconómico de la vivienda') > 0 && col('7. Territorio') > 0);
-const columnasEsperadas = 4 + CAMPOS_FICHA.ficha.length - 2 + 1 + 7;
+const columnasEsperadas = 5 + CAMPOS_FICHA.ficha.length - 2 + 1 + 7; // 5: código, fecha de caracterización, subida, registro y estado
 verificar('Una columna por pregunta, más las calculadas y el resumen', titulos.length === columnasEsperadas, titulos.length + ' / ' + columnasEsperadas);
 const f1 = hFichas[3], f2 = hFichas[4];
 verificar('Respuestas escritas: consentimiento, estrato, territorio, comuna', f1[col('1. Consentimiento informado para el tratamiento de datos')] === 'Sí' &&

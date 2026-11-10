@@ -193,21 +193,16 @@ async function abrirDetalle(app, id) {
     d.etiquetasVivienda.indexOf('N.° Identificación de la familia') === -1 &&
     d.etiquetasVivienda.indexOf('N.° Identificación del hogar') !== -1, d.etiquetasVivienda.join(' | '));
 
-  console.log('\n=== 1b. Fecha y hora de diligenciamiento ===');
-  check('El ítem 16 sigue siendo sólo la fecha', d.filas['Fecha diligenciamiento'] === '2026-10-13', d.filas['Fecha diligenciamiento']);
-  check('Aparte se ve la fecha y la hora exacta, con segundos',
-    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Fecha y hora de diligenciamiento'] || ''),
-    d.filas['Fecha y hora de diligenciamiento']);
-  check('Una ficha sincronizada horas después muestra cuándo la recibió el servidor',
-    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Recibida en el servidor'] || ''), d.filas['Recibida en el servidor']);
-  check('  y las dos horas no son la misma',
-    d.filas['Recibida en el servidor'] !== d.filas['Fecha y hora de diligenciamiento']);
-  const d2 = await abrirDetalle(app, 'det-2');
-  check('Si el servidor la recibió al instante, no repite una recepción sin desfase',
-    d2.filas['Recibida en el servidor'] === undefined, d2.filas['Recibida en el servidor']);
+  console.log('\n=== 1b. Fecha de caracterización y fecha de subida ===');
+  check('El ítem 16 es la fecha de caracterización, sin correrse un día por la zona horaria',
+    /^13 .*2026$/.test(d.filas['16. Fecha de caracterización'] || ''), d.filas['16. Fecha de caracterización']);
+  check('La fecha de subida es la del servidor, con hora',
+    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Fecha y hora de subida'] || ''), d.filas['Fecha y hora de subida']);
+  check('  y aparte la hora en que se guardó en el dispositivo',
+    /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d.filas['Guardada en el dispositivo'] || '') &&
+    d.filas['Guardada en el dispositivo'] !== d.filas['Fecha y hora de subida'], d.filas['Guardada en el dispositivo']);
   const d3 = await abrirDetalle(app, 'det-3');
-  check('Una ficha sólo local (sin recepción) tampoco la muestra', d3.filas['Recibida en el servidor'] === undefined);
-  check('Su fecha y hora se ven igual', /^13 .*2026, \d{2}:\d{2}:\d{2}$/.test(d3.filas['Fecha y hora de diligenciamiento'] || ''));
+  check('Una ficha sólo local dice que no ha subido', d3.filas['Fecha y hora de subida'] === 'Sin subir', d3.filas['Fecha y hora de subida']);
 
   d = await abrirDetalle(app, 'det-1');
 

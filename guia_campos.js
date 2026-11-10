@@ -132,7 +132,7 @@ const GUIA_CAMPOS = {
 
   fechaDiligenciamiento: {
     variable: '20',
-    que: 'Fecha en la que se realiza la visita y se diligencia la ficha.',
+    que: 'Fecha en la que se hizo la visita de caracterización. La escribe quien caracteriza; la fecha de subida al sistema la registra el servidor.',
     como: 'Formato AAAA-MM-DD. No puede ser posterior a hoy ni tener más de 30 días de antigüedad.'
   },
 

@@ -168,7 +168,8 @@ function construirExcel(opciones) {
   /* ---------- Fichas ---------- */
   const columnasFicha = columnasDe('ficha', [
     { titulo: '15. Código de la ficha', grupo: 'Ficha', ancho: 34, valor: function (e) { return e.codigoFicha; } },
-    { titulo: '16. Fecha de diligenciamiento', grupo: 'Ficha', ancho: 14, valor: function (e) { return e.fechaDiligenciamiento; } },
+    { titulo: '16. Fecha de caracterización', grupo: 'Ficha', ancho: 14, valor: function (e) { return e.fechaDiligenciamiento; } },
+    { titulo: 'Fecha y hora de subida', grupo: 'Ficha', ancho: 17, valor: function (e) { return fechaHora(e.recibidaEn); } },
     { titulo: 'Fecha y hora de registro', grupo: 'Ficha', ancho: 17, valor: function (e) { return fechaHora(e.fechaRegistro); } },
     { titulo: 'Estado de la ficha', grupo: 'Ficha', ancho: 14, valor: function (e, ctx) { return ESTADOS[ctx.meta.estado] || ctx.meta.estado || null; } }
   ], ['codigoFicha', 'fechaDiligenciamiento']).concat([

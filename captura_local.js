@@ -175,23 +175,13 @@ function asignarCodigoFicha() {
 
   codigoEnCurso = { codigo: codigo, consecutivo: consecutivo, fecha: fecha };
   campo.value = codigo;
-  ponerFechaDeDiligenciamiento();
 }
 
-/**
- * Ítem 16: una ficha nueva nace fechada con el día de hoy, sin que quien
- * diligencia la escriba. Sigue siendo editable —RN-016 admite fechar hasta 30
- * días atrás una visita que se pasa tarde—, pero nunca arranca vacía. La hora
- * exacta no es parte del ítem (que es sólo fecha): se toma al guardar y queda
- * en el historial como control.
- */
-function ponerFechaDeDiligenciamiento() {
-  const campo = document.getElementById('fechaDiligenciamiento');
-  if (!campo || campo.value || typeof fechaDeHoyIso !== 'function') return;
-
-  campo.value = fechaDeHoyIso();
-  campo.dispatchEvent(new Event('input', { bubbles: true }));
-}
+/* Ítem 16 (fecha de caracterización): ya no se prediligencia. La visita y la
+   subida al sistema son días distintos cuando la ficha se pasa después, y una
+   fecha puesta sola pasaba como la de la visita (decisión de la E.S.E.,
+   2026-11-10). La escribe quien caracteriza; la de subida la fija el servidor
+   (aps.ficha.capturada_en). */
 
 /**
  * El equipo lo escribe la sesión al reiniciar el formulario, y puede llegar

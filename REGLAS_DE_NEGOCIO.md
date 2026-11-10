@@ -179,13 +179,13 @@ Es la llave primaria de trazabilidad de la caracterización y no puede ser modif
 
 ### RN-016 — Fecha de diligenciamiento de la ficha
 
-**Ítem 16.** Campo tipo fecha obligatorio en formato `AAAA/MM/DD`, prediligenciado con la fecha del sistema.
+**Ítem 16 — fecha de caracterización.** Campo tipo fecha obligatorio en formato `AAAA/MM/DD`. Lo escribe a mano quien caracteriza: es el día de la visita. No se prediligencia (2026-11-10): cuando la ficha se pasa después, la fecha del sistema no es la de la visita. La **fecha de subida** es otra y es automática: la fija el servidor al recibir la ficha (`aps.ficha.capturada_en`), no cambia al corregirla y se ve en el historial («Subida»), en el detalle y en el Excel.
 
 - **No admite fechas futuras.**
 - No admite fechas anteriores en más de **30 días** a la fecha de sincronización.
 - El tope de antigüedad se evalúa al registrar la ficha en la base, no al corregirla: una ficha que ya está en la base puede corregirse aunque la visita tenga más de 30 días. Lo decide el servidor contra la base, no el dispositivo; la fecha futura se rechaza siempre.
 - Toda fecha de seguimiento del Plan de Cuidado (ítems 118, 119, 128, 129, 139, 140) debe ser cronológicamente igual o posterior a esta fecha.
-- **Fecha y hora de diligenciamiento (control).** El ítem 16 es sólo fecha y así sigue en el formulario y en el archivo plano. Aparte, cada ficha guarda el instante exacto en que se diligenció (`aps.ficha.diligenciada_en`), tomado del dispositivo al guardar: una visita tomada sin señal se sincroniza después y esa demora no cuenta como hora de la visita. Un reloj adelantado (más de cinco minutos en el futuro) o ilegible se sustituye por la hora del servidor. El instante se fija con el primer envío: reenviar o corregir la ficha no lo mueve. El servidor conserva además cuándo la recibió (`capturada_en`); el detalle de la ficha la muestra cuando difiere más de dos minutos. El historial y el detalle muestran fecha y hora; no es un dato del reporte.
+- **Fecha y hora de diligenciamiento (control).** El ítem 16 es sólo fecha y así sigue en el formulario y en el archivo plano. Aparte, cada ficha guarda el instante exacto en que se diligenció (`aps.ficha.diligenciada_en`), tomado del dispositivo al guardar: una visita tomada sin señal se sincroniza después y esa demora no cuenta como hora de la visita. Un reloj adelantado (más de cinco minutos en el futuro) o ilegible se sustituye por la hora del servidor. El instante se fija con el primer envío: reenviar o corregir la ficha no lo mueve. El servidor conserva además cuándo la recibió (`capturada_en`, la fecha de subida). El historial muestra la fecha de caracterización y la de subida; el detalle, las tres. Sólo el ítem 16 va al reporte.
 
 ### RN-017 — Entorno de identificación
 

@@ -63,6 +63,7 @@ module.exports = async (req, res) => {
     const resultado = await consultar(`
       SELECT
         f.codigo                  AS codigo_ficha,
+        to_char(f.fecha_diligenciamiento, 'YYYY-MM-DD') AS fecha_diligenciamiento,
         f.capturada_en,
         /* Fecha y hora en que se diligenció (la del dispositivo); una ficha
            anterior a la columna usa la hora en que el servidor la recibió. */
@@ -125,6 +126,7 @@ module.exports = async (req, res) => {
     const filas = resultado.rows.map(function (fila) {
       return {
         codigoFicha: fila.codigo_ficha,
+        fechaDiligenciamiento: fila.fecha_diligenciamiento,
         fechaRegistro: fila.diligenciada_en,
         recibidaEn: fila.capturada_en,
         fechasModificacion: Array.isArray(fila.fechas_modificacion) ? fila.fechas_modificacion : [],

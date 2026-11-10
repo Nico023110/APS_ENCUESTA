@@ -183,7 +183,7 @@ const CAMPOS_FICHA = {
     {
       campo: "fechaDiligenciamiento",
       item: "16",
-      etiqueta: "Fecha diligenciamiento de la ficha",
+      etiqueta: "Fecha de caracterización (visita)",
       seccion: "2.4 Detalle de personal del Equipo de Salud",
       catalogo: null,
       multiple: false,

@@ -84,8 +84,11 @@ const CLAVE_BORRADOR = 'aps_borrador_local';
   check('La fecha del código es la de hoy', partes && partes[4] === fechaHoy, campo.value);
 
   const hoyIso = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-  check('El ítem 16 nace con la fecha de hoy, sin digitarla', app.$('#fechaDiligenciamiento').value === hoyIso,
-    app.$('#fechaDiligenciamiento').value);
+  check('El ítem 16 (fecha de caracterización) nace vacío: lo escribe el profesional',
+    app.$('#fechaDiligenciamiento').value === '', app.$('#fechaDiligenciamiento').value);
+  const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1);
+  const ayerIso = ayer.getFullYear() + '-' + String(ayer.getMonth() + 1).padStart(2, '0') + '-' + String(ayer.getDate()).padStart(2, '0');
+  app.escribir('#fechaDiligenciamiento', ayerIso);
 
   app.escribir('#equipoSaludId', 'ebs-12');
   check('El código sigue al equipo mientras la ficha no se ha guardado',
@@ -104,11 +107,14 @@ const CLAVE_BORRADOR = 'aps_borrador_local';
   const registro = guardadas[0].fechaRegistro;
   check('La ficha guardada lleva el instante exacto en que se diligenció',
     typeof registro === 'string' && !isNaN(Date.parse(registro)) && Math.abs(Date.now() - Date.parse(registro)) < 60000, registro);
-  check('  y el ítem 16 sigue siendo sólo la fecha', guardadas[0].fechaDiligenciamiento === hoyIso, guardadas[0].fechaDiligenciamiento);
-  const celdaFecha = app.doc.querySelector('#historialBody td[data-label="Fecha y hora"], td[data-label="Fecha y hora"]');
-  check('El historial muestra la hora bajo la fecha', Boolean(celdaFecha) && /^\d{2}:\d{2}$/.test((celdaFecha.querySelector('.celda-hora') || {}).textContent || ''),
-    celdaFecha && celdaFecha.textContent);
-  check('La ficha siguiente también nace con la fecha de hoy', app.$('#fechaDiligenciamiento').value === hoyIso,
+  check('  y el ítem 16 conserva la fecha de la visita que se escribió', guardadas[0].fechaDiligenciamiento === ayerIso, guardadas[0].fechaDiligenciamiento);
+  const celdaCaracterizacion = app.doc.querySelector('td[data-label="Caracterización"]');
+  const celdaSubida = app.doc.querySelector('td[data-label="Subida"]');
+  check('El historial muestra la fecha de caracterización',
+    Boolean(celdaCaracterizacion) && celdaCaracterizacion.textContent !== '—', celdaCaracterizacion && celdaCaracterizacion.textContent);
+  check('  y, sin red, que la ficha aún no ha subido', Boolean(celdaSubida) && celdaSubida.textContent === 'Sin subir',
+    celdaSubida && celdaSubida.textContent);
+  check('La ficha siguiente también nace sin fecha de caracterización', app.$('#fechaDiligenciamiento').value === '',
     app.$('#fechaDiligenciamiento').value);
   const siguiente = FORMATO.exec(app.$('#codigoFicha').value);
   check('La ficha siguiente toma el consecutivo 0002', siguiente && siguiente[3] === '0002', app.$('#codigoFicha').value);

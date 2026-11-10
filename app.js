@@ -62,6 +62,23 @@ function formatearHora(fechaIso, conSegundos) {
   return fecha.toLocaleTimeString('es-CO', opciones);
 }
 
+/**
+ * Un día AAAA-MM-DD (el ítem 16) sin pasarlo por la zona horaria: new Date()
+ * lo leería como medianoche UTC, que en Colombia es el día anterior.
+ */
+function formatearDia(fechaIso) {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaIso || '');
+  if (!partes) return fechaIso ? String(fechaIso) : '—';
+  return new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3]))
+    .toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+/** Cuándo subió la ficha al sistema: lo fija el servidor al recibirla. */
+function textoSubida(encuesta) {
+  if (encuesta.recibidaEn) return formatearFechaHora(encuesta.recibidaEn, true);
+  return encuesta.sincronizada === true ? '—' : 'Sin subir';
+}
+
 function formatearFechaHora(fechaIso, conSegundos) {
   if (!fechaIso) return '—';
   const hora = formatearHora(fechaIso, conSegundos);
@@ -1544,6 +1561,8 @@ function marcarComoSubida(enviada, codigos) {
   if (JSON.stringify(actual.fechasModificacion || []) !== JSON.stringify(enviada.fechasModificacion || [])) return;
 
   actual.sincronizada = true;
+  /* Hasta que el listado traiga la hora del servidor, la de la respuesta. */
+  if (!actual.recibidaEn) actual.recibidaEn = new Date().toISOString();
   aplicarCodigosAsignados(actual, codigos);
   guardarEncuestas(encuestas);
 }
@@ -2729,10 +2748,13 @@ function renderizarHistorial() {
         '<td data-label="Ficha">' + textoSeguro(encuesta.codigoFicha) + '</td>' +
         '<td data-label="Estado">' + badgeSincronizacion(encuesta.sincronizada) + '</td>' +
         '<td data-label="Plan de cuidado" class="celda-plan">' + resumenPlanEnHistorial(encuesta) + '</td>' +
-        '<td data-label="Fecha y hora">' + formatearFecha(encuesta.fechaRegistro) +
-          (formatearHora(encuesta.fechaRegistro)
-            ? '<span class="celda-hora">' + formatearHora(encuesta.fechaRegistro) + '</span>'
-            : '') + '</td>' +
+        '<td data-label="Caracterización">' + formatearDia(encuesta.fechaDiligenciamiento) + '</td>' +
+        '<td data-label="Subida">' + (encuesta.recibidaEn
+          ? formatearFecha(encuesta.recibidaEn) +
+            (formatearHora(encuesta.recibidaEn)
+              ? '<span class="celda-hora">' + formatearHora(encuesta.recibidaEn) + '</span>'
+              : '')
+          : textoSubida(encuesta)) + '</td>' +
         '<td data-label="Modificación">' + textoModificacion(encuesta) + '</td>' +
         '<td data-label="Territorio">' + textoTerritorio(encuesta) + '</td>' +
         '<td data-label="Microterritorio">' + textoMicroterritorio(encuesta) + '</td>' +
@@ -3078,17 +3100,6 @@ function inicializarFiltrosHistorial() {
    16. MODAL DE DETALLE
    --------------------------------------------------------- */
 
-/**
- * Cuándo recibió el servidor la ficha, sólo si difiere de cuándo se
- * diligenció: una visita tomada sin señal se sincroniza después, y ese desfase
- * es lo que el control quiere ver. Con menos de dos minutos son lo mismo.
- */
-function recepcionSiDifiere(encuesta) {
-  if (!encuesta.recibidaEn || !encuesta.fechaRegistro) return null;
-  const desfase = Math.abs(new Date(encuesta.recibidaEn) - new Date(encuesta.fechaRegistro));
-  return desfase > 2 * 60 * 1000 ? formatearFechaHora(encuesta.recibidaEn, true) : null;
-}
-
 function construirSeccionDetalle(titulo, items) {
   const filas = items.map(function (item) {
     return (
@@ -3364,11 +3375,11 @@ function htmlSeccionesDelDetalle(encuesta) {
       { etiqueta: 'N.° identificación responsable', valor: encuesta.responsableNumeroId },
       { etiqueta: 'Perfil profesional', valor: perfil },
       { etiqueta: 'Código de la ficha', valor: encuesta.codigoFicha },
-      { etiqueta: 'Fecha diligenciamiento', valor: encuesta.fechaDiligenciamiento },
-      { etiqueta: 'Fecha y hora de diligenciamiento', valor: formatearFechaHora(encuesta.fechaRegistro, true) },
-      ...(recepcionSiDifiere(encuesta)
-        ? [{ etiqueta: 'Recibida en el servidor', valor: recepcionSiDifiere(encuesta) }]
-        : []),
+      /* La visita la fecha quien caracteriza (ítem 16); la subida, el
+         servidor al recibirla; la hora de guardado, el dispositivo. */
+      { etiqueta: '16. Fecha de caracterización', valor: formatearDia(encuesta.fechaDiligenciamiento) },
+      { etiqueta: 'Fecha y hora de subida', valor: textoSubida(encuesta) },
+      { etiqueta: 'Guardada en el dispositivo', valor: formatearFechaHora(encuesta.fechaRegistro, true) },
       { etiqueta: 'Entorno de abordaje', valor: etiquetaDeCatalogo(CAT_ENTORNO, encuesta.entornoAbordaje) },
       { etiqueta: 'Institución / entidad', valor: encuesta.nombreInstitucion },
       { etiqueta: 'Cabeza de familia / Líder', valor: encuesta.cabezaFamilia },
