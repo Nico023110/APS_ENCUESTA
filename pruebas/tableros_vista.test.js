@@ -158,14 +158,17 @@ async function principal() {
   ['coordinador_ebs', 'lider_ebs', 'administrador', 'maestro'].forEach(function (rol) {
     verificar(rol + ': el menú del usuario ofrece «Reportes»', opcionesDelMenu(montar(rol)).indexOf('Reportes') !== -1);
   });
+  /* El personal asistencial entra a Reportes sólo por su productividad
+     (2026-11-12): el tablero de población no se le ofrece ni se pide. */
   ['enfermeria', 'auxiliar_enfermeria', 'medicina'].forEach(function (rol) {
     const w = montar(rol);
-    verificar(rol + ': el menú no lo ofrece', opcionesDelMenu(w).indexOf('Reportes') === -1);
+    verificar(rol + ': el menú ofrece «Reportes» (su productividad)', opcionesDelMenu(w).indexOf('Reportes') !== -1);
     w.TABLEROS.abrir('principal');
-    w.REPORTES.abrir('personas');
-    verificar(rol + ': abrir a mano no hace nada ni pide nada',
-      !w.document.getElementById('view-tableros').classList.contains('is-active') && w.__peticiones.length === 0 &&
-      w.document.getElementById('reportesMenu').hidden);
+    w.REPORTES.abrir('poblacion');
+    verificar(rol + ': el tablero de población no se abre ni se pide',
+      !w.document.getElementById('view-tableros').classList.contains('is-active') &&
+      !w.__peticiones.some(function (p) { return p.consulta.tablero; }) &&
+      w.document.querySelector('#reportesMenu [data-reporte="poblacion"]').hidden);
   });
 
   console.log('\n=== 2. Abrir: el tablero de población con todo el registro ===');

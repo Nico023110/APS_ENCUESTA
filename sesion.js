@@ -479,7 +479,7 @@
     }
     /* Un solo apartado para los tableros, la productividad y las descargas:
        su menú lateral (tableros.js) lleva a cada uno. */
-    if (puede('productividad.ver') || puede('reporte.generar')) {
+    if (puede('productividad.ver') || puede('productividad.ver.propia') || puede('reporte.generar')) {
       opciones.push({ icono: 'ph-chart-bar', texto: 'Reportes', accion: function () {
         if (window.REPORTES) window.REPORTES.abrir();
       } });

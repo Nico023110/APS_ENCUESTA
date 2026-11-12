@@ -130,7 +130,7 @@ const BASE = `
        AND ($3::text IS NULL OR eq.codigo = $3)
        AND ($4::text IS NULL OR coalesce(m.comuna, 'sin') = $4)
        AND ($5::bigint IS NULL OR f.responsable_id = $5)
-       AND ($6::bigint IS NULL OR f.equipo_salud_id = $6)
+       AND ($6::bigint[] IS NULL OR f.equipo_salud_id = ANY($6::bigint[]))
   )`;
 
 const MEDIDAS = `
@@ -179,15 +179,25 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
 
-  const usuario = await requerirSesion(req, res, { permiso: 'productividad.ver' });
+  const usuario = await requerirSesion(req, res, {});
   if (!usuario) return;
+
+  /* Con «productividad.ver.propia» (el personal asistencial) se ve lo suyo y
+     el total de su EBS: ni el tablero de población, ni otro EBS, ni el
+     detalle de cada compañero. */
+  const completo = roles.puede(usuario.rol, 'productividad.ver');
+  const propio = !completo && roles.puede(usuario.rol, 'productividad.ver.propia');
+  if (!completo && !propio) return res.status(403).json({ error: 'Su rol no permite esta acción', codigo: 'sin_permiso' });
 
   const alcance = roles.alcanceDeLectura(usuario.rol);
   if (!alcance) return res.status(403).json({ error: 'Su rol no permite consultar fichas', codigo: 'sin_permiso' });
 
   const equipoDelAlcance = alcance === 'todas' ? null : (usuario.equipoSaludId || -1);
+  /* Los EBS que entran: el suyo y los que apoya (enfoque diferencial). */
+  const equiposDelAlcance = alcance === 'todas' ? null : roles.equiposDelAlcance(usuario);
 
   if (req.query && req.query.tablero) {
+    if (!completo) return res.status(403).json({ error: 'Su rol no permite esta acción', codigo: 'sin_permiso' });
     const t = tablero.validar(req.query);
     if (t.error) return res.status(400).json({ error: t.error });
     try {
@@ -200,8 +210,15 @@ module.exports = async (req, res) => {
 
   const p = validar(req.query);
   if (p.error) return res.status(400).json({ error: p.error });
+  const yo = usuario.funcionarioId === null ? null : String(usuario.funcionarioId);
+  if (propio && p.agrupar === 'persona') {
+    return res.status(403).json({ error: 'Puede ver su productividad y la de su EBS, no la de cada compañero.', codigo: 'sin_permiso' });
+  }
+  if (propio && p.persona && p.persona !== yo) {
+    return res.status(403).json({ error: 'Sólo puede filtrar por sus propias fichas.', codigo: 'sin_permiso' });
+  }
 
-  const parametros = [p.desde, p.hasta, p.ebs, p.comuna, p.persona, equipoDelAlcance];
+  const parametros = [p.desde, p.hasta, p.ebs, p.comuna, p.persona, equiposDelAlcance];
   const grupo = AGRUPACIONES[p.agrupar];
   const pool = obtenerPool();
 
@@ -232,7 +249,7 @@ module.exports = async (req, res) => {
         SELECT 'comuna', coalesce(base.comuna, 'sin') FROM base GROUP BY base.comuna
         UNION ALL
         SELECT 'persona', base.responsable_id::text FROM base GROUP BY base.responsable_id
-      `, [p.desde, p.hasta, null, null, null, equipoDelAlcance]),
+      `, [p.desde, p.hasta, null, null, null, equiposDelAlcance]),
       conCeros && p.agrupar === 'ebs'
         ? pool.query(`
             SELECT DISTINCT eq.codigo AS clave
@@ -241,8 +258,8 @@ module.exports = async (req, res) => {
               JOIN aps.usuario u ON u.funcionario_id = fu.id AND u.activo
              WHERE eq.activo
                AND ($1::text IS NULL OR eq.codigo = $1)
-               AND ($2::bigint IS NULL OR eq.id = $2)
-          `, [p.ebs, equipoDelAlcance])
+               AND ($2::bigint[] IS NULL OR eq.id = ANY($2::bigint[]))
+          `, [p.ebs, equiposDelAlcance])
         : conCeros
           ? pool.query(`
               SELECT fu.id::text AS clave
@@ -252,8 +269,8 @@ module.exports = async (req, res) => {
                WHERE fu.activo
                  AND u.rol = ANY($1::text[])
                  AND ($2::text IS NULL OR eq.codigo = $2)
-                 AND ($3::bigint IS NULL OR fu.equipo_salud_id = $3)
-            `, [ROLES_QUE_CAPTURAN, p.ebs, equipoDelAlcance])
+                 AND ($3::bigint[] IS NULL OR fu.equipo_salud_id = ANY($3::bigint[]))
+            `, [ROLES_QUE_CAPTURAN, p.ebs, equiposDelAlcance])
           : Promise.resolve({ rows: [] })
     ]);
 
@@ -268,7 +285,7 @@ module.exports = async (req, res) => {
        el filtro de personas. */
     const idsPersona = new Set();
     if (p.agrupar === 'persona') grupos.forEach(function (g) { idsPersona.add(g.clave); });
-    opciones.rows.forEach(function (o) { if (o.tipo === 'persona') idsPersona.add(o.valor); });
+    if (!propio) opciones.rows.forEach(function (o) { if (o.tipo === 'persona') idsPersona.add(o.valor); });
     if (p.persona) idsPersona.add(p.persona);
     const personal = new Map();
     if (idsPersona.size > 0) {
@@ -310,6 +327,7 @@ module.exports = async (req, res) => {
     };
 
     return res.status(200).json({
+      alcance: propio ? 'propia' : 'completa',
       periodo: { desde: p.desde, hasta: p.hasta },
       agrupar: p.agrupar,
       filtros: { ebs: p.ebs, comuna: p.comuna, persona: p.persona },
@@ -321,7 +339,8 @@ module.exports = async (req, res) => {
         comunas: valoresDe('comuna').sort(function (a, b) {
           return (parseFloat(a) || 999) - (parseFloat(b) || 999) || a.localeCompare(b);
         }).map(function (c) { return { valor: c, etiqueta: etiquetaComuna(c === 'sin' ? null : c) }; }),
-        personas: valoresDe('persona').map(function (id) {
+        /* Lo propio no lista al resto del personal. */
+        personas: (propio ? [] : valoresDe('persona')).map(function (id) {
           const persona = describirPersona(id);
           return { valor: id, etiqueta: persona.etiqueta, detalle: persona.detalle };
         }).sort(function (a, b) { return a.etiqueta.localeCompare(b.etiqueta, 'es'); })

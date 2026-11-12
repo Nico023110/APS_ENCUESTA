@@ -67,7 +67,7 @@ function perfil(rol) {
   return {
     id: 7, rol: rol, nivel: roles.nivelDe(rol), rolEtiqueta: roles.etiquetaDeRol(rol),
     nombre: 'Prueba ' + rol, tipoId: 'CC', documento: '1144099011', equipoCodigo: roles.requiereEquipo(rol) ? 'EBS12' : null,
-    permisos: roles.permisosDe(rol), debeCambiarClave: false
+    funcionarioId: 15, permisos: roles.permisosDe(rol), debeCambiarClave: false
   };
 }
 
@@ -151,13 +151,26 @@ async function principal() {
     verificar(rol + ': el menú ofrece «Reportes»',
       opcionesDelMenu(montar(rol)).indexOf('Reportes') !== -1);
   });
-  ['enfermeria', 'auxiliar_enfermeria', 'medicina'].forEach(function (rol) {
+  /* El personal asistencial (productividad.ver.propia, 2026-11-12): lo suyo
+     o el total de su EBS, sin agrupar ni filtrar por persona. */
+  for (const rol of ['enfermeria', 'auxiliar_enfermeria', 'medicina']) {
     const w = montar(rol);
-    verificar(rol + ': el menú no lo ofrece', opcionesDelMenu(w).indexOf('Reportes') === -1);
+    const d = w.document;
+    verificar(rol + ': el menú ofrece «Reportes»', opcionesDelMenu(w).indexOf('Reportes') !== -1);
     w.PRODUCTIVIDAD.abrir();
-    verificar(rol + ': abrir la vista a mano no hace nada ni pide nada',
-      !w.document.getElementById('view-productividad').classList.contains('is-active') && w.__peticiones.length === 0);
-  });
+    await esperar(30);
+    verificar(rol + ': abre la productividad con «Mi productividad» y «Mi EBS»',
+      d.getElementById('view-productividad').classList.contains('is-active') && !d.getElementById('productividadAmbito').hidden);
+    verificar(rol + ': sin agrupar por persona ni filtro de persona',
+      !d.querySelector('#productividadAgrupar option[value="persona"]') && d.getElementById('productividadPersona').closest('.field').hidden);
+    verificar(rol + ': empieza por sus propias fichas', (w.__peticiones[0] || {}).consulta && w.__peticiones[0].consulta.persona === '15',
+      JSON.stringify(w.__peticiones[0]));
+    d.querySelector('[data-ambito="ebs"]').click();
+    await esperar(30);
+    const ultima = w.__peticiones[w.__peticiones.length - 1] || {};
+    verificar(rol + ': «Mi EBS» pide el total del equipo, sin persona',
+      w.__peticiones.length === 2 && ultima.consulta && !ultima.consulta.persona, JSON.stringify(ultima));
+  }
 
   console.log('\n=== 2. Abrir: el mes en curso por EBS ===');
   const w = montar('lider_ebs');

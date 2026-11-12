@@ -33,6 +33,10 @@
 
    «productividad.ver» son los reportes de productividad: cuentas por EBS,
    comuna, persona y fecha, sin datos de la población. Los ven los mismos.
+   «productividad.ver.propia» (2026-11-12) es la misma vista para todo el
+   personal asistencial, acotada a lo suyo: sus fichas y el total de su EBS
+   (o de los que apoya), sin el detalle de cada compañero ni el tablero de
+   población.
 
    «ficha.autorizar» (RN-228): una ficha guardada sólo se completa —con
    «Evolucionar plan»—. Corregirla, o cambiar lo registrado en su plan de
@@ -75,13 +79,15 @@ const PERMISOS_POR_NIVEL = {
     'ficha.crear',
     'ficha.ver.equipo',
     'ficha.evolucionar.propias',
-    'catalogos.consultar'
+    'catalogos.consultar',
+    'productividad.ver.propia'
   ],
   profesional: [
     'ficha.crear',
     'ficha.ver.equipo',
     'ficha.evolucionar.equipo',
-    'catalogos.consultar'
+    'catalogos.consultar',
+    'productividad.ver.propia'
   ],
   coordinacion: [
     'ficha.crear',

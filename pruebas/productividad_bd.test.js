@@ -53,6 +53,9 @@ async function principal() {
   await cliente.connect();
   await asegurarUsuarioDePrueba(cliente, LIDER);
   await asegurarUsuarioDePrueba(cliente, ENFERMERA);
+  const filaEnfermera = (await cliente.query(
+    'SELECT fu.id::text AS id, eq.codigo AS ebs FROM aps.funcionario fu LEFT JOIN aps.equipo_salud eq ON eq.id = fu.equipo_salud_id WHERE fu.numero_id = $1',
+    [ENFERMERA.documento])).rows[0] || {};
   await cliente.end();
 
   const lider = await iniciarSesionDePrueba(BASE, LIDER);
@@ -67,8 +70,18 @@ async function principal() {
 
   console.log('\n=== 1. Permisos y validación ===');
   verificar('sin sesión: 401', (await fetch(BASE + '/api/productividad?desde=2026-01-01&hasta=2026-01-31')).status === 401);
-  const sinPermiso = await pedir(enfermera, PERIODO);
-  verificar('enfermería no tiene productividad.ver: 403', sinPermiso.estado === 403, sinPermiso.estado);
+  /* Enfermería (productividad.ver.propia): lo suyo y el total de su EBS. */
+  const propia = await pedir(enfermera, PERIODO);
+  verificar('enfermería ve productividad, acotada a lo propio', propia.estado === 200 && propia.cuerpo.alcance === 'propia',
+    propia.estado + ' ' + propia.cuerpo.alcance);
+  verificar('  sólo su EBS', propia.estado === 200 && propia.cuerpo.filas.every(function (f) { return f.clave === filaEnfermera.ebs; }),
+    JSON.stringify((propia.cuerpo.filas || []).map(function (f) { return f.clave; })));
+  verificar('  sin la lista del resto del personal', propia.estado === 200 && propia.cuerpo.opciones.personas.length === 0);
+  const mia = await pedir(enfermera, Object.assign({ persona: filaEnfermera.id }, PERIODO));
+  verificar('  sus propias fichas: 200', mia.estado === 200 && mia.cuerpo.totales.fichas <= propia.cuerpo.totales.fichas, mia.estado);
+  verificar('  por persona: 403', (await pedir(enfermera, Object.assign({ agrupar: 'persona' }, PERIODO))).estado === 403);
+  verificar('  las fichas de otra persona: 403', (await pedir(enfermera, Object.assign({ persona: '999999999' }, PERIODO))).estado === 403);
+  verificar('  el tablero de población: 403', (await pedir(enfermera, Object.assign({ tablero: '1' }, PERIODO))).estado === 403);
   for (const [nombre, consulta] of [
     ['fecha inexistente', { desde: '2026-02-30', hasta: '2026-03-01' }],
     ['fechas al revés', { desde: '2026-03-02', hasta: '2026-03-01' }],

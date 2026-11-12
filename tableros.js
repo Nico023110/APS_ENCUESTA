@@ -900,12 +900,17 @@
 
   const DESTINOS = {
     poblacion: { vista: 'tableros', permiso: PERMISO },
-    productividad: { vista: 'productividad', permiso: 'productividad.ver' },
+    productividad: { vista: 'productividad', permiso: ['productividad.ver', 'productividad.ver.propia'] },
     descargas: { vista: 'reporte', permiso: 'reporte.generar' }
   };
 
+  /* Un destino puede abrirse con cualquiera de sus permisos. */
+  function permite(destino) {
+    return [].concat(destino.permiso).some(function (p) { return SESION.puede(p); });
+  }
+
   function puedeEntrar() {
-    return Object.keys(DESTINOS).some(function (k) { return SESION.puede(DESTINOS[k].permiso); });
+    return Object.keys(DESTINOS).some(function (k) { return permite(DESTINOS[k]); });
   }
 
   function abrirTablero() {
@@ -917,7 +922,7 @@
   }
 
   function abrirReportes(destino) {
-    const disponibles = Object.keys(DESTINOS).filter(function (k) { return SESION.puede(DESTINOS[k].permiso); });
+    const disponibles = Object.keys(DESTINOS).filter(function (k) { return permite(DESTINOS[k]); });
     if (disponibles.length === 0) return;
     const clave = disponibles.indexOf(destino) !== -1 ? destino : disponibles[0];
     const d = DESTINOS[clave];
@@ -953,7 +958,7 @@
 
     $('reportesMenu').querySelectorAll('[data-reporte]').forEach(function (item) {
       const destino = DESTINOS[item.dataset.reporte];
-      if (!destino || !SESION.puede(destino.permiso)) { item.hidden = true; return; }
+      if (!destino || !permite(destino)) { item.hidden = true; return; }
       item.addEventListener('click', function () { abrirReportes(item.dataset.reporte); });
     });
     $('reportesMenu').querySelectorAll('.reportes-menu__grupo').forEach(function (grupo) {

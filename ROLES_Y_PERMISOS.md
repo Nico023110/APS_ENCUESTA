@@ -100,6 +100,7 @@ sesión.
 | `auditoria.ver` — `aud.evento`, `aud.acceso_sensible`, `aps.intento_acceso` | — | — | Sí | Sí | Sí |
 | `reporte.generar` — archivo plano APS124CCFP para PISIS (RN‑227) | — | — | Sí | Sí | Sí |
 | `productividad.ver` — reportes de productividad: cuentas por EBS, comuna, persona y fecha | — | — | Sí | Sí | Sí |
+| `productividad.ver.propia` — la misma vista acotada: sus fichas y el total de su EBS | Sí | Sí | — | — | — |
 
 El maestro tiene además `ficha.corregir.propias` y `ficha.corregir.equipo`,
 que hoy no tiene ningún otro rol.
@@ -189,8 +190,9 @@ para el primer administrador o maestro y usa el mismo módulo
 (`api/_usuarios.js`).
 
 El apartado **Reportes** se abre desde el mismo menú («Reportes») para quien
-tiene `productividad.ver` o `reporte.generar`: la coordinación, el
-administrador y el maestro. Su menú lateral lleva al tablero de población,
+tiene `productividad.ver`, `productividad.ver.propia` o `reporte.generar`:
+la coordinación, el administrador y el maestro, y desde 2026-11-12 todo el
+personal asistencial, que sólo ve allí la productividad. Su menú lateral lleva al tablero de población,
 a la productividad y a las descargas, y sólo muestra lo que el rol puede ver.
 
 El **Reporte SI-APS** (`reporte.generar`) es la vista de descargas del
@@ -213,6 +215,13 @@ personal que diligenció, que es lo que la coordinación necesita ver; ningún
 dato de la población. La agrupación sale de una lista fija del código y los
 filtros van como parámetros. Por EBS y por persona aparecen en cero los
 equipos y las cuentas activas sin fichas en el período.
+
+El personal asistencial (técnico y profesional) tiene
+`productividad.ver.propia` (2026-11-12): la misma vista con dos opciones,
+«Mi productividad» (sus fichas) y «Mi EBS» (el total de su equipo, o de los
+EBS que apoya). El servidor lo hace cumplir: sólo cuenta fichas de sus EBS,
+rechaza (403) agrupar por persona o filtrar por otra persona, no devuelve la
+lista del personal y no le da el tablero de población.
 
 El **tablero de población** usa el mismo permiso y el mismo endpoint, con
 `tablero=1` (`api/_tablero.js`): cuentas por categoría —sólo las que muestra

@@ -204,7 +204,8 @@ async function principal() {
   console.log('\n=== 2. Sin reporte.generar (enfermería) ===');
 
   const w2 = montar('enfermeria');
-  verificar('el menú no ofrece Reportes', opcionesDelMenu(w2).indexOf('Reportes') === -1, opcionesDelMenu(w2).join(', '));
+  /* Desde 2026-11-12 entra a Reportes por su productividad, no a las descargas. */
+  verificar('el menú ofrece Reportes (su productividad)', opcionesDelMenu(w2).indexOf('Reportes') !== -1, opcionesDelMenu(w2).join(', '));
   w2.REPORTE_SISPRO.abrir();
   verificar('y abrir la vista a mano no hace nada', !w2.document.getElementById('view-reporte').classList.contains('is-active'));
 

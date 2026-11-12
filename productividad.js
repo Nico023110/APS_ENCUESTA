@@ -4,6 +4,9 @@
    Para la coordinación del EBS (la coordinadora y los líderes de zona), el
    administrador y el maestro: «productividad.ver». Es una de las vistas del
    apartado «Reportes» y se abre desde su menú lateral (tableros.js).
+   El personal asistencial la abre con «productividad.ver.propia»: elige
+   entre «Mi productividad» y «Mi EBS», sin agrupar ni filtrar por persona
+   (el servidor lo hace cumplir).
 
    Pide a /api/productividad las cuentas de un período agrupadas por EBS,
    comuna, territorio, barrio, persona o fecha, con filtros de EBS, comuna y
@@ -25,6 +28,13 @@
 
   const $ = function (id) { return document.getElementById(id); };
   const PERMISO = 'productividad.ver';
+  const PERMISO_PROPIO = 'productividad.ver.propia';
+  /* Puede entrar quien tiene cualquiera de los dos; lo propio, si sólo
+     tiene el segundo. */
+  function puedeVer() { return SESION.puede(PERMISO) || SESION.puede(PERMISO_PROPIO); }
+  function soloPropia() { return !SESION.puede(PERMISO) && SESION.puede(PERMISO_PROPIO); }
+  /* «mia» o «ebs»: qué ve el personal asistencial. */
+  let ambito = 'mia';
   /* Más días que esto y el gráfico pasa a semanas: barras de un día en un
      año no se leen. */
   const MAX_DIAS_POR_DIA = 62;
@@ -122,13 +132,18 @@
   }
 
   function filtros() {
+    let persona = $('productividadPersona').value;
+    if (soloPropia()) {
+      const usuario = SESION.usuario() || {};
+      persona = ambito === 'mia' && usuario.funcionarioId ? String(usuario.funcionarioId) : '';
+    }
     return {
       desde: $('productividadDesde').value,
       hasta: $('productividadHasta').value,
       agrupar: $('productividadAgrupar').value,
       ebs: $('productividadEbs').value,
       comuna: $('productividadComuna').value,
-      persona: $('productividadPersona').value
+      persona: persona
     };
   }
 
@@ -334,9 +349,10 @@
   }
 
   function pintarOpciones(op) {
-    llenarSelect($('productividadEbs'), op.ebs.map(function (c) { return { valor: c, etiqueta: c }; }), 'Todos los EBS');
+    llenarSelect($('productividadEbs'), op.ebs.map(function (c) { return { valor: c, etiqueta: c }; }),
+      soloPropia() ? 'Todos mis EBS' : 'Todos los EBS');
     llenarSelect($('productividadComuna'), op.comunas, 'Todas las comunas');
-    llenarSelect($('productividadPersona'), op.personas, 'Todo el personal');
+    if (!soloPropia()) llenarSelect($('productividadPersona'), op.personas, 'Todo el personal');
   }
 
   /* ---------------------------------------------------------
@@ -682,6 +698,7 @@
 
   function describirFiltros(datos) {
     const partes = [fechaCorta(datos.periodo.desde, true) + ' a ' + fechaCorta(datos.periodo.hasta, true)];
+    if (soloPropia()) partes.push(ambito === 'mia' ? 'Mis fichas' : 'Todo mi EBS');
     const elegido = function (id) {
       const s = $(id);
       return s.value ? s.options[s.selectedIndex].textContent : null;
@@ -786,7 +803,7 @@
   }
 
   function abrirVista() {
-    if (!SESION.puede(PERMISO)) return;
+    if (!puedeVer()) return;
     cambiarVista('productividad');
     /* La primera vez se genera sola, con el mes en curso por EBS. */
     if (!ultimo) generar();
@@ -797,8 +814,9 @@
   document.addEventListener('DOMContentLoaded', function () {
     /* Una sola vez: un segundo DOMContentLoaded duplicaría los oyentes y
        cada cambio de filtro pediría el reporte dos veces. */
-    if (iniciado || !SESION.puede(PERMISO) || !$('formProductividad')) return;
+    if (iniciado || !puedeVer() || !$('formProductividad')) return;
     iniciado = true;
+    if (soloPropia()) prepararVistaPropia();
     ['productividadAgrupar', 'productividadEbs', 'productividadComuna', 'productividadPersona'].forEach(function (id) {
       crearCombo($(id));
     });
@@ -818,6 +836,28 @@
       $(id).addEventListener('change', function () { generar(); });
     });
   });
+
+  /* El personal asistencial: «Mi productividad» o «Mi EBS», sin agrupar ni
+     filtrar por persona. */
+  function prepararVistaPropia() {
+    $('productividadSub').textContent = 'Lo que usted y su EBS han caracterizado en un período: fichas, viviendas, hogares, familias y personas, por comuna, territorio, barrio o fecha.';
+    $('productividadCriterio').textContent = 'Cuenta las fichas por su fecha de caracterización (ítem 16). «Mi EBS» suma las fichas de todo el equipo; no muestra el detalle de cada compañero.';
+    const porPersona = $('productividadAgrupar').querySelector('option[value="persona"]');
+    if (porPersona) porPersona.remove();
+    const campoPersona = $('productividadPersona').closest('.field');
+    if (campoPersona) campoPersona.hidden = true;
+    const grupo = $('productividadAmbito');
+    grupo.hidden = false;
+    grupo.querySelectorAll('[data-ambito]').forEach(function (boton) {
+      boton.addEventListener('click', function () {
+        ambito = boton.dataset.ambito;
+        grupo.querySelectorAll('[data-ambito]').forEach(function (b) {
+          b.setAttribute('aria-pressed', b === boton ? 'true' : 'false');
+        });
+        generar();
+      });
+    });
+  }
 
   window.PRODUCTIVIDAD = { abrir: abrirVista, crearCombo: crearCombo };
 })();

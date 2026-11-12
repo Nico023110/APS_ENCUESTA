@@ -2177,11 +2177,16 @@
     <header class="reportes-cabecera">
       <div class="reportes-cabecera__textos">
         <h2 class="reportes-cabecera__titulo" id="productividadTitulo">Productividad</h2>
-        <p class="reportes-cabecera__sub">Lo caracterizado por los equipos en un período: fichas, viviendas, hogares, familias y personas, por EBS, comuna, territorio, barrio, persona o fecha.</p>
+        <p class="reportes-cabecera__sub" id="productividadSub">Lo caracterizado por los equipos en un período: fichas, viviendas, hogares, familias y personas, por EBS, comuna, territorio, barrio, persona o fecha.</p>
       </div>
     </header>
     <div class="card">
       <form id="formProductividad" novalidate>
+        <!-- Sólo con productividad.ver.propia: lo suyo o el total de su EBS. -->
+        <div class="productividad__rapidos productividad__ambito" id="productividadAmbito" role="group" aria-label="Qué ver" hidden>
+          <button type="button" class="opcion-periodo" data-ambito="mia" aria-pressed="true">Mi productividad</button>
+          <button type="button" class="opcion-periodo" data-ambito="ebs" aria-pressed="false">Mi EBS</button>
+        </div>
         <div class="productividad__rapidos" role="group" aria-label="Período">
           <button type="button" class="opcion-periodo" data-periodo-rapido="hoy" aria-pressed="false">Hoy</button>
           <button type="button" class="opcion-periodo" data-periodo-rapido="semana" aria-pressed="false">Esta semana</button>
@@ -2223,7 +2228,7 @@
             <select id="productividadPersona" name="persona"><option value="">Todo el personal</option></select>
           </div>
         </div>
-        <p class="field-hint reporte__criterio">Cuenta las fichas por su fecha de diligenciamiento. Por EBS y por persona aparecen también, en cero, quienes no tienen fichas en el período.</p>
+        <p class="field-hint reporte__criterio" id="productividadCriterio">Cuenta las fichas por su fecha de caracterización (ítem 16). Por EBS y por persona aparecen también, en cero, quienes no tienen fichas en el período.</p>
         <div class="reporte__acciones">
           <button type="submit" class="btn btn--primary" id="btnProductividadGenerar">
             <i class="ph ph-chart-bar" aria-hidden="true"></i><span>Generar reporte</span>
