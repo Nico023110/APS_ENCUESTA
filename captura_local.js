@@ -458,7 +458,14 @@ function actualizarEstadoAvance(iso) {
     return;
   }
   const hora = new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-  estado.textContent = 'Avance guardado en este equipo a las ' + hora;
+  /* El texto es el de siempre; va en dos piezas para que la barra angosta
+     del celular pueda mostrar sólo el visto y la hora (styles.css). */
+  const frase = document.createElement('span');
+  frase.className = 'form-nav__estado-frase';
+  frase.textContent = 'Avance guardado en este equipo a las ';
+  estado.textContent = '';
+  estado.appendChild(frase);
+  estado.appendChild(document.createTextNode(hora));
 }
 
 /* «Guardar avance»: lo mismo que el guardado automático, pero ya, y dicho. */

@@ -93,7 +93,7 @@
   --fs-label: 13px;
   --fs-small: 12.5px;
   --fs-micro: 11.5px;
-  --fs-eyebrow: 10.5px;
+  --fs-eyebrow: 11px;
 
   /* ---- Espaciado: base 4 ---- */
   --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
@@ -151,6 +151,18 @@
   --border-color: var(--ink-150);
   --border-strong: var(--ink-200);
 
+  /* ---- Controles (2026-11-12) --------------------------------------
+     Lo que se llena es blanco, con un contorno que se ve a pleno sol
+     (3,6:1 sobre blanco; el mínimo para el borde de un control es 3:1).
+     Lo automático y lo de sólo lectura va en gris plano, sin contorno:
+     no parece una casilla por llenar. El ejemplo dentro del campo se lee
+     (5,9:1) sin confundirse con un dato, que va en tinta casi negra. */
+  --campo-fondo: #ffffff;
+  --campo-borde: var(--ink-400);
+  --campo-borde-hover: var(--ink-500);
+  --campo-ejemplo: var(--ink-500);
+  --opcion-borde: var(--ink-300);
+
   --shadow-soft: var(--sh-1);
   --shadow-medium: var(--sh-2);
   --radius-sm: var(--r-control);
@@ -178,6 +190,10 @@
      lo pone app.js (inicializarCabeceraAlDesplazar). */
   --alto-cabecera: var(--header-height);
   --alto-indice: 80px;      /* alto del índice «Ir a»; también lo pone app.js */
+  /* Lo que queda pegado arriba cuando se salta a una sección: la cabecera y
+     el índice en tableta; sólo el índice en celular (la cabecera no se pega)
+     y sólo la cabecera en computador (el índice va al lado). */
+  --tope-anclas: calc(var(--alto-cabecera) + var(--alto-indice));
   accent-color: var(--color-primary);
 }
 
@@ -217,9 +233,9 @@ p { text-wrap: pretty; }
   gap: var(--s-2);
   font-size: var(--fs-eyebrow);
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink-400);
+  color: var(--ink-500);
 }
 
 /* Superficies del navegador, teñidas de la marca */
@@ -243,13 +259,12 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 /* Blanca, para que el logo de la entidad se lea tal cual; el hilo tricolor
    del logo (verde · rojo · azul) cierra la cabecera por abajo. Es la única
    vez que los tres colores aparecen juntos como decoración. */
-/* La cabecera es la única superficie que se permite cristal esmerilado: es
-   fija, así que el desenfoque se compone una vez y no repinta en cada
-   desplazamiento. Sobre contenido que se mueve estaría prohibido. */
+/* Opaca (2026-11-12). Llevaba cristal esmerilado y bajo ella se veía pasar
+   el texto del formulario. Además, un backdrop-filter aquí haría que la
+   barra de pestañas del celular (position: fixed, hija de la cabecera) se
+   midiera contra la cabecera y no contra la pantalla. */
 .app-header {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: saturate(1.6) blur(14px);
-  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  background: #fff;
   color: var(--text-primary);
   min-height: var(--header-height);
   padding: var(--s-3) var(--s-8);
@@ -262,15 +277,13 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   top: 0;
   z-index: 20;
   box-shadow: 0 1px 0 rgba(11, 18, 32, 0.06);
-  transition: box-shadow var(--dur-enter) var(--ease-out),
-              background var(--dur-enter) var(--ease-out);
+  transition: box-shadow var(--dur-enter) var(--ease-out);
 }
 
-/* Arriba del todo la cabecera es plana y opaca; en cuanto pasa contenido por
-   debajo se despega con una sombra ambiental. La sombra deja de ser adorno
+/* Arriba del todo la cabecera es plana; en cuanto pasa contenido por debajo
+   se despega con una sombra ambiental. La sombra deja de ser adorno
    permanente y pasa a decir «esto flota sobre la página». */
 .app-header.is-scrolled {
-  background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 1px 0 rgba(11, 18, 32, 0.06),
               0 12px 32px -12px rgba(11, 18, 32, 0.18);
 }
@@ -333,7 +346,7 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
   font-size: var(--fs-micro);
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: var(--ink-400);
+  color: var(--ink-500);
 }
 
 /* ---- Control segmentado ------------------------------------------------
@@ -941,7 +954,7 @@ button.atencion__fila:focus-visible {
 
 /* ================= FORMS ================= */
 .field-hint {
-  color: var(--ink-400);
+  color: var(--ink-500);
   font-size: var(--fs-small);
   line-height: 1.5;
   margin: -6px 0 var(--s-4);
@@ -1030,7 +1043,7 @@ button.atencion__fila:focus-visible {
    no como casilla por llenar. Mismo tratamiento que los selects is-fijo. */
 .field--fijo input[readonly] {
   background: var(--ink-100);
-  box-shadow: inset 0 0 0 1px var(--ink-150);
+  box-shadow: none;
   color: var(--ink-800);
   font-weight: 600;
   cursor: default;
@@ -1049,7 +1062,8 @@ button.atencion__fila:focus-visible {
 }
 
 /* Franja de resultados calculados: agrupa los datos derivados y los separa
-   de los que se digitan. Sobre ella los controles se leen en blanco. */
+   de los que se digitan. Sobre ella van un tono más oscuro, sin contorno: el
+   blanco queda para lo que se llena. */
 .campos-calculados {
   margin-top: var(--s-4);
   padding: var(--s-4);
@@ -1057,12 +1071,12 @@ button.atencion__fila:focus-visible {
   background: var(--brand-50);
 }
 .campos-calculados .field--derivado input[readonly] {
-  background: var(--bg-card);
-  box-shadow: inset 0 0 0 1px var(--brand-100);
+  background: var(--brand-100);
+  box-shadow: none;
 }
 .campos-calculados .calc-badge-wrapper {
-  background: var(--bg-card);
-  box-shadow: inset 0 0 0 1px var(--brand-100);
+  background: var(--brand-100);
+  box-shadow: none;
 }
 
 /* El cuadro de calculados es una rejilla con fondo y relleno propios: no debe
@@ -1210,8 +1224,10 @@ button.atencion__fila:focus-visible {
 
 /* ---- Controles ---------------------------------------------------------
    El contorno es sombra, no borde: así el foco puede engordar el anillo sin
-   que el campo cambie de tamaño ni empuje a sus vecinos. Fondo apenas
-   apagado en reposo y blanco puro al enfocar — el campo activo se enciende.
+   que el campo cambie de tamaño ni empuje a sus vecinos. El campo por llenar
+   es blanco con contorno firme (--campo-borde); gris es lo que no se llena.
+   Antes los dos eran grises y no se distinguían a pleno sol. Al enfocar, el
+   contorno pasa al azul de la marca con su anillo.
    font-size 16px en móvil es obligatorio: por debajo, iOS hace zoom sobre el
    campo al tocarlo y descuadra la pantalla en plena captura. */
 .field input,
@@ -1219,18 +1235,18 @@ button.atencion__fila:focus-visible {
   padding: 10px var(--s-3);
   border: none;
   border-radius: var(--r-control);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
   font-size: var(--fs-body);
   font-family: inherit;
   color: var(--ink-900);
-  background: var(--ink-50);
+  background: var(--campo-fondo);
   transition: box-shadow var(--dur-hover) var(--ease-out),
               background var(--dur-hover) var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .field input:hover,
-  .field select:hover { box-shadow: inset 0 0 0 1px var(--ink-300); }
+  .field select:hover { box-shadow: inset 0 0 0 1px var(--campo-borde-hover); }
 }
 
 @media (max-width: 720px) {
@@ -1239,7 +1255,7 @@ button.atencion__fila:focus-visible {
   .field textarea { font-size: 16px; }
 }
 
-.field input::placeholder { color: var(--ink-300); }
+.field input::placeholder { color: var(--campo-ejemplo); }
 
 .field input:focus,
 .field select:focus {
@@ -1248,12 +1264,29 @@ button.atencion__fila:focus-visible {
   box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
 }
 
+/* Las casillas y los radios no son campos de texto: no llevan su relleno,
+   su fondo ni su contorno. Se les colaba la regla de arriba y se veían como
+   círculos punteados; con error, cada casilla era un cuadro rojo. El grupo
+   ya se marca en su contenedor y el foco, en la píldora. */
+.field input:is([type="checkbox"], [type="radio"]) {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+.field:is(.has-error, .has-warning) input:is([type="checkbox"], [type="radio"]) {
+  background: none;
+  box-shadow: none;
+}
+
 /* Sólo lectura: el campo pierde el blanco y se apaga a tinta secundaria. Se
    distingue de uno vacío porque no reacciona al foco ni al cursor. */
 .field input[readonly] {
   background: var(--ink-100);
-  color: var(--ink-500);
-  box-shadow: inset 0 0 0 1px var(--ink-150);
+  color: var(--ink-600);
+  box-shadow: none;
 }
 
 /* Códigos que se dictan o se cotejan contra el papel (ítem 15). */
@@ -1306,8 +1339,7 @@ button.atencion__fila:focus-visible {
 /* Advertencias (validación en vivo): ámbar, no bloquean */
 .field.has-warning input,
 .field.has-warning select {
-  border-color: var(--color-warning);
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+  box-shadow: inset 0 0 0 1.5px var(--warn-600), 0 0 0 3px rgba(194, 112, 10, 0.14);
 }
 
 .field.has-warning .radio-group,
@@ -1479,7 +1511,7 @@ button.atencion__fila:focus-visible {
   border: none;
   border-radius: var(--r-chip);
   background: #fff;
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--opcion-borde);
   font-size: var(--fs-label);
   font-weight: 500;
   color: var(--ink-700);
@@ -1527,30 +1559,34 @@ button.atencion__fila:focus-visible {
 }
 
 /* Selección múltiple (RN-036, RN-038)
-   Flexbox y no grid, a propósito: con grid, una fila con menos opciones que
-   columnas (o una opción sola tras la excluyente de ancho completo, como
-   "Otro" después de "Ninguno") deja huecos vacíos en esa fila porque las
-   columnas son compartidas por toda la cuadrícula. Con flex-wrap cada fila
-   reparte su espacio sobrante entre sus propias pastillas, así que una
-   pastilla que queda sola en la última fila se estira a lo ancho en vez de
-   quedar angosta con un vacío al lado. */
+   Rejilla de columnas iguales (2026-11-12). Hasta entonces era flex-wrap, que
+   estiraba la última fila para no dejar huecos: una misma pregunta mostraba
+   sus opciones de a tres, luego dos estiradas y luego una a todo lo ancho, y
+   el ojo no encontraba columnas que seguir. Ahora todas miden lo mismo y la
+   última fila se alinea a la izquierda; sólo la excluyente («Ninguna») ocupa
+   la fila entera, porque anula a las demás. */
 .check-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: var(--s-2) var(--s-3);
 }
 
-.check-group--una-columna .check-pill { flex-basis: 100% !important; }
+/* Lista de una columna (ítem 2) y el ítem 96, que pinta radios a su ancho
+   natural: siguen en flex. */
+.check-group--una-columna {
+  display: flex;
+  flex-wrap: wrap;
+}
+.check-group--una-columna .check-pill { flex: 1 1 100%; }
 
 .check-pill {
   display: flex;
   align-items: flex-start;
-  flex: 1 1 280px;
   gap: var(--s-2);
   padding: 9px var(--s-3);
   border: none;
   border-radius: var(--r-control);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--opcion-borde);
   background: #fff;
   font-size: var(--fs-label);
   font-weight: 500;
@@ -1587,6 +1623,7 @@ button.atencion__fila:focus-visible {
 /* «Ninguna de las anteriores» ocupa la fila entera y va sobre lienzo: es la
    opción que anula a las demás, así que no debe parecer una más de la lista. */
 .check-pill--excluyente {
+  grid-column: 1 / -1;
   flex-basis: 100%;
   font-weight: 600;
   background: var(--ink-50);
@@ -1601,7 +1638,7 @@ button.atencion__fila:focus-visible {
 .field select.is-fijo {
   appearance: none;
   background: var(--ink-100);
-  box-shadow: inset 0 0 0 1px var(--ink-150);
+  box-shadow: none;
   font-weight: 600;
   color: var(--ink-800);
   cursor: default;
@@ -1670,7 +1707,7 @@ button.atencion__fila:focus-visible {
   letter-spacing: -0.02em;
   line-height: 1.25;
   border-bottom: 1px solid var(--ink-150);
-  scroll-margin-top: calc(var(--alto-cabecera) + var(--alto-indice) + var(--s-5));
+  scroll-margin-top: calc(var(--tope-anclas) + var(--s-5));
 }
 
 /* La primera banda no necesita separarse de nada: arranca la vista. */
@@ -1705,7 +1742,7 @@ button.atencion__fila:focus-visible {
   min-width: 26px;
   font-family: var(--font-mono);
   font-size: var(--fs-small);
-  color: var(--ink-400);
+  color: var(--ink-500);
   font-weight: 500;
 }
 
@@ -1796,7 +1833,7 @@ button.atencion__fila:focus-visible {
 /* ---- Controles fuera de .field -----------------------------------------
    Dirección, complementos y filas del plan tenían su propio control (borde
    de 1,5 px, fondo blanco, anillo de foco de otro azul). Ahora son el mismo
-   control de .field: contorno de sombra, fondo apagado, blanco al enfocar. */
+   control de .field: contorno de sombra firme sobre blanco. */
 .dir-campo input:not([type="checkbox"]),
 .dir-campo select,
 .complemento-fila select,
@@ -1808,11 +1845,11 @@ button.atencion__fila:focus-visible {
   padding: 10px var(--s-3);
   border: none;
   border-radius: var(--r-control);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
   font-size: var(--fs-body);
   font-family: inherit;
   color: var(--ink-900);
-  background: var(--ink-50);
+  background: var(--campo-fondo);
   transition: box-shadow var(--dur-hover) var(--ease-out),
               background var(--dur-hover) var(--ease-out);
 }
@@ -1824,12 +1861,12 @@ button.atencion__fila:focus-visible {
   .complemento-fila input:hover,
   .plan-table input:hover,
   .plan-table select:hover,
-  .plan-table textarea:hover { box-shadow: inset 0 0 0 1px var(--ink-300); }
+  .plan-table textarea:hover { box-shadow: inset 0 0 0 1px var(--campo-borde-hover); }
 }
 
 .dir-campo input::placeholder,
 .complemento-fila input::placeholder,
-.plan-table input::placeholder { color: var(--ink-300); }
+.plan-table input::placeholder { color: var(--campo-ejemplo); }
 
 .dir-campo input:not([type="checkbox"]):focus,
 .dir-campo select:focus,
@@ -1845,8 +1882,8 @@ button.atencion__fila:focus-visible {
 
 .plan-table input[readonly] {
   background: var(--ink-100);
-  color: var(--ink-500);
-  box-shadow: inset 0 0 0 1px var(--ink-150);
+  color: var(--ink-600);
+  box-shadow: none;
 }
 
 @media (max-width: 720px) {
@@ -1867,7 +1904,7 @@ button.atencion__fila:focus-visible {
   gap: var(--s-2);
   padding: 10px var(--s-3);
   border-radius: var(--r-control);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--opcion-borde);
   background: #fff;
   font-size: var(--fs-label);
   font-weight: 500;
@@ -2224,7 +2261,7 @@ button.atencion__fila:focus-visible {
   text-align: left;
   padding: var(--s-3);
   background: var(--ink-50);
-  color: var(--ink-400);
+  color: var(--ink-500);
   font-size: var(--fs-eyebrow);
   font-weight: 600;
   text-transform: uppercase;
@@ -2314,42 +2351,94 @@ button.atencion__fila:focus-visible {
   content: attr(data-label);
   font-size: var(--fs-eyebrow);
   font-weight: 600;
-  color: var(--ink-400);
+  color: var(--ink-500);
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
 
-/* Posicionamiento específico dentro de la tarjeta */
+/* ---- Tarjeta de ficha (2026-11-12) ---------------------------------------
+   Tres grupos, de lo que identifica a lo que es rutina:
+   1. cuál es: código, estado en la base y plan de cuidado;
+   2. dónde y cuándo: territorio, microterritorio y dirección como un solo
+      bloque («Lugar»), y caracterización y subida lado a lado;
+   3. lo demás, un dato por línea y apagado cuando no dice nada («No», «No
+      aplica», «Sin modificaciones»): antes pesaba igual que una alerta. Lo
+      excepcional conserva su distintivo de color.
+   Las celdas se eligen por su rótulo y no por su posición: al agregar la
+   columna «Subida» los nth-child se corrieron y «Microterritorio» tomó el
+   ancho que era de «Dirección». */
+
 /* El número de ficha es un código, no una palabra: va en monoespaciada, que
    es como este sistema escribe todo lo que se dicta, se teclea o se compara
    carácter a carácter. */
-#historialTable td:nth-child(1) {
+#historialTable td[data-label="Ficha"] {
   grid-column: 1 / -1;
   font-family: var(--font-mono);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ink-900);
   padding-right: 96px; /* Espacio para el distintivo de estado */
 }
-#historialTable td:nth-child(1)::before {
+#historialTable td[data-label="Ficha"]::before {
   content: "Ficha N°";
+  font-family: var(--font-ui);
 }
 
-#historialTable td:nth-child(2) { /* Estado */
+#historialTable td[data-label="Estado"] {
   position: absolute;
   top: var(--s-5);
   right: var(--s-5);
 }
-#historialTable td:nth-child(2)::before { display: none; }
+#historialTable td[data-label="Estado"]::before { display: none; }
 
-#historialTable td:nth-child(8) { /* Dirección */
+/* Lugar: tres celdas que se leen como una dirección. */
+#historialTable td:is([data-label="Territorio"], [data-label="Microterritorio"], [data-label="Dirección"]) {
   grid-column: 1 / -1;
+  order: 1;
+}
+#historialTable td[data-label="Territorio"] { font-weight: 600; color: var(--ink-900); }
+#historialTable td[data-label="Territorio"]::before { content: "Lugar"; }
+#historialTable td:is([data-label="Microterritorio"], [data-label="Dirección"]) { margin-top: calc(-1 * var(--s-3)); }
+#historialTable td:is([data-label="Microterritorio"], [data-label="Dirección"])::before { display: none; }
+
+/* Cuándo: la visita y la subida, lado a lado. */
+#historialTable td:is([data-label="Caracterización"], [data-label="Subida"]) { order: 2; }
+#historialTable td[data-label="Subida"] .celda-hora { margin-top: 0; }
+
+/* Lo demás: rótulo y valor en la misma línea. */
+#historialTable td:is([data-label="Personas/Hab."], [data-label="Hacinamiento"], [data-label="Situación inminente"], [data-label="Modificación"]) {
+  order: 3;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+#historialTable td:is([data-label="Personas/Hab."], [data-label="Hacinamiento"], [data-label="Situación inminente"], [data-label="Modificación"])::before {
+  content: attr(data-label) ":";
+  font-size: var(--fs-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-500);
+}
+#historialTable td:is([data-label="Situación inminente"], [data-label="Modificación"]) {
+  grid-column: 1 / -1;
+  margin-top: calc(-1 * var(--s-2));
+}
+/* Sin novedad: texto llano, no distintivo. */
+#historialTable td:is([data-label="Hacinamiento"], [data-label="Situación inminente"], [data-label="Modificación"]) .badge:is(.badge--neutral, .badge--success) {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-700);
 }
 
-#historialTable td:nth-child(11) { /* Situación inminente */
-  grid-column: 1 / -1;
-}
+#historialTable td[data-label="Modificación"] { order: 4; }
+#historialTable td.actions-cell { order: 5; }
 
 /* ---- Plan de cuidado en la tarjeta --------------------------------------
    Va a lo ancho, justo debajo del número de ficha: el estado y, si algo
@@ -2543,7 +2632,7 @@ button.atencion__fila:focus-visible {
 
 .empty-state {
   text-align: center;
-  color: var(--ink-400);
+  color: var(--ink-500);
   padding: var(--s-12) var(--s-3);
   font-size: var(--fs-body);
 }
@@ -2590,11 +2679,11 @@ button.atencion__fila:focus-visible {
   padding: 9px var(--s-4);
   border-radius: var(--r-chip);
   border: none;
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
   font-size: var(--fs-small);
   font-family: inherit;
   color: var(--ink-900);
-  background: var(--ink-50);
+  background: var(--campo-fondo);
   transition: box-shadow var(--dur-hover) var(--ease-out),
               background var(--dur-hover) var(--ease-out);
 }
@@ -3106,44 +3195,74 @@ button.atencion__fila:focus-visible {
 /* =========================================================
    ÍNDICE DE SECCIONES DEL FORMULARIO
    ========================================================= */
-/* ---- Índice flotante ---------------------------------------------------
-   Isla pegajosa bajo la cabecera. Lleva el mismo cristal esmerilado que la
-   cabecera —también es fija, así que el desenfoque se compone una vez y no
-   repinta al desplazarse— y la sombra ambiental que la despega del
-   formulario que le pasa por debajo. */
+/* ---- Índice del formulario ----------------------------------------------
+   Tres formas según el ancho (2026-11-12):
+   · Tableta y portátil pequeño: una sola fila pegada bajo la cabecera. Las
+     secciones se deslizan de lado; «Guardar avance» y «Empezar otra» quedan
+     fijos a la derecha. Eran tres filas translúcidas —125 px en una tableta—
+     que mezclaban navegación, revisión y acciones.
+   · Celular: la misma fila, a ras del borde y pegada arriba, con las acciones
+     debajo. Antes no se pegaba: a mitad de ficha no se sabía en qué sección
+     se iba ni había cómo guardar el avance sin subir al comienzo.
+   · Computador (1240 px o más): columna a la izquierda del formulario, como
+     el menú de Reportes.
+   Es opaco: bajo el cristal se veía pasar el texto del formulario. */
 .form-nav {
   position: sticky;
-  top: calc(var(--alto-cabecera) + var(--s-3));
+  top: calc(var(--alto-cabecera) + var(--s-2));
   z-index: 15;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-3);
+  gap: 0 var(--s-2);
+  padding: 6px;
   margin-bottom: var(--s-5);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: saturate(1.6) blur(14px);
-  -webkit-backdrop-filter: saturate(1.6) blur(14px);
-  border: none;
-  border-radius: var(--r-shell);
-  box-shadow: var(--sh-hair), var(--sh-2);
+  background: #fff;
+  border-radius: var(--r-card);
+  /* La primera sombra es una copia del índice, del color del lienzo y corrida
+     hacia arriba: tapa la rendija entre la cabecera y el índice, por donde se
+     veía pasar el formulario. */
+  box-shadow: 0 calc(-1 * var(--s-2) - 1px) 0 1px var(--bg-page), var(--sh-hair), var(--sh-2);
 }
 
+/* La fila de secciones. El desvanecido de la derecha dice que hay más; el de
+   la izquierda, corto, evita que un nombre a medio pasar quede cortado en
+   seco. Los 12 px de la izquierda son ese margen: en reposo no tapa nada. */
+.form-nav__secciones {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 var(--s-6) 0 var(--s-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent);
+}
+.form-nav__secciones::-webkit-scrollbar { display: none; }
+
 .form-nav__titulo {
+  flex: none;
+  padding: 0 var(--s-1) 0 0;
   font-size: var(--fs-eyebrow);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--ink-400);
-  padding-left: var(--s-2);
-  margin-right: var(--s-1);
+  letter-spacing: 0.16em;
+  color: var(--ink-500);
 }
 
 /* Los enlaces del índice no van todos teñidos de azul: con ocho chips azules
    el índice pesaba más que el formulario. En reposo son neutros; el azul se
    reserva para el único que importa, el de la sección que se está mirando. */
 .form-nav__link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
   padding: 6px var(--s-3);
   border-radius: var(--r-chip);
   font-size: var(--fs-small);
@@ -3155,6 +3274,8 @@ button.atencion__fila:focus-visible {
               color var(--dur-hover) var(--ease-out);
   white-space: nowrap;
 }
+/* Dentro de la fila deslizable un anillo por fuera quedaría recortado. */
+.form-nav__link:focus-visible { outline-offset: -2px; border-radius: var(--r-chip); }
 
 @media (hover: hover) and (pointer: fine) {
   .form-nav__link:hover {
@@ -3164,31 +3285,29 @@ button.atencion__fila:focus-visible {
 }
 
 /* La sección que se está mirando. La enciende el observador de intersección
-   de inicializarIndiceActivo(): el índice dice dónde estás, no sólo a dónde
-   puedes ir. */
+   de inicializarIndiceActivo(), que además la deja a la vista en la fila: el
+   índice dice dónde estás, no sólo a dónde puedes ir. */
 .form-nav__link.is-actual {
   background: var(--brand-600);
   color: #fff;
   font-weight: 600;
 }
 
-.form-nav__link--cierre {
-  background: var(--ink-900);
-  color: #fff;
-  font-weight: 600;
-}
-@media (hover: hover) and (pointer: fine) {
-  .form-nav__link--cierre:hover { background: var(--ink-800); color: #fff; }
-}
+/* «Cierre» era una pastilla negra permanente y competía con la azul de la
+   sección actual. Ahora se distingue sólo por su peso. */
+.form-nav__link--cierre { color: var(--ink-900); font-weight: 700; }
 
-/* Compensa la cabecera y la isla del índice al saltar con anclas */
-[id^="seccion-"] { scroll-margin-top: calc(var(--alto-cabecera) + var(--alto-indice) + var(--s-5)); }
+/* Compensa lo que queda pegado arriba al saltar con anclas */
+[id^="seccion-"] { scroll-margin-top: calc(var(--tope-anclas) + var(--s-5)); }
 
 /* Ayuda de revisión: revela los campos condicionados sin cumplir su condición */
 .form-nav__toggle {
-  display: flex;
+  flex: none;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-height: 38px;
+  margin-left: var(--s-2);
   padding: 6px var(--s-3);
   border-radius: var(--r-chip);
   border: none;
@@ -3199,7 +3318,6 @@ button.atencion__fila:focus-visible {
   color: var(--ink-500);
   cursor: pointer;
   white-space: nowrap;
-  margin-left: var(--s-1);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -3209,12 +3327,13 @@ button.atencion__fila:focus-visible {
 
 /* Pre-guardado en el índice fijo: siempre a mano, en cualquier sección. */
 .form-nav__avance {
-  display: inline-flex;
-  flex-wrap: wrap;
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
   align-items: center;
   gap: 6px;
 }
-.form-nav__avance .btn { padding: 6px var(--s-3); min-height: 34px; font-size: var(--fs-small); }
+.form-nav__avance .btn { min-height: 38px; padding: 6px var(--s-3); font-size: var(--fs-small); white-space: nowrap; }
 /* Salir de la corrección: con el ámbar de la cinta de corrección, que es la
    que dice en qué modo se está (correccion.js). */
 .form-nav__avance .form-nav__cancelar {
@@ -3224,12 +3343,156 @@ button.atencion__fila:focus-visible {
 }
 .form-nav__avance .form-nav__cancelar:hover { border-color: var(--color-warning-text); }
 .form-nav__cancelar[hidden] { display: none; }
+
+/* «Avance guardado en este equipo a las 10:42». En la fila sólo caben el
+   visto y la hora, junto a los botones; la frase entera sigue ahí para el
+   lector de pantalla y se lee completa en la columna del computador. */
 .form-nav__estado {
+  grid-column: 2;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--s-1);
   font-size: var(--fs-micro);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ok-700);
+  white-space: nowrap;
 }
 .form-nav__estado:empty { display: none; }
+.form-nav__estado-frase {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.form-nav__estado:has(.form-nav__estado-frase)::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 9px;
+  margin: 0 2px 3px 3px;
+  border: solid var(--ok-600);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+/* Los demás avisos («Todavía no hay nada que guardar.») van en su propia fila. */
+.form-nav__estado:not(:has(.form-nav__estado-frase)) {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-content: flex-end;
+  padding: 4px var(--s-2) 2px;
+  font-weight: 500;
+  white-space: normal;
+}
+
+/* ---- Celular: barra a ras, pegada arriba ---- */
+@media (max-width: 720px) {
+  :root { --tope-anclas: var(--alto-indice); }
+
+  .form-nav {
+    top: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-inline: calc(-1 * var(--s-4));
+    padding: 4px var(--s-3) 6px;
+    border-radius: 0;
+    box-shadow: 0 1px 0 rgba(11, 18, 32, 0.08), 0 10px 24px -14px rgba(11, 18, 32, 0.22);
+  }
+  .form-nav__secciones { grid-column: 1 / -1; margin-inline: calc(-1 * var(--s-3)); }
+  .form-nav__titulo { display: none; }
+  .form-nav__link,
+  .form-nav__toggle,
+  .form-nav__avance .btn { min-height: 40px; }
+  .form-nav__avance { grid-column: 1; grid-row: 2; }
+  .form-nav__estado { grid-column: 2; grid-row: 2; justify-self: end; }
+  .form-nav__estado:not(:has(.form-nav__estado-frase)) { grid-row: 3; justify-self: stretch; justify-content: flex-start; }
+}
+
+/* ---- Computador: columna a la izquierda del formulario ---- */
+@media (min-width: 1240px) {
+  :root { --tope-anclas: var(--alto-cabecera); }
+
+  /* Con la columna el contenedor se ensancha, como en Reportes, para que las
+     tarjetas conserven su rejilla de escritorio. */
+  .app-main:has(> #view-nueva.is-active) { max-width: 1440px; }
+
+  #encuestaForm {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    column-gap: var(--s-8);
+    align-items: start;
+  }
+  #encuestaForm > * { grid-column: 2; min-width: 0; }
+
+  #encuestaForm > .form-nav {
+    grid-column: 1;
+    grid-row: 1 / span 12;
+    top: calc(var(--alto-cabecera) + var(--s-6));
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    max-height: calc(100vh - var(--alto-cabecera) - var(--s-12));
+    margin: 0;
+    padding: var(--s-4) var(--s-3) var(--s-3);
+    overflow-y: auto;
+    border-radius: var(--r-shell);
+    box-shadow: var(--sh-hair), var(--sh-1);
+  }
+
+  .form-nav__secciones {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .form-nav__titulo { padding: 0 var(--s-3) var(--s-2); }
+  .form-nav__link {
+    min-height: 40px;
+    padding: 8px var(--s-3);
+    border-radius: var(--r-control);
+    line-height: 1.3;
+    white-space: normal;
+  }
+  .form-nav__link:focus-visible { border-radius: var(--r-control); }
+  .form-nav__toggle {
+    margin: var(--s-3) 0 0;
+    border-radius: var(--r-control);
+    white-space: normal;
+  }
+  .form-nav__avance {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s-2);
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--ink-100);
+  }
+  .form-nav__avance .btn { width: 100%; justify-content: center; min-height: 40px; }
+
+  /* Aquí la frase cabe entera. */
+  .form-nav__estado,
+  .form-nav__estado:not(:has(.form-nav__estado-frase)) {
+    display: block;
+    padding: var(--s-2) var(--s-1) 0;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+  }
+  .form-nav__estado:has(.form-nav__estado-frase)::before { content: none; }
+  .form-nav__estado-frase {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+}
 
 /* El botón que acaba de guardar lo dice un momento, en verde. */
 [data-accion="guardarAvance"].is-guardado,
@@ -3716,7 +3979,7 @@ button.atencion__fila:focus-visible {
 /* Ítems 9 y 73: el campo no tiene envoltura propia, buscador_lista.js ubica la lista. */
 .field:is([data-campo="ocupacion"], [data-campo="divisionTerritorial"]) { position: relative; }
 .field:is([data-campo="ocupacion"], [data-campo="divisionTerritorial"]) > input {
-  scroll-margin-top: calc(var(--alto-cabecera) + var(--alto-indice) + var(--s-2));
+  scroll-margin-top: calc(var(--tope-anclas) + var(--s-2));
 }
 .combo-buscador__lista { top: auto; right: auto; min-width: 0; overscroll-behavior: contain; }
 /* En la rejilla de cinco pistas de .form-grid, una posición absoluta se mediría
@@ -4258,18 +4521,16 @@ button.atencion__fila:focus-visible {
 }
 
 /* Isla flotante al pie: es lo último que se mira antes de guardar, así que
-   lleva la sombra más alta del sistema para despegarse del formulario y el
-   mismo cristal esmerilado de la cabecera —también es fija—, de modo que se
-   intuye el contenido que pasa por debajo sin que estorbe la lectura. */
+   lleva la sombra más alta del sistema para despegarse del formulario. Opaca,
+   como la cabecera: bajo el cristal se leía el formulario que pasa por
+   debajo y estorbaba la lectura de la propia barra. */
 .nav-errores__barra {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-2);
   padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: saturate(1.6) blur(14px);
-  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  background: #fff;
   border: none;
   box-shadow: inset 0 0 0 1px var(--alert-100), var(--sh-3);
   border-radius: var(--r-shell);
@@ -4497,8 +4758,10 @@ button.atencion__fila:focus-visible {
   .nav-errores__barra { flex-wrap: wrap; padding: 8px 10px; }
   .nav-errores__resumen { flex: 1 1 100%; }
   .nav-errores__botones { flex: 1 1 100%; justify-content: flex-end; }
-  .nav-errores__btn span { display: none; }
-  .nav-errores__btn { padding: 8px 10px; }
+  /* Sólo «Anterior» queda en icono: una flecha roja y un disquete azul sin
+     nombre no decían qué hacían. */
+  .nav-errores__btn:not(.nav-errores__btn--principal, .nav-errores__btn--guardar) span { display: none; }
+  .nav-errores__btn { padding: 8px 12px; }
 }
 
 /* ================= RESPONSIVE ================= */
@@ -4513,8 +4776,6 @@ button.atencion__fila:focus-visible {
   .app-header__logo, .app-header__logo img { height: 44px; }
   .app-header__divisor { display: none; }
   .app-header__sub-largo { display: none; }
-  .app-tabs { justify-content: space-between; }
-  .app-tabs__btn { flex: 1; text-align: center; justify-content: center; padding: 9px 8px; }
 
   .app-main { padding: 20px 12px 50px; }
 
@@ -4525,11 +4786,6 @@ button.atencion__fila:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .form-nav {
-    position: static;
-    border-radius: var(--radius-md);
-  }
-
   .bloque__cuerpo { padding: 12px 10px; }
   .bloque__meta { margin-left: 0; width: 100%; }
   .card--anidada { padding: 14px 12px; }
@@ -5120,22 +5376,11 @@ button.atencion__fila:focus-visible {
   .btn-cta { width: 100%; justify-content: space-between; }
   .section-banner { font-size: var(--fs-h3); margin-top: var(--s-8); }
   .card { padding: var(--s-5) var(--s-4) var(--s-4); }
-  .app-tabs__label { display: none; }
-  .app-tabs__btn { padding: 10px var(--s-3); justify-content: center; }
-  .app-tabs__icon { font-size: 22px; }
 
   .bloque__cuerpo { padding: 12px 10px; }
   .bloque__meta { margin-left: 0; width: 100%; }
   .card--anidada { padding: 14px 12px; }
   .semaforo { flex-direction: column; align-items: flex-start; }
-  
-  .form-nav {
-    position: static;
-    width: 100%;
-    margin-bottom: 24px;
-    max-height: none;
-  }
-  #encuestaForm { padding-right: 0; }
 }
 
 @media (max-width: 480px) {
@@ -5798,8 +6043,8 @@ html.nivel-administrador #sincronia { display: none; }
   padding: 12px var(--s-3) 12px 52px;
   border: none;
   border-radius: var(--r-control);
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  background: var(--campo-fondo);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
   font-family: inherit;
   font-size: 16px;
   color: var(--ink-900);
@@ -6040,20 +6285,8 @@ html.nivel-administrador #sincronia { display: none; }
 
 .app-header__usuario { position: relative; }
 
-/* En celular la cabecera apilaba marca, pestañas y usuario en tres renglones
-   (unos 180 px pegados arriba mientras se diligencia). El chip de usuario
-   sube al renglón del logo y las pestañas quedan debajo a todo el ancho. */
-@media (max-width: 720px) {
-  .app-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "marca usuario" "pestanas pestanas";
-    align-items: center;
-  }
-  .app-header__brand { grid-area: marca; }
-  .app-tabs { grid-area: pestanas; }
-  .app-header__usuario { grid-area: usuario; justify-content: flex-end; }
-}
+/* En celular la marca y el usuario comparten un solo renglón; las pestañas
+   van abajo, en la barra de navegación (al final de la hoja). */
 
 .app-usuario {
   display: flex;
@@ -6373,8 +6606,8 @@ html.nivel-administrador #sincronia { display: none; }
   padding: 8px var(--s-3) 8px 34px;
   border: none;
   border-radius: var(--r-chip);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
-  background: var(--ink-50);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
+  background: var(--campo-fondo);
   font: inherit;
   font-size: var(--fs-label);
   color: var(--ink-900);
@@ -6651,8 +6884,8 @@ html.nivel-administrador #sincronia { display: none; }
   padding: 12px var(--s-3);
   border: none;
   border-radius: var(--r-control);
-  background: var(--ink-50);
-  box-shadow: inset 0 0 0 1px var(--ink-200);
+  background: var(--campo-fondo);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
   font-family: inherit;
   font-size: 16px;
   color: var(--ink-900);
@@ -7504,4 +7737,97 @@ html.pantalla-bloqueada .app-main { visibility: hidden; }
   .instalar__pasos, .instalar__notas { gap: 4px; font-size: 12.5px; }
   .instalar__titulo { font-size: 22px; }
   .instalar__subtitulo { font-size: 15px; }
+}
+
+/* =========================================================================
+   Cabecera compacta y navegación del celular (2026-11-12)
+   Va al final de la hoja: ajusta reglas que están repartidas arriba.
+   ========================================================================= */
+
+/* Entre celular y portátil la cabecera no cabía en una fila y el usuario
+   bajaba a una segunda: 130 px pegados arriba en una tableta. Sin el nombre
+   —queda en el menú del usuario— y sin la segunda mitad del subtítulo, cabe
+   en una. */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .app-header { flex-wrap: nowrap; padding-inline: var(--s-5); gap: var(--s-3); }
+  .app-header__brand { gap: var(--s-3); }
+  .app-header__sub-largo { display: none; }
+  .app-usuario__texto { display: none; }
+  .app-usuario { padding: 4px; gap: 6px; }
+}
+
+/* Celular: arriba quedan el logo y el usuario, en un renglón que se va con
+   la página; las pestañas pasan a una barra fija abajo, al alcance del
+   pulgar, con icono y nombre. Eran tres iconos sin texto en una segunda
+   fila de la cabecera, que además se quedaba pegada (130 px). */
+@media (max-width: 720px) {
+  .app-header {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 0;
+    padding: var(--s-2) var(--s-4);
+  }
+  /* No se pega: no hay nada que pase por debajo. */
+  .app-header.is-scrolled { box-shadow: 0 1px 0 rgba(11, 18, 32, 0.06); }
+  .app-header__logo,
+  .app-header__logo img { height: 40px; }
+  .app-header__usuario { justify-content: flex-end; }
+
+  .app-tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    justify-content: space-around;
+    gap: 0;
+    padding: 6px var(--s-2) calc(6px + env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
+    background: #fff;
+    box-shadow: 0 -1px 0 rgba(11, 18, 32, 0.08), 0 -10px 24px -14px rgba(11, 18, 32, 0.2);
+  }
+  /* El indicador deslizante es de la cabecera ancha; aquí la pestaña activa
+     se dice en su icono y en su color. */
+  .app-tabs::before { display: none; }
+  .app-tabs__btn {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 4px var(--s-1);
+    border-radius: var(--r-control);
+    font-size: var(--fs-micro);
+    color: var(--ink-600);
+  }
+  .app-tabs__label { display: block; }
+  .app-tabs__icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 28px;
+    border-radius: var(--r-chip);
+    font-size: 21px;
+    transition: background var(--dur-hover) var(--ease-out),
+                color var(--dur-hover) var(--ease-out);
+  }
+  .app-tabs__btn.is-active,
+  .app-tabs:not(.app-tabs--listo) .app-tabs__btn.is-active {
+    background: transparent;
+    color: var(--brand-700);
+  }
+  .app-tabs__btn.is-active .app-tabs__icon {
+    background: var(--brand-100);
+    color: var(--brand-700);
+  }
+
+  /* Lo que vive abajo sube por encima de la barra. */
+  .app-main { padding-bottom: calc(var(--s-12) + 64px + env(safe-area-inset-bottom, 0px)); }
+  .nav-errores { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  .aviso-version { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 }

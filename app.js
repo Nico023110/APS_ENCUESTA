@@ -5714,9 +5714,11 @@ function inicializarCabeceraAlDesplazar() {
  * scroll obliga a medir posiciones en cada fotograma —justo lo que tumba los
  * fps en las tablets del terreno.
  *
- * El margen superior descuenta la cabecera más la isla del índice, para que
- * la sección se considere «actual» cuando llega bajo ellas, no cuando asoma
- * por el borde de la ventana.
+ * El margen superior descuenta la cabecera: al saltar con el índice el título
+ * de la sección llega justo debajo de lo que está pegado arriba —unos 96 px
+ * en computador, 110 en celular y 146 en tableta— y debe contar como a la
+ * vista. Un título que ya pasó hacia arriba sigue mandando hasta que entra
+ * el siguiente.
  */
 function inicializarIndiceActivo() {
   const indice = document.getElementById('formNav');
@@ -5729,7 +5731,29 @@ function inicializarIndiceActivo() {
   });
   if (enlaces.size === 0) return;
 
+  /* Alto de la franja de arriba que no cuenta como «a la vista». */
+  const MARGEN_SUPERIOR = 80;
   const visibles = new Set();
+  /* Secciones cuyo título ya pasó hacia arriba. El título de una sección es
+     un renglón y la sección mide varias pantallas: sin esto, al dejar de
+     verse el título el índice se quedaba sin marcar ninguna. */
+  const pasadas = new Set();
+  let actual = null;
+
+  /* En tableta y celular las secciones van en una fila que se desliza de
+     lado: la actual se lleva al centro, o el índice diría a dónde se puede
+     ir sin mostrar dónde se está. En computador la fila no se desliza y esto
+     no hace nada. */
+  function dejarALaVista(enlace) {
+    const fila = enlace.closest('.form-nav__secciones');
+    if (!fila || typeof fila.scrollTo !== 'function' || fila.scrollWidth <= fila.clientWidth) return;
+    const quieto = typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    fila.scrollTo({
+      left: Math.max(0, enlace.offsetLeft - (fila.clientWidth - enlace.offsetWidth) / 2),
+      behavior: quieto ? 'auto' : 'smooth'
+    });
+  }
 
   function repintar() {
     /* Cuando hay varias secciones a la vista gana la más alta, que es la que
@@ -5739,8 +5763,30 @@ function inicializarIndiceActivo() {
       if (!visibles.has(seccion)) return;
       if (!elegida || seccion.offsetTop < elegida.offsetTop) elegida = seccion;
     });
+    /* Sin ningún título a la vista se está dentro de la última sección cuyo
+       título ya pasó (los enlaces van en el orden del formulario). */
+    if (!elegida) {
+      enlaces.forEach(function (_, seccion) {
+        if (pasadas.has(seccion)) elegida = seccion;
+      });
+    }
     enlaces.forEach(function (enlace, seccion) {
       enlace.classList.toggle('is-actual', seccion === elegida);
+    });
+    if (elegida && elegida !== actual) dejarALaVista(enlaces.get(elegida));
+    actual = elegida;
+  }
+
+  /* Cuáles títulos quedaron arriba de la franja observada. Se miden todos y
+     no sólo los que avisaron: al saltar de una sección a otra (con el índice,
+     o con «Ir a guardar») los intermedios pasan de arriba a abajo sin cruzar
+     la franja y el observador no los reporta. Una sección oculta mide cero y
+     no cuenta. Son ocho medidas, y sólo cuando algo entra o sale de pantalla. */
+  function medirPasadas() {
+    enlaces.forEach(function (_, seccion) {
+      const caja = seccion.getBoundingClientRect();
+      if (caja.height > 0 && caja.bottom <= MARGEN_SUPERIOR) pasadas.add(seccion);
+      else pasadas.delete(seccion);
     });
   }
 
@@ -5749,10 +5795,27 @@ function inicializarIndiceActivo() {
       if (entrada.isIntersecting) visibles.add(entrada.target);
       else visibles.delete(entrada.target);
     });
+    medirPasadas();
     repintar();
-  }, { rootMargin: '-140px 0px -55% 0px' });
+  }, { rootMargin: '-' + MARGEN_SUPERIOR + 'px 0px -55% 0px' });
 
   enlaces.forEach(function (_, seccion) { observador.observe(seccion); });
+
+  /* Un salto entre dos puntos sin ningún título a la vista (del cierre a la
+     mitad de la vivienda) no cruza la franja de arriba: nadie avisaría y el
+     índice se quedaría en la sección anterior. Los bloques del formulario sí
+     entran o salen de pantalla en ese salto; con eso basta para volver a
+     medir, sin escuchar el desplazamiento. */
+  const vigia = new IntersectionObserver(function () {
+    medirPasadas();
+    repintar();
+  });
+  [document.getElementById('encuestaForm'), document.getElementById('bloquesCaptura')].forEach(function (padre) {
+    if (!padre) return;
+    Array.prototype.forEach.call(padre.children, function (bloque) {
+      if (bloque !== indice && bloque.id !== 'bloquesCaptura') vigia.observe(bloque);
+    });
+  });
 }
 
 function inicializarAplicacion() {

@@ -83,10 +83,10 @@ typography:
     letterSpacing: "normal"
   eyebrow:
     fontFamily: "Plus Jakarta Sans, Segoe UI, system-ui, sans-serif"
-    fontSize: "10.5px"
+    fontSize: "11px"
     fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "0.18em"
+    letterSpacing: "0.16em"
   mono:
     fontFamily: "JetBrains Mono, ui-monospace, Consolas, monospace"
     fontSize: "12.5px"
@@ -141,7 +141,7 @@ components:
     rounded: "{rounded.core}"
     padding: "20px 20px 16px"
   input:
-    backgroundColor: "{colors.ink-50}"
+    backgroundColor: "#ffffff"
     textColor: "{colors.ink-900}"
     rounded: "{rounded.control}"
     padding: "10px 12px"
@@ -199,8 +199,9 @@ harían daño aquí. Se descartaron, con motivo:
   px; duplicar el aire duplica el recorrido de quien lo diligencia de pie.
 - **Ruido, grano y gradientes mesh.** Bajan el contraste efectivo a pleno sol.
 - **Cristal esmerilado sobre contenido que se desplaza.** Repinta la GPU en
-  cada fotograma. Sólo lo llevan superficies fijas: cabecera, índice, barra de
-  pendientes y velo de diálogo.
+  cada fotograma. Desde el 12-11-2026 sólo lo llevan los velos de diálogo y de
+  bloqueo: la cabecera, el índice y la barra de pendientes son opacos, porque
+  bajo el cristal se veía pasar el texto del formulario.
 - **Solapamientos y rotaciones.** Conflictan con el área de toque en un
   formulario que se rellena con el pulgar.
 - **Revelados de 800 ms al entrar en viewport.** Sobre ocho secciones sería un
@@ -251,6 +252,9 @@ principal **no es negro**: el negro puro vibra sobre blanco. El lienzo es
   grises cálidos y fríos, y no quedan grises sueltos fuera de la escala.
 - **El cero se apaga.** Un indicador en cero pinta su cifra en tinta secundaria:
   la ausencia de dato no debe competir con el dato.
+- **El texto de apoyo es `--ink-500`** (5,9:1 sobre blanco): ayudas, rótulos,
+  números de ítem y ejemplos dentro de los campos. `--ink-400` (3,6:1) queda
+  para iconos, ceros y estados inactivos: como texto se pierde a pleno sol.
 
 ## Typography
 
@@ -265,7 +269,8 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
 - Subtítulo de bloque 15 / 700 · Cuerpo 14.5 / 400 / 1.55.
 - Etiqueta de campo 13 / **500** — en un formulario de doscientos campos, cada
   etiqueta en seminegrita compite con el dato que la sigue.
-- Auxiliar 12.5 · Micro 11.5 · Versalita 10.5 / 600 / 0.18em.
+- Auxiliar 12.5 · Micro 11.5 · Versalita 11 / 600 / 0.16em (11 px es el piso
+  de cualquier texto de la interfaz).
 - `tabular-nums` en **toda** la interfaz, no sólo en tablas: las cifras de un
   instrumento clínico no pueden cambiar de ancho al actualizarse.
 
@@ -284,7 +289,14 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
 ## Layout
 
 - Contenedor 1180 px, guardia lateral 40 px (16 en celular), aire superior 48.
-- Cabecera fija de 74 px con cristal esmerilado; se eleva al desplazar.
+- Cabecera fija de 74 px, opaca; se eleva al desplazar. Entre 721 y 1100 px se
+  compacta a una fila: el nombre del usuario queda en su menú y el subtítulo
+  pierde su segunda mitad (en una tableta eran dos filas, 130 px).
+- **Celular (720 px o menos): navegación abajo.** La cabecera es un renglón
+  con el logo y el usuario, y se va con la página. Las pestañas pasan a una
+  barra fija al pie, al alcance del pulgar, con icono y nombre; la activa se
+  dice en el color de la marca y en la píldora teñida de su icono. La barra
+  de pendientes y el aviso de versión nueva suben por encima de ella.
 - **Inicio: bento de 12 columnas.** Panel principal `span 8` (versalita, título,
   subtítulo, CTA), bandeja del total `span 4` con el marcador y, debajo, el
   **módulo de sincronización** (icono teñido por estado, título y detalle, barra
@@ -302,10 +314,18 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
   marcador; bajo 680, la cadena va de a dos sin pelos ni
   conectores y el resto a una columna.
 - **Formulario: una sola página larga** en el orden del instrumento, con el
-  índice pegajoso bajo la cabecera y `scroll-margin-top` compensando ambos.
+  índice siempre a la vista y `scroll-margin-top` compensando lo que queda
+  pegado arriba (`--tope-anclas`). Con 1240 px o más el índice es una columna
+  de 232 px a la izquierda y el contenedor se ensancha a 1440 px.
 - **Historial: nunca se pinta como tabla.** Doce columnas no caben ni en
   escritorio. El marcado sigue siendo `<table>` por semántica y el CSS lo
-  reorganiza en tarjetas de `minmax(320px, 1fr)` con `data-label`.
+  reorganiza en tarjetas de `minmax(320px, 1fr)` con `data-label`. La tarjeta
+  va de lo que identifica a lo rutinario: código, estado y plan de cuidado;
+  «Lugar» (territorio, microterritorio y dirección como un bloque) y las dos
+  fechas lado a lado; y el resto, un dato por línea. Lo que no dice nada («No»,
+  «No aplica», «Sin modificaciones») va en texto llano; lo excepcional
+  conserva su distintivo. Las celdas se eligen por su `data-label`, nunca por
+  su posición.
 - **Reportes: menú lateral + vista.** Las tres vistas del apartado (tablero
   de población, productividad, descargas) comparten un menú de 232 px a la
   izquierda, pegajoso bajo la cabecera; con él el contenedor se ensancha a
@@ -366,11 +386,16 @@ es el único sitio del formulario donde el azul aparece como superficie llena, y
 sirve de mojón al desplazarse. El cierre invierte su placa a tinta sólida.
 
 ### Campos
-Etiqueta encima (13/500), control debajo, ayuda opcional. Fondo apagado en
-reposo, **blanco puro al enfocar** —el campo activo se enciende— con pelo azul
-de 1.5 px y anillo de 3 px. Error: fondo teñido y anillo rojos, mensaje
-RN-### pulsable que lleva al campo. Deshabilitado por una regla: apagado como
-el de sólo lectura, con texto más tenue.
+Etiqueta encima (13/500), control debajo, ayuda opcional. **Blanco es lo que
+se llena**: el campo por llenar es blanco con contorno firme (`--campo-borde`,
+3,6:1) y, al enfocar, pelo azul de 1.5 px con anillo de 3 px. **Gris es lo
+que no se llena**: lo automático y lo de sólo lectura va en `--ink-100`, plano
+y sin contorno; lo que viene de la sesión o se calcula, en tinte azul. Antes
+los dos eran grises y no se distinguían a pleno sol. Error: fondo teñido y
+anillo rojos, mensaje RN-### pulsable que lleva al campo; un grupo de
+opciones se marca una vez, en su contenedor. Deshabilitado por una regla:
+apagado, con texto más tenue. Las casillas y los radios son los nativos, con
+el azul de la marca y 18 px: no heredan relleno ni contorno de los campos.
 
 **El ancho lo decide el dato, no la tarjeta.** `.form-grid` tiene siempre doce
 columnas y cada campo declara su ancho:
@@ -393,13 +418,26 @@ preguntas de una tarjeta es de 24 px y sale de la hoja, no de estilos en línea.
 
 ### Píldoras de opción
 Contorno por sombra; seleccionada en tinte azul con pelo de 1.5 px y peso 600.
-`.check-pill--excluyente` («Ninguna de las anteriores») ocupa la fila entera y
-va sobre lienzo: anula a las demás, no es una más de la lista.
+Las casillas de una pregunta van en rejilla de columnas iguales, con la
+última fila alineada a la izquierda: se leen como columnas, no como filas de
+anchos distintos. `.check-pill--excluyente` («Ninguna de las anteriores»)
+ocupa la fila entera y va sobre lienzo: anula a las demás, no es una más de
+la lista.
 
 ### Índice del formulario
-Isla esmerilada, enlaces **neutros en reposo**. Con ocho chips azules el índice
-pesaba más que el formulario; el azul se reserva para el único que importa, el
-de la sección que se está mirando, encendido por `IntersectionObserver`.
+Opaco, con enlaces **neutros en reposo**: el azul se reserva para el de la
+sección en la que se está, que sigue encendido aunque su título ya no esté
+en pantalla (`IntersectionObserver`, sin escuchar el desplazamiento). Tres
+formas según el ancho:
+- **Computador (1240 px o más):** columna pegajosa a la izquierda, con las
+  secciones, la casilla de revisión, «Guardar avance», «Empezar otra» y la
+  frase completa del último guardado.
+- **Tableta y portátil pequeño:** una sola fila bajo la cabecera. Las secciones
+  se deslizan de lado —la actual se lleva al centro— y a la derecha quedan
+  fijos el visto con la hora del último guardado y los dos botones.
+- **Celular:** la misma fila a ras del borde, pegada arriba, y debajo los
+  botones con el visto y la hora.
+«Cierre» se distingue por su peso, no por un relleno negro permanente.
 
 ### Avisos y distintivos
 Fondo teñido + pelo de la misma familia. El aviso flotante dice su estado con un
