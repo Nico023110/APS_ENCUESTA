@@ -6514,33 +6514,36 @@ html.nivel-administrador #sincronia { display: none; }
   .acceso__volver:hover { background: var(--ink-100); color: var(--ink-900); }
 }
 
-/* ---- Respuesta a la pantalla --------------------------------------------
+/* ---- Respuesta a la pantalla (2026-11-13) --------------------------------
    Bajo 900 px las hojas se apilan: el panel azul se vuelve una cabecera
-   corta con sus formas y la tarjeta lo pisa desde abajo. */
+   con el nombre y para qué es la aplicación, y la tarjeta la pisa desde
+   abajo. El conjunto se centra en la pantalla: antes quedaba pegado arriba
+   con media pantalla vacía, y la cabecera mostraba sólo el título cortado. */
 @media (max-width: 900px) {
-  .cuerpo-acceso { padding: var(--s-4) var(--s-4) var(--s-8); align-items: start; }
+  .cuerpo-acceso {
+    align-items: center;
+    padding: max(var(--s-5), env(safe-area-inset-top, 0px)) var(--s-4) max(var(--s-6), env(safe-area-inset-bottom, 0px));
+  }
 
   .puerta {
-    --puerta-solape: 28px;
+    --puerta-solape: 32px;
     grid-template-columns: 1fr;
-    max-width: 480px;
+    max-width: 460px;
   }
 
   .puerta__institucion {
     min-height: 0;
-    flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
     text-align: left;
-    gap: var(--s-4);
-    padding: var(--s-5) var(--s-5) calc(var(--s-5) + var(--puerta-solape));
+    gap: var(--s-3);
+    padding: var(--s-5) var(--s-6) calc(var(--s-5) + var(--puerta-solape));
     border-radius: var(--r-shell);
   }
-  .puerta__mensaje { align-items: flex-start; }
-
-  .puerta__mensaje { gap: 0; }
-  .puerta__titulo { font-size: var(--fs-h2); color: #fff; }
-  .puerta__texto, .puerta__pie { display: none; }
+  .puerta__mensaje { align-items: flex-start; gap: 4px; max-width: none; }
+  .puerta__titulo { font-size: 26px; color: #fff; }
+  .puerta__texto { font-size: var(--fs-small); line-height: 1.45; }
+  .puerta__pie { display: none; }
 
   .puerta__acceso {
     margin-left: 0;
@@ -6548,8 +6551,36 @@ html.nivel-administrador #sincronia { display: none; }
     padding: 0 var(--s-3);
   }
 
-  .acceso { padding: var(--s-6) var(--s-5) var(--s-5); }
-  .acceso__logo { height: 64px; }
+  .acceso { padding: var(--s-6) var(--s-5) var(--s-5); gap: var(--s-4); }
+  .acceso__logo { height: 60px; }
+  .acceso__titulo { font-size: 24px; }
+}
+
+/* Tableta vertical: hay aire; la cabecera muestra todo y la tarjeta crece. */
+@media (min-width: 600px) and (max-width: 900px) and (min-height: 700px) {
+  .puerta { --puerta-solape: 40px; max-width: 540px; }
+  .puerta__institucion { gap: var(--s-4); padding: var(--s-8) var(--s-8) calc(var(--s-8) + var(--puerta-solape)); }
+  .puerta__titulo { font-size: 36px; }
+  .puerta__texto { font-size: var(--fs-h3); }
+  .puerta__pie { display: flex; margin-top: 0; }
+  .puerta__acceso { padding: 0 var(--s-5); }
+  .acceso { padding: var(--s-8) var(--s-8) var(--s-6); gap: var(--s-5); }
+  .acceso__logo { height: 76px; }
+  .acceso__titulo { font-size: var(--fs-h1); }
+}
+
+/* Celular acostado (o cualquier pantalla baja): sin el panel azul —el logo
+   de la tarjeta ya dice quién es— para que el formulario quepa sin
+   desplazarse. */
+@media (max-height: 560px) and (max-width: 1000px) {
+  .cuerpo-acceso { padding: var(--s-3) var(--s-4); }
+  .puerta { max-width: 520px; }
+  .puerta__institucion { display: none; }
+  .puerta__acceso { margin-top: 0; padding: 0; }
+  .acceso { padding: var(--s-4) var(--s-6); gap: var(--s-3); }
+  .acceso__cabecera { flex-direction: row; justify-content: center; gap: var(--s-4); }
+  .acceso__logo { height: 44px; }
+  .acceso__titulo { font-size: 22px; }
 }
 
 @media (min-width: 901px) and (max-width: 1180px) {
