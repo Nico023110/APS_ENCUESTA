@@ -74,19 +74,75 @@
      Lista
      --------------------------------------------------------- */
 
+  const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
   function formatearFechaHora(valor) {
-    if (!valor) return 'Nunca';
+    if (!valor) return null;
     const fecha = new Date(valor);
-    if (isNaN(fecha.getTime())) return '—';
-    return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) +
-      ' ' + fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    if (isNaN(fecha.getTime())) return null;
+    return fecha.getDate() + ' ' + MESES[fecha.getMonth()] + ' ' + fecha.getFullYear() + ', ' +
+      fecha.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  /* El nombre llega en mayúsculas sostenidas, como en el documento. En la
+     lista se muestra como nombre propio («Ana María de la Cruz»), que se lee
+     más rápido; la búsqueda sigue usando el valor original. */
+  const PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'y', 'e'];
+  function nombrePropio(texto) {
+    return String(texto || '').toLocaleLowerCase('es-CO').split(/\s+/).filter(Boolean).map(function (p, i) {
+      if (i > 0 && PARTICULAS.indexOf(p) !== -1) return p;
+      return p.charAt(0).toLocaleUpperCase('es-CO') + p.slice(1);
+    }).join(' ');
+  }
+
+  function iniciales(texto) {
+    const partes = String(texto || '').trim().split(/\s+/).filter(function (p) {
+      return PARTICULAS.indexOf(p.toLocaleLowerCase('es-CO')) === -1;
+    });
+    return ((partes[0] || '').charAt(0) + (partes[1] || '').charAt(0)).toLocaleUpperCase('es-CO') || '·';
+  }
+
+  function estadoDe(u) {
+    if (!u.activo) return 'inactiva';
+    if (u.bloqueadoHasta && new Date(u.bloqueadoHasta) > new Date()) return 'bloqueada';
+    if (u.debeCambiarClave) return 'clave';
+    return 'activa';
   }
 
   function badgeEstado(u) {
-    if (!u.activo) return '<span class="badge badge--danger">Desactivada</span>';
-    if (u.bloqueadoHasta && new Date(u.bloqueadoHasta) > new Date()) return '<span class="badge badge--warning">Bloqueada</span>';
-    if (u.debeCambiarClave) return '<span class="badge badge--warning">Clave temporal</span>';
+    const estado = estadoDe(u);
+    if (estado === 'inactiva') return '<span class="badge badge--danger">Desactivada</span>';
+    if (estado === 'bloqueada') return '<span class="badge badge--warning">Bloqueada</span>';
+    if (estado === 'clave') return '<span class="badge badge--warning">Clave temporal</span>';
     return '<span class="badge badge--success">Activa</span>';
+  }
+
+  /* Bajo el estado, el último ingreso: «Nunca ha entrado» es lo que la
+     coordinación quiere ver de una cuenta con clave temporal. */
+  function celdaEstado(u) {
+    const cuando = formatearFechaHora(u.ultimoAccesoEn);
+    return badgeEstado(u) +
+      '<span class="usuarios__acceso' + (cuando ? '' : ' usuarios__acceso--nunca') + '">' +
+        (cuando ? 'Último acceso: ' + textoSeguro(cuando) : 'Nunca ha entrado') + '</span>';
+  }
+
+  /* Cuántas cuentas hay en la lista filtrada y en qué estado. */
+  function pintarResumen(lista) {
+    const destino = $('usuariosResumen');
+    if (!destino) return;
+    if (usuarios.length === 0) { destino.textContent = ''; return; }
+    const cuenta = { activa: 0, clave: 0, bloqueada: 0, inactiva: 0 };
+    lista.forEach(function (u) { cuenta[estadoDe(u)]++; });
+    const partes = [];
+    /* Cada cifra con su punto en una sola pieza: al partirse la línea no
+       queda un punto suelto al final del renglón. */
+    if (cuenta.activa) partes.push('<span class="usuarios__punto usuarios__punto--ok"></span>' + cuenta.activa + (cuenta.activa === 1 ? ' activa' : ' activas'));
+    if (cuenta.clave) partes.push('<span class="usuarios__punto usuarios__punto--aviso"></span>' + cuenta.clave + ' con clave temporal');
+    if (cuenta.bloqueada) partes.push('<span class="usuarios__punto usuarios__punto--aviso"></span>' + cuenta.bloqueada + (cuenta.bloqueada === 1 ? ' bloqueada' : ' bloqueadas'));
+    if (cuenta.inactiva) partes.push('<span class="usuarios__punto usuarios__punto--alerta"></span>' + cuenta.inactiva + (cuenta.inactiva === 1 ? ' desactivada' : ' desactivadas'));
+    destino.innerHTML = '<strong>' + lista.length + (lista.length === 1 ? ' cuenta' : ' cuentas') +
+      (lista.length !== usuarios.length ? ' de ' + usuarios.length : '') + '</strong>' +
+      partes.map(function (p) { return '<span class="usuarios__resumen-item">' + p + '</span>'; }).join('');
   }
 
   function filtrados() {
@@ -97,6 +153,7 @@
       if (rol && u.rol !== rol) return false;
       if (estado === 'activo' && !u.activo) return false;
       if (estado === 'inactivo' && u.activo) return false;
+      if (estado === 'clave' && estadoDe(u) !== 'clave') return false;
       if (!texto) return true;
       return [u.nombre, u.documento, u.equipo, (u.apoyo || []).join(' '), u.rolEtiqueta, u.cargo, u.correo].some(function (v) {
         return String(v || '').toLowerCase().indexOf(texto) !== -1;
@@ -108,14 +165,22 @@
      esa aclaración como antes. */
   function detalleDeRol(u) {
     const detalle = u.cargo || (u.perfil === 'otro' ? u.perfilOtro : '');
-    return detalle && detalle !== u.rolEtiqueta ? ' <span class="usuarios__detalle">· ' + textoSeguro(detalle) + '</span>' : '';
+    return detalle && detalle !== u.rolEtiqueta ? '<span class="usuarios__cargo">' + textoSeguro(detalle) + '</span>' : '';
   }
 
+  /* Un dato por renglón, con su icono. El correo largo se recorta con «…»
+     (completo al pasar el mouse) en vez de partirse a mitad de palabra. */
   function contacto(u) {
     const partes = [];
-    if (u.correo) partes.push('<span class="usuarios__contacto">' + textoSeguro(u.correo) + '</span>');
-    if (u.telefono) partes.push('<span class="usuarios__contacto mono">' + textoSeguro(u.telefono) + '</span>');
-    return partes.length ? partes.join('') : '—';
+    if (u.correo) {
+      partes.push('<span class="usuarios__contacto" title="' + textoSeguro(u.correo) + '">' +
+        '<i class="ph ph-envelope-simple" aria-hidden="true"></i><span>' + textoSeguro(u.correo) + '</span></span>');
+    }
+    if (u.telefono) {
+      partes.push('<span class="usuarios__contacto mono">' +
+        '<i class="ph ph-phone" aria-hidden="true"></i><span>' + textoSeguro(u.telefono) + '</span></span>');
+    }
+    return partes.length ? partes.join('') : '<span class="usuarios__vacio">Sin contacto</span>';
   }
 
   function pintarLista() {
@@ -130,25 +195,34 @@
       const protegida = u.rol === 'maestro' && actor.rol !== 'maestro';
       const titulo = protegida ? ' title="Sólo un usuario maestro puede modificar esta cuenta"' : '';
       const acciones =
-        (modifica ? '<button type="button" class="btn btn--ghost btn--icon" data-modificar="' + u.id + '"' +
-          (protegida ? ' disabled' + titulo : '') + '>Modificar</button>' : '') +
-        (restablece ? '<button type="button" class="btn btn--ghost btn--icon" data-restablecer="' + u.id + '"' +
-          (protegida ? ' disabled' + titulo : '') + '>Restablecer clave</button>' : '');
+        (modifica ? '<button type="button" class="btn usuarios__accion" data-modificar="' + u.id + '"' +
+          (protegida ? ' disabled' + titulo : '') + '><i class="ph ph-pencil-simple" aria-hidden="true"></i>Modificar</button>' : '') +
+        (restablece ? '<button type="button" class="btn usuarios__accion" data-restablecer="' + u.id + '"' +
+          (protegida ? ' disabled' + titulo : '') + '><i class="ph ph-key" aria-hidden="true"></i>Restablecer clave</button>' : '');
+      const estado = estadoDe(u);
       return (
-        '<tr' + (u.activo ? '' : ' class="is-inactiva"') + '>' +
-          '<td data-label="Nombre">' + textoSeguro(u.nombre) + (esYo ? ' <span class="usuarios__yo">(usted)</span>' : '') + '</td>' +
-          '<td data-label="Documento"><span class="mono">' + textoSeguro(u.tipoId) + ' ' + textoSeguro(u.documento) + '</span></td>' +
-          '<td data-label="Rol">' + textoSeguro(u.rolEtiqueta) + detalleDeRol(u) + '</td>' +
-          '<td data-label="Equipo">' + celdaDeEquipo(u) + '</td>' +
-          '<td data-label="Contacto">' + contacto(u) + '</td>' +
-          '<td data-label="Estado">' + badgeEstado(u) + '</td>' +
-          '<td data-label="Último acceso">' + textoSeguro(formatearFechaHora(u.ultimoAccesoEn)) + '</td>' +
-          '<td class="actions-cell">' + (acciones || '<span class="usuarios__detalle">Sólo consulta</span>') + '</td>' +
+        '<tr class="usuarios__fila usuarios__fila--' + estado + (u.activo ? '' : ' is-inactiva') + '">' +
+          '<td data-label="Persona" class="usuarios__persona-celda"><div class="usuarios__persona">' +
+            '<span class="usuarios__avatar" aria-hidden="true">' + textoSeguro(iniciales(u.nombre)) + '</span>' +
+            '<span class="usuarios__identidad">' +
+              '<span class="usuarios__nombre">' + textoSeguro(nombrePropio(u.nombre)) +
+                (esYo ? ' <span class="usuarios__yo">Usted</span>' : '') + '</span>' +
+              '<span class="usuarios__documento mono">' + textoSeguro(u.tipoId) + ' ' + textoSeguro(u.documento) + '</span>' +
+            '</span>' +
+          '</div></td>' +
+          '<td data-label="Rol y equipo" class="usuarios__rol">' +
+            '<span class="usuarios__rol-nombre">' + textoSeguro(u.rolEtiqueta) + '</span>' + detalleDeRol(u) +
+            celdaDeEquipo(u) +
+          '</td>' +
+          '<td data-label="Contacto" class="usuarios__contactos">' + contacto(u) + '</td>' +
+          '<td data-label="Estado" class="usuarios__estado-celda">' + celdaEstado(u) + '</td>' +
+          '<td class="actions-cell usuarios__acciones-celda">' + (acciones || '<span class="usuarios__vacio">Sólo consulta</span>') + '</td>' +
         '</tr>'
       );
     }).join('');
 
     $('usuariosEmptyState').hidden = lista.length > 0;
+    pintarResumen(lista);
 
     cuerpo.querySelectorAll('[data-modificar]').forEach(function (boton) {
       boton.addEventListener('click', function () { abrirFormulario(buscar(boton.dataset.modificar)); });
@@ -214,10 +288,12 @@
      los que apoya. */
   function celdaDeEquipo(u) {
     const apoyo = u.apoyo || [];
-    if (!u.equipo && apoyo.length === 0) return '—';
-    return (u.equipo ? '<span class="mono">' + textoSeguro(u.equipo) + '</span>' : '') +
-      (apoyo.length > 0 ? (u.equipo ? ' · ' : '') + '<span class="usuarios__detalle">Apoya a <span class="mono">' +
-        textoSeguro(apoyo.join(', ')) + '</span></span>' : '');
+    if (!u.equipo && apoyo.length === 0) return '';
+    const chip = function (codigo) { return '<span class="usuarios__ebs">' + textoSeguro(codigo) + '</span>'; };
+    return '<span class="usuarios__equipos">' +
+      (u.equipo ? chip(u.equipo) : '') +
+      (apoyo.length > 0 ? '<span class="usuarios__apoya">Apoya a</span>' + apoyo.map(chip).join('') : '') +
+      '</span>';
   }
 
   /* Qué se le explica a quien crea la cuenta según el rol elegido. El rol

@@ -1995,29 +1995,32 @@
           <span class="btn-cta__icono" aria-hidden="true"><i class="ph ph-plus"></i></span>
         </button>
       </div>
-      <div class="filters-bar">
-        <input type="text" id="usuariosFiltroTexto" placeholder="Buscar por nombre, documento, cargo o equipo...">
-        <select id="usuariosFiltroRol">
+      <div class="filters-bar usuarios__filtros">
+        <label class="usuarios__buscar">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input type="text" id="usuariosFiltroTexto" placeholder="Buscar por nombre, documento, cargo o equipo" aria-label="Buscar usuarios">
+        </label>
+        <select id="usuariosFiltroRol" aria-label="Filtrar por rol">
           <option value="">Rol: todos</option>
         </select>
-        <select id="usuariosFiltroEstado">
+        <select id="usuariosFiltroEstado" aria-label="Filtrar por estado">
           <option value="">Estado: todos</option>
           <option value="activo">Activos</option>
+          <option value="clave">Con clave temporal</option>
           <option value="inactivo">Desactivados</option>
         </select>
       </div>
+      <!-- Cuántas cuentas hay y en qué estado (usuarios.js). -->
+      <p class="usuarios__resumen" id="usuariosResumen" aria-live="polite"></p>
       <div class="table-wrapper">
         <table class="data-table" id="usuariosTable">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Documento</th>
-              <th>Rol</th>
-              <th>Equipo</th>
+              <th>Persona</th>
+              <th>Rol y equipo</th>
               <th>Contacto</th>
               <th>Estado</th>
-              <th>Último acceso</th>
-              <th>Acciones</th>
+              <th><span class="visualmente-oculto">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="usuariosTableBody"></tbody>
