@@ -1903,7 +1903,7 @@ function inicializarNavegacion() {
      las fichas que contaba la fila. */
   document.querySelectorAll('[data-filtro-historial]').forEach(function (boton) {
     boton.addEventListener('click', function () {
-      ['filtroTexto', 'filtroHacinamiento', 'filtroPlanCuidado'].forEach(function (id) {
+      ['filtroTexto', 'filtroIntegrantes', 'filtroPlanCuidado'].forEach(function (id) {
         const campo = document.getElementById(id);
         if (campo) campo.value = '';
       });
@@ -2594,19 +2594,22 @@ function renderizarInicio() {
 
 function obtenerEncuestasFiltradas() {
   const texto = document.getElementById('filtroTexto').value.trim().toLowerCase();
-  const filtroHacinamiento = document.getElementById('filtroHacinamiento').value;
+  const filtroIntegrantes = document.getElementById('filtroIntegrantes').value;
   const filtroPlan = document.getElementById('filtroPlanCuidado').value;
 
   return obtenerEncuestasParaMostrar().filter(function (encuesta) {
     const coincideTexto = !texto || String(encuesta.codigoFicha).toLowerCase().includes(texto);
 
-    const coincideHacinamiento = !filtroHacinamiento || encuesta.hacinamiento === filtroHacinamiento;
+    /* RN-051: declarados en el ítem 51 que no estaban en la visita. */
+    const faltan = integrantesPendientesDe(encuesta);
+    const coincideIntegrantes = !filtroIntegrantes ||
+      (filtroIntegrantes === 'pendientes' ? faltan > 0 : faltan === 0);
 
     const plan = encuesta.planCuidado;
     const coincidePlan = !filtroPlan ||
       (filtroPlan === 'pendiente' ? !!(plan && plan.pendiente) : !!(plan && plan.pendiente === false));
 
-    return coincideTexto && coincideHacinamiento && coincidePlan;
+    return coincideTexto && coincideIntegrantes && coincidePlan;
   });
 }
 
@@ -3086,11 +3089,11 @@ async function abrirAutorizacionDePlan(id) {
 
 function inicializarFiltrosHistorial() {
   document.getElementById('filtroTexto').addEventListener('input', renderizarHistorial);
-  document.getElementById('filtroHacinamiento').addEventListener('change', renderizarHistorial);
+  document.getElementById('filtroIntegrantes').addEventListener('change', renderizarHistorial);
   document.getElementById('filtroPlanCuidado').addEventListener('change', renderizarHistorial);
   document.getElementById('btnLimpiarFiltros').addEventListener('click', function () {
     document.getElementById('filtroTexto').value = '';
-    document.getElementById('filtroHacinamiento').value = '';
+    document.getElementById('filtroIntegrantes').value = '';
     document.getElementById('filtroPlanCuidado').value = '';
     renderizarHistorial();
   });

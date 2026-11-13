@@ -173,18 +173,24 @@ function montar(locales, filas) {
 
   console.log('\n=== 3. Atención → historial filtrado ===');
   app.doc.getElementById('filtroTexto').value = 'algo';
-  $('#atencionHacinamiento').click();
+  app.doc.getElementById('filtroIntegrantes').value = 'pendientes';
+  $('#atencionPlan').click();
   check('Abre el historial', $('#view-historial').classList.contains('is-active'));
-  check('  filtrado por hacinamiento y sin el texto anterior',
-    app.doc.getElementById('filtroHacinamiento').value === 'si' && app.doc.getElementById('filtroTexto').value === '');
+  check('Plan pendiente abre el historial con ese filtro y limpia los demás',
+    app.doc.getElementById('filtroPlanCuidado').value === 'pendiente' &&
+    app.doc.getElementById('filtroIntegrantes').value === '' && app.doc.getElementById('filtroTexto').value === '');
   const filasHistorial = app.doc.querySelectorAll('#historialTableBody tr');
   check('  muestra exactamente la ficha que contaba la fila', filasHistorial.length === 1, filasHistorial.length);
+  check('El hacinamiento es una cifra, no un botón (el historial ya no lo filtra)',
+    $('#atencionHacinamiento').tagName !== 'BUTTON');
 
-  app.api.cambiarVista('inicio');
-  $('#atencionPlan').click();
-  check('Plan pendiente abre el historial con ese filtro y limpia el de hacinamiento',
-    app.doc.getElementById('filtroPlanCuidado').value === 'pendiente' &&
-    app.doc.getElementById('filtroHacinamiento').value === '');
+  /* Filtro «Integrantes»: las fichas con integrantes por caracterizar y las completas suman todas. */
+  const filtroInt = app.doc.getElementById('filtroIntegrantes');
+  app.doc.getElementById('filtroPlanCuidado').value = '';
+  const contar = (v) => { filtroInt.value = v; filtroInt.dispatchEvent(new app.window.Event('change')); return app.doc.querySelectorAll('#historialTableBody tr').length; };
+  const todas = contar(''), conPendientes = contar('pendientes'), completas = contar('completos');
+  check('Filtro de integrantes: pendientes + completos = todas', conPendientes + completas === todas, conPendientes + '+' + completas + ' de ' + todas);
+  contar('');
   check('La situación inminente no es un botón (el historial no la filtra)',
     $('#atencionInminente').tagName !== 'BUTTON');
 

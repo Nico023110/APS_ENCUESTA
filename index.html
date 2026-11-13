@@ -196,17 +196,14 @@
             </div>
           </li>
           <li>
-            <button type="button" class="atencion__fila" id="atencionHacinamiento"
-                    data-filtro-historial="filtroHacinamiento" data-valor="si"
-                    title="Ver en el historial las fichas con hacinamiento">
+            <div class="atencion__fila" id="atencionHacinamiento">
               <span class="atencion__icono" aria-hidden="true"><i class="ph ph-bed"></i></span>
               <span class="atencion__texto">
                 <span class="atencion__titulo">Hacinamiento</span>
                 <span class="atencion__desc">Más de 2 personas por cuarto</span>
               </span>
               <span class="atencion__cifra"><span class="atencion__punto" aria-hidden="true"></span><span class="atencion__valor">0</span></span>
-              <span class="atencion__flecha" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
-            </button>
+            </div>
           </li>
           <li>
             <button type="button" class="atencion__fila" id="atencionPlan"
@@ -1938,10 +1935,10 @@
       </div>
       <div class="filters-bar">
         <input type="text" id="filtroTexto" placeholder="Buscar por número de ficha...">
-        <select id="filtroHacinamiento">
-          <option value="">Hacinamiento: todos</option>
-          <option value="si">Con hacinamiento</option>
-          <option value="no">Sin hacinamiento</option>
+        <select id="filtroIntegrantes" aria-label="Filtrar por integrantes por caracterizar">
+          <option value="">Integrantes: todos</option>
+          <option value="pendientes">Faltan integrantes</option>
+          <option value="completos">Integrantes completos</option>
         </select>
         <select id="filtroPlanCuidado">
           <option value="">Plan de cuidado: todos</option>
