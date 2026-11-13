@@ -272,6 +272,8 @@ function actualizarEncabezadosDeBloques() {
 
   actualizarEncabezadosDePlanes('#contenedorPlanFamilia', 'planFamilia', 'tituloPlanFamilia', 'metaPlanFamilia', 'Cuidado de la familia ');
   actualizarEncabezadosDePlanes('#contenedorPlanPersona', 'planPersona', 'tituloPlanPersona', 'metaPlanPersona', 'Cuidado de la persona ');
+  /* El índice lista las familias e integrantes con estos mismos títulos. */
+  if (typeof programarIndiceFormulario === 'function') programarIndiceFormulario();
 }
 
 function actualizarEncabezadosDePlanes(selector, tipo, rolTitulo, rolMeta, prefijo) {

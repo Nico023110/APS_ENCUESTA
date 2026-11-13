@@ -4560,6 +4560,7 @@ function apagarNavegadorPendientes() {
   const barra = document.getElementById('navErrores');
   if (barra) barra.hidden = true;
   desplegarListaPendientes(false);
+  actualizarPendientesDelIndice();
 }
 
 function desplegarListaPendientes(abierta) {
@@ -4594,6 +4595,7 @@ function renderizarNavegadorPendientes() {
 
   document.getElementById('navErroresAnterior').disabled = listo;
   document.getElementById('navErroresSiguiente').disabled = listo;
+  actualizarPendientesDelIndice();
 
   const lista = document.getElementById('navErroresLista');
   if (listo) {
@@ -5775,9 +5777,12 @@ function inicializarIndiceActivo() {
     }
     enlaces.forEach(function (enlace, seccion) {
       enlace.classList.toggle('is-actual', seccion === elegida);
+      if (seccion === elegida) enlace.setAttribute('aria-current', 'location');
+      else enlace.removeAttribute('aria-current');
     });
     if (elegida && elegida !== actual) dejarALaVista(enlaces.get(elegida));
     actual = elegida;
+    marcarParteActual();
   }
 
   /* Cuáles títulos quedaron arriba de la franja observada. Se miden todos y
@@ -5819,6 +5824,303 @@ function inicializarIndiceActivo() {
       if (bloque !== indice && bloque.id !== 'bloquesCaptura') vigia.observe(bloque);
     });
   });
+  vigiaDePartes = vigia;
+  programarIndiceFormulario();
+}
+
+/* ---------------------------------------------------------
+   Partes del índice: subsecciones, familias e integrantes
+   ---------------------------------------------------------
+   Saltar a «4·5 Familias» dejaba al comienzo de todas las familias, y para
+   llegar al tercer integrante había que desplazarse varias pantallas. Bajo
+   la sección actual el índice lista sus partes —las tarjetas de la
+   sección, cada familia y, de la familia en la que se está, cada
+   integrante—, y cada una lleva a su sitio abriendo el bloque si está
+   plegado. Después de intentar guardar, cada sección y cada parte dicen
+   cuántos pendientes tienen (los mismos de la barra de pendientes).
+   En tableta y celular las partes no caben en la fila: van en «Ir a…», la
+   lista nativa del equipo. */
+
+const NOMBRES_CORTOS_INDICE = {
+  '2.1': 'Situaciones inminentes', '2.2': 'Escenario del entorno', '2.3': 'Equipo de salud',
+  '2.4': 'Personal del equipo', '2.5': 'Vivienda y dirección',
+  '3.1': 'Condiciones de la vivienda', '3.2': 'Oficios y animales', '3.3': 'Agua y saneamiento',
+  '3.4': 'Acceso y desplazamiento', '3.5': 'Residuos', '3.6': 'Aire y energía', '3.7': 'Vectores',
+  '3.8': 'Productos químicos', '6.1': 'Plan de la vivienda', '6.2': 'Plan de cada familia', '6.3': 'Plan de cada persona'
+};
+
+let partesDelIndice = [];   // [{ seccion, enlace, partes: [{ el, nivel, nombre, detalle, boton, hijos }] }]
+let vigiaDePartes = null;
+let temporizadorIndice = null;
+
+function programarIndiceFormulario() {
+  clearTimeout(temporizadorIndice);
+  temporizadorIndice = setTimeout(armarSubindice, 200);
+}
+
+function textoLimpio(nodo) {
+  return nodo ? nodo.textContent.replace(/\s+/g, ' ').trim() : '';
+}
+
+/* Nombre de una tarjeta para el índice: el corto si lo hay, si no su título. */
+function nombreDeParte(titulo) {
+  const numero = /^(\d\.\d)\s/.exec(titulo);
+  if (numero && NOMBRES_CORTOS_INDICE[numero[1]]) return numero[1] + ' ' + NOMBRES_CORTOS_INDICE[numero[1]];
+  return titulo.replace(/\s*Anexo SI-APS.*$/, '').replace(/ de la atención$/, '');
+}
+
+/* Las partes de cada sección, en el orden del formulario. */
+function recogerPartes(formulario, secciones) {
+  const candidatos = [];
+  [formulario, document.getElementById('bloquesCaptura')].forEach(function (padre) {
+    if (!padre) return;
+    Array.prototype.forEach.call(padre.children, function (hijo) {
+      if (hijo.hidden) return;
+      if (hijo.matches('.card') && hijo.querySelector('.card__header h2')) {
+        candidatos.push({ el: hijo, nombre: nombreDeParte(textoLimpio(hijo.querySelector('.card__header h2'))) });
+      } else if (hijo.matches('h3.subseccion-titulo')) {
+        candidatos.push({ el: hijo, nombre: nombreDeParte(textoLimpio(hijo)) });
+      } else if (hijo.id === 'resumenAlertasPlan') {
+        candidatos.push({ el: hijo, nombre: 'Resumen de alertas' });
+      } else if (hijo.id === 'accionesFormulario') {
+        candidatos.push({ el: hijo, nombre: 'Guardar todo' });
+      } else if (hijo.id === 'contenedorFamilias') {
+        hijo.querySelectorAll(':scope > [data-bloque="familia"]').forEach(function (familia, i) {
+          const integrantes = [];
+          familia.querySelectorAll('[data-rol="contenedorIntegrantes"] > [data-bloque="integrante"]').forEach(function (integrante, j) {
+            integrantes.push({
+              el: integrante, nivel: 3,
+              nombre: textoLimpio(integrante.querySelector('[data-rol="tituloIntegrante"]')) || 'Integrante ' + (j + 1),
+              detalle: (function (t) { return t === 'Sin datos' ? '' : t; })(textoLimpio(integrante.querySelector('[data-rol="metaIntegrante"]')))
+            });
+          });
+          candidatos.push({
+            el: familia, familia: true,
+            nombre: 'Familia ' + (i + 1),
+            detalle: textoLimpio(familia.querySelector('[data-rol="metaFamilia"]')),
+            hijos: integrantes
+          });
+        });
+      }
+    });
+  });
+  /* Cada parte va con la última sección cuyo título la precede. */
+  return secciones.map(function (s, k) {
+    const siguiente = secciones[k + 1] ? secciones[k + 1].seccion : null;
+    const partes = candidatos.filter(function (c) {
+      const despues = s.seccion.compareDocumentPosition(c.el) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const antesDeLaOtra = !siguiente || (c.el.compareDocumentPosition(siguiente) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return despues && antesDeLaOtra;
+    });
+    /* Una sección de una sola tarjeta (el consentimiento) no necesita partes. */
+    return Object.assign({}, s, { partes: partes.length > 1 || partes.some(function (p) { return p.familia; }) ? partes : [] });
+  });
+}
+
+function armarSubindice() {
+  const indice = document.getElementById('formNav');
+  const formulario = document.getElementById('encuestaForm');
+  if (!indice || !formulario) return;
+  const secciones = [];
+  indice.querySelectorAll('.form-nav__link[href^="#"]').forEach(function (enlace) {
+    const seccion = document.getElementById(enlace.getAttribute('href').slice(1));
+    if (seccion) secciones.push({ seccion: seccion, enlace: enlace });
+  });
+  partesDelIndice = recogerPartes(formulario, secciones);
+
+  indice.querySelectorAll('.form-nav__sub').forEach(function (n) { n.remove(); });
+  partesDelIndice.forEach(function (s) {
+    if (s.partes.length === 0) return;
+    const caja = document.createElement('div');
+    caja.className = 'form-nav__sub';
+    const agregar = function (parte, nivel) {
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'form-nav__sublink';
+      boton.dataset.nivel = String(nivel);
+      const nombre = document.createElement('span');
+      nombre.className = 'form-nav__subnombre';
+      nombre.textContent = parte.nombre;
+      boton.appendChild(nombre);
+      if (parte.detalle) {
+        const detalle = document.createElement('span');
+        detalle.className = 'form-nav__subdetalle';
+        detalle.textContent = parte.detalle;
+        boton.appendChild(detalle);
+      }
+      const pendientes = document.createElement('span');
+      pendientes.className = 'form-nav__pendientes';
+      pendientes.hidden = true;
+      boton.appendChild(pendientes);
+      boton.addEventListener('click', function () { irAParteDelIndice(parte.el); });
+      parte.boton = boton;
+      caja.appendChild(boton);
+    };
+    s.partes.forEach(function (parte) {
+      agregar(parte, 2);
+      (parte.hijos || []).forEach(function (hijo) { agregar(hijo, 3); });
+    });
+    s.enlace.insertAdjacentElement('afterend', caja);
+  });
+
+  if (vigiaDePartes) {
+    partesDelIndice.forEach(function (s) {
+      s.partes.forEach(function (p) {
+        vigiaDePartes.observe(p.el);
+        (p.hijos || []).forEach(function (h) { vigiaDePartes.observe(h.el); });
+      });
+    });
+  }
+  llenarSaltoDelIndice();
+  actualizarPendientesDelIndice();
+  marcarParteActual();
+}
+
+/* Lo que queda pegado arriba: la cabecera y, en tableta y celular, el índice. */
+function topeFijoDelFormulario() {
+  let tope = 0;
+  const cabecera = document.querySelector('.app-header');
+  if (cabecera && getComputedStyle(cabecera).position === 'sticky') tope = Math.max(tope, cabecera.getBoundingClientRect().bottom);
+  const indice = document.getElementById('formNav');
+  if (indice && getComputedStyle(indice).position === 'sticky' && indice.offsetWidth > window.innerWidth * 0.6) {
+    tope = Math.max(tope, indice.getBoundingClientRect().bottom);
+  }
+  return Math.max(0, tope);
+}
+
+function irAParteDelIndice(destino) {
+  if (!destino) return;
+  revelarElemento(destino);
+  if (destino.tagName === 'DETAILS') destino.open = true;
+  const quieto = typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const y = destino.getBoundingClientRect().top + window.scrollY - topeFijoDelFormulario() - 16;
+  if (typeof window.scrollTo === 'function') {
+    try { window.scrollTo({ top: Math.max(0, y), behavior: quieto ? 'auto' : 'smooth' }); } catch (e) { /* jsdom */ }
+  }
+  const resumen = destino.querySelector && destino.querySelector(':scope > summary');
+  const foco = resumen || destino;
+  if (foco && typeof foco.focus === 'function') {
+    if (!resumen && !foco.hasAttribute('tabindex')) foco.setAttribute('tabindex', '-1');
+    try { foco.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+  }
+}
+
+/* La parte de la sección actual que está a la vista. Se mide sólo cuando
+   algo entra o sale de pantalla (lo avisan los observadores). */
+function marcarParteActual() {
+  if (partesDelIndice.length === 0) return;
+  const tope = topeFijoDelFormulario() + 24;
+  const actual = partesDelIndice.find(function (s) { return s.enlace.classList.contains('is-actual'); });
+  partesDelIndice.forEach(function (s) {
+    s.partes.forEach(function (p) {
+      if (p.boton) p.boton.classList.remove('is-actual', 'is-abierta');
+      (p.hijos || []).forEach(function (h) { if (h.boton) h.boton.classList.remove('is-actual'); });
+    });
+  });
+  if (!actual) return;
+  let elegida = null;
+  actual.partes.forEach(function (p) {
+    const caja = p.el.getBoundingClientRect();
+    if (caja.height > 0 && caja.top <= tope) elegida = p;
+  });
+  if (!elegida && actual.partes[0]) elegida = actual.partes[0];
+  if (!elegida || !elegida.boton) return;
+  elegida.boton.classList.add('is-actual');
+  /* De la familia en la que se está se ven sus integrantes. */
+  if (elegida.familia) {
+    elegida.boton.classList.add('is-abierta');
+    let integrante = null;
+    (elegida.hijos || []).forEach(function (h) {
+      const caja = h.el.getBoundingClientRect();
+      if (caja.height > 0 && caja.top <= tope) integrante = h;
+    });
+    if (integrante && integrante.boton) integrante.boton.classList.add('is-actual');
+  }
+}
+
+/* Pendientes de la barra de pendientes, contados por sección y por parte. */
+function actualizarPendientesDelIndice() {
+  const items = navegadorPendientes && navegadorPendientes.activo ? navegadorPendientes.items : [];
+  const poner = function (nodo, n) {
+    const pastilla = nodo && nodo.querySelector('.form-nav__pendientes');
+    if (!pastilla) return;
+    pastilla.hidden = !n;
+    pastilla.textContent = n ? String(n) : '';
+    pastilla.title = n ? n + (n === 1 ? ' pendiente' : ' pendientes') : '';
+  };
+  const antesOEn = function (a, b) {
+    return a === b || a.contains(b) || (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+  };
+  const cuenta = new Map();
+  const sumar = function (clave) { cuenta.set(clave, (cuenta.get(clave) || 0) + 1); };
+  items.forEach(function (item) {
+    const d = item.destino;
+    if (!d || !d.isConnected) return;
+    let seccion = null;
+    partesDelIndice.forEach(function (s) { if (antesOEn(s.seccion, d)) seccion = s; });
+    if (!seccion) return;
+    sumar(seccion.enlace);
+    let parte = null;
+    seccion.partes.forEach(function (p) { if (antesOEn(p.el, d)) parte = p; });
+    if (!parte) return;
+    sumar(parte.boton);
+    (parte.hijos || []).forEach(function (h) { if (h.el.contains(d)) sumar(h.boton); });
+  });
+  partesDelIndice.forEach(function (s) {
+    poner(s.enlace, cuenta.get(s.enlace) || 0);
+    s.partes.forEach(function (p) {
+      poner(p.boton, cuenta.get(p.boton) || 0);
+      (p.hijos || []).forEach(function (h) { poner(h.boton, cuenta.get(h.boton) || 0); });
+    });
+  });
+  llenarSaltoDelIndice(cuenta);
+}
+
+/* «Ir a…» de tableta y celular: el mismo índice en la lista nativa. */
+function llenarSaltoDelIndice(cuenta) {
+  const lista = document.getElementById('formNavSaltar');
+  if (!lista) return;
+  const conteo = function (nodo) {
+    const n = cuenta ? cuenta.get(nodo) : 0;
+    return n ? ' — ' + n + (n === 1 ? ' pendiente' : ' pendientes') : '';
+  };
+  const destinos = [];
+  lista.innerHTML = '';
+  const vacia = document.createElement('option');
+  vacia.value = '';
+  vacia.textContent = 'Ir a…';
+  lista.appendChild(vacia);
+  partesDelIndice.forEach(function (s) {
+    const grupo = document.createElement('optgroup');
+    grupo.label = textoLimpio(s.enlace.querySelector('.form-nav__num')) + ' · ' + textoLimpio(s.enlace.querySelector('.form-nav__nombre'));
+    const opcion = function (texto, el) {
+      const o = document.createElement('option');
+      o.value = String(destinos.length);
+      o.textContent = texto;
+      destinos.push(el);
+      grupo.appendChild(o);
+    };
+    opcion('Comienzo de la sección' + conteo(s.enlace), s.seccion);
+    s.partes.forEach(function (p) {
+      opcion(p.nombre + (p.detalle ? ' (' + p.detalle + ')' : '') + conteo(p.boton), p.el);
+      (p.hijos || []).forEach(function (h) {
+        opcion('   ' + p.nombre + ' › ' + h.nombre + (h.detalle ? ', ' + h.detalle : '') + conteo(h.boton), h.el);
+      });
+    });
+    lista.appendChild(grupo);
+  });
+  lista.__destinos = destinos;
+}
+
+function inicializarSaltoDelIndice() {
+  const lista = document.getElementById('formNavSaltar');
+  if (!lista) return;
+  lista.addEventListener('change', function () {
+    const destino = (lista.__destinos || [])[Number(lista.value)];
+    lista.value = '';
+    if (destino) irAParteDelIndice(destino);
+  });
 }
 
 function inicializarAplicacion() {
@@ -5831,6 +6133,7 @@ function inicializarAplicacion() {
 
   inicializarCabeceraAlDesplazar();
   inicializarIndiceActivo();
+  inicializarSaltoDelIndice();
   inicializarCatalogosDelFormulario();
   inicializarModoRevision();
   /* La guía va antes del formulario dinámico: ahí se guardan los prototipos
