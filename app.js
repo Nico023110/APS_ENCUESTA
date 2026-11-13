@@ -6010,6 +6010,10 @@ function irAParteDelIndice(destino) {
    algo entra o sale de pantalla (lo avisan los observadores). */
 function marcarParteActual() {
   if (partesDelIndice.length === 0) return;
+  try { marcarParteActualEn(); } finally { pintarBotonActual(); }
+}
+
+function marcarParteActualEn() {
   const tope = topeFijoDelFormulario() + 24;
   const actual = partesDelIndice.find(function (s) { return s.enlace.classList.contains('is-actual'); });
   partesDelIndice.forEach(function (s) {
@@ -6074,7 +6078,168 @@ function actualizarPendientesDelIndice() {
       (p.hijos || []).forEach(function (h) { poner(h.boton, cuenta.get(h.boton) || 0); });
     });
   });
+  ultimaCuentaDelIndice = cuenta;
   llenarSaltoDelIndice(cuenta);
+  pintarBotonActual();
+}
+
+/* ---------------------------------------------------------
+   Celular: dónde se está y el índice en un panel
+   ---------------------------------------------------------
+   En el teléfono la barra del índice ocupaba dos filas (unos 90 px) con los
+   nombres cortados. Ahora es una fila: un botón grande con la sección y la
+   parte en la que se está —y sus pendientes— que abre el índice completo en
+   un panel desde abajo, al alcance del pulgar, y el botón de guardar. */
+
+let ultimaCuentaDelIndice = null;
+
+function pintarBotonActual() {
+  const boton = document.getElementById('formNavActual');
+  if (!boton) return;
+  const seccion = partesDelIndice.find(function (s) { return s.enlace.classList.contains('is-actual'); }) || partesDelIndice[0];
+  if (!seccion) return;
+  boton.querySelector('.form-nav__actual-num').innerHTML = seccion.enlace.querySelector('.form-nav__num').innerHTML;
+  boton.querySelector('.form-nav__actual-seccion').textContent = textoLimpio(seccion.enlace.querySelector('.form-nav__nombre'));
+  let parte = null;
+  let integrante = null;
+  seccion.partes.forEach(function (p) {
+    if (p.boton && p.boton.classList.contains('is-actual')) parte = p;
+  });
+  if (parte) (parte.hijos || []).forEach(function (h) { if (h.boton && h.boton.classList.contains('is-actual')) integrante = h; });
+  boton.querySelector('.form-nav__actual-parte').textContent =
+    parte ? parte.nombre + (integrante ? ' › ' + integrante.nombre : '') : '';
+  const n = ultimaCuentaDelIndice ? ultimaCuentaDelIndice.get(seccion.enlace) || 0 : 0;
+  const pastilla = boton.querySelector('.form-nav__pendientes');
+  pastilla.hidden = !n;
+  pastilla.textContent = n ? String(n) : '';
+  boton.setAttribute('aria-label', 'Índice de la ficha. Está en: ' +
+    textoLimpio(seccion.enlace.querySelector('.form-nav__nombre')) +
+    (parte ? ', ' + parte.nombre : '') + (n ? '. ' + n + ' pendientes' : ''));
+}
+
+function filaDeHoja(clase, num, nombre, detalle, n, actual, alElegir) {
+  const fila = document.createElement('button');
+  fila.type = 'button';
+  fila.className = clase + (actual ? ' is-actual' : '');
+  if (actual) fila.setAttribute('aria-current', 'location');
+  if (num !== null) {
+    const insignia = document.createElement('span');
+    insignia.className = 'hoja-indice__num';
+    insignia.innerHTML = num;
+    fila.appendChild(insignia);
+  }
+  const textos = document.createElement('span');
+  textos.className = 'hoja-indice__textos';
+  const t = document.createElement('span');
+  t.className = 'hoja-indice__nombre';
+  t.textContent = nombre;
+  textos.appendChild(t);
+  if (detalle) {
+    const d = document.createElement('span');
+    d.className = 'hoja-indice__detalle';
+    d.textContent = detalle;
+    textos.appendChild(d);
+  }
+  fila.appendChild(textos);
+  if (n) {
+    const p = document.createElement('span');
+    p.className = 'form-nav__pendientes';
+    p.textContent = String(n);
+    p.title = n + (n === 1 ? ' pendiente' : ' pendientes');
+    fila.appendChild(p);
+  }
+  fila.addEventListener('click', alElegir);
+  return fila;
+}
+
+function abrirHojaIndice() {
+  const hoja = document.getElementById('hojaIndice');
+  const lista = document.getElementById('hojaIndiceLista');
+  if (!hoja || !lista) return;
+  const cuenta = ultimaCuentaDelIndice;
+  const n = function (nodo) { return cuenta ? cuenta.get(nodo) || 0 : 0; };
+  lista.innerHTML = '';
+  let actual = null;
+  partesDelIndice.forEach(function (s) {
+    const esActual = s.enlace.classList.contains('is-actual');
+    const grupo = document.createElement('div');
+    grupo.className = 'hoja-indice__grupo';
+    const fila = filaDeHoja('hoja-indice__seccion', s.enlace.querySelector('.form-nav__num').innerHTML,
+      textoLimpio(s.enlace.querySelector('.form-nav__nombre')), null, n(s.enlace), esActual && !s.partes.some(function (p) { return p.boton && p.boton.classList.contains('is-actual'); }),
+      function () { cerrarHojaIndice(); irAParteDelIndice(s.seccion); });
+    grupo.appendChild(fila);
+    if (esActual && !actual) actual = fila;
+    s.partes.forEach(function (p) {
+      const pa = p.boton && p.boton.classList.contains('is-actual');
+      const fp = filaDeHoja('hoja-indice__parte', null, p.nombre, p.detalle, n(p.boton), pa && !(p.hijos || []).some(function (h) { return h.boton && h.boton.classList.contains('is-actual'); }),
+        function () { cerrarHojaIndice(); irAParteDelIndice(p.el); });
+      grupo.appendChild(fp);
+      if (pa) actual = fp;
+      (p.hijos || []).forEach(function (h) {
+        const ha = h.boton && h.boton.classList.contains('is-actual');
+        const fh = filaDeHoja('hoja-indice__parte hoja-indice__parte--integrante', null, h.nombre, h.detalle, n(h.boton), ha,
+          function () { cerrarHojaIndice(); irAParteDelIndice(h.el); });
+        grupo.appendChild(fh);
+        if (ha) actual = fh;
+      });
+    });
+    lista.appendChild(grupo);
+  });
+
+  const revision = document.getElementById('modoRevision');
+  const botonRevision = document.getElementById('hojaIndiceRevision');
+  if (botonRevision && revision) {
+    botonRevision.setAttribute('aria-pressed', revision.checked ? 'true' : 'false');
+    botonRevision.querySelector('span').textContent = revision.checked ? 'Ocultar campos condicionados' : 'Ver campos condicionados';
+  }
+  const estado = document.getElementById('estadoAvance');
+  document.getElementById('hojaIndiceEstado').textContent = estado ? estado.textContent : '';
+
+  hoja.hidden = false;
+  document.documentElement.classList.add('hoja-indice-abierta');
+  document.getElementById('formNavActual').setAttribute('aria-expanded', 'true');
+  /* La parte en la que se está, a la vista y con el foco. */
+  const destino = actual || lista.querySelector('button');
+  if (destino) {
+    if (typeof destino.scrollIntoView === 'function') destino.scrollIntoView({ block: 'center' });
+    try { destino.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+  }
+}
+
+function cerrarHojaIndice(devolverFoco) {
+  const hoja = document.getElementById('hojaIndice');
+  if (!hoja || hoja.hidden) return;
+  hoja.hidden = true;
+  document.documentElement.classList.remove('hoja-indice-abierta');
+  const boton = document.getElementById('formNavActual');
+  if (boton) {
+    boton.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) boton.focus();
+  }
+}
+
+function inicializarHojaIndice() {
+  const boton = document.getElementById('formNavActual');
+  const hoja = document.getElementById('hojaIndice');
+  if (!boton || !hoja) return;
+  boton.addEventListener('click', abrirHojaIndice);
+  document.getElementById('hojaIndiceCerrar').addEventListener('click', function () { cerrarHojaIndice(true); });
+  hoja.addEventListener('click', function (evento) { if (evento.target === hoja) cerrarHojaIndice(true); });
+  hoja.addEventListener('keydown', function (evento) {
+    if (evento.key === 'Escape') { evento.preventDefault(); cerrarHojaIndice(true); }
+  });
+  document.getElementById('hojaIndiceRevision').addEventListener('click', function () {
+    const revision = document.getElementById('modoRevision');
+    if (!revision) return;
+    revision.checked = !revision.checked;
+    revision.dispatchEvent(new Event('change', { bubbles: true }));
+    cerrarHojaIndice(true);
+  });
+  document.getElementById('hojaIndiceOtra').addEventListener('click', function () {
+    cerrarHojaIndice(true);
+    const otra = document.getElementById('btnEmpezarOtraFicha');
+    if (otra) otra.click();
+  });
 }
 
 /* «Ir a…» de tableta y celular: el mismo índice en la lista nativa. */
@@ -6134,6 +6299,7 @@ function inicializarAplicacion() {
   inicializarCabeceraAlDesplazar();
   inicializarIndiceActivo();
   inicializarSaltoDelIndice();
+  inicializarHojaIndice();
   inicializarCatalogosDelFormulario();
   inicializarModoRevision();
   /* La guía va antes del formulario dinámico: ahí se guardan los prototipos

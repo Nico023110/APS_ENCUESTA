@@ -249,7 +249,17 @@
 
       <!-- ============ ÍNDICE DE SECCIONES ============ -->
       <nav class="form-nav" id="formNav" aria-label="Secciones del formulario">
-        <!-- Tableta y celular: todo el índice, con familias e integrantes, en
+        <!-- Celular: dónde se está; al tocarlo, el índice completo (hojaIndice). -->
+        <button type="button" class="form-nav__actual" id="formNavActual" aria-haspopup="dialog" aria-controls="hojaIndice" aria-expanded="false">
+          <span class="form-nav__actual-num" aria-hidden="true">1</span>
+          <span class="form-nav__actual-textos">
+            <span class="form-nav__actual-seccion">Consentimiento</span>
+            <span class="form-nav__actual-parte"></span>
+          </span>
+          <span class="form-nav__pendientes" hidden></span>
+          <i class="ph ph-caret-up-down form-nav__actual-flecha" aria-hidden="true"></i>
+        </button>
+        <!-- Tableta: todo el índice, con familias e integrantes, en
              la lista nativa del equipo (en computador está a la vista). -->
         <label class="form-nav__saltar btn btn--icon">
           <i class="ph ph-list-magnifying-glass" aria-hidden="true"></i><span>Ir a…</span>
@@ -284,6 +294,26 @@
         </span>
         <span class="form-nav__estado" id="estadoAvance" role="status"></span>
       </nav>
+
+      <!-- Celular: el índice completo en un panel que sube desde abajo. Lo arma
+           app.js (abrirHojaIndice) con las mismas partes del índice. -->
+      <div class="hoja-indice" id="hojaIndice" hidden role="dialog" aria-modal="true" aria-labelledby="hojaIndiceTitulo">
+        <div class="hoja-indice__panel">
+          <span class="hoja-indice__asa" aria-hidden="true"></span>
+          <div class="hoja-indice__cabecera">
+            <h2 class="hoja-indice__titulo" id="hojaIndiceTitulo">Ir a</h2>
+            <button type="button" class="hoja-indice__cerrar" id="hojaIndiceCerrar" aria-label="Cerrar el índice"><i class="ph ph-x" aria-hidden="true"></i></button>
+          </div>
+          <div class="hoja-indice__lista" id="hojaIndiceLista"></div>
+          <div class="hoja-indice__pie">
+            <button type="button" class="btn btn--ghost btn--icon" id="hojaIndiceRevision" aria-pressed="false">
+              <i class="ph ph-eye" aria-hidden="true"></i><span>Ver campos condicionados</span></button>
+            <button type="button" class="btn btn--ghost btn--icon" id="hojaIndiceOtra">
+              <i class="ph ph-plus" aria-hidden="true"></i><span>Empezar otra</span></button>
+            <p class="hoja-indice__estado" id="hojaIndiceEstado"></p>
+          </div>
+        </div>
+      </div>
 
       <p class="revision-aviso" id="avisoRevision" hidden>
         <strong>Modo revisión activo.</strong>
