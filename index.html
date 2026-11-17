@@ -1915,7 +1915,7 @@
           <label>Cierre por causa externa</label>
           <label class="check-inline">
             <input type="checkbox" id="visitaIncompleta" name="visitaIncompleta">
-            Cerrar como <strong>visita incompleta por causa externa</strong>
+            <span>Cerrar como <strong>visita incompleta por causa externa</strong></span>
           </label>
           <span class="field-hint field-hint--inline">
             Rechazo del informante, ausencia de los integrantes, inseguridad en el territorio o urgencia
@@ -1928,12 +1928,29 @@
         </div>
       </div>
 
-      <div class="form-actions" id="accionesFormulario">
-        <button type="reset" class="btn btn--ghost" id="btnLimpiar">Limpiar formulario</button>
-        <button type="button" class="btn btn--ghost btn--icon" data-accion="guardarAvance"
-                title="Guarda lo diligenciado en este equipo sin cargarlo todavía a la base">
-          <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
-        <button type="submit" class="btn btn--primary" id="btnGuardar">Guardar todo</button>
+      <!-- Guardar la ficha: arriba, en qué estado está (lo pinta
+           actualizarEstadoDeGuardar en app.js: sin intentar, con pendientes o
+           lista); abajo, los botones. «Limpiar» borra todo: va aparte, a la
+           izquierda, lejos de «Guardar todo». -->
+      <div class="cierre-guardar" id="accionesFormulario" data-estado="inicial">
+        <div class="cierre-guardar__estado" aria-live="polite">
+          <i class="ph ph-flag-checkered cierre-guardar__icono" id="estadoGuardarIcono" aria-hidden="true"></i>
+          <div class="cierre-guardar__textos">
+            <strong class="cierre-guardar__titulo" id="estadoGuardarTitulo">Guardar la ficha</strong>
+            <span class="cierre-guardar__detalle" id="estadoGuardarDetalle">«Guardar todo» revisa que no falte nada y deja la ficha lista para subir a la base. «Guardar avance» la deja en este equipo para seguir después.</span>
+          </div>
+          <button type="button" class="btn btn--ghost btn--icon cierre-guardar__ir" id="btnIrPrimerPendiente" hidden>
+            Ir al primero <i class="ph ph-arrow-up-right" aria-hidden="true"></i></button>
+        </div>
+        <div class="cierre-guardar__acciones">
+          <button type="reset" class="btn btn--ghost btn--icon cierre-guardar__limpiar" id="btnLimpiar">
+            <i class="ph ph-trash" aria-hidden="true"></i> Limpiar formulario</button>
+          <button type="button" class="btn btn--ghost btn--icon cierre-guardar__avance" data-accion="guardarAvance"
+                  title="Guarda lo diligenciado en este equipo sin cargarlo todavía a la base">
+            <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
+          <button type="submit" class="btn btn--primary btn--icon cierre-guardar__guardar" id="btnGuardar">
+            <i class="ph ph-check-circle" aria-hidden="true"></i> Guardar todo</button>
+        </div>
       </div>
     </form>
 
@@ -1943,25 +1960,32 @@
     <div class="nav-errores" id="navErrores" hidden>
       <div class="nav-errores__lista" id="navErroresLista" hidden></div>
       <div class="nav-errores__barra">
+        <!-- Qué falta y cuál es: el conteo, el dato en el que se está (o el
+             primero) y, al tocarlo, la lista entera. -->
         <button type="button" class="nav-errores__resumen" id="navErroresResumen"
                 title="Ver u ocultar la lista de pendientes" aria-expanded="false" aria-controls="navErroresLista">
-          <i class="ph ph-warning-circle nav-errores__icono" id="navErroresIcono"></i>
-          <span class="nav-errores__texto" id="navErroresTexto">0 pendientes</span>
-          <span class="nav-errores__posicion" id="navErroresPosicion"></span>
-          <i class="ph ph-caret-up nav-errores__flecha"></i>
+          <i class="ph ph-warning-circle nav-errores__icono" id="navErroresIcono" aria-hidden="true"></i>
+          <span class="nav-errores__textos">
+            <span class="nav-errores__linea">
+              <span class="nav-errores__texto" id="navErroresTexto">0 pendientes</span>
+              <span class="nav-errores__posicion" id="navErroresPosicion"></span>
+            </span>
+            <span class="nav-errores__actual" id="navErroresActual"></span>
+          </span>
+          <span class="nav-errores__ver"><i class="ph ph-list-bullets" aria-hidden="true"></i><span>Ver lista</span><i class="ph ph-caret-up nav-errores__flecha" aria-hidden="true"></i></span>
         </button>
         <div class="nav-errores__botones">
-          <button type="button" class="nav-errores__btn" id="navErroresAnterior" title="Pendiente anterior (Alt + ↑)">
-            <i class="ph ph-arrow-up"></i><span>Anterior</span>
+          <button type="button" class="nav-errores__btn" id="navErroresAnterior" title="Pendiente anterior (Alt + ↑)" aria-label="Pendiente anterior">
+            <i class="ph ph-arrow-up" aria-hidden="true"></i><span>Anterior</span>
           </button>
           <button type="button" class="nav-errores__btn nav-errores__btn--principal" id="navErroresSiguiente" title="Siguiente pendiente (Alt + ↓)">
-            <span>Siguiente</span><i class="ph ph-arrow-down"></i>
+            <span>Siguiente</span><i class="ph ph-arrow-down" aria-hidden="true"></i>
           </button>
           <button type="button" class="nav-errores__btn nav-errores__btn--guardar" id="navErroresGuardar" title="Bajar hasta el botón Guardar (Alt + G)">
-            <i class="ph ph-floppy-disk"></i><span>Ir a guardar</span>
+            <i class="ph ph-check-circle" aria-hidden="true"></i><span>Ir a guardar</span>
           </button>
           <button type="button" class="nav-errores__cerrar" id="navErroresCerrar" title="Ocultar la barra" aria-label="Ocultar la barra de pendientes">
-            <i class="ph ph-x"></i>
+            <i class="ph ph-x" aria-hidden="true"></i>
           </button>
         </div>
       </div>

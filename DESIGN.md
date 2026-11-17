@@ -437,7 +437,25 @@ formas según el ancho:
   fijos el visto con la hora del último guardado y los dos botones.
 - **Celular:** la misma fila a ras del borde, pegada arriba, y debajo los
   botones con el visto y la hora.
-«Cierre» se distingue por su peso, no por un relleno negro permanente.
+«Cierre y guardar» es la salida de la ficha: va como botón (fondo `--brand-50`
+y contorno `--brand-300`, separado de las secciones en la columna), más suave
+que la sección actual, que es azul lleno. En el panel «Ir a» del celular, igual.
+
+### Cierre de la ficha (2026‑11‑17)
+- **Validación de completitud:** un resumen («N datos pendientes en M
+  secciones») y los pendientes agrupados por sección en grupos plegables con
+  su conteo; cada fila dice el campo, qué le falta y de quién es, y lleva a él.
+  Se abre el primer grupo; lo que el encuestador abra o cierre se respeta al
+  repintar. Nada de una tarjeta roja por dato.
+- **Guardar la ficha (`.cierre-guardar`):** bloque propio al pie. Arriba el
+  estado —sin intentar, «Faltan N datos» (rojo, con «Ir al primero») o «Sin
+  pendientes» (verde)—; abajo «Guardar todo» (el más grande, con icono),
+  «Guardar avance» y, a la izquierda y discreto, «Limpiar formulario», lejos
+  de guardar porque borra todo. En celular, «Guardar todo» primero.
+- **Barra de pendientes:** dos renglones —«Pendiente 3 de 134» y el dato con
+  su integrante— y «Ver lista» explícito. «Siguiente» va en azul de marca (en
+  rojo parecía una alarma); «Ir a guardar» es secundaria hasta que no queden
+  pendientes, y entonces pasa a principal y se retiran «Anterior» y «Siguiente».
 
 ### Avisos y distintivos
 Fondo teñido + pelo de la misma familia. El aviso flotante dice su estado con un

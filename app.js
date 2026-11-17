@@ -4366,33 +4366,163 @@ function renderizarPlanCuidado(resumen) {
    clic en uno se resuelve su destino desde aquí y no por índice del navegador. */
 let ultimosImpedimentos = [];
 
-/** RN-222 — Lista los impedimentos que bloquean el cierre. */
+/* Grupos de la lista de validación que el encuestador dejó abiertos: la lista
+   se repinta con cada cambio y no debe cerrársele lo que estaba mirando. */
+const gruposDeValidacionAbiertos = new Set();
+let validacionYaPintada = false;
+
+/* Las secciones del índice, con su encabezado en el formulario, en orden. */
+function seccionesDelFormulario() {
+  return Array.prototype.map.call(
+    document.querySelectorAll('#formNav .form-nav__secciones > .form-nav__link'),
+    function (enlace) {
+      const id = (enlace.getAttribute('href') || '').replace('#', '');
+      return { id: id, enlace: enlace, encabezado: id ? document.getElementById(id) : null };
+    }).filter(function (s) { return s.encabezado; });
+}
+
+/** La sección del formulario en la que cae un elemento (la de su encabezado anterior). */
+function seccionDeElemento(secciones, elemento) {
+  let encontrada = null;
+  secciones.forEach(function (s) {
+    if (elemento && (s.encabezado === elemento || ordenEnDocumento(s.encabezado, elemento) < 0)) encontrada = s;
+  });
+  return encontrada;
+}
+
+/**
+ * RN-222 — Lista los impedimentos que bloquean el cierre. Antes era una
+ * tarjeta roja por dato, una debajo de otra (más de cien en una ficha a
+ * medias): un muro que nadie recorría. Ahora un resumen y los datos agrupados
+ * por sección, cada grupo con su conteo y plegable; cada fila dice el campo,
+ * qué le falta y de quién es, y lleva a él.
+ */
 function renderizarImpedimentos(impedimentos) {
   const contenedor = document.getElementById('listaImpedimentos');
   ultimosImpedimentos = impedimentos;
 
   if (impedimentos.length === 0) {
     contenedor.innerHTML = estadoVacioHtml('impedimentosEmptyState', TEXTO_SIN_IMPEDIMENTOS);
+    /* La próxima ficha con pendientes vuelve a abrir su primer grupo. */
+    gruposDeValidacionAbiertos.clear();
+    validacionYaPintada = false;
     return;
   }
 
-  /* Cada impedimento es un enlace al campo que lo causa: el índice en
-     `data-pendiente` lo conecta con el navegador de pendientes. */
-  contenedor.innerHTML = impedimentos.map(function (item, indice) {
-    const referencia = item.referencia
-      ? '<span class="pill-meta">' + escaparHtml(item.referencia) + '</span>' : '';
-    return '<div class="alerta-item alerta-item--inmediata alerta-item--enlace" role="button" tabindex="0" ' +
-        'data-pendiente="' + indice + '" title="Ir al campo">' +
-      '<div class="alerta-item__cuerpo">' +
-        '<span class="alerta-item__titulo">' + escaparHtml(sinCodigoDeRegla(item.mensaje)) + '</span>' +
-        '<div class="alerta-item__pies">' +
-          (item.bloque ? '<span class="pill-meta">' + escaparHtml(item.bloque) + '</span>' : '') +
-          referencia +
-        '</div>' +
+  const formulario = document.getElementById('encuestaForm');
+  const secciones = seccionesDelFormulario();
+  const grupos = [];
+  const porId = {};
+  impedimentos.forEach(function (item, indice) {
+    const resuelto = formulario ? destinoDePendiente(formulario, item) : { destino: null, control: null };
+    const seccion = seccionDeElemento(secciones, resuelto.destino);
+    const clave = seccion ? seccion.id : 'otros';
+    if (!porId[clave]) {
+      porId[clave] = { clave: clave, seccion: seccion, items: [] };
+      grupos.push(porId[clave]);
+    }
+    porId[clave].items.push({ item: item, indice: indice, campo: etiquetaDePendiente(resuelto.destino, resuelto.control) });
+  });
+  const orden = secciones.map(function (s) { return s.id; });
+  grupos.sort(function (a, b) {
+    const ia = orden.indexOf(a.clave);
+    const ib = orden.indexOf(b.clave);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  /* La primera vez se abre el primer grupo, para que se vea cómo es la lista;
+     después se respeta lo que el encuestador abrió y cerró. */
+  if (!validacionYaPintada && grupos.length > 0) gruposDeValidacionAbiertos.add(grupos[0].clave);
+  validacionYaPintada = true;
+
+  const total = impedimentos.length;
+  const resumen =
+    '<div class="validacion-resumen">' +
+      '<i class="ph ph-warning-circle validacion-resumen__icono" aria-hidden="true"></i>' +
+      '<div>' +
+        '<strong class="validacion-resumen__titulo">' + total + (total === 1 ? ' dato pendiente' : ' datos pendientes') +
+          (grupos.length > 1 ? ' en ' + grupos.length + ' secciones' : '') + '</strong>' +
+        '<span class="validacion-resumen__detalle">Mientras falten, la ficha no se puede guardar. Abra una sección y ' +
+          'toque un dato para ir a él, o recórralos uno a uno con «Siguiente» en la barra de abajo.</span>' +
       '</div>' +
-      '<i class="ph ph-arrow-bend-up-left alerta-item__ir" aria-hidden="true"></i>' +
     '</div>';
+
+  /* Cada fila es un enlace al campo que lo causa: el índice en
+     `data-pendiente` lo conecta con el navegador de pendientes. */
+  contenedor.innerHTML = resumen + grupos.map(function (g) {
+    const nombre = g.seccion ? textoLimpio(g.seccion.enlace.querySelector('.form-nav__nombre')) : 'Otros datos';
+    const num = g.seccion ? g.seccion.enlace.querySelector('.form-nav__num').innerHTML : '';
+    const abierto = gruposDeValidacionAbiertos.has(g.clave);
+    return '<details class="validacion-grupo" data-grupo="' + escaparHtml(g.clave) + '"' + (abierto ? ' open' : '') + '>' +
+      '<summary class="validacion-grupo__cabecera">' +
+        '<span class="validacion-grupo__num" aria-hidden="true">' + num + '</span>' +
+        '<span class="validacion-grupo__nombre">' + escaparHtml(nombre) + '</span>' +
+        '<span class="validacion-grupo__conteo">' + g.items.length +
+          '<span class="visualmente-oculto">' + (g.items.length === 1 ? ' pendiente' : ' pendientes') + '</span></span>' +
+        '<i class="ph ph-caret-down validacion-grupo__flecha" aria-hidden="true"></i>' +
+      '</summary>' +
+      '<div class="validacion-grupo__items">' +
+        g.items.map(function (f) {
+          const referencia = f.item.referencia
+            ? '<span class="pill-meta">' + escaparHtml(f.item.referencia) + '</span>' : '';
+          const mensaje = sinCodigoDeRegla(f.item.mensaje);
+          const campo = f.campo && f.campo !== mensaje ? f.campo : '';
+          return '<div class="alerta-item alerta-item--enlace validacion-item" role="button" tabindex="0" ' +
+              'data-pendiente="' + f.indice + '" title="Ir al campo">' +
+            '<div class="alerta-item__cuerpo">' +
+              (campo ? '<span class="validacion-item__campo">' + escaparHtml(campo) + '</span>' : '') +
+              '<span class="alerta-item__titulo">' + escaparHtml(mensaje) + '</span>' +
+              (referencia ? '<div class="alerta-item__pies">' + referencia + '</div>' : '') +
+            '</div>' +
+            '<i class="ph ph-caret-right alerta-item__ir" aria-hidden="true"></i>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</details>';
   }).join('');
+}
+
+/* Abrir o cerrar un grupo se recuerda para el siguiente repintado. */
+function inicializarGruposDeValidacion() {
+  const contenedor = document.getElementById('listaImpedimentos');
+  if (!contenedor) return;
+  contenedor.addEventListener('toggle', function (evento) {
+    const grupo = evento.target;
+    if (!grupo.matches || !grupo.matches('.validacion-grupo')) return;
+    const clave = grupo.getAttribute('data-grupo');
+    if (grupo.open) gruposDeValidacionAbiertos.add(clave); else gruposDeValidacionAbiertos.delete(clave);
+  }, true);
+}
+
+/* Estado del bloque «Guardar la ficha», al pie: sin intentar todavía, con
+   datos pendientes (cuántos y un atajo al primero) o lista para guardar. */
+function actualizarEstadoDeGuardar() {
+  const bloque = document.getElementById('accionesFormulario');
+  if (!bloque || !document.getElementById('estadoGuardarTitulo')) return;
+  const activo = navegadorPendientes.activo;
+  const total = navegadorPendientes.items.length;
+  const estado = !activo ? 'inicial' : total > 0 ? 'pendientes' : 'listo';
+  bloque.setAttribute('data-estado', estado);
+
+  const icono = document.getElementById('estadoGuardarIcono');
+  const titulo = document.getElementById('estadoGuardarTitulo');
+  const detalle = document.getElementById('estadoGuardarDetalle');
+  if (estado === 'pendientes') {
+    icono.className = 'ph ph-warning-circle cierre-guardar__icono';
+    titulo.textContent = 'Faltan ' + total + (total === 1 ? ' dato' : ' datos') + ' para poder guardar';
+    detalle.textContent = 'Están en la lista de arriba, agrupados por sección, y en la barra de abajo. ' +
+      'Corríjalos y vuelva a pulsar «Guardar todo».';
+  } else if (estado === 'listo') {
+    icono.className = 'ph ph-check-circle cierre-guardar__icono';
+    titulo.textContent = 'Sin pendientes: ya puede guardar';
+    detalle.textContent = 'Pulse «Guardar todo» para dejar la ficha lista para subir a la base.';
+  } else {
+    icono.className = 'ph ph-flag-checkered cierre-guardar__icono';
+    titulo.textContent = 'Guardar la ficha';
+    detalle.textContent = '«Guardar todo» revisa que no falte nada y deja la ficha lista para subir a la base. ' +
+      '«Guardar avance» la deja en este equipo para seguir después.';
+  }
+  document.getElementById('btnIrPrimerPendiente').hidden = estado !== 'pendientes';
 }
 
 /* ---------------------------------------------------------
@@ -4513,7 +4643,12 @@ function etiquetaDePendiente(destino, control) {
   }
   if (control && control.tagName === 'BUTTON') return control.textContent.trim();
   if (destino && destino.matches) {
-    if (destino.matches('.section-banner')) return destino.textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
+    /* Del encabezado de sección, sólo su texto: con el número pegado se leía
+       «1Política general…». */
+    if (destino.matches('.section-banner')) {
+      const texto = destino.querySelector('.section-banner__texto') || destino;
+      return texto.textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
+    }
     const titulo = destino.querySelector('summary, .card__header h2, h2, h3');
     if (titulo) return titulo.textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
   }
@@ -4561,6 +4696,7 @@ function apagarNavegadorPendientes() {
   if (barra) barra.hidden = true;
   desplegarListaPendientes(false);
   actualizarPendientesDelIndice();
+  actualizarEstadoDeGuardar();
 }
 
 function desplegarListaPendientes(abierta) {
@@ -4585,17 +4721,28 @@ function renderizarNavegadorPendientes() {
   const icono = document.getElementById('navErroresIcono');
   icono.className = 'nav-errores__icono ph ' + (listo ? 'ph-check-circle' : 'ph-warning-circle');
 
+  /* Arriba, cuántos y en cuál va; abajo, qué dato es y de quién: antes sólo
+     decía «134 pendientes · 1 de 134» y había que buscar en la página cuál. */
+  const indice = navegadorPendientes.indice;
+  const enCurso = !listo && indice >= 0 ? items[indice] : null;
   document.getElementById('navErroresTexto').textContent = listo
     ? 'Sin pendientes: ya puede guardar'
-    : total + (total === 1 ? ' pendiente' : ' pendientes');
+    : enCurso ? 'Pendiente ' + (indice + 1) + ' de ' + total
+      : total + (total === 1 ? ' pendiente' : ' pendientes');
+  document.getElementById('navErroresPosicion').textContent = '';
 
-  document.getElementById('navErroresPosicion').textContent =
-    !listo && navegadorPendientes.indice >= 0
-      ? '· ' + (navegadorPendientes.indice + 1) + ' de ' + total : '';
+  const actual = document.getElementById('navErroresActual');
+  if (actual) {
+    const item = enCurso || items[0];
+    const nombre = item ? (item.etiqueta || sinCodigoDeRegla(item.mensaje || '')) : '';
+    actual.textContent = listo || !item ? 'Pulse «Ir a guardar» para terminar.'
+      : (enCurso ? '' : 'Empiece por: ') + nombre + (item.referencia ? ' · ' + item.referencia : '');
+  }
 
   document.getElementById('navErroresAnterior').disabled = listo;
   document.getElementById('navErroresSiguiente').disabled = listo;
   actualizarPendientesDelIndice();
+  actualizarEstadoDeGuardar();
 
   const lista = document.getElementById('navErroresLista');
   if (listo) {
@@ -4839,6 +4986,9 @@ function inicializarNavegadorPendientes() {
   document.getElementById('navErroresAnterior').addEventListener('click', irAlPendienteAnterior);
   document.getElementById('navErroresGuardar').addEventListener('click', irAGuardar);
   document.getElementById('navErroresCerrar').addEventListener('click', apagarNavegadorPendientes);
+  const irAlPrimero = document.getElementById('btnIrPrimerPendiente');
+  if (irAlPrimero) irAlPrimero.addEventListener('click', function () { irAPendiente(0); });
+  inicializarGruposDeValidacion();
 
   document.getElementById('navErroresResumen').addEventListener('click', function () {
     const lista = document.getElementById('navErroresLista');
@@ -5295,10 +5445,11 @@ async function enviarFichaAlServidor(encuesta, boton) {
 
   /* Se bloquea el botón mientras la petición viaja: sin esto, un segundo clic
      manda la ficha dos veces. */
-  const textoOriginal = boton ? boton.textContent : null;
+  /* innerHTML y no textContent: el botón lleva su icono. */
+  const textoOriginal = boton ? boton.innerHTML : null;
   if (boton) {
     boton.disabled = true;
-    boton.textContent = 'Guardando…';
+    boton.innerHTML = '<i class="ph ph-spinner-gap" aria-hidden="true"></i> Guardando…';
   }
 
   try {
@@ -5342,7 +5493,7 @@ async function enviarFichaAlServidor(encuesta, boton) {
   } finally {
     if (boton) {
       boton.disabled = false;
-      boton.textContent = textoOriginal;
+      boton.innerHTML = textoOriginal;
     }
   }
 }
@@ -6167,6 +6318,8 @@ function abrirHojaIndice() {
     const fila = filaDeHoja('hoja-indice__seccion', s.enlace.querySelector('.form-nav__num').innerHTML,
       textoLimpio(s.enlace.querySelector('.form-nav__nombre')), null, n(s.enlace), esActual && !s.partes.some(function (p) { return p.boton && p.boton.classList.contains('is-actual'); }),
       function () { cerrarHojaIndice(); irAParteDelIndice(s.seccion); });
+    /* «Cierre y guardar» es la salida de la ficha: se ve como botón. */
+    if (s.enlace.classList.contains('form-nav__link--cierre')) fila.classList.add('hoja-indice__seccion--cierre');
     grupo.appendChild(fila);
     if (esActual && !actual) actual = fila;
     s.partes.forEach(function (p) {
