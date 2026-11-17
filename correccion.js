@@ -652,6 +652,27 @@ function llevaAbiertos(elemento, abiertos, recorridos) {
     recorridos.some(function (r) { return elemento.contains(r); });
 }
 
+/* Lo que vive dentro del formulario pero es interfaz, no dato de la visita:
+   el índice «Ir a» —con «Cancelar», «Guardar avance» y «Empezar otra»—, su
+   panel en el celular, el aviso del modo revisión y la barra de pendientes.
+   Nunca se bloquea: al bloquear «todo lo anterior a la captura» quedaban
+   inertes, y no había cómo navegar ni cancelar la corrección. */
+const INTERFAZ_DEL_FORMULARIO = '#formNav, #hojaIndice, #avisoRevision, #navErrores';
+
+function esInterfazDelFormulario(elemento) {
+  return Boolean(elemento && elemento.matches && elemento.matches(INTERFAZ_DEL_FORMULARIO));
+}
+
+/* Bloquea los hijos de `raiz` anteriores a `hasta` (o todos), menos la
+   interfaz. */
+function bloquearHijosAntesDe(raiz, hasta) {
+  let antes = true;
+  Array.prototype.forEach.call(raiz.children, function (hijo) {
+    if (hijo === hasta) antes = false;
+    else if (antes && !esInterfazDelFormulario(hijo)) bloquearElemento(hijo, 'ficha');
+  });
+}
+
 function bloquearMenos(raiz, abiertos, recorridos) {
   Array.prototype.forEach.call(raiz.children, function (hijo) {
     if (abiertos.indexOf(hijo) !== -1) return;
@@ -680,16 +701,12 @@ function bloquearMenosIntegrantesNuevos(formulario, capturas, seccionPlan) {
     });
   });
 
-  let antesDelFieldset = true;
-  Array.prototype.forEach.call(formulario.children, function (hijo) {
-    if (hijo === capturas) antesDelFieldset = false;
-    else if (antesDelFieldset) bloquearElemento(hijo, 'ficha');
-  });
+  bloquearHijosAntesDe(formulario, capturas);
 
   let antesDelPlan = true;
   Array.prototype.forEach.call(capturas.children, function (hijo) {
     if (hijo === seccionPlan) antesDelPlan = false;
-    if (!antesDelPlan) return;
+    if (!antesDelPlan || esInterfazDelFormulario(hijo)) return;
     if (llevaAbiertos(hijo, abiertos, recorridos)) bloquearMenos(hijo, abiertos, recorridos);
     else bloquearElemento(hijo, 'ficha');
   });
@@ -718,17 +735,8 @@ function aplicarBloqueosDePlan(encuesta, opciones) {
   }
 
   if (o.secciones && formulario && capturas && seccionPlan) {
-    let antesDelFieldset = true;
-    Array.prototype.forEach.call(formulario.children, function (hijo) {
-      if (hijo === capturas) antesDelFieldset = false;
-      else if (antesDelFieldset) bloquearElemento(hijo, 'ficha');
-    });
-
-    let antesDelPlan = true;
-    Array.prototype.forEach.call(capturas.children, function (hijo) {
-      if (hijo === seccionPlan) antesDelPlan = false;
-      if (antesDelPlan) bloquearElemento(hijo, 'ficha');
-    });
+    bloquearHijosAntesDe(formulario, capturas);
+    bloquearHijosAntesDe(capturas, seccionPlan);
 
     /* El cierre por causa externa también es de la visita, no del plan. */
     const cierre = formulario.querySelector('[data-campo="visitaIncompleta"]');

@@ -6195,6 +6195,15 @@ function abrirHojaIndice() {
   const estado = document.getElementById('estadoAvance');
   document.getElementById('hojaIndiceEstado').textContent = estado ? estado.textContent : '';
 
+  /* Corrigiendo, completando integrantes o evolucionando el plan: cómo salir,
+     con el mismo texto del botón del índice. */
+  const cancelar = document.getElementById('btnCancelarCorreccion');
+  const cancelarHoja = document.getElementById('hojaIndiceCancelar');
+  if (cancelarHoja) {
+    cancelarHoja.hidden = !cancelar || cancelar.hidden;
+    if (cancelar) cancelarHoja.querySelector('span').textContent = cancelar.textContent.trim();
+  }
+
   hoja.hidden = false;
   document.documentElement.classList.add('hoja-indice-abierta');
   document.getElementById('formNavActual').setAttribute('aria-expanded', 'true');
@@ -6240,6 +6249,14 @@ function inicializarHojaIndice() {
     const otra = document.getElementById('btnEmpezarOtraFicha');
     if (otra) otra.click();
   });
+  const cancelarHoja = document.getElementById('hojaIndiceCancelar');
+  if (cancelarHoja) {
+    cancelarHoja.addEventListener('click', function () {
+      cerrarHojaIndice(true);
+      const cancelar = document.getElementById('btnCancelarCorreccion');
+      if (cancelar && !cancelar.hidden) cancelar.click();
+    });
+  }
 }
 
 /* «Ir a…» de tableta y celular: el mismo índice en la lista nativa. */

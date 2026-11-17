@@ -187,6 +187,13 @@ const cambiar = (el, valor) => { el.value = valor; el.dispatchEvent(new window.E
   check('El plan de cuidado queda abierto', !bloqueado($('#btnAgregarAccionVivienda')));
   check('El cierre por causa externa, bloqueado', bloqueado($('[name="visitaIncompleta"]')));
   check('Guardar sigue disponible', !bloqueado($('#btnGuardar')));
+  /* El índice vive dentro del formulario, antes de la captura: quedaba
+     inerte con la visita y no había cómo navegar ni cancelar. */
+  check('El índice «Ir a» sigue disponible', !bloqueado($('#formNav')));
+  check('  y su «Cancelar completar» también', $('#btnCancelarCorreccion') && !bloqueado($('#btnCancelarCorreccion')) &&
+    !$('#btnCancelarCorreccion').hidden);
+  check('  y el panel del índice del celular', !bloqueado($('#hojaIndice')));
+  check('  y la barra de pendientes', !bloqueado($('#navErrores')));
 
   const campo51 = $('[name="familias[0].numeroIntegrantes"]');
   cambiar(campo51, '1');
