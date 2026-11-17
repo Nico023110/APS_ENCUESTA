@@ -3889,6 +3889,16 @@ html.hoja-indice-abierta { overflow: hidden; }
    vacío hasta que se escribe. */
 .revelar-condicionados .combo-cups__lista[hidden] { display: none !important; }
 
+/* Tampoco lo son las piezas de la interfaz que viven dentro del formulario:
+   los contadores de pendientes del índice (vacíos, se veían como una pila de
+   etiquetas «Campo condicionado» sobre cada parte), el panel del índice en el
+   celular y las ayudas «?» de cada campo, que se abren con su botón. El modo
+   revisión revela campos, no la interfaz. */
+.revelar-condicionados .form-nav [hidden],
+.revelar-condicionados .hoja-indice[hidden],
+.revelar-condicionados .hoja-indice [hidden],
+.revelar-condicionados .guia-campo[hidden] { display: none !important; }
+
 .revision-aviso {
   padding: 11px 15px;
   margin-bottom: 16px;
