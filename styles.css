@@ -6812,6 +6812,78 @@ html.nivel-administrador #sincronia { display: none; }
   color: var(--ink-700);
 }
 .usuarios__apoya { font-size: var(--fs-micro); color: var(--ink-500); margin: 0 2px; }
+/* El principal, cuando trabaja en varios EBS: el mismo chip en azul. */
+.usuarios__ebs--principal { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1px var(--brand-100); }
+
+/* ---- EBS de la persona en el formulario (uno o varios) -------------------
+   Una lista de fichas: el principal en azul con su etiqueta, los demás en
+   gris con «También» (o «Apoya», sin principal). Cada ficha se quita con su
+   ×; la estrella vuelve principal a otra. Debajo, la lista para agregar. */
+.usuarios-ebs,
+.form-grid > .field.usuarios-ebs { display: flex; flex-direction: column; gap: var(--s-2); grid-row: auto; }
+.form-grid > .field.usuarios-ebs > * { grid-row: auto; margin: 0; }
+.form-grid > .field.usuarios-ebs[hidden] { display: none; }
+.usuarios-ebs__titulo { font-size: var(--fs-label); font-weight: 600; color: var(--ink-800); }
+.usuarios-ebs__lista { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.usuarios-ebs__lista[hidden] { display: none; }
+.usuarios-ebs__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 4px 4px 12px;
+  border-radius: var(--r-control);
+  background: var(--ink-50);
+  box-shadow: inset 0 0 0 1px var(--ink-150);
+}
+.usuarios-ebs__chip.is-principal { background: var(--brand-50); box-shadow: inset 0 0 0 1.5px var(--brand-600); }
+.usuarios-ebs__codigo { font-family: var(--font-mono); font-size: var(--fs-label); font-weight: 600; color: var(--ink-900); }
+.usuarios-ebs__papel {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-600);
+}
+.is-principal .usuarios-ebs__papel { color: var(--brand-700); }
+.usuarios-ebs__papel--nuevo { background: var(--warn-50); color: var(--warn-700); }
+.usuarios-ebs__accion,
+.usuarios-ebs__cancelar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-500);
+  font-size: 16px;
+  cursor: pointer;
+}
+.usuarios-ebs__accion:hover,
+.usuarios-ebs__cancelar:hover { background: rgba(11, 18, 32, 0.06); color: var(--ink-800); }
+.usuarios-ebs__accion:focus-visible,
+.usuarios-ebs__cancelar:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--brand-600); }
+.usuarios-ebs__agregar select { width: 100%; max-width: 340px; }
+.usuarios-ebs__agregar select[hidden] { display: none; }
+.usuarios-ebs__nuevo { display: flex; align-items: center; gap: var(--s-2); max-width: 420px; }
+.usuarios-ebs__nuevo[hidden] { display: none; }
+.usuarios-ebs__nuevo input { flex: 1 1 auto; min-width: 0; }
+.usuarios-ebs__solo-apoya {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.45;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-700);
+  cursor: pointer;
+}
+.usuarios-ebs__solo-apoya[hidden] { display: none; }
+.usuarios-ebs__solo-apoya input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--brand-600); }
+.usuarios-ebs .field-hint { margin: 0; }
 
 /* Contacto: un dato por renglón, con su icono; el correo largo se recorta. */
 .usuarios__contactos { max-width: 260px; }

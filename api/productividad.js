@@ -254,7 +254,10 @@ module.exports = async (req, res) => {
         ? pool.query(`
             SELECT DISTINCT eq.codigo AS clave
               FROM aps.equipo_salud eq
-              JOIN aps.funcionario fu ON fu.equipo_salud_id = eq.id AND fu.activo
+              JOIN aps.funcionario fu ON fu.activo
+               AND (fu.equipo_salud_id = eq.id
+                    OR EXISTS (SELECT 1 FROM aps.funcionario_apoyo_ebs a
+                                WHERE a.funcionario_id = fu.id AND a.equipo_salud_id = eq.id))
               JOIN aps.usuario u ON u.funcionario_id = fu.id AND u.activo
              WHERE eq.activo
                AND ($1::text IS NULL OR eq.codigo = $1)
@@ -268,8 +271,15 @@ module.exports = async (req, res) => {
                 LEFT JOIN aps.equipo_salud eq ON eq.id = fu.equipo_salud_id
                WHERE fu.activo
                  AND u.rol = ANY($1::text[])
-                 AND ($2::text IS NULL OR eq.codigo = $2)
-                 AND ($3::bigint[] IS NULL OR fu.equipo_salud_id = ANY($3::bigint[]))
+                 /* Cuenta en cada EBS en que trabaja: el principal y los
+                    demás (aps.funcionario_apoyo_ebs). */
+                 AND ($2::text IS NULL OR eq.codigo = $2
+                      OR EXISTS (SELECT 1 FROM aps.funcionario_apoyo_ebs a
+                                   JOIN aps.equipo_salud ea ON ea.id = a.equipo_salud_id
+                                  WHERE a.funcionario_id = fu.id AND ea.codigo = $2))
+                 AND ($3::bigint[] IS NULL OR fu.equipo_salud_id = ANY($3::bigint[])
+                      OR EXISTS (SELECT 1 FROM aps.funcionario_apoyo_ebs a
+                                  WHERE a.funcionario_id = fu.id AND a.equipo_salud_id = ANY($3::bigint[])))
             `, [ROLES_QUE_CAPTURAN, p.ebs, equiposDelAlcance])
           : Promise.resolve({ rows: [] })
     ]);
@@ -290,7 +300,11 @@ module.exports = async (req, res) => {
     const personal = new Map();
     if (idsPersona.size > 0) {
       (await pool.query(`
-        SELECT fu.id::text AS id, fu.nombre_completo, u.rol, eq.codigo AS ebs
+        SELECT fu.id::text AS id, fu.nombre_completo, u.rol,
+               concat_ws(', ', eq.codigo,
+                 (SELECT string_agg(ea.codigo, ', ' ORDER BY ea.codigo)
+                    FROM aps.funcionario_apoyo_ebs a JOIN aps.equipo_salud ea ON ea.id = a.equipo_salud_id
+                   WHERE a.funcionario_id = fu.id AND ea.id IS DISTINCT FROM fu.equipo_salud_id)) AS ebs
           FROM aps.funcionario fu
           LEFT JOIN aps.usuario u ON u.funcionario_id = fu.id
           LEFT JOIN aps.equipo_salud eq ON eq.id = fu.equipo_salud_id

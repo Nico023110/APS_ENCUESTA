@@ -558,18 +558,21 @@
      equipo propio, el ítem 10 queda abierto para indicar el EBS de la visita,
      con la lista de los registrados (app.js); el servidor exige que exista. */
   function equiposDeLaCabecera() {
-    const apoyo = Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [];
-    return (usuario.equipoCodigo ? ' · ' + usuario.equipoCodigo : '') +
-      (apoyo.length > 0 ? ' · Apoya a ' + apoyo.join(', ') : '');
+    const apoyo = (Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [])
+      .filter(function (c) { return c !== usuario.equipoCodigo; });
+    /* Con equipo propio, todos sus EBS (el principal primero); sin él,
+       los que apoya (enfoque diferencial). */
+    if (usuario.equipoCodigo) return ' · ' + [usuario.equipoCodigo].concat(apoyo).join(', ');
+    return apoyo.length > 0 ? ' · Apoya a ' + apoyo.join(', ') : '';
   }
 
   function eligeEquipoDeLaFicha() {
     return !usuario.equipoCodigo && usuario.nivel === 'coordinacion';
   }
 
-  /* Quien apoya a varios EBS sin pertenecer a ellos (enfoque diferencial)
-     elige en el ítem 10 el de la visita entre los suyos; con uno solo, ese
-     queda fijo. El servidor rechaza cualquier otro. */
+  /* Quien trabaja en varios EBS (su principal y otros, o sólo los que apoya,
+     en el enfoque diferencial) elige en el ítem 10 el de la visita entre los
+     suyos; con uno solo, ese queda fijo. El servidor rechaza cualquier otro. */
   function equiposQueApoya() {
     if (usuario.nivel === 'coordinacion') return [];
     const apoyo = Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [];
@@ -623,8 +626,8 @@
         ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Como lidera una zona, indique en el ítem 10 ' +
           'el EBS de esta visita.'
         : apoyo.length > 1
-          ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Indique en el ítem 10 el EBS al que apoya en ' +
-            'esta visita: ' + apoyo.join(', ') + '.'
+          ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Indique en el ítem 10 el EBS de esta ' +
+            'visita: ' + apoyo.join(', ') + '.'
           : 'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
             (apoyo[0] || usuario.equipoCodigo ? ', ' + (apoyo[0] || usuario.equipoCodigo) : '') + '.';
     }

@@ -26,6 +26,14 @@ const { requerirSesion } = require('./_auth');
 const cuentas = require('./_usuarios');
 const roles = require('../roles.js');
 
+/* «EBS007 + EBS017» (principal y los demás) o «apoya EBS006, EBS035». */
+function textoDeEbs(cuenta) {
+  if (!cuenta) return '';
+  const otros = (cuenta.apoyo || []).filter(function (c) { return c !== cuenta.equipo; }).slice().sort();
+  if (cuenta.equipo) return [cuenta.equipo].concat(otros).join(' + ');
+  return otros.length > 0 ? 'apoya ' + otros.join(', ') : '';
+}
+
 async function auditar(cliente, actor, tipo, usuarioId, campo, anterior, nuevo) {
   await cliente.query(`
     INSERT INTO aud.evento (entidad, entidad_id, tipo, campo, valor_anterior, valor_nuevo, funcionario_id)
@@ -117,9 +125,17 @@ module.exports = async (req, res) => {
       if (resultado.anterior.activo !== resultado.datos.activo) {
         await auditar(cliente, actor, 'modificacion', objetivoId, 'activo', resultado.anterior.activo, resultado.datos.activo);
       }
+      /* Los EBS de la persona deciden qué fichas ve y con cuál firma: el
+         cambio queda con el antes y el después. */
+      const despues = await cuentas.obtenerCuenta(cliente, objetivoId);
+      const antesEbs = textoDeEbs(objetivo);
+      const despuesEbs = textoDeEbs(despues);
+      if (antesEbs !== despuesEbs) {
+        await auditar(cliente, actor, 'modificacion', objetivoId, 'ebs', antesEbs || null, despuesEbs || null);
+      }
       await auditar(cliente, actor, 'modificacion', objetivoId, 'datos', null, null);
       await cliente.query('COMMIT');
-      return res.status(200).json({ usuario: await cuentas.obtenerCuenta(cliente, objetivoId) });
+      return res.status(200).json({ usuario: despues });
     }
 
     if (accion === 'restablecer') {

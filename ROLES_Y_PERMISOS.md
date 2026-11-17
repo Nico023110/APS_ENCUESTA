@@ -65,6 +65,17 @@ El instrumento no distingue permisos entre profesiones; lo que distingue es el
   enfoque diferencial apoya a EBS006 (comuna 3), EBS074 (comuna 18), EBS064
   (comuna 20) y EBS035 (El Hormiguero), según la distribución de EBS de la
   E.S.E.
+- **Personal en varios EBS** (2026‑11‑17): un profesional o técnico puede
+  trabajar en más de un EBS. En «Usuarios» el campo *Equipos Básicos de
+  Salud* recibe uno o varios, elegidos de los EBS registrados: el primero es
+  el **principal** (`aps.funcionario.equipo_salud_id`, su equipo de base) y
+  los demás van a `aps.funcionario_apoyo_ebs`; la estrella cambia cuál es el
+  principal. Con la casilla *No pertenece a ninguno: sólo los apoya* no hay
+  principal (enfoque diferencial). Igual que arriba: con más de uno elige en el
+  ítem 10 el EBS de cada visita, ve las fichas de todos y en productividad
+  cuenta en cada uno. Un código aún no registrado sólo puede ser el principal
+  (el servidor crea sólo ese equipo). Cada cambio de EBS de una cuenta queda en
+  `aud.evento` (campo `ebs`) con el antes y el después.
 - **Administrador**: administra (cuentas, equipos, catálogos) y consulta y
   corrige cualquier ficha; no captura.
 - **Maestro**: lo hace todo y es el **único que elimina una ficha** de la

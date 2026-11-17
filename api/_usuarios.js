@@ -62,7 +62,7 @@ function validarDatos(datos, paraCrear) {
   /* EBS a los que apoya sin pertenecer a ellos (enfoque diferencial): una
      lista o un texto separado por comas. Sólo para el personal asistencial;
      con ellos no necesita equipo propio. */
-  const listaApoyo = Array.isArray(d.apoyo) ? d.apoyo : String(d.apoyo || '').split(/[,;s]+/);
+  const listaApoyo = Array.isArray(d.apoyo) ? d.apoyo : String(d.apoyo || '').split(/[,;\s]+/);
   salida.apoyo = listaApoyo.map(function (c) { return String(c || '').trim().toUpperCase(); })
     .filter(function (c, i, todos) { return c && todos.indexOf(c) === i; });
   if (salida.apoyo.length > 0 && !roles.requiereEquipo(salida.rol)) salida.apoyo = [];
@@ -72,9 +72,13 @@ function validarDatos(datos, paraCrear) {
     }
   });
 
-  salida.equipo = d.equipo ? String(d.equipo).trim() : null;
+  salida.equipo = d.equipo ? String(d.equipo).trim().toUpperCase() : null;
+  /* Puede trabajar en varios EBS: el principal (equipo) y los demás (apoyo).
+     El principal no se repite entre los demás. */
+  salida.apoyo = salida.apoyo.filter(function (c) { return c !== salida.equipo; });
+  if (salida.apoyo.length > 30) throw new ErrorDeCuenta('Son demasiados EBS para una persona (máximo 30).', 'apoyo');
   if (roles.requiereEquipo(salida.rol) && !salida.equipo && salida.apoyo.length === 0) {
-    throw new ErrorDeCuenta('Un rol que captura fichas necesita su Equipo Básico de Salud, o los EBS a los que apoya.', 'equipo');
+    throw new ErrorDeCuenta('Un rol que captura fichas necesita al menos un Equipo Básico de Salud: elija su EBS (o los EBS que apoya).', 'equipo');
   }
   if (salida.equipo && !/^[A-Za-z0-9]{3,20}$/.test(salida.equipo)) {
     throw new ErrorDeCuenta('El código del equipo lleva entre 3 y 20 letras o números.', 'equipo');

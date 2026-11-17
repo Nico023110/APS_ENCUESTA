@@ -266,11 +266,15 @@
   function marcarError(campo, mensaje) {
     const formulario = $('formUsuario');
     formulario.querySelectorAll('.field.has-error').forEach(function (f) { f.classList.remove('has-error'); });
+    /* Los EBS que apoya se eligen en el mismo campo que el principal. */
+    if (campo === 'apoyo') campo = 'equipo';
     if (campo) {
       const contenedor = formulario.querySelector('[data-campo="' + campo + '"]');
       if (contenedor) {
         contenedor.classList.add('has-error');
-        const control = contenedor.querySelector('input, select');
+        const control = Array.from(contenedor.querySelectorAll('input, select')).find(function (e) {
+          return e.type !== 'hidden' && e.offsetParent !== null;
+        });
         if (control) control.focus();
       }
     }
@@ -284,16 +288,194 @@
     $('usuarioClaveTemporal').hidden = !clave;
   }
 
-  /* El equipo propio y, para quien apoya a varios EBS (enfoque diferencial),
-     los que apoya. */
+  /* Los EBS de la persona: el principal y los demás en que trabaja; quien no
+     pertenece a ninguno (enfoque diferencial) aparece como «Apoya a». */
   function celdaDeEquipo(u) {
-    const apoyo = u.apoyo || [];
-    if (!u.equipo && apoyo.length === 0) return '';
-    const chip = function (codigo) { return '<span class="usuarios__ebs">' + textoSeguro(codigo) + '</span>'; };
+    const otros = (u.apoyo || []).filter(function (c) { return c !== u.equipo; });
+    if (!u.equipo && otros.length === 0) return '';
+    const chip = function (codigo, principal) {
+      return '<span class="usuarios__ebs' + (principal ? ' usuarios__ebs--principal' : '') + '"' +
+        (principal && otros.length > 0 ? ' title="EBS principal"' : '') + '>' + textoSeguro(codigo) + '</span>';
+    };
     return '<span class="usuarios__equipos">' +
-      (u.equipo ? chip(u.equipo) : '') +
-      (apoyo.length > 0 ? '<span class="usuarios__apoya">Apoya a</span>' + apoyo.map(chip).join('') : '') +
+      (u.equipo ? chip(u.equipo, true) : '<span class="usuarios__apoya">Apoya a</span>') +
+      otros.map(function (c) { return chip(c, false); }).join('') +
       '</span>';
+  }
+
+  /* ---------------------------------------------------------
+     EBS de la persona (uno o varios)
+     ---------------------------------------------------------
+     Una sola lista: el primero es el principal (su equipo de base, que va a
+     aps.funcionario.equipo_salud_id) y los demás quedan como EBS en que
+     también trabaja (aps.funcionario_apoyo_ebs). Con «sólo los apoya» no hay
+     principal: todos van como apoyo (enfoque diferencial). Se eligen de los
+     EBS registrados; un código nuevo sólo puede ser el principal, porque el
+     servidor únicamente crea el equipo principal (los demás deben existir:
+     un código mal escrito crearía un equipo fantasma). */
+  const OTRO_CODIGO = '__otro__';
+  const FORMATO_EBS = /^[A-Z0-9]{3,20}$/;
+  let ebsElegidos = [];
+
+  function ebsRegistrados() {
+    return typeof CAT_EQUIPOS_EBS !== 'undefined' && Array.isArray(CAT_EQUIPOS_EBS)
+      ? CAT_EQUIPOS_EBS.map(function (c) { return String(c).toUpperCase(); }) : [];
+  }
+
+  function esRegistrado(codigo) {
+    return ebsRegistrados().indexOf(codigo) !== -1;
+  }
+
+  function soloApoya() {
+    return $('usuarioEbsSoloApoya').checked;
+  }
+
+  function pintarEbs() {
+    const lista = $('usuarioEbsLista');
+    const sinPrincipal = soloApoya();
+    /* Un código nuevo tiene que quedar de principal: mientras haya uno, no se
+       ofrece cambiar el principal. */
+    const fijo = ebsElegidos.length > 0 && !esRegistrado(ebsElegidos[0]);
+    lista.innerHTML = ebsElegidos.map(function (codigo, i) {
+      const principal = i === 0 && !sinPrincipal;
+      const nuevo = !esRegistrado(codigo);
+      const etiqueta = principal ? (ebsElegidos.length > 1 ? 'Principal' : '') : (sinPrincipal ? 'Apoya' : 'También');
+      return '<li class="usuarios-ebs__chip' + (principal ? ' is-principal' : '') + '">' +
+        '<span class="usuarios-ebs__codigo">' + textoSeguro(codigo) + '</span>' +
+        (etiqueta ? '<span class="usuarios-ebs__papel">' + etiqueta + '</span>' : '') +
+        (nuevo ? '<span class="usuarios-ebs__papel usuarios-ebs__papel--nuevo">Nuevo</span>' : '') +
+        (!principal && !sinPrincipal && !fijo
+          ? '<button type="button" class="usuarios-ebs__accion" data-principal="' + i + '" ' +
+            'aria-label="Hacer de ' + textoSeguro(codigo) + ' el EBS principal" title="Hacer principal">' +
+            '<i class="ph ph-star" aria-hidden="true"></i></button>'
+          : '') +
+        '<button type="button" class="usuarios-ebs__accion" data-quitar="' + i + '" ' +
+          'aria-label="Quitar ' + textoSeguro(codigo) + '" title="Quitar">' +
+          '<i class="ph ph-x" aria-hidden="true"></i></button>' +
+        '</li>';
+    }).join('');
+    lista.hidden = ebsElegidos.length === 0;
+
+    /* Lo que queda por agregar: los registrados que aún no están, y al final
+       la opción de escribir un código que todavía no existe. */
+    const agregar = $('usuarioEbsAgregar');
+    const disponibles = ebsRegistrados().filter(function (c) { return ebsElegidos.indexOf(c) === -1; });
+    agregar.innerHTML = '';
+    const primera = document.createElement('option');
+    primera.value = '';
+    primera.textContent = ebsElegidos.length === 0 ? 'Elija un EBS…' : 'Agregar otro EBS…';
+    agregar.appendChild(primera);
+    disponibles.forEach(function (codigo) {
+      const opcion = document.createElement('option');
+      opcion.value = codigo;
+      opcion.textContent = codigo;
+      agregar.appendChild(opcion);
+    });
+    const otro = document.createElement('option');
+    otro.value = OTRO_CODIGO;
+    otro.textContent = 'Otro código (EBS aún no registrado)…';
+    agregar.appendChild(otro);
+    agregar.value = '';
+
+    $('usuarioEbsSoloApoyaCampo').hidden = ebsElegidos.length === 0;
+    $('usuarioEbsTitulo').textContent = sinPrincipal ? 'EBS que apoya *' : 'Equipos Básicos de Salud *';
+  }
+
+  /* Devuelve un mensaje si no se pudo agregar, o null. */
+  function agregarEbs(texto) {
+    const codigo = String(texto || '').trim().toUpperCase();
+    if (!codigo) return null;
+    if (!FORMATO_EBS.test(codigo)) return 'El código del EBS lleva entre 3 y 20 letras o números, sin espacios (ej. EBS021).';
+    if (ebsElegidos.indexOf(codigo) !== -1) return codigo + ' ya está en la lista.';
+    if (!esRegistrado(codigo) && (ebsElegidos.length > 0 || soloApoya())) {
+      return codigo + ' no está registrado. Un EBS nuevo sólo puede ser el principal: agréguelo primero, ' +
+        'antes que los demás, o elija uno de la lista.';
+    }
+    ebsElegidos.push(codigo);
+    pintarEbs();
+    return null;
+  }
+
+  function mostrarCodigoNuevo(visible) {
+    $('usuarioEbsNuevo').hidden = !visible;
+    $('usuarioEbsAgregar').hidden = visible;
+    if (visible) {
+      $('usuarioEbsCodigo').value = '';
+      $('usuarioEbsCodigo').focus();
+    } else {
+      $('usuarioEbsAgregar').focus();
+    }
+  }
+
+  function agregarCodigoNuevo() {
+    const error = agregarEbs($('usuarioEbsCodigo').value);
+    if (error) { marcarError('equipo', error); return; }
+    marcarError(null, '');
+    mostrarCodigoNuevo(false);
+  }
+
+  function inicializarEbs() {
+    $('usuarioEbsAgregar').addEventListener('change', function () {
+      const valor = this.value;
+      if (!valor) return;
+      if (valor === OTRO_CODIGO) { this.value = ''; mostrarCodigoNuevo(true); return; }
+      const error = agregarEbs(valor);
+      marcarError(error ? 'equipo' : null, error || '');
+      $('usuarioEbsAgregar').focus();
+    });
+    $('usuarioEbsCodigoAgregar').addEventListener('click', agregarCodigoNuevo);
+    $('usuarioEbsCodigo').addEventListener('keydown', function (evento) {
+      if (evento.key === 'Enter') { evento.preventDefault(); agregarCodigoNuevo(); }
+      if (evento.key === 'Escape') { evento.preventDefault(); evento.stopPropagation(); marcarError(null, ''); mostrarCodigoNuevo(false); }
+    });
+    $('usuarioEbsCodigoCancelar').addEventListener('click', function () {
+      marcarError(null, '');
+      mostrarCodigoNuevo(false);
+    });
+    $('usuarioEbsLista').addEventListener('click', function (evento) {
+      const quitar = evento.target.closest('[data-quitar]');
+      const principal = evento.target.closest('[data-principal]');
+      if (quitar) {
+        ebsElegidos.splice(Number(quitar.getAttribute('data-quitar')), 1);
+        /* Si el nuevo primero es un código sin registrar, ya no puede quedar
+           detrás de otros: se pide elegir de nuevo. */
+        if (ebsElegidos.length > 1 && !esRegistrado(ebsElegidos[0])) ebsElegidos.shift();
+        if (ebsElegidos.length === 0) $('usuarioEbsSoloApoya').checked = false;
+        pintarEbs();
+        $('usuarioEbsAgregar').focus();
+      } else if (principal) {
+        const i = Number(principal.getAttribute('data-principal'));
+        const codigo = ebsElegidos.splice(i, 1)[0];
+        ebsElegidos.unshift(codigo);
+        pintarEbs();
+        const nuevoPrimero = $('usuarioEbsLista').querySelector('[data-quitar="0"]');
+        if (nuevoPrimero) nuevoPrimero.focus();
+      }
+    });
+    $('usuarioEbsSoloApoya').addEventListener('change', function () {
+      /* Sin principal, un código nuevo no tiene cómo crearse: se retira. */
+      if (soloApoya()) ebsElegidos = ebsElegidos.filter(esRegistrado);
+      pintarEbs();
+    });
+  }
+
+  function cargarEbsDe(u) {
+    const apoyo = (u && u.apoyo) || [];
+    ebsElegidos = [];
+    if (u && u.equipo) ebsElegidos.push(String(u.equipo).toUpperCase());
+    apoyo.forEach(function (c) {
+      const codigo = String(c).toUpperCase();
+      if (ebsElegidos.indexOf(codigo) === -1) ebsElegidos.push(codigo);
+    });
+    $('usuarioEbsSoloApoya').checked = !!(u && !u.equipo && apoyo.length > 0);
+    mostrarCodigoNuevo(false);
+    pintarEbs();
+  }
+
+  /* Lo que se envía: { equipo, apoyo } como siempre los ha recibido la API. */
+  function ebsParaEnviar() {
+    if (soloApoya()) return { equipo: null, apoyo: ebsElegidos.slice() };
+    return { equipo: ebsElegidos[0] || null, apoyo: ebsElegidos.slice(1) };
   }
 
   /* Qué se le explica a quien crea la cuenta según el rol elegido. El rol
@@ -334,9 +516,6 @@
       '¿Cuál?' + (elige ? '' : ' *');
 
     $('usuarioCampoEquipo').hidden = !requiereEquipo(rol);
-    $('usuarioCampoApoyo').hidden = !requiereEquipo(rol);
-    $('usuarioCampoEquipo').querySelector('label').textContent = $('usuarioApoyo').value.trim()
-      ? 'Equipo Básico de Salud (si pertenece a uno)' : 'Equipo Básico de Salud *';
 
     $('usuarioCampoCargo').hidden = !muestraCargo(rol);
     $('usuarioCargo').placeholder = PLACEHOLDER_CARGO[nivel] || '';
@@ -376,8 +555,6 @@
       $('usuarioCorreo').value = u.correo || '';
       $('usuarioTelefono').value = u.telefono || '';
       $('usuarioRol').value = u.rol;
-      $('usuarioEquipo').value = u.equipo || '';
-      $('usuarioApoyo').value = (u.apoyo || []).join(', ');
       $('usuarioPerfil').value = u.perfil && u.perfil !== u.rol ? u.perfil : (eligePerfil(u.rol) ? (u.perfil || 'otro') : 'otro');
       $('usuarioPerfilOtro').value = u.perfilOtro || '';
       $('usuarioActivo').checked = !!u.activo;
@@ -395,6 +572,7 @@
       $('usuarioRol').disabled = false;
     }
 
+    cargarEbsDe(u);
     ajustarCamposSegunRol();
     $('modalUsuario').hidden = false;
     setTimeout(function () { (u ? $('usuarioNombre') : $('usuarioDocumento')).focus(); }, 40);
@@ -416,8 +594,13 @@
   function leerFormulario() {
     const f = $('formUsuario');
     const rol = $('usuarioRol').value;
-    const equipo = valorSegunVisibilidad('usuarioCampoEquipo', $('usuarioEquipo'),
-      editando && editando.rol === rol ? (editando.equipo || null) : null);
+    /* Con el campo oculto por el rol se conserva lo que tenía, mientras no
+       cambie el rol (como el resto de campos ocultos). */
+    const ebs = !$('usuarioCampoEquipo').hidden
+      ? ebsParaEnviar()
+      : (editando && editando.rol === rol
+        ? { equipo: editando.equipo || null, apoyo: editando.apoyo || [] }
+        : { equipo: null, apoyo: [] });
     return {
       id: f.id.value || undefined,
       tipoId: $('usuarioTipoId').value,
@@ -427,9 +610,8 @@
       correo: $('usuarioCorreo').value.trim() || null,
       telefono: $('usuarioTelefono').value.trim() || null,
       rol: rol,
-      equipo: equipo ? equipo.toUpperCase() : null,
-      apoyo: valorSegunVisibilidad('usuarioCampoApoyo', $('usuarioApoyo'),
-        editando && editando.rol === rol ? (editando.apoyo || []).join(', ') : null) || '',
+      equipo: ebs.equipo,
+      apoyo: ebs.apoyo,
       perfil: eligePerfil($('usuarioRol').value) ? $('usuarioPerfil').value : undefined,
       perfilOtro: $('usuarioPerfilOtro').value.trim() || null,
       activo: editando ? $('usuarioActivo').checked : true
@@ -579,8 +761,11 @@
       return { valor: rol, etiqueta: ROLES[rol].etiqueta };
     }), 'Rol: todos');
 
-    ['usuariosFiltroTexto', 'usuariosFiltroRol', 'usuariosFiltroEstado'].forEach(function (id) {
-      $(id).addEventListener('input', pintarLista);
+    /* El buscador repinta al escribir, no al perder el foco: su «change» al
+       pulsar «Modificar» rehacía la tabla entre el mousedown y el click, y el
+       primer clic después de buscar no abría nada. */
+    $('usuariosFiltroTexto').addEventListener('input', pintarLista);
+    ['usuariosFiltroRol', 'usuariosFiltroEstado'].forEach(function (id) {
       $(id).addEventListener('change', pintarLista);
     });
 
@@ -588,7 +773,7 @@
     $('formUsuario').addEventListener('submit', guardar);
     $('usuarioRol').addEventListener('change', ajustarCamposSegunRol);
     $('usuarioPerfil').addEventListener('change', ajustarCamposSegunRol);
-    $('usuarioApoyo').addEventListener('input', ajustarCamposSegunRol);
+    inicializarEbs();
     $('btnRestablecerClave').addEventListener('click', function () { restablecerClave(editando, { enFormulario: true }); });
     $('btnCopiarClave').addEventListener('click', function () { copiarTexto($('usuarioClaveValor').textContent); });
     $('btnCancelarUsuario').addEventListener('click', cerrarFormulario);

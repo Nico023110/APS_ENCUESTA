@@ -2357,14 +2357,29 @@
               <label for="usuarioRol">Rol *</label>
               <select id="usuarioRol" name="rol" aria-describedby="usuarioRolAyuda"></select>
             </div>
-            <div class="field" data-campo="equipo" id="usuarioCampoEquipo">
-              <label for="usuarioEquipo">Equipo Básico de Salud</label>
-              <input type="text" id="usuarioEquipo" name="equipo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS001">
-            </div>
-            <div class="field" data-campo="apoyo" id="usuarioCampoApoyo">
-              <label for="usuarioApoyo">EBS que apoya <span class="usuarios__opcional">enfoque diferencial</span></label>
-              <input type="text" id="usuarioApoyo" name="apoyo" class="mono" maxlength="400" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS007, EBS017" aria-describedby="usuarioApoyoAyuda">
-              <small class="field-hint" id="usuarioApoyoAyuda">Para quien no pertenece a un EBS sino que apoya a varios: separe los códigos con comas. En cada ficha elige uno de ellos y ve las fichas de todos.</small>
+            <!-- Uno o varios EBS por persona (usuarios.js): el primero es el
+                 principal (aps.funcionario.equipo_salud_id) y los demás van a
+                 aps.funcionario_apoyo_ebs. Con «sólo apoya» no hay principal
+                 (enfoque diferencial). Con más de uno, en cada ficha elige el
+                 EBS de la visita (ítem 10) y ve las fichas de todos. -->
+            <div class="field field--full usuarios-ebs" data-campo="equipo" id="usuarioCampoEquipo">
+              <span class="usuarios-ebs__titulo" id="usuarioEbsTitulo">Equipos Básicos de Salud *</span>
+              <ul class="usuarios-ebs__lista" id="usuarioEbsLista" aria-labelledby="usuarioEbsTitulo" aria-live="polite"></ul>
+              <div class="usuarios-ebs__agregar">
+                <label class="visualmente-oculto" for="usuarioEbsAgregar">Agregar un EBS</label>
+                <select id="usuarioEbsAgregar" aria-describedby="usuarioEbsAyuda"></select>
+                <div class="usuarios-ebs__nuevo" id="usuarioEbsNuevo" hidden>
+                  <label class="visualmente-oculto" for="usuarioEbsCodigo">Código del EBS nuevo</label>
+                  <input type="text" id="usuarioEbsCodigo" class="mono" maxlength="20" autocapitalize="characters" spellcheck="false" placeholder="Ej. EBS021">
+                  <button type="button" class="btn btn--ghost" id="usuarioEbsCodigoAgregar">Agregar</button>
+                  <button type="button" class="usuarios-ebs__cancelar" id="usuarioEbsCodigoCancelar" aria-label="Cancelar el código nuevo"><i class="ph ph-x" aria-hidden="true"></i></button>
+                </div>
+              </div>
+              <label class="usuarios-ebs__solo-apoya" id="usuarioEbsSoloApoyaCampo">
+                <input type="checkbox" id="usuarioEbsSoloApoya">
+                <span>No pertenece a ninguno: sólo los apoya <span class="usuarios__opcional">enfoque diferencial</span></span>
+              </label>
+              <small class="field-hint" id="usuarioEbsAyuda">Agregue todos los EBS en que trabaja. El principal es su equipo de base; con más de uno, en cada ficha elige en el ítem 10 el EBS de la visita y ve las fichas de todos.</small>
             </div>
             <div class="field" data-campo="cargo" id="usuarioCampoCargo" hidden>
               <label for="usuarioCargo">Zona o cargo</label>
