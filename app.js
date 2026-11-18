@@ -1570,6 +1570,16 @@ function marcarComoSubida(enviada, codigos) {
 /* Sincronizar es subir lo que sólo está en este equipo y, después, traer lo
    que haya en la base: así también aparece lo que otros dispositivos del
    equipo guardaron. Con nada pendiente, el toque sólo trae. */
+/* RN-051 / RN-028: el bloqueo de una ficha nueva a la que le faltan
+   integrantes declarados en el ítem 51 (familias[i].numeroIntegrantes) o
+   hogares del ítem 28 sin familia (hogaresEnVivienda). */
+function esFaltaDeIntegrantes(bloqueo) {
+  if (!bloqueo) return false;
+  const donde = String(bloqueo.ruta || bloqueo.campo || '');
+  return (bloqueo.codigo === 'RN-051' && /numeroIntegrantes$/.test(donde)) ||
+    (bloqueo.codigo === 'RN-028' && /hogaresEnVivienda$/.test(donde));
+}
+
 async function sincronizarEncuestas() {
   if (sincronizacionEnCurso) return;
 
@@ -1604,6 +1614,7 @@ async function sincronizarEncuestas() {
 
   let exitosas = 0;
   const rechazadas = [];
+  const esperanIntegrantes = [];
 
   try {
     for (const pendiente of pendientes) {
@@ -1634,6 +1645,15 @@ async function sincronizarEncuestas() {
         } else {
           const errorData = await respuesta.json().catch(function () { return {}; });
           console.error('Error al sincronizar encuesta', encuesta.id, errorData);
+          /* RN-051: una ficha en cola a la que le faltan integrantes no es un
+             error que corregir sino una ficha por completar: se dice aparte. */
+          const bloqueosRecibidos = errorData.bloqueos || [];
+          if (respuesta.status === 400 && bloqueosRecibidos.length > 0 && bloqueosRecibidos.every(esFaltaDeIntegrantes)) {
+            esperanIntegrantes.push(encuesta.codigoFicha || encuesta.id);
+            sincronizacionEnCurso.hechas++;
+            renderizarEstadoSync();
+            continue;
+          }
           rechazadas.push({
             codigo: encuesta.codigoFicha || encuesta.id,
             bloqueos: errorData.bloqueos || [],
@@ -1664,8 +1684,21 @@ async function sincronizarEncuestas() {
     /* Lo que salió bien se dice en el mismo módulo, sin aviso modal: no hay
        nada que decidir. Sólo un rechazo abre aviso, porque hay que leer qué
        ficha y qué campo corregir. */
-    ultimoResultadoSync = { subidas: exitosas, rechazadas: rechazadas.length };
+    ultimoResultadoSync = { subidas: exitosas, rechazadas: rechazadas.length, esperanIntegrantes: esperanIntegrantes.length };
     if (rechazadas.length === 0) anotarUltimaSincronizacion();
+
+    /* RN-051: las que esperan integrantes se quedan en el equipo, a salvo. */
+    const textoEsperan = esperanIntegrantes.length > 0
+      ? textoCantidad(esperanIntegrantes.length, 'ficha no subió', 'fichas no subieron') +
+        ' porque le' + (esperanIntegrantes.length === 1 ? '' : 's') + ' faltan integrantes (ítem 51) u hogares ' +
+        '(ítem 28) declarados (' + esperanIntegrantes.slice(0, 3).join(', ') + (esperanIntegrantes.length > 3 ? '…' : '') +
+        '). Siguen en este equipo: complételas desde el Historial y se subirán.'
+      : '';
+    if (esperanIntegrantes.length > 0 && rechazadas.length === 0) {
+      mostrarNotificacion(
+        (exitosas > 0 ? textoCantidad(exitosas, 'ficha subió', 'fichas subieron') + ' a la base. ' : '') + textoEsperan,
+        'warning');
+    }
 
     /* El aviso decía «revise la consola (F12)». Un encuestador no abre la
        consola: se queda sin saber qué corregir y la ficha no sube nunca. El
@@ -1688,7 +1721,8 @@ async function sincronizarEncuestas() {
 
       mostrarNotificacion(
         (exitosas > 0 ? textoCantidad(exitosas, 'ficha subió', 'fichas subieron') + ' a la base. ' : '') +
-        textoCantidad(rechazadas.length, 'ficha no se pudo guardar.', 'fichas no se pudieron guardar.') + detalle,
+        textoCantidad(rechazadas.length, 'ficha no se pudo guardar.', 'fichas no se pudieron guardar.') + detalle +
+        (textoEsperan ? ' ' + textoEsperan : ''),
         'error');
 
       console.table(rechazadas.map(function (r) {

@@ -1684,10 +1684,11 @@ const CONFIG_BLOQUE_ELIMINAR = {
   integrante: {
     tituloRol: 'tituloIntegrante', generico: 'este integrante', nombreModal: 'integrante',
     /* RN-051: quitar el bloque no baja el ítem 51. Si la persona no estaba
-       en la visita, queda pendiente y se agrega después. */
+       en la visita, queda pendiente: la ficha espera en el equipo y no sube a
+       la base hasta caracterizarla. */
     detalle: function () {
-      return ' de esta ficha. El ítem 51 se conserva: si no estaba en la visita, podrá agregarlo después ' +
-        'desde Historial → Completar integrantes';
+      return ' de esta ficha. El ítem 51 se conserva: si no estaba en la visita, la ficha queda en este equipo ' +
+        '(«Guardar avance») y no sube a la base hasta que la caracterice';
     }
   },
   planFamilia: {

@@ -21,9 +21,12 @@
      - cada generación queda en aud.evento (quién, cuándo, qué período).
      - el resumen no trae datos personales: sólo códigos de ficha.
 
-   Qué fichas entran: diligenciadas dentro del período, con consentimiento y
-   cerradas. De cada hogar, sólo la visita más reciente del período: el
-   anexo usa el ID de la familia como llave primaria y no admite repetirlo.
+   Qué fichas entran: diligenciadas dentro del período, con consentimiento,
+   cerradas y completas —todos los integrantes del ítem 51 y una familia en
+   cada hogar del ítem 28 (api/_completitud.js)—. Una ficha incompleta queda
+   por fuera y entra en el período en que se complete, aunque su visita sea
+   anterior. De cada hogar, sólo la visita más reciente: el anexo usa el ID
+   de la familia como llave primaria y no admite repetirlo.
    El Excel, en cambio, trae todas las visitas con consentimiento del período,
    cerradas o no: es la caracterización para consultar, no el reporte.
    ========================================================================= */
@@ -36,6 +39,15 @@ const { leerFichasCompletas } = require('./_ficha_completa');
 const { construirReporte } = require('./_reporte_sispro');
 const { construirExcel } = require('./_excel_fichas');
 const { obtenerMotor } = require('./_validacion');
+const { SQL_FICHA_INCOMPLETA, SQL_COMPLETADA_EL } = require('./_completitud');
+
+/* AAAA-MM-DD de un DATE de la base (pg lo entrega como Date a medianoche local). */
+function fechaTexto(valor) {
+  if (!valor) return null;
+  if (typeof valor === 'string') return valor.slice(0, 10);
+  const d = new Date(valor);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
 const TAMANO_LOTE = 500;
 const MAX_DIAS = 366;
@@ -167,23 +179,58 @@ module.exports = async (req, res) => {
 
     const conteo = (await cliente.query(`
       SELECT count(*)::int AS total,
-             count(*) FILTER (WHERE NOT consentimiento)::int AS sin_consentimiento,
-             count(*) FILTER (WHERE consentimiento AND estado NOT IN ('cerrada', 'sincronizada'))::int AS no_cerradas
-        FROM aps.ficha
-       WHERE fecha_diligenciamiento BETWEEN $1 AND $2
+             count(*) FILTER (WHERE NOT f.consentimiento)::int AS sin_consentimiento,
+             count(*) FILTER (WHERE f.consentimiento AND f.estado NOT IN ('cerrada', 'sincronizada'))::int AS no_cerradas,
+             count(*) FILTER (WHERE f.consentimiento AND f.estado IN ('cerrada', 'sincronizada')
+                                AND ${SQL_FICHA_INCOMPLETA})::int AS incompletas
+        FROM aps.ficha f
+       WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
     `, [periodo.desde, periodo.hasta])).rows[0];
 
-    const ids = (await cliente.query(`
-      SELECT id FROM (
-        SELECT DISTINCT ON (f.hogar_id) f.id, f.fecha_diligenciamiento
-          FROM aps.ficha f
-         WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
-           AND f.consentimiento
-           AND f.estado IN ('cerrada', 'sincronizada')
-         ORDER BY f.hogar_id, f.fecha_diligenciamiento DESC, f.id DESC
+    /* RN-051 / RN-028: una ficha con integrantes u hogares por caracterizar
+       no va al plano —PISIS no admite la familia ni la vivienda a medias—; va
+       en el del período en que se complete, aunque su visita sea anterior. De
+       cada hogar, la visita más reciente. */
+    const seleccion = (await cliente.query(`
+      SELECT id, codigo, fecha_diligenciamiento, completada_el, tardia FROM (
+        SELECT DISTINCT ON (c.hogar_id) c.id, c.codigo, c.fecha_diligenciamiento, c.completada_el,
+               c.fecha_diligenciamiento < $1 AS tardia
+          FROM (
+            SELECT f.id, f.codigo, f.hogar_id, f.fecha_diligenciamiento, ${SQL_COMPLETADA_EL} AS completada_el
+              FROM aps.ficha f
+             WHERE f.fecha_diligenciamiento <= $2
+               AND f.consentimiento
+               AND f.estado IN ('cerrada', 'sincronizada')
+               AND NOT ${SQL_FICHA_INCOMPLETA}
+          ) c
+         WHERE c.fecha_diligenciamiento BETWEEN $1 AND $2
+            OR (c.fecha_diligenciamiento < $1 AND c.completada_el BETWEEN $1 AND $2)
+         ORDER BY c.hogar_id, c.fecha_diligenciamiento DESC, c.id DESC
       ) ultimas
       ORDER BY fecha_diligenciamiento, id
-    `, [periodo.desde, periodo.hasta])).rows.map(function (f) { return String(f.id); });
+    `, [periodo.desde, periodo.hasta])).rows;
+    const ids = seleccion.map(function (f) { return String(f.id); });
+    const tardias = seleccion.filter(function (f) { return f.tardia; });
+
+    /* Las del período que quedan por fuera por incompletas: sólo su código y
+       cuánto les falta, para completarlas en la aplicación. */
+    const incompletas = conteo.incompletas === 0 ? [] : (await cliente.query(`
+      SELECT f.codigo, f.fecha_diligenciamiento,
+             coalesce((SELECT sum(greatest(ff.numero_integrantes - (SELECT count(*) FROM aps.integrante i
+                                                                     WHERE i.familia_ficha_id = ff.id), 0))
+                         FROM aps.familia_ficha ff WHERE ff.ficha_id = f.id), 0)::int AS integrantes,
+             coalesce((SELECT greatest(v.hogares_en_vivienda - (
+                         SELECT count(DISTINCT coalesce(ff.hogar_numero::text, 'f' || ff.id))
+                           FROM aps.familia_ficha ff WHERE ff.ficha_id = f.id), 0)
+                         FROM aps.vivienda v
+                        WHERE v.ficha_id = f.id AND EXISTS (SELECT 1 FROM aps.familia_ficha x WHERE x.ficha_id = f.id)), 0)::int AS hogares
+        FROM aps.ficha f
+       WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
+         AND f.consentimiento AND f.estado IN ('cerrada', 'sincronizada')
+         AND ${SQL_FICHA_INCOMPLETA}
+       ORDER BY f.fecha_diligenciamiento, f.codigo
+       LIMIT 500
+    `, [periodo.desde, periodo.hasta])).rows;
 
     if (ids.length > MAX_FICHAS) {
       return res.status(400).json({
@@ -216,16 +263,30 @@ module.exports = async (req, res) => {
         incluidas: fichas.length,
         sinConsentimiento: conteo.sin_consentimiento,
         noCerradas: conteo.no_cerradas,
-        visitasAnterioresDelMismoHogar: Math.max(0, conteo.total - conteo.sin_consentimiento - conteo.no_cerradas - fichas.length)
+        incompletas: conteo.incompletas,
+        completadasDespues: tardias.length,
+        visitasAnterioresDelMismoHogar: Math.max(0,
+          conteo.total - conteo.sin_consentimiento - conteo.no_cerradas - conteo.incompletas - (fichas.length - tardias.length))
       },
+      /* Sólo códigos de ficha, sin datos personales. */
+      incompletas: incompletas.map(function (f) {
+        return { codigo: f.codigo, fecha: fechaTexto(f.fecha_diligenciamiento), integrantes: f.integrantes, hogares: f.hogares };
+      }),
+      completadasDespues: tardias.map(function (f) {
+        return { codigo: f.codigo, fecha: fechaTexto(f.fecha_diligenciamiento), completadaEl: fechaTexto(f.completada_el) };
+      }),
       registros: reporte.resumen.registros,
       incidencias: reporte.resumen.incidencias,
       /* La subregión sale de la UZPE de cada vivienda; sólo se avisa si alguna
          quedó sin ella (ficha sin UZPE y sin el parámetro de respaldo). */
-      avisos: reporte.resumen.incidencias.detalle.some(function (x) { return x.tipoRegistro === 2 && x.variable === 4; })
+      avisos: (reporte.resumen.incidencias.detalle.some(function (x) { return x.tipoRegistro === 2 && x.variable === 4; })
         ? ['Hay viviendas sin subregión (variable 4): su ficha no trae UZPE y no está configurado «subregion_sispro». ' +
            'Sin ella, las variables 4, 123 y 124 salen vacías.']
-        : []
+        : []).concat(tardias.length > 0
+        ? [tardias.length + (tardias.length === 1 ? ' ficha visitada antes de este período va' : ' fichas visitadas antes de este período van') +
+           ' en el archivo porque se completó en él (quedó por fuera de su mes por estar incompleta). Su fecha de ' +
+           'caracterización es la de la visita, anterior al período.']
+        : [])
     };
 
     /* RN-225: quién generó qué período, en qué formato y con qué volumen. */

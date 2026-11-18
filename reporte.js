@@ -105,6 +105,26 @@
     return caja;
   }
 
+  /* Tabla corta de texto: encabezados y filas de { texto, clase }. */
+  function tablaSimple(titulos, filas) {
+    const envoltura = elemento('div', 'table-wrapper');
+    const tabla = elemento('table', 'data-table reporte__tabla');
+    const thead = elemento('thead');
+    const cabecera = elemento('tr');
+    titulos.forEach(function (t) { cabecera.appendChild(elemento('th', null, t)); });
+    thead.appendChild(cabecera);
+    tabla.appendChild(thead);
+    const cuerpo = elemento('tbody');
+    filas.forEach(function (celdas) {
+      const fila = elemento('tr');
+      celdas.forEach(function (c) { fila.appendChild(elemento('td', c.clase || null, c.texto === null || c.texto === undefined ? '—' : String(c.texto))); });
+      cuerpo.appendChild(fila);
+    });
+    tabla.appendChild(cuerpo);
+    envoltura.appendChild(tabla);
+    return envoltura;
+  }
+
   function pintarResumen(r) {
     const destino = $('reporteResultado');
     destino.innerHTML = '';
@@ -124,6 +144,10 @@
     const excluidas = [];
     if (r.fichas.sinConsentimiento) excluidas.push(r.fichas.sinConsentimiento + ' sin consentimiento');
     if (r.fichas.noCerradas) excluidas.push(r.fichas.noCerradas + ' sin cerrar o con visita incompleta');
+    if (r.fichas.incompletas) {
+      excluidas.push(r.fichas.incompletas + (r.fichas.incompletas === 1 ? ' incompleta' : ' incompletas') +
+        ' (integrantes u hogares por caracterizar; ver abajo)');
+    }
     if (r.fichas.visitasAnterioresDelMismoHogar) {
       excluidas.push(r.fichas.visitasAnterioresDelMismoHogar + ' visitas anteriores de un hogar que se volvió a visitar');
     }
@@ -137,6 +161,35 @@
       aviso.appendChild(elemento('span', null, texto));
       destino.appendChild(aviso);
     });
+
+    /* RN-051 / RN-028: las incompletas no van en el archivo; se listan con
+       lo que les falta para completarlas (Historial → Completar integrantes o
+       Corregir). Entran en el archivo del período en que se completen. */
+    const incompletas = r.incompletas || [];
+    if (incompletas.length > 0) {
+      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Quedan por fuera hasta completarlas'));
+      destino.appendChild(elemento('p', 'field-hint',
+        'Les faltan integrantes del ítem 51 u hogares del ítem 28. Complételas desde el Historial: entrarán en el ' +
+        'archivo del período en que queden completas.'));
+      destino.appendChild(tablaSimple(['Ficha', 'Visita', 'Falta'], incompletas.map(function (f) {
+        const falta = [];
+        if (f.integrantes) falta.push(f.integrantes + (f.integrantes === 1 ? ' integrante' : ' integrantes'));
+        if (f.hogares) falta.push(f.hogares + (f.hogares === 1 ? ' hogar' : ' hogares'));
+        return [{ texto: f.codigo, clase: 'mono' }, { texto: f.fecha }, { texto: falta.join(' y ') || '—' }];
+      })));
+      if (r.fichas.incompletas > incompletas.length) {
+        destino.appendChild(elemento('p', 'field-hint', 'Se muestran las primeras ' + incompletas.length + ' de ' +
+          r.fichas.incompletas + '.'));
+      }
+    }
+
+    const tardias = r.completadasDespues || [];
+    if (tardias.length > 0) {
+      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Completadas en este período, de visitas anteriores'));
+      destino.appendChild(tablaSimple(['Ficha', 'Visita', 'Completada el'], tardias.map(function (f) {
+        return [{ texto: f.codigo, clase: 'mono' }, { texto: f.fecha }, { texto: f.completadaEl }];
+      })));
+    }
 
     const detalle = r.incidencias.detalle || [];
     if (detalle.length === 0) {

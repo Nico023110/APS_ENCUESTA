@@ -270,7 +270,9 @@ Es la llave que se hereda en los ítems 122 y 132. El consecutivo es por viviend
 
 **Un hogar puede reunir varias familias.** La estructura es vivienda → hogares → familias → integrantes. Cada familia de la sección 4 indica **a qué hogar pertenece** (campo «Hogar al que pertenece», del 1 al valor del ítem 28); mientras el encuestador no lo cambie, la familia N queda en el hogar N. Es obligatorio y no admite un hogar mayor que el ítem 28. Se guarda en `aps.familia_ficha.hogar_numero` (`bd/09_hogar_de_familia.sql`) y es interno: el anexo técnico no tiene un nivel de hogar, así que el archivo plano no lo lleva y el código de la familia (RN-026) sigue numerándose por vivienda.
 
-Cuando algún hogar declarado no tiene ninguna familia caracterizada, el sistema **advierte, no bloquea**: el hogar puede no encontrarse en la vivienda durante la visita, y la ficha de los presentes se guarda con lo capturado. Se cuentan hogares distintos, no familias: dos familias en el único hogar declarado no generan advertencia. El hogar faltante se caracteriza en una visita posterior desde *Historial → Corregir*.
+Cuando algún hogar declarado no tiene ninguna familia caracterizada (se cuentan hogares distintos, no familias: dos familias en el único hogar declarado no faltan a nada):
+- **Ficha nueva (desde el 2026-11-18): bloquea**, como los integrantes del ítem 51 (RN-051): no sube a la base sin todos sus hogares, porque el archivo plano para PISIS no admite la vivienda a medias. Se guarda en el equipo con «Guardar avance» y se completa cuando se visita el hogar que faltaba, o se corrige el ítem 28 si se declaró de más.
+- **Ficha que ya está en la base, o visita cerrada por causa externa** (no va al plano): sólo advierte. El hogar faltante se caracteriza desde *Historial → Corregir*.
 
 Las fichas capturadas antes de este campo no lo traen y se leen como un hogar por familia, en su orden de captura.
 
@@ -418,11 +420,13 @@ Las fuentes no tratadas activan alerta de **agua no apta para consumo humano** c
 
 **Condiciones de integridad:**
 
-1. El número de registros individuales creados debe corresponder al valor del ítem 51. Si el encuestador reduce el número, el sistema advierte qué registros se eliminarán; si lo aumenta, genera las instancias faltantes. Si un integrante declarado **no estaba en la visita**, su bloque se quita («No estaba en la visita · quitar», que no baja el ítem 51) y la diferencia con el ítem 51 queda como **advertencia, no bloqueo** (mismo criterio que RN-028). Se caracteriza después desde *Historial → Completar integrantes*: lo registrado queda intocable, sólo se agregan los integrantes que faltaban (y su plan de cuidado), y el ítem 51 puede aumentar —apareció alguien que no se declaró—, no disminuir. Lo puede hacer quien evoluciona el plan de esa ficha, sin autorización; el servidor escribe sólo lo nuevo y rechaza cambiar o quitar a un integrante registrado.
+1. El número de registros individuales creados debe corresponder al valor del ítem 51. Si el encuestador reduce el número, el sistema advierte qué registros se eliminarán; si lo aumenta, genera las instancias faltantes. Si un integrante declarado **no estaba en la visita**, su bloque se quita («No estaba en la visita · quitar», que no baja el ítem 51).
+   - **Desde el 2026-11-18, una ficha nueva no sube a la base sin todos sus integrantes**: la diferencia con el ítem 51 **bloquea** «Guardar todo» y el servidor la rechaza, porque el archivo plano para PISIS no admite una familia a medias. No rige para la visita cerrada por causa externa (RN-222): no entra al plano —sólo van las fichas cerradas— y es la que registra que faltó gente. La ficha se guarda en el equipo con «Guardar avance» (Historial → *Sin terminar · no cargadas a la base* → Continuar) y se completa cuando se visita a quien faltaba; si se declaró de más, se corrige el ítem 51. Una ficha que ya estaba en cola en un equipo con integrantes pendientes no sube al sincronizar: el aviso lo dice aparte («no subió porque le faltan integrantes») y se completa desde *Historial → Completar integrantes*.
+   - **Fichas que ya están en la base** con integrantes pendientes (guardadas antes de esta regla): la diferencia sólo advierte, se pueden corregir y los que faltan se agregan desde *Historial → Completar integrantes*: lo registrado queda intocable, sólo se agregan los integrantes que faltaban (y su plan de cuidado), y el ítem 51 puede aumentar —apareció alguien que no se declaró—, no disminuir. Lo puede hacer quien evoluciona el plan de esa ficha, sin autorización; el servidor escribe sólo lo nuevo y rechaza cambiar o quitar a un integrante registrado.
 2. **Ningún integrante capturado puede quedar incompleto.** Una instancia se considera completa cuando se han diligenciado todos los campos obligatorios *habilitados para ese individuo* según su edad y sexo. Un menor de 6 meses no responde tensión arterial y eso no lo hace incompleto; un adulto sin peso ni talla, sí.
 3. Debe existir **exactamente un** integrante con rol "Responsable económico de la familia" (ítem 72) por cada familia. El aviso nombra lo que falta o lo que sobra y se muestra sobre el integrante que hay que cambiar: si ninguno tiene el rol, sobre el primero («Ningún integrante de esta familia tiene el rol…»); si hay más de uno, sobre cada responsable adicional, citando al que ya lo tiene.
 4. La suma de los integrantes de todas las familias del hogar no puede superar el ítem 29 (RN-029).
-5. ~~La ficha no puede cerrarse ni sincronizarse mientras exista al menos un integrante declarado sin caracterizar.~~ Sustituido por el punto 1: la diferencia advierte y la ficha se guarda.
+5. La ficha nueva no puede subirse a la base mientras exista al menos un integrante declarado sin caracterizar (restablecido el 2026-11-18; ver punto 1). Entre el 2026-11-10 y el 2026-11-18 la diferencia sólo advertía.
 
 ### RN-052 — Identificación de cuidador principal
 
@@ -1274,8 +1278,8 @@ El sistema **no permite cerrar una ficha** mientras exista alguna de las siguien
 
 1. Consentimiento informado no registrado (RN-001).
 2. Campos obligatorios sin diligenciar en el nivel de vivienda o entorno.
-3. ~~Familias declaradas en el ítem 28 sin caracterizar.~~ Advierte (RN-028): la familia ausente se caracteriza en otra visita.
-4. Integrantes capturados con instancias incompletas (RN-051). ~~Integrantes declarados sin caracterizar~~ advierte, no bloquea.
+3. Hogares declarados en el ítem 28 sin ninguna familia caracterizada en una ficha nueva (RN-028, desde el 2026-11-18; en una ficha que ya está en la base sólo advierte).
+4. Integrantes capturados con instancias incompletas (RN-051), e integrantes declarados en el ítem 51 sin caracterizar en una ficha nueva (RN-051, desde el 2026-11-18: no sube a la base sin todos; en una ficha que ya está en la base sólo advierte).
 5. ~~Alertas de prioridad INMEDIATA sin conducta registrada (RN-220).~~ Pasa al plan diferido (ver abajo).
 6. Vivienda sin latitud y longitud (RN-022). Desde el 30-10-2026 no se admite un motivo de imposibilidad en su lugar: PISIS exige las coordenadas en toda vivienda, también en zona rural.
 7. ~~Ausencia de medio de contacto en la familia sin la novedad correspondiente (RN-070).~~ Ya no impide el cierre: el anexo no exige el teléfono (RN-070).

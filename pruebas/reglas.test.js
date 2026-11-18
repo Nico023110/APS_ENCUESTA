@@ -242,18 +242,40 @@ const familiaIncompleta = familiaValida([adultaValida()]);
 familiaIncompleta.numeroIntegrantes = 3;
 const fichaIncompleta = Object.assign(fichaBase(), { familias: [familiaIncompleta] });
 errores = validarReglas(fichaIncompleta);
-/* El integrante que no estaba en la visita no impide guardar: advierte. */
-verificar('Declara 3 integrantes y captura 1 => advertencia RN-051, no bloqueo',
-  errores.filter(e => e.codigo === 'RN-051').length === 0 &&
-  evaluarAdvertencias(fichaIncompleta).some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes'),
+/* Desde el 2026-11-18 una ficha nueva no sube sin todos sus integrantes: el
+   archivo plano no admite una familia a medias. */
+verificar('Ficha nueva: declara 3 integrantes y captura 1 => bloqueo RN-051 en el ítem 51',
+  errores.some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes' && /faltan 2/.test(e.mensaje) &&
+    /no sube a la base/.test(e.mensaje)),
   JSON.stringify(errores.filter(e => e.codigo === 'RN-051').map(e => e.mensaje)));
+/* La que ya está en la base (guardada antes) se sigue corrigiendo: advierte. */
+const yaEnLaBase = Object.assign({}, fichaIncompleta, { yaRegistradaEnLaBase: true });
+verificar('Ficha ya en la base: la misma diferencia sólo advierte',
+  !validarReglas(yaEnLaBase).some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes') &&
+  evaluarAdvertencias(yaEnLaBase).some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes' &&
+    /Completar integrantes/.test(e.mensaje)));
+verificar('Visita cerrada por causa externa: los integrantes que faltan sólo advierten',
+  !validarReglas(Object.assign({}, fichaIncompleta, { visitaIncompleta: true, motivoVisitaIncompleta: 'Ausencia' }))
+    .some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes'));
+verificar('Ficha nueva con todos sus integrantes => sin bloqueo RN-051 de conteo',
+  !validarReglas(Object.assign(fichaBase(), { familias: [familiaValida([adultaValida()])] }))
+    .some(e => e.codigo === 'RN-051' && e.campo === 'numeroIntegrantes'));
 
 const dosHogaresUnaFamilia = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaValida([adultaValida()])] });
-verificar('Declara 2 hogares y caracteriza 1 familia => advertencia RN-028, no bloqueo',
-  validarReglas(dosHogaresUnaFamilia).filter(e => e.codigo === 'RN-028').length === 0 &&
-  evaluarAdvertencias(dosHogaresUnaFamilia).some(e => e.codigo === 'RN-028') &&
-  validarCierre(dosHogaresUnaFamilia).puedeCerrar === true,
-  JSON.stringify(validarCierre(dosHogaresUnaFamilia).impedimentos.map(i => i.codigo)));
+/* Desde el 2026-11-18, como los integrantes: una ficha nueva no sube con un
+   hogar sin caracterizar; la que ya está en la base, o la visita cerrada por
+   causa externa, sólo advierte. */
+verificar('Ficha nueva: declara 2 hogares y caracteriza 1 => bloqueo RN-028',
+  validarReglas(dosHogaresUnaFamilia).some(e => e.codigo === 'RN-028' && /falta 1 hogar/.test(e.mensaje)) &&
+  validarCierre(dosHogaresUnaFamilia).puedeCerrar === false,
+  JSON.stringify(validarReglas(dosHogaresUnaFamilia).filter(e => e.codigo === 'RN-028').map(e => e.mensaje)));
+const dosHogaresYaEnLaBase = Object.assign({}, dosHogaresUnaFamilia, { yaRegistradaEnLaBase: true });
+verificar('Ficha ya en la base: el hogar que falta sólo advierte',
+  !validarReglas(dosHogaresYaEnLaBase).some(e => e.codigo === 'RN-028') &&
+  evaluarAdvertencias(dosHogaresYaEnLaBase).some(e => e.codigo === 'RN-028'));
+const dosHogaresIncompleta = Object.assign({}, dosHogaresUnaFamilia, { visitaIncompleta: true, motivoVisitaIncompleta: 'Inseguridad' });
+verificar('Visita cerrada por causa externa: el hogar que falta sólo advierte',
+  !validarReglas(dosHogaresIncompleta).some(e => e.codigo === 'RN-028'));
 
 /* RN-028 — Un hogar puede reunir varias familias: cada familia dice a qué
    hogar pertenece, y la advertencia cuenta hogares, no familias. */
@@ -266,9 +288,9 @@ verificar('Dos familias en el único hogar declarado => sin bloqueo ni advertenc
     .filter(e => e.codigo === 'RN-028').map(e => e.mensaje)));
 
 const dosHogaresUnoCaracterizado = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaEnHogar(1), familiaEnHogar(1)] });
-verificar('Dos familias en el hogar 1 de 2 declarados => advertencia RN-028 por el hogar 2',
-  evaluarAdvertencias(dosHogaresUnoCaracterizado).some(e => e.codigo === 'RN-028' && /caracterizadas en 1/.test(e.mensaje)) &&
-  validarReglas(dosHogaresUnoCaracterizado).filter(e => e.codigo === 'RN-028').length === 0);
+verificar('Dos familias en el hogar 1 de 2 declarados => falta el hogar 2 (cuenta hogares, no familias)',
+  validarReglas(dosHogaresUnoCaracterizado).some(e => e.codigo === 'RN-028' && e.campo === 'hogaresEnVivienda' &&
+    /caracterizadas en 1/.test(e.mensaje)));
 
 const sinHogar = Object.assign(fichaBase(), { hogaresEnVivienda: 2, familias: [familiaEnHogar(null)] });
 verificar('Familia sin hogar elegido => bloqueo RN-028 sobre su campo',

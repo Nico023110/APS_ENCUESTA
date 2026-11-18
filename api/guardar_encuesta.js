@@ -43,6 +43,7 @@ const { requerirSesion } = require('./_auth');
 const { leerFichaCompleta } = require('./_ficha_completa');
 const { cambiosEnPlanRegistrado, esDelPlan } = require('./_plan_bloqueo');
 const { revisarIntegrantesNuevos, esDeIntegranteNuevo, cuentaAlCompletar } = require('./_integrantes_nuevos');
+const { anotarSiQuedoCompleta } = require('./_completitud');
 const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
@@ -1303,6 +1304,10 @@ module.exports = async (req, res) => {
         VALUES ($1, 'ficha', $1, 'modificacion', 'integrantes', $2, $3, $4)
       `, [existente.id, 'completados: ' + resultado.agregados + ' integrante(s) agregado(s)',
         usuario.funcionarioId, texto(encuesta.dispositivoId)]);
+      /* Con los que faltaban ya puestos, la ficha va al archivo plano del
+         período en que quedó completa. */
+      await anotarSiQuedoCompleta(cliente, existente.id, guardada, encuesta, usuario.funcionarioId,
+        texto(encuesta.dispositivoId));
       if (modificaPlanRegistrado) {
         await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, autorizacion, true);
       }
@@ -1536,6 +1541,13 @@ module.exports = async (req, res) => {
       VALUES ($1, 'ficha', $1, $2, $3, $4, $5, $6)
     `, [fichaId, tipoEvento, usuario.funcionarioId, texto(encuesta.dispositivoId),
       decimal(encuesta.latitud), decimal(encuesta.longitud)]);
+
+    /* RN-051 / RN-028: si la corrección completa una ficha que estaba en la
+       base con integrantes u hogares por caracterizar, se anota: el archivo
+       plano la lleva en el período en que se completó. */
+    if (existente) {
+      await anotarSiQuedoCompleta(cliente, fichaId, guardada, encuesta, usuario.funcionarioId, texto(encuesta.dispositivoId));
+    }
 
     await anexoBd.escribirListasConvertidas(cliente, 'ficha', fichaId, encuesta);
     await anexoBd.escribirAnexo(cliente, motor, 'ficha', fichaId, encuesta, lectorFicha);

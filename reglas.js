@@ -1072,20 +1072,50 @@ const REGLAS_FAMILIA = [
   },
   {
     /* El bloque de integrantes se repite tantas veces como declare el ítem 51.
-       Advierte, no bloquea: el integrante que no estaba en la visita se
-       caracteriza en una visita posterior (mismo criterio que RN-028). */
+       Una ficha nueva no sube a la base sin todos sus integrantes
+       (2026-11-18): el archivo plano para PISIS no admite una familia a
+       medias. Quien no estaba en la visita se caracteriza después, pero la
+       ficha espera en el equipo («Guardar avance») hasta tenerlos a todos.
+       No rige para la visita cerrada por causa externa: no entra al plano
+       (sólo van las cerradas) y es justo la que registra que faltó gente. */
+    codigo: 'RN-051',
+    campo: 'numeroIntegrantes',
+    aplica: function (f, d) {
+      return esEnteroPositivo(f.numeroIntegrantes) && d.yaRegistradaEnLaBase !== true && d.visitaIncompleta !== true;
+    },
+    valida: function (f) {
+      return Array.isArray(f.integrantes) && f.integrantes.length === f.numeroIntegrantes;
+    },
+    mensaje: function (f) {
+      const capturados = Array.isArray(f.integrantes) ? f.integrantes.length : 0;
+      if (capturados > f.numeroIntegrantes) {
+        return 'Declaró ' + f.numeroIntegrantes + ' integrantes y hay ' + capturados +
+               ' caracterizados: corrija el ítem 51.';
+      }
+      const faltan = f.numeroIntegrantes - capturados;
+      return 'Declaró ' + f.numeroIntegrantes + ' integrantes y hay ' + capturados + ' caracterizado(s): ' +
+             (faltan === 1 ? 'falta 1' : 'faltan ' + faltan) + '. La ficha no sube a la base sin todos sus ' +
+             'integrantes. Guárdela con «Guardar avance» y complétela cuando visite a quien falta, o corrija el ' +
+             'ítem 51 si se declaró de más.';
+    }
+  },
+  {
+    /* Una ficha que ya está en la base y quedó con integrantes pendientes
+       (guardada antes de esa regla) se sigue corrigiendo: ahí sólo advierte, y
+       los que faltan se agregan desde Historial → Completar integrantes. */
     codigo: 'RN-051',
     campo: 'numeroIntegrantes',
     severidad: SEVERIDAD.ADVERTENCIA,
-    aplica: function (f) { return esEnteroPositivo(f.numeroIntegrantes); },
+    aplica: function (f, d) {
+      return esEnteroPositivo(f.numeroIntegrantes) && (d.yaRegistradaEnLaBase === true || d.visitaIncompleta === true);
+    },
     valida: function (f) {
       return Array.isArray(f.integrantes) && f.integrantes.length === f.numeroIntegrantes;
     },
     mensaje: function (f) {
       const capturados = Array.isArray(f.integrantes) ? f.integrantes.length : 0;
       return 'Declaró ' + f.numeroIntegrantes + ' integrantes y hay ' + capturados +
-             ' caracterizado(s). Si alguno no estaba, puede guardar así y agregarlo después desde ' +
-             'Historial → Completar integrantes.';
+             ' caracterizado(s). Agregue a quien falta desde Historial → Completar integrantes.';
     }
   },
   {
@@ -2259,7 +2289,7 @@ function evaluarResponsableEconomico(familia, rutaFamilia, referenciaFamilia, sa
       ruta: rutaRol(0),
       mensaje: faltanIntegrantes
         ? 'Ningún integrante caracterizado tiene el rol «Responsable económico de la familia». Si es quien no ' +
-          'estaba en la visita, puede guardar así y asignárselo al agregarlo desde Historial → Completar integrantes.'
+          'estaba en la visita, asígneselo al caracterizarlo.'
         : 'Ningún integrante de esta familia tiene el rol «Responsable económico de la familia». ' +
           'Asígnelo en el ítem 72 de quien corresponda (puede ser este u otro integrante).',
       severidad: faltanIntegrantes ? SEVERIDAD.ADVERTENCIA : SEVERIDAD.BLOQUEO,
@@ -2345,21 +2375,28 @@ function evaluarTodo(datos) {
     /* RN-028 — Cada hogar que declara el ítem 28 tiene al menos una familia
        caracterizada. Un hogar puede reunir varias familias, así que se
        cuentan los hogares distintos, no las familias; una familia sin hogar
-       (fichas anteriores) cuenta como un hogar propio. Advierte, no bloquea:
-       el hogar puede no estar en la visita, y la ficha de los que sí están no
-       debe quedar sin guardar por eso. */
+       (fichas anteriores) cuenta como un hogar propio.
+       Desde el 2026-11-18, igual que los integrantes (RN-051): una ficha
+       nueva no sube a la base con un hogar sin caracterizar —el plano no lo
+       admite—; espera en el equipo. En una ficha que ya está en la base, o en
+       la visita cerrada por causa externa (no va al plano), sólo advierte. */
     const hogaresConFamilia = new Set(datos.familias.map(function (familia, i) {
       return esEnteroPositivo(familia.hogarNumero) ? familia.hogarNumero : 'familia' + i;
     })).size;
     if (esEnteroPositivo(datos.hogaresEnVivienda) && hogaresConFamilia < datos.hogaresEnVivienda) {
+      const soloAdvierte = datos.yaRegistradaEnLaBase === true || datos.visitaIncompleta === true;
+      const faltanHogares = datos.hogaresEnVivienda - hogaresConFamilia;
       salida.push({
         codigo: 'RN-028',
         campo: 'hogaresEnVivienda',
         ruta: 'hogaresEnVivienda',
         mensaje: 'Declaró ' + datos.hogaresEnVivienda + ' hogares y hay familias caracterizadas en ' +
-                 hogaresConFamilia + '. Si un hogar no estaba, puede guardar así y ' +
-                 'caracterizarlo después desde Historial → Corregir.',
-        severidad: SEVERIDAD.ADVERTENCIA,
+                 hogaresConFamilia + (soloAdvierte
+                   ? '. Caracterice el hogar que falta desde Historial → Corregir.'
+                   : ': ' + (faltanHogares === 1 ? 'falta 1 hogar' : 'faltan ' + faltanHogares + ' hogares') +
+                     '. La ficha no sube a la base sin todos sus hogares. Guárdela con «Guardar avance» y ' +
+                     'complétela cuando visite el hogar que falta, o corrija el ítem 28 si se declaró de más.'),
+        severidad: soloAdvierte ? SEVERIDAD.ADVERTENCIA : SEVERIDAD.BLOQUEO,
         ambito: AMBITO.VIVIENDA,
         referencia: null
       });
