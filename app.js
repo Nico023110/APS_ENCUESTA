@@ -2592,6 +2592,15 @@ function renderizarInicio() {
    15. RENDERIZADO — VISTA HISTORIAL (tabla + filtros)
    --------------------------------------------------------- */
 
+/* De 20 en 20 (ver 15.1). Al cambiar un filtro se vuelve a las primeras 20:
+   la firma de los filtros dice si cambiaron desde el último pintado. */
+const TAMANO_PAGINA_HISTORIAL = 20;
+let historialVisibles = TAMANO_PAGINA_HISTORIAL;
+let firmaFiltrosHistorial = null;
+
+const MESES_HISTORIAL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+  'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
 function obtenerEncuestasFiltradas() {
   const texto = document.getElementById('filtroTexto').value.trim().toLowerCase();
   const filtroIntegrantes = document.getElementById('filtroIntegrantes').value;
@@ -2675,9 +2684,19 @@ function renderizarFichasEnCurso() {
 
 function renderizarHistorial() {
   renderizarFichasEnCurso();
-  const encuestas = obtenerEncuestasFiltradas();
+  /* Con otros filtros se vuelve a las primeras 20. */
+  const firma = firmaDeFiltrosHistorial();
+  if (firma !== firmaFiltrosHistorial) {
+    firmaFiltrosHistorial = firma;
+    historialVisibles = TAMANO_PAGINA_HISTORIAL;
+  }
+  const ordenadas = ordenarParaHistorial(obtenerEncuestasFiltradas());
+  const encuestas = ordenadas.map(function (o) { return o.encuesta; });
   const cuerpoTabla = document.getElementById('historialTableBody');
   const estadoVacio = document.getElementById('historialEmptyState');
+  const visibles = Math.min(historialVisibles, encuestas.length);
+  pintarConteoHistorial(encuestas.length, obtenerEncuestasParaMostrar().length, visibles);
+  pintarVerMasHistorial(encuestas.length, visibles);
 
   if (encuestas.length === 0) {
     cuerpoTabla.innerHTML = '';
@@ -2693,7 +2712,28 @@ function renderizarHistorial() {
   }
   estadoVacio.hidden = true;
 
-  cuerpoTabla.innerHTML = encuestas.map(function (encuesta) {
+  /* Período de cada ficha y cuántas hay en cada uno (de todas las que
+     coinciden, no sólo de las que se ven). */
+  const hoyAhora = new Date();
+  const hoy = new Date(hoyAhora.getFullYear(), hoyAhora.getMonth(), hoyAhora.getDate());
+  const periodos = ordenadas.map(function (o) { return periodoEnHistorial(o.dia, hoy); });
+  const porPeriodo = {};
+  periodos.forEach(function (p) { porPeriodo[p.clave] = (porPeriodo[p.clave] || 0) + 1; });
+  let periodoAnterior = null;
+
+  cuerpoTabla.innerHTML = encuestas.slice(0, visibles).map(function (encuesta, posicion) {
+    const periodo = periodos[posicion];
+    let encabezado = '';
+    if (periodo.clave !== periodoAnterior) {
+      periodoAnterior = periodo.clave;
+      const n = porPeriodo[periodo.clave];
+      encabezado = '<tr class="historial-periodo" data-periodo="' + escaparHtml(periodo.clave) + '">' +
+        '<th colspan="13" scope="colgroup">' +
+          '<span class="historial-periodo__titulo">' + escaparHtml(periodo.titulo) + '</span>' +
+          '<span class="historial-periodo__conteo">' + n + (n === 1 ? ' ficha' : ' fichas') + '</span>' +
+        '</th>' +
+      '</tr>';
+    }
     const personasPorHabitacion = encuesta.personasPorHabitacion === null || encuesta.personasPorHabitacion === undefined
       ? '—' : encuesta.personasPorHabitacion;
 
@@ -2743,8 +2783,8 @@ function renderizarHistorial() {
         '<i class="ph ph-trash" aria-hidden="true"></i></button>'
       : '';
 
-    return (
-      '<tr>' +
+    return encabezado + (
+      '<tr class="historial-ficha">' +
         /* El código y el estado hacen falta para poder actuar sobre la fila:
            los rechazos de la API nombran la ficha por su código, y sin verlo
            aquí no había manera de saber cuál de todas hay que corregir. */
@@ -3097,6 +3137,156 @@ function inicializarFiltrosHistorial() {
     document.getElementById('filtroPlanCuidado').value = '';
     renderizarHistorial();
   });
+  inicializarNavegacionHistorial();
+}
+
+/* Recorrer el historial: «Ver 20 más» y «Ver todas», los filtros plegables
+   del celular, el botón para volver arriba y el alto de la barra fija, del
+   que dependen los encabezados de fecha pegados debajo. */
+function inicializarNavegacionHistorial() {
+  const barra = document.getElementById('historialBarra');
+  const mas = document.getElementById('btnHistorialMas');
+  /* Una sola vez: conectado dos veces, «Ver 20 más» sumaba 40. */
+  if (!barra || !mas || barra.dataset.navegacionLista === 'si') return;
+  barra.dataset.navegacionLista = 'si';
+
+  const mostrarMas = function (cuantas) {
+    const antes = document.querySelectorAll('#historialTableBody tr.historial-ficha').length;
+    historialVisibles = cuantas === Infinity ? Infinity : historialVisibles + cuantas;
+    renderizarHistorial();
+    /* El foco sigue en la primera de las recién mostradas, no vuelve arriba. */
+    const primeraNueva = document.querySelectorAll('#historialTableBody tr.historial-ficha')[antes];
+    const boton = primeraNueva && primeraNueva.querySelector('button:not([disabled])');
+    if (boton) { try { boton.focus({ preventScroll: true }); } catch (e) { boton.focus(); } }
+  };
+  mas.addEventListener('click', function () { mostrarMas(TAMANO_PAGINA_HISTORIAL); });
+  document.getElementById('btnHistorialTodas').addEventListener('click', function () { mostrarMas(Infinity); });
+
+  const filtros = document.getElementById('btnFiltrosHistorial');
+  filtros.addEventListener('click', function () {
+    const abiertos = !barra.classList.contains('is-filtros-abiertos');
+    barra.classList.toggle('is-filtros-abiertos', abiertos);
+    filtros.setAttribute('aria-expanded', abiertos ? 'true' : 'false');
+  });
+
+  /* «Arriba»: aparece cuando la búsqueda ya quedó lejos. */
+  const arriba = document.getElementById('btnHistorialArriba');
+  const vista = document.getElementById('view-historial');
+  const revisarArriba = function () {
+    arriba.hidden = !(vista.classList.contains('is-active') && window.scrollY > 700);
+  };
+  window.addEventListener('scroll', revisarArriba, { passive: true });
+  arriba.addEventListener('click', function () {
+    const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reducido ? 'auto' : 'smooth' });
+    /* Con teclado, el foco vuelve a la búsqueda; en el celular no, para no
+       abrir el teclado sin pedirlo. */
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      try { document.getElementById('filtroTexto').focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+    }
+  });
+
+  const publicar = function () {
+    document.documentElement.style.setProperty('--alto-barra-historial', Math.ceil(barra.offsetHeight) + 'px');
+  };
+  publicar();
+  window.addEventListener('resize', publicar, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(publicar).observe(barra);
+}
+
+/* ---------------------------------------------------------
+   15.1 HISTORIAL POR FECHA Y DE 20 EN 20
+   Las fichas se agrupan por el período de su caracterización (Hoy, Ayer,
+   Esta semana, Semana pasada y luego por mes), con un encabezado que se
+   queda pegado al bajar; se muestran de 20 en 20. Antes eran todas seguidas,
+   unas sobre otras, sin saber en qué fecha se iba.
+   --------------------------------------------------------- */
+
+function valorFiltroHistorial(id) {
+  const campo = document.getElementById(id);
+  return campo ? String(campo.value || '').trim() : '';
+}
+
+function firmaDeFiltrosHistorial() {
+  return [valorFiltroHistorial('filtroTexto').toLowerCase(), valorFiltroHistorial('filtroIntegrantes'),
+    valorFiltroHistorial('filtroPlanCuidado')].join('|');
+}
+
+/** El día de la caracterización (ítem 16) a medianoche local, o el de registro si no la tiene. */
+function diaDeFichaEnHistorial(encuesta) {
+  const texto = encuesta.fechaDiligenciamiento || encuesta.fechaRegistro || '';
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(texto).trim());
+  if (ymd) return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+  const fecha = new Date(texto);
+  if (!texto || isNaN(fecha.getTime())) return null;
+  return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+}
+
+/** { clave, titulo } del período en que cae un día, visto desde `hoy`. */
+function periodoEnHistorial(dia, hoy) {
+  if (!dia) return { clave: 'sin-fecha', titulo: 'Sin fecha de caracterización' };
+  const unDia = 86400000;
+  const dias = Math.round((hoy - dia) / unDia);
+  if (dias <= 0) return { clave: 'hoy', titulo: 'Hoy' };
+  if (dias === 1) return { clave: 'ayer', titulo: 'Ayer' };
+  const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - ((hoy.getDay() + 6) % 7));
+  if (dia >= lunes) return { clave: 'semana', titulo: 'Esta semana' };
+  const lunesPasado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() - 7);
+  if (dia >= lunesPasado) return { clave: 'semana-pasada', titulo: 'Semana pasada' };
+  const mes = MESES_HISTORIAL[dia.getMonth()];
+  return {
+    clave: 'mes-' + dia.getFullYear() + '-' + (dia.getMonth() + 1),
+    titulo: mes.charAt(0).toUpperCase() + mes.slice(1) + ' de ' + dia.getFullYear()
+  };
+}
+
+/** Las más recientes primero por fecha de caracterización; a igual día, la última registrada. */
+function ordenarParaHistorial(encuestas) {
+  return encuestas.map(function (encuesta, i) {
+    return { encuesta: encuesta, dia: diaDeFichaEnHistorial(encuesta), i: i };
+  }).sort(function (a, b) {
+    const da = a.dia ? a.dia.getTime() : -Infinity;
+    const db = b.dia ? b.dia.getTime() : -Infinity;
+    return db - da || a.i - b.i;
+  });
+}
+
+/* Arriba de la lista, en la barra fija: cuántas hay, cuántas coinciden con
+   los filtros y cuántas se están viendo. */
+function pintarConteoHistorial(coinciden, total, visibles) {
+  const conteo = document.getElementById('historialConteo');
+  if (conteo) {
+    const filtrando = firmaDeFiltrosHistorial() !== '||';
+    const fichas = function (n) { return n + (n === 1 ? ' ficha' : ' fichas'); };
+    let texto = filtrando
+      ? coinciden + ' de ' + fichas(total) + ' con estos filtros'
+      : fichas(total);
+    if (coinciden > 0 && visibles < coinciden) texto += ' · se ven las primeras ' + visibles;
+    conteo.textContent = total === 0 ? '' : texto;
+  }
+  /* En el celular, el botón «Filtros» dice cuántos hay puestos. */
+  const activos = ['filtroIntegrantes', 'filtroPlanCuidado'].filter(function (id) {
+    return valorFiltroHistorial(id) !== '';
+  }).length;
+  const insignia = document.getElementById('historialFiltrosActivos');
+  if (insignia) {
+    insignia.hidden = activos === 0;
+    insignia.textContent = activos ? String(activos) : '';
+  }
+}
+
+function pintarVerMasHistorial(coinciden, visibles) {
+  const caja = document.getElementById('historialMas');
+  if (!caja) return;
+  const restantes = coinciden - visibles;
+  caja.hidden = restantes <= 0;
+  if (restantes <= 0) return;
+  document.getElementById('historialMasTexto').textContent =
+    'Se ven ' + visibles + ' de ' + coinciden + ' fichas.';
+  document.getElementById('btnHistorialMasTexto').textContent = restantes > TAMANO_PAGINA_HISTORIAL
+    ? 'Ver ' + TAMANO_PAGINA_HISTORIAL + ' más'
+    : restantes === 1 ? 'Ver la última' : 'Ver las ' + restantes + ' restantes';
+  document.getElementById('btnHistorialTodas').hidden = restantes <= TAMANO_PAGINA_HISTORIAL;
 }
 
 /* ---------------------------------------------------------

@@ -112,7 +112,7 @@ function montar(locales, filas) {
   const errores = [];
   window.addEventListener('error', (e) => errores.push(e.message));
 
-  window.eval(fuentes + ';\nwindow.__api = { calcularIndicadores, obtenerEncuestasParaMostrar, refrescarFichasDelServidor, renderizarInicio, cambiarVista };');
+  window.eval(fuentes + ';\nwindow.__api = { calcularIndicadores, obtenerEncuestasParaMostrar, refrescarFichasDelServidor, renderizarInicio, cambiarVista, renderizarHistorial, periodoEnHistorial };');
   window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
   return { window, doc: window.document, errores, api: window.__api };
 }
@@ -179,7 +179,7 @@ function montar(locales, filas) {
   check('Plan pendiente abre el historial con ese filtro y limpia los demás',
     app.doc.getElementById('filtroPlanCuidado').value === 'pendiente' &&
     app.doc.getElementById('filtroIntegrantes').value === '' && app.doc.getElementById('filtroTexto').value === '');
-  const filasHistorial = app.doc.querySelectorAll('#historialTableBody tr');
+  const filasHistorial = app.doc.querySelectorAll('#historialTableBody tr.historial-ficha');
   check('  muestra exactamente la ficha que contaba la fila', filasHistorial.length === 1, filasHistorial.length);
   check('El hacinamiento es una cifra, no un botón (el historial ya no lo filtra)',
     $('#atencionHacinamiento').tagName !== 'BUTTON');
@@ -187,7 +187,7 @@ function montar(locales, filas) {
   /* Filtro «Integrantes»: las fichas con integrantes por caracterizar y las completas suman todas. */
   const filtroInt = app.doc.getElementById('filtroIntegrantes');
   app.doc.getElementById('filtroPlanCuidado').value = '';
-  const contar = (v) => { filtroInt.value = v; filtroInt.dispatchEvent(new app.window.Event('change')); return app.doc.querySelectorAll('#historialTableBody tr').length; };
+  const contar = (v) => { filtroInt.value = v; filtroInt.dispatchEvent(new app.window.Event('change')); return app.doc.querySelectorAll('#historialTableBody tr.historial-ficha').length; };
   const todas = contar(''), conPendientes = contar('pendientes'), completas = contar('completos');
   check('Filtro de integrantes: pendientes + completos = todas', conPendientes + completas === todas, conPendientes + '+' + completas + ' de ' + todas);
   contar('');
@@ -215,6 +215,49 @@ function montar(locales, filas) {
   grande.api.renderizarInicio();
   const personas = grande.doc.querySelector('.cadena__nivel[data-nivel="personas"] .cadena__valor').textContent;
   check('1284 personas se escriben 1.284', personas === '1.284', personas);
+
+  console.log('\n=== 6. Historial por fecha y de 20 en 20 ===');
+  /* 45 fichas de la base caracterizadas en días distintos: hoy, ayer y hace
+     40, 80… días. Se ven las 20 más recientes, agrupadas por período. */
+  const diaHace = (d) => { const f = new Date(); f.setDate(f.getDate() - d); return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0'); };
+  const muchas = Array.from({ length: 45 }, (_, i) => filaServidor('SRV-H' + i, {
+    nuv: 'NUV9' + String(i).padStart(3, '0'),
+    fechaDiligenciamiento: diaHace(i === 0 ? 0 : i === 1 ? 1 : 40 + i * 2)
+  }));
+  const hist = montar([], muchas);
+  await hist.api.refrescarFichasDelServidor();
+  hist.api.cambiarVista('historial');
+  hist.api.renderizarHistorial();
+  const $h = (s) => hist.doc.querySelector(s);
+  const fichasH = () => hist.doc.querySelectorAll('#historialTableBody tr.historial-ficha');
+  const periodosH = () => Array.from(hist.doc.querySelectorAll('#historialTableBody tr.historial-periodo .historial-periodo__titulo')).map((t) => t.textContent);
+  check('Se ven las primeras 20 de 45', fichasH().length === 20, fichasH().length);
+  check('  la más reciente primero (caracterizada hoy)', /SRV-H0(?!\d)/.test(fichasH()[0].textContent), fichasH()[0].textContent.slice(0, 40));
+  check('  agrupadas: «Hoy», «Ayer» y luego por mes', periodosH()[0] === 'Hoy' && periodosH()[1] === 'Ayer' &&
+    /^[A-ZÁÉÍÓÚ][a-záéíóú]+ de \d{4}$/.test(periodosH()[2]), periodosH().join(' | '));
+  check('  el conteo de la barra lo dice', /^45 fichas · se ven las primeras 20$/.test($h('#historialConteo').textContent), $h('#historialConteo').textContent);
+  check('  y «Ver 20 más» está al final', !$h('#historialMas').hidden && $h('#btnHistorialMasTexto').textContent === 'Ver 20 más');
+  $h('#btnHistorialMas').click();
+  check('«Ver 20 más» muestra 40', fichasH().length === 40, fichasH().length);
+  check('  y ofrece las 5 restantes, sin «Ver todas»', $h('#btnHistorialMasTexto').textContent === 'Ver las 5 restantes' &&
+    $h('#btnHistorialTodas').hidden);
+  $h('#btnHistorialMas').click();
+  check('  hasta que no queda ninguna', fichasH().length === 45 && $h('#historialMas').hidden);
+  const buscar = hist.doc.getElementById('filtroTexto');
+  buscar.value = 'SRV-H1';
+  buscar.dispatchEvent(new hist.window.Event('input'));
+  check('Un filtro vuelve a empezar y cuenta lo que coincide', fichasH().length === 11 &&
+    /^11 de 45 fichas con estos filtros$/.test($h('#historialConteo').textContent), fichasH().length + ' · ' + $h('#historialConteo').textContent);
+  buscar.value = '';
+  buscar.dispatchEvent(new hist.window.Event('input'));
+  check('  y al quitarlo vuelve a las primeras 20', fichasH().length === 20, fichasH().length);
+  const hoyH = new Date(2026, 10, 18); // miércoles
+  const p = (y, m, d) => hist.api.periodoEnHistorial(new Date(y, m, d), hoyH).titulo;
+  check('Períodos: hoy, ayer, esta semana, semana pasada y mes',
+    p(2026, 10, 18) === 'Hoy' && p(2026, 10, 17) === 'Ayer' && p(2026, 10, 16) === 'Esta semana' &&
+    p(2026, 10, 15) === 'Semana pasada' && p(2026, 10, 9) === 'Semana pasada' && p(2026, 10, 8) === 'Noviembre de 2026' &&
+    p(2026, 9, 30) === 'Octubre de 2026', [p(2026, 10, 16), p(2026, 10, 15), p(2026, 10, 9), p(2026, 10, 8)].join(' | '));
+  check('  sin fecha, aparte', hist.api.periodoEnHistorial(null, hoyH).titulo === 'Sin fecha de caracterización');
 
   console.log('\n' + ok + ' OK, ' + fail + ' FALLAS');
   process.exit(fail ? 1 : 0);

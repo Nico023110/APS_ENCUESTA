@@ -2666,6 +2666,187 @@ button.atencion__fila:focus-visible {
 
 .badge--info { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1px var(--brand-100); }
 
+/* ---- Historial: barra fija, encabezados por fecha, ver más y arriba ------
+   Con cientos de fichas la lista era una sola columna de tarjetas sin
+   referencia: al bajar se perdía la búsqueda y no se sabía en qué fecha se
+   iba. La barra (búsqueda, filtros y conteo) se queda pegada bajo la
+   cabecera; debajo de ella se pega el encabezado del período (Hoy, Ayer,
+   Esta semana, Semana pasada, cada mes); la lista va de 20 en 20 y «Arriba»
+   devuelve a la búsqueda. Las tarjetas no cambian. */
+#view-historial {
+  --relleno-tarjeta: var(--s-6);
+  --tope-historial: var(--alto-cabecera);
+}
+@media (max-width: 720px) {
+  /* En el celular la cabecera no se pega: la barra va a ras del borde. */
+  #view-historial { --relleno-tarjeta: var(--s-4); --tope-historial: 0px; }
+}
+/* Un contenedor que recorta deja a los encabezados sin dónde pegarse. */
+#view-historial .table-wrapper { overflow: visible; }
+
+.historial-barra {
+  position: sticky;
+  top: var(--tope-historial);
+  z-index: 6;
+  margin: 0 calc(-1 * var(--relleno-tarjeta)) var(--s-3);
+  padding: var(--s-3) var(--relleno-tarjeta);
+  background: #fff;
+  border-bottom: 1px solid var(--ink-100);
+}
+.historial-barra .filters-bar { margin-bottom: 0; }
+.historial-barra__selects { display: contents; }
+.historial-barra__filtros { display: none; }
+.historial-barra__conteo {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-500);
+}
+.historial-barra__conteo:empty { display: none; }
+
+/* Encabezado del período: ocupa todo el ancho de la rejilla de tarjetas y
+   se pega justo debajo de la barra. No es una tarjeta: se le quita todo. */
+#historialTable tr.historial-periodo {
+  grid-column: 1 / -1;
+  display: block;
+  position: sticky;
+  top: calc(var(--tope-historial) + var(--alto-barra-historial, 0px));
+  z-index: 4;
+  margin: 0 calc(-1 * var(--relleno-tarjeta));
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  transition: none;
+}
+#historialTable tr.historial-periodo:not(:first-child) { margin-top: var(--s-3); }
+#historialTable tr.historial-periodo:hover { transform: none; box-shadow: none; background: transparent; }
+#historialTable tr.historial-periodo th {
+  position: static;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: 10px var(--relleno-tarjeta);
+  /* Opaco: los encabezados ya pasados quedan pegados debajo, uno sobre otro. */
+  background: #fff;
+  border-bottom: 1px solid var(--ink-100);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+.historial-periodo__titulo { font-size: 15px; font-weight: 700; color: var(--ink-900); letter-spacing: -0.01em; }
+.historial-periodo__conteo { font-size: var(--fs-small); font-weight: 500; color: var(--ink-500); font-variant-numeric: tabular-nums; }
+
+/* «Ver 20 más», al final de la lista. */
+.historial-mas[hidden] { display: none; }
+.historial-mas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--ink-100);
+  text-align: center;
+}
+.historial-mas__texto { margin: 0; font-size: var(--fs-small); color: var(--ink-500); font-variant-numeric: tabular-nums; }
+.historial-mas__botones { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); }
+.historial-mas__botones .btn { min-height: 44px; padding-inline: var(--s-5); font-size: var(--fs-label); }
+.historial-mas__todas[hidden] { display: none; }
+
+/* «Arriba»: flotante, abajo a la derecha; en el celular, sobre las pestañas. */
+.historial-arriba[hidden] { display: none; }
+.historial-arriba {
+  position: fixed;
+  right: var(--s-6);
+  bottom: var(--s-6);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 var(--s-4) 0 var(--s-3);
+  border: none;
+  border-radius: 999px;
+  background: var(--brand-600);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 54, 90, 0.28), 0 10px 24px -8px rgba(0, 54, 90, 0.55);
+  animation: historialArribaEntra var(--dur-enter, 0.2s) var(--ease-out);
+}
+.historial-arriba i { font-size: 18px; }
+@media (hover: hover) and (pointer: fine) {
+  .historial-arriba:hover { background: var(--brand-700); }
+}
+.historial-arriba:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-ring); }
+@keyframes historialArribaEntra {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .historial-arriba { animation: none; }
+}
+
+@media (max-width: 720px) {
+  /* Celular: la búsqueda y el botón «Filtros» en un renglón; los dos
+     filtros se abren debajo al tocarlo, para no quitar media pantalla. */
+  .historial-barra .filters-bar { flex-wrap: nowrap; gap: var(--s-2); }
+  .historial-barra .filters-bar input { min-width: 0; }
+  .historial-barra__filtros {
+    display: inline-flex;
+    flex: none;
+    min-height: 44px;
+    padding-inline: var(--s-3);
+    font-size: var(--fs-label);
+  }
+  .historial-barra__activos {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--brand-600);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .historial-barra__activos[hidden] { display: none; }
+  .historial-barra__filtros[aria-expanded="true"] {
+    background: var(--brand-50);
+    color: var(--brand-800);
+    box-shadow: inset 0 0 0 1px var(--brand-300);
+  }
+  .historial-barra__selects { display: none; }
+  .historial-barra.is-filtros-abiertos .filters-bar { flex-wrap: wrap; }
+  .historial-barra.is-filtros-abiertos .filters-bar input { flex: 1 1 0; }
+  .historial-barra.is-filtros-abiertos .historial-barra__selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-2);
+    flex: 1 1 100%;
+  }
+  /* En un celular angosto, lado a lado se cortaban «Integrantes: todos» y
+     «Plan de cuidado: todos»: uno debajo del otro. */
+  @media (max-width: 480px) {
+    .historial-barra.is-filtros-abiertos .historial-barra__selects { grid-template-columns: 1fr; }
+  }
+  .historial-barra__selects select { min-width: 0; width: 100%; }
+  .historial-barra__selects .btn { grid-column: 1 / -1; min-height: 42px; }
+  .historial-barra__conteo { margin-top: 6px; font-size: var(--fs-micro); }
+  .historial-arriba {
+    right: var(--s-4);
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px) + var(--s-3));
+    min-height: 44px;
+  }
+  .historial-arriba span { display: none; }
+  .historial-arriba { width: 48px; height: 48px; padding: 0; justify-content: center; }
+}
+
 /* ================= FILTERS ================= */
 .filters-bar {
   display: flex;

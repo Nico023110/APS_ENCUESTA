@@ -441,6 +441,20 @@ formas según el ancho:
 y contorno `--brand-300`, separado de las secciones en la columna), más suave
 que la sección actual, que es azul lleno. En el panel «Ir a» del celular, igual.
 
+### Historial: recorrer la lista (2026‑11‑18)
+Las tarjetas de ficha no cambian (decisión del usuario). Lo que cambia es cómo
+se recorre la lista:
+- **Barra fija** (búsqueda, filtros y conteo «66 fichas · se ven las primeras
+  20») pegada bajo la cabecera; en el celular, a ras del borde y con los dos
+  filtros plegados tras «Filtros» (con insignia de cuántos hay puestos).
+- **Por período de caracterización:** Hoy, Ayer, Esta semana, Semana pasada y
+  luego cada mes, con un encabezado opaco que se pega bajo la barra
+  (`--alto-barra-historial`, lo publica app.js). Más recientes primero.
+- **De 20 en 20:** «Ver 20 más» (o «Ver las N restantes») y «Ver todas» al
+  final; un filtro nuevo vuelve a las primeras 20.
+- **«Arriba»:** botón flotante azul que aparece al bajar; en el celular, sólo
+  la flecha, encima de las pestañas.
+
 ### Cierre de la ficha (2026‑11‑17)
 - **Validación de completitud:** un resumen («N datos pendientes en M
   secciones») y los pendientes agrupados por sección en grupos plegables con

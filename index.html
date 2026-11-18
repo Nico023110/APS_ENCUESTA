@@ -1998,19 +1998,33 @@
       <div class="card__header">
         <h2>Historial de encuestas</h2>
       </div>
-      <div class="filters-bar">
-        <input type="text" id="filtroTexto" placeholder="Buscar por número de ficha...">
-        <select id="filtroIntegrantes" aria-label="Filtrar por integrantes por caracterizar">
-          <option value="">Integrantes: todos</option>
-          <option value="pendientes">Faltan integrantes</option>
-          <option value="completos">Integrantes completos</option>
-        </select>
-        <select id="filtroPlanCuidado">
-          <option value="">Plan de cuidado: todos</option>
-          <option value="pendiente">Plan pendiente</option>
-          <option value="registrado">Plan registrado</option>
-        </select>
-        <button class="btn btn--ghost" id="btnLimpiarFiltros">Limpiar filtros</button>
+      <!-- Búsqueda, filtros y conteo: se quedan fijos arriba al bajar por la
+           lista (app.js publica su alto en --alto-barra-historial para que los
+           encabezados de fecha se peguen justo debajo). En el celular los dos
+           filtros se abren con «Filtros», para no quitar media pantalla. -->
+      <div class="historial-barra" id="historialBarra">
+        <div class="filters-bar">
+          <input type="text" id="filtroTexto" placeholder="Buscar por número de ficha..." inputmode="search" enterkeyhint="search" autocomplete="off" aria-label="Buscar por número de ficha">
+          <button type="button" class="btn btn--ghost btn--icon historial-barra__filtros" id="btnFiltrosHistorial"
+                  aria-expanded="false" aria-controls="historialFiltros">
+            <i class="ph ph-funnel" aria-hidden="true"></i><span>Filtros</span>
+            <span class="historial-barra__activos" id="historialFiltrosActivos" hidden></span>
+          </button>
+          <div class="historial-barra__selects" id="historialFiltros">
+            <select id="filtroIntegrantes" aria-label="Filtrar por integrantes por caracterizar">
+              <option value="">Integrantes: todos</option>
+              <option value="pendientes">Faltan integrantes</option>
+              <option value="completos">Integrantes completos</option>
+            </select>
+            <select id="filtroPlanCuidado" aria-label="Filtrar por plan de cuidado">
+              <option value="">Plan de cuidado: todos</option>
+              <option value="pendiente">Plan pendiente</option>
+              <option value="registrado">Plan registrado</option>
+            </select>
+            <button class="btn btn--ghost" id="btnLimpiarFiltros">Limpiar filtros</button>
+          </div>
+        </div>
+        <p class="historial-barra__conteo" id="historialConteo" aria-live="polite"></p>
       </div>
       <!-- Fichas empezadas y guardadas sólo en este equipo, que todavía no se
            cargan a la base: las pinta renderizarFichasEnCurso(). -->
@@ -2041,6 +2055,18 @@
         </table>
       </div>
       <p class="empty-state" id="historialEmptyState" hidden>No se encontraron registros con los filtros seleccionados.</p>
+      <!-- La lista se muestra de 20 en 20 (app.js, renderizarHistorial). -->
+      <div class="historial-mas" id="historialMas" hidden>
+        <p class="historial-mas__texto" id="historialMasTexto"></p>
+        <div class="historial-mas__botones">
+          <button type="button" class="btn btn--ghost btn--icon" id="btnHistorialMas">
+            <i class="ph ph-caret-down" aria-hidden="true"></i><span id="btnHistorialMasTexto">Ver 20 más</span></button>
+          <button type="button" class="btn btn--ghost btn--icon historial-mas__todas" id="btnHistorialTodas">Ver todas</button>
+        </div>
+      </div>
+      <!-- Aparece al bajar: devuelve a la búsqueda y a los filtros. -->
+      <button type="button" class="historial-arriba" id="btnHistorialArriba" hidden aria-label="Volver arriba, a la búsqueda">
+        <i class="ph ph-arrow-up" aria-hidden="true"></i><span>Arriba</span></button>
     </div>
   </section>
 

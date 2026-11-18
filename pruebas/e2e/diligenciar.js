@@ -688,7 +688,7 @@ async function cerrarYGuardar(page, diario, ficha) {
 
   await expect(page.locator('#view-historial')).toHaveClass(/is-active/);
 
-  const filas = await page.locator('#historialTableBody tr').count();
+  const filas = await page.locator('#historialTableBody tr.historial-ficha').count();
   if (filas > 0) diario.ok('La ficha aparece en el historial', filas + ' registro(s)');
   else diario.problema('Historial', 'la ficha guardada no aparece en el historial');
 

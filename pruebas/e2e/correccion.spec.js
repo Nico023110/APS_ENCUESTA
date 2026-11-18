@@ -139,7 +139,7 @@ test('Una ficha rechazada se corrige y llega a la base', async function ({ page 
   /* La pestaña, no el botón «Ver historial completo» de la portada. */
   await page.locator('#appTabs button[data-view="historial"]').click();
 
-  const filaFicha = page.locator('#historialTableBody tr', { hasText: CODIGO });
+  const filaFicha = page.locator('#historialTableBody tr.historial-ficha', { hasText: CODIGO });
   await expect(filaFicha, 'la ficha no aparece en el historial').toHaveCount(1);
 
   await filaFicha.getByRole('button', { name: 'Corregir' }).click();

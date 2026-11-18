@@ -121,7 +121,7 @@ window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: tr
 
   await api.refrescarFichasDelServidor();
   api.renderizarHistorial();
-  const celda = (codigo) => Array.from(window.document.querySelectorAll('#historialTableBody tr'))
+  const celda = (codigo) => Array.from(window.document.querySelectorAll('#historialTableBody tr.historial-ficha'))
     .find((tr) => tr.textContent.indexOf(codigo) !== -1).querySelector('.celda-plan');
 
   const srv = celda('SRV-1');
