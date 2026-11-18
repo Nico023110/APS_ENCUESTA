@@ -337,7 +337,7 @@ async function principal() {
   verificar('todos los controles esperados existen en el formulario',
     faltantes.length === 0, faltantes.slice(0, 6).join(', '));
 
-  const formulario = w.document.getElementById('formEncuesta') || w.document.querySelector('form');
+  const formulario = w.document.getElementById('encuestaForm');
 
   const datos = w.__api.recolectarDatosFormulario(formulario);
 

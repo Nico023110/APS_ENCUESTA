@@ -358,6 +358,22 @@
     return { clave: real, valor: valor };
   }
 
+  /**
+   * Un texto cifrado para guardarlo fuera de localStorage (base_previa.js usa
+   * IndexedDB, donde cabe más y no le quita espacio a las fichas). Quien lo
+   * guarda decide dónde; lo autenticado incluye a la persona y el contexto,
+   * así que otra persona u otro contexto no lo abren.
+   * @throws BovedaCerrada sin la llave.
+   */
+  function sellarDato(contexto, texto) {
+    return sellar('dato:' + contexto, texto);
+  }
+
+  /** El texto de sellarDato, o null si está cerrada, si es de otra llave o si está dañado. */
+  function abrirDato(contexto, sellado) {
+    return llave ? abrirSellado('dato:' + contexto, sellado) : null;
+  }
+
   /** Borra lo guardado en `clave`. Sin la llave no toca nada: podría ser de otra llave. */
   function borrarTexto(clave) {
     if (!llave) return;
@@ -832,6 +848,8 @@
     sellarTexto: sellarTexto,
     borrarTexto: borrarTexto,
     pasarACifrado: pasarACifrado,
+    sellarDato: sellarDato,
+    abrirDato: abrirDato,
 
     recuperarAnteriores: recuperarAnteriores,
     confirmarRecuperacion: confirmarRecuperacion,

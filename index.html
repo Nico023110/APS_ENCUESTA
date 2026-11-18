@@ -125,10 +125,45 @@
         </div>
       </section>
 
+      <!-- ¿Ya fue caracterizada? Se consulta antes de la visita, para no
+           repetirla: base 2025 – primer semestre 2026 y fichas de la app.
+           Sólo avisa. Lo maneja base_previa.js (sin señal, con la copia
+           cifrada del teléfono); se muestra a quien tiene el permiso. -->
+      <section class="panel-inicio ya-caracterizada entra" style="--orden: 2" id="panelYaCaracterizada"
+               aria-labelledby="yaCaracterizadaTitulo" hidden>
+        <header class="panel-inicio__cabecera">
+          <h3 class="panel-inicio__titulo" id="yaCaracterizadaTitulo">¿Ya fue caracterizada?</h3>
+          <p class="panel-inicio__nota">Antes de la visita: base 2025 – primer semestre 2026 y fichas de la app</p>
+        </header>
+        <form class="ya-caracterizada__form" id="formYaCaracterizada" novalidate>
+          <div class="radio-group ya-caracterizada__modos" role="radiogroup" aria-label="Buscar por">
+            <label class="radio-pill"><input type="radio" name="modoBusquedaPrevia" value="documento" checked> Documento</label>
+            <label class="radio-pill"><input type="radio" name="modoBusquedaPrevia" value="direccion"> Dirección</label>
+            <label class="radio-pill"><input type="radio" name="modoBusquedaPrevia" value="cercania"> Cerca de mí</label>
+          </div>
+          <div class="ya-caracterizada__fila">
+            <div class="ya-caracterizada__campo" id="filaTextoBusquedaPrevia">
+              <input type="text" id="textoBusquedaPrevia" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                     enterkeyhint="search" maxlength="160" aria-describedby="ayudaBusquedaPrevia">
+            </div>
+            <button type="submit" class="btn btn--primary ya-caracterizada__buscar" id="btnBuscarPrevia">
+              <i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Buscar</span>
+            </button>
+          </div>
+          <p class="ya-caracterizada__ayuda" id="ayudaBusquedaPrevia"></p>
+        </form>
+        <div class="ya-caracterizada__resultado" id="resultadoBusquedaPrevia" aria-live="polite"></div>
+        <p class="previa-copia" id="estadoCopiaPrevia">
+          <i class="ph ph-cloud-slash" aria-hidden="true"></i>
+          <span class="previa-copia__texto"></span>
+          <button type="button" class="previa-copia__actualizar" id="btnActualizarCopiaPrevia" hidden>Actualizar</button>
+        </p>
+      </section>
+
       <!-- Población caracterizada: la vivienda alberga hogares, el hogar
            familias y la familia personas, y la cadena se lee en ese orden.
            Las cifras y los detalles los pinta renderizarComposicion(). -->
-      <section class="panel-inicio composicion entra" style="--orden: 2" aria-labelledby="composicionTitulo">
+      <section class="panel-inicio composicion entra" style="--orden: 3" aria-labelledby="composicionTitulo">
         <header class="panel-inicio__cabecera">
           <h3 class="panel-inicio__titulo" id="composicionTitulo">Población caracterizada</h3>
           <p class="panel-inicio__nota">Según la última visita a cada vivienda</p>
@@ -169,7 +204,7 @@
       </section>
 
       <!-- Viviendas por territorio: barras pintadas por renderizarTerritorios(). -->
-      <section class="panel-inicio territorios entra" style="--orden: 3" aria-labelledby="territoriosTitulo">
+      <section class="panel-inicio territorios entra" style="--orden: 4" aria-labelledby="territoriosTitulo">
         <header class="panel-inicio__cabecera">
           <h3 class="panel-inicio__titulo" id="territoriosTitulo">Viviendas por territorio</h3>
           <p class="panel-inicio__nota" id="notaTerritorios"></p>
@@ -180,7 +215,7 @@
       <!-- Lo que pide atención, por ficha. Las dos filas que el historial
            sabe filtrar llevan allí; la situación inminente no tiene filtro
            propio y por eso no es un botón. -->
-      <section class="panel-inicio atencion entra" style="--orden: 4" aria-labelledby="atencionTitulo">
+      <section class="panel-inicio atencion entra" style="--orden: 5" aria-labelledby="atencionTitulo">
         <header class="panel-inicio__cabecera">
           <h3 class="panel-inicio__titulo" id="atencionTitulo">Fichas que requieren atención</h3>
         </header>
@@ -222,7 +257,7 @@
       </section>
 
       <div class="bento__acciones">
-        <button class="accion-ancha entra" style="--orden: 5" data-goto="historial">
+        <button class="accion-ancha entra" style="--orden: 6" data-goto="historial">
           <span class="accion-ancha__icono" aria-hidden="true"><i class="ph ph-list-dashes"></i></span>
           <span class="accion-ancha__texto">
             <span class="accion-ancha__titulo">Ver historial</span>
@@ -2570,5 +2605,7 @@
 <script src="reporte.js"></script>
 <script src="productividad.js"></script>
 <script src="tableros.js"></script>
+<script src="cruce.js"></script>
+<script src="base_previa.js"></script>
 </body>
 </html>

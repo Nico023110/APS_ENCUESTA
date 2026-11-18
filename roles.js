@@ -80,6 +80,8 @@ const PERMISOS_POR_NIVEL = {
     'ficha.ver.equipo',
     'ficha.evolucionar.propias',
     'catalogos.consultar',
+    /* ¿Ya fue caracterizada? (api/base_previa.js): avisa, no muestra la ficha. */
+    'base_previa.consultar',
     'productividad.ver.propia'
   ],
   profesional: [
@@ -87,6 +89,7 @@ const PERMISOS_POR_NIVEL = {
     'ficha.ver.equipo',
     'ficha.evolucionar.equipo',
     'catalogos.consultar',
+    'base_previa.consultar',
     'productividad.ver.propia'
   ],
   coordinacion: [
@@ -97,6 +100,7 @@ const PERMISOS_POR_NIVEL = {
     'ficha.autorizar',
     'plan.modificar_registrado',
     'catalogos.consultar',
+    'base_previa.consultar',
     'usuarios.ver',
     'usuarios.crear',
     'auditoria.ver',
@@ -107,6 +111,7 @@ const PERMISOS_POR_NIVEL = {
     'ficha.ver.todas',
     'ficha.corregir.todas',
     'catalogos.consultar',
+    'base_previa.consultar',
     'usuarios.ver',
     'usuarios.crear',
     'usuarios.modificar',
@@ -130,6 +135,7 @@ const PERMISOS_POR_NIVEL = {
        auditoría (RN-225). */
     'ficha.eliminar',
     'catalogos.consultar',
+    'base_previa.consultar',
     'usuarios.ver',
     'usuarios.crear',
     'usuarios.modificar',

@@ -313,6 +313,17 @@ sólo 400 y 700—, que es lo que permite construir jerarquía sin subir de tama
   1040 px todo cae a `span 12` y el módulo de sincronización va al lado del
   marcador; bajo 680, la cadena va de a dos sin pelos ni
   conectores y el resto a una columna.
+- **Inicio: «¿Ya fue caracterizada?»** `span 12`, justo bajo la acción
+  principal porque se consulta antes de abrir una ficha (RN-230). Tres
+  píldoras (Documento, Dirección, Cerca de mí), el campo blanco de contorno
+  firme y «Buscar»; la ayuda bajo el campo dice, en dirección, cómo la va a
+  buscar («Se buscará como KR 14 # 14 - 14»). El resultado abre con un resumen
+  que sólo avisa: ámbar «Ya fue caracterizada» (no es un error: puede ser un
+  seguimiento) o verde «No aparece caracterizada»; debajo, una tarjeta gris de
+  ~300 px por coincidencia con el origen (base anterior o ficha de la app),
+  la fecha y qué coincidió (mismo documento, misma dirección, a N m). Al pie,
+  separado por un pelo, el estado de la copia para buscar sin señal. Bajo
+  520 px el botón va debajo del campo, a lo ancho.
 - **Formulario: una sola página larga** en el orden del instrumento, con el
   índice siempre a la vista y `scroll-margin-top` compensando lo que queda
   pegado arriba (`--tope-anclas`). Con 1240 px o más el índice es una columna

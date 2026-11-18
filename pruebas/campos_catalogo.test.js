@@ -158,7 +158,7 @@ CAMPOS.forEach(function (campo) {
 
 let datos = null;
 try {
-  const formulario = doc.getElementById('formEncuesta') || doc.querySelector('form');
+  const formulario = doc.getElementById('encuestaForm');
   datos = ventana.__api.recolectarDatosFormulario(formulario);
 } catch (error) {
   verificar('se pudo recolectar el formulario', false, error.message);

@@ -567,6 +567,174 @@ code, kbd, samp, .mono { font-family: var(--font-mono); font-size: var(--fs-smal
 .territorios { grid-column: span 7; }
 .atencion { grid-column: span 5; }
 
+/* ---- ¿Ya fue caracterizada? (base_previa.js) ----------------------------
+   Se consulta antes de abrir una ficha, por eso va justo bajo la acción
+   principal. El campo es blanco con contorno firme, como todo lo que se llena;
+   el resumen del resultado es lo primero que se lee y sólo avisa: ámbar si
+   ya fue caracterizada (no es un error, puede ser un seguimiento), verde si
+   no aparece. */
+.ya-caracterizada { grid-column: 1 / -1; }
+.ya-caracterizada .panel-inicio__cabecera { margin-bottom: var(--s-4); }
+
+.ya-caracterizada__form { display: grid; gap: var(--s-3); }
+/* La píldora general se estira a la altura de su fila (height: 100%); aquí,
+   dentro de la rejilla del formulario, WebKit la estiraba de más y la tercera
+   quedaba debajo del campo. */
+.ya-caracterizada__modos { align-items: center; }
+.ya-caracterizada__modos .radio-pill { height: auto; min-height: 40px; }
+.ya-caracterizada__fila { display: flex; gap: var(--s-3); align-items: stretch; }
+.ya-caracterizada__campo { flex: 1; min-width: 0; }
+.ya-caracterizada__campo[hidden] { display: none; }
+.ya-caracterizada__campo input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px var(--s-4);
+  border: none;
+  border-radius: var(--r-control);
+  box-shadow: inset 0 0 0 1px var(--campo-borde);
+  background: #fff;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--ink-900);
+  transition: box-shadow var(--dur-hover) var(--ease-out);
+}
+.ya-caracterizada__campo input::placeholder { color: var(--campo-ejemplo); }
+.ya-caracterizada__campo input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--brand-600), 0 0 0 3px var(--brand-ring);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ya-caracterizada__campo input:hover:not(:focus) { box-shadow: inset 0 0 0 1px var(--campo-borde-hover); }
+}
+.ya-caracterizada__buscar { min-height: 44px; white-space: nowrap; }
+.ya-caracterizada__ayuda { margin: 0; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-500); }
+
+.ya-caracterizada__resultado { display: grid; gap: var(--s-3); margin-top: var(--s-5); }
+.ya-caracterizada__resultado:empty { display: none; }
+.ya-caracterizada[aria-busy="true"] .ya-caracterizada__resultado { opacity: 0.6; }
+
+.previa-resumen {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-core);
+}
+.previa-resumen > i { font-size: 22px; line-height: 1; margin-top: 1px; flex-shrink: 0; }
+.previa-resumen--encontrada { background: var(--warn-50); box-shadow: inset 0 0 0 1px var(--warn-100); color: var(--warn-700); }
+.previa-resumen--libre { background: var(--ok-50); box-shadow: inset 0 0 0 1px var(--ok-100); color: var(--ok-700); }
+.previa-resumen--error { background: var(--ink-50); box-shadow: inset 0 0 0 1px var(--ink-150); color: var(--ink-600); }
+.previa-resumen--espera { background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand-100); color: var(--brand-700); }
+.previa-resumen__textos { display: grid; gap: 2px; min-width: 0; }
+.previa-resumen__titulo { font-size: var(--fs-h3); font-weight: 700; letter-spacing: -0.01em; }
+.previa-resumen__texto { margin: 0; font-size: var(--fs-label); line-height: 1.5; color: var(--ink-700); }
+
+.previa-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--s-3);
+}
+.previa-item {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-4);
+  border-radius: var(--r-core);
+  background: var(--ink-50);
+  box-shadow: inset 0 0 0 1px var(--ink-150);
+}
+.previa-item__cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.previa-item__fecha { font-size: var(--fs-label); font-weight: 700; color: var(--ink-900); }
+.previa-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--r-chip);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.previa-item > .previa-chip { justify-self: start; }
+.previa-chip--previa { background: #fff; color: var(--ink-700); box-shadow: inset 0 0 0 1px var(--ink-200); }
+.previa-chip--app { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 0 0 1px var(--brand-100); }
+.previa-chip--coincide { margin-left: auto; background: var(--warn-50); color: var(--warn-700); box-shadow: inset 0 0 0 1px var(--warn-100); }
+.previa-item__lugar { margin: 0; font-size: var(--fs-small); color: var(--ink-500); }
+.previa-item__direccion { margin: 0; font-weight: 600; color: var(--ink-900); overflow-wrap: anywhere; }
+.previa-item__datos { display: grid; gap: 2px; margin: 0; font-size: var(--fs-small); }
+.previa-item__dato { display: flex; gap: var(--s-2); }
+.previa-item__dato dt { flex: 0 0 84px; color: var(--ink-500); }
+.previa-item__dato dd { margin: 0; min-width: 0; color: var(--ink-800); overflow-wrap: anywhere; }
+
+.previa-ampliar { justify-self: start; }
+.previa-fuente { margin: 0; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-500); }
+.previa-fuente--copia { color: var(--warn-700); }
+
+.previa-copia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-5) 0 0;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--ink-100);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-500);
+}
+/* El texto se encoge junto al icono en vez de bajar de renglón y dejarlo solo. */
+.previa-copia > i { flex-shrink: 0; }
+.previa-copia__texto { flex: 1 1 14rem; min-width: 0; }
+.previa-copia__actualizar {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--brand-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.previa-copia__actualizar[hidden] { display: none; }
+
+/* iOS hace zoom sobre un campo de menos de 16 px al tocarlo. */
+@media (max-width: 720px) {
+  .ya-caracterizada__campo input { font-size: 16px; }
+}
+@media (max-width: 520px) {
+  /* Las tres maneras de buscar en una fila de tres partes iguales, como un
+     selector segmentado: con el punto del radio no caben en 390 px y la
+     tercera bajaba de renglón. El radio sigue ahí para el teclado y el
+     lector de pantalla; la píldora marcada lo dice con su color. */
+  .ya-caracterizada__modos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .ya-caracterizada__modos .radio-pill {
+    position: relative;
+    justify-content: center;
+    padding: 9px 6px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .ya-caracterizada__modos .radio-pill input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ya-caracterizada__fila { flex-direction: column; }
+  .ya-caracterizada__buscar { width: 100%; }
+  .previa-chip--coincide { margin-left: 0; }
+}
+
 /* ---- Cadena: vivienda → hogar → familia → persona ----------------------
    Cuatro niveles separados por un pelo vertical; sobre cada pelo, a la
    altura de los iconos, un conector con el ángulo que dice «contiene». La

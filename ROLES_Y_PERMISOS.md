@@ -103,6 +103,7 @@ sesión.
 | `plan.modificar_registrado` — cambiar lo registrado en un plan de cuidado sin autorización (RN‑228) | — | — | Sí | — | Sí |
 | `ficha.eliminar` — eliminar una ficha de la base, con motivo (RN‑225) | — | — | — | — | Sí |
 | `catalogos.consultar` — territorios, acciones, CUPS | Sí | Sí | Sí | Sí | Sí |
+| `base_previa.consultar` — «¿Ya fue caracterizada?»: buscar en la base 2025 – primer semestre 2026 y en las fichas de la app; sólo avisa, no muestra la ficha (RN‑230) | Sí | Sí | Sí | Sí | Sí |
 | `usuarios.ver` — la vista de usuarios | — | — | Sí | Sí | Sí |
 | `usuarios.crear` — crear cuentas (la coordinación, sólo del personal asistencial) | — | — | Sí | Sí | Sí |
 | `usuarios.modificar` — cambiar nombre, rol, equipo, contacto y estado | — | — | — | Sí | Sí |

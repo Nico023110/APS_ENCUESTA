@@ -410,6 +410,40 @@ erDiagram
     }
 ```
 
+### 5.1 Caracterizaciones anteriores a la app (esquema `hist`, RN-230)
+
+```mermaid
+erDiagram
+    HIST_CARGA ||--o{ HIST_VIVIENDA : "un archivo"
+    HIST_VIVIENDA ||--o{ HIST_PERSONA : "documentos"
+
+    HIST_CARGA {
+        serial id PK
+        text archivo
+        text huella UK "SHA-256: recargar reemplaza"
+        text periodo
+    }
+    HIST_VIVIENDA {
+        bigint id PK
+        text numero_anterior "NUV de la herramienta anterior"
+        text territorio
+        text direccion "como se escribio"
+        text clave_direccion "cruce.js"
+        numeric latitud
+        date ultima_fecha
+        text ebs_codigo
+        text responsable
+        int personas
+    }
+    HIST_PERSONA {
+        bigint vivienda_id FK
+        text tipo_id
+        text numero_id "cruce.js"
+    }
+```
+
+No se relaciona con `aps.*` por llaves: es otra herramienta y otro instrumento. El cruce con las viviendas de la app se hace al buscar (`api/_base_previa.js`), por el número de documento, por la clave de dirección (la de la app es el comienzo de `aps.hogar.direccion_normalizada`) o por cercanía. No guarda nombres, nacimientos ni datos de salud.
+
 `aud.evento` y `aud.acceso_sensible` rechazan `UPDATE` y `DELETE` por trigger. `aps.ficha` rechaza el borrado y la modificación de sus campos estructurales una vez sincronizada: las correcciones se hacen creando una versión nueva que apunta a la anterior mediante `ficha_reemplazada_id`.
 
 ---

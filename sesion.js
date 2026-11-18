@@ -43,7 +43,10 @@
     '/api/cerrar_sesion': 8000,
     '/api/catalogo_acciones': 20000,
     '/api/catalogo_dinamico': 20000,
-    '/api/buscar_cups': 10000
+    '/api/buscar_cups': 10000,
+    /* La copia para buscar sin señal pesa más que una búsqueda; la búsqueda
+       pone su propio tope, más corto (base_previa.js). */
+    '/api/base_previa': 30000
   };
   const LIMITE_DESBLOQUEO_MS = 10000;
 

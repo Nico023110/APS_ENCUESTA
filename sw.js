@@ -88,6 +88,8 @@ const ARCHIVOS = [
   '/reporte.js',
   '/productividad.js',
   '/tableros.js',
+  '/cruce.js',
+  '/base_previa.js',
 
   '/iconos/apple-touch-icon.png',
   '/iconos/icono-192.png',
