@@ -43,9 +43,17 @@ function medidas(fichas, extra) {
   }, extra || {});
 }
 
-function respuesta(agrupar) {
+/* `vacio`: un período sin fichas por el criterio pedido. */
+function respuesta(agrupar, fecha, vacio) {
+  if (vacio) {
+    return {
+      periodo: { desde: '2026-11-19', hasta: '2026-11-19', fecha: fecha || 'visita' },
+      agrupar: agrupar, filtros: { ebs: null, comuna: null, persona: null },
+      totales: medidas(0), filas: [], porDia: [], opciones: { ebs: [], comunas: [], personas: [] }
+    };
+  }
   return {
-    periodo: { desde: '2026-10-01', hasta: '2026-10-22' },
+    periodo: { desde: '2026-10-01', hasta: '2026-10-22', fecha: fecha || 'visita' },
     agrupar: agrupar,
     filtros: { ebs: null, comuna: null, persona: null },
     totales: medidas(9, { incompletas: 1 }),
@@ -121,7 +129,7 @@ function montar(rol) {
     return Promise.resolve({
       ok: true, status: 200,
       headers: { get: function () { return null; } },
-      json: function () { return Promise.resolve(respuesta(consulta.get('agrupar') || 'ebs')); }
+      json: function () { return Promise.resolve(respuesta(consulta.get('agrupar') || 'ebs', consulta.get('fecha'), w.__vacio)); }
     });
   };
 
@@ -165,6 +173,10 @@ async function principal() {
       !d.querySelector('#productividadAgrupar option[value="persona"]') && d.getElementById('productividadPersona').closest('.field').hidden);
     verificar(rol + ': empieza por sus propias fichas', (w.__peticiones[0] || {}).consulta && w.__peticiones[0].consulta.persona === '15',
       JSON.stringify(w.__peticiones[0]));
+    verificar(rol + ': el criterio dice por qué fecha cuenta y qué suma «Mi EBS»',
+      /fecha de la visita/.test(d.getElementById('productividadCriterio').textContent) &&
+      /«Mi EBS» suma las fichas de todo el equipo/.test(d.getElementById('productividadCriterio').textContent),
+      d.getElementById('productividadCriterio').textContent);
     d.querySelector('[data-ambito="ebs"]').click();
     await esperar(30);
     const ultima = w.__peticiones[w.__peticiones.length - 1] || {};
@@ -318,6 +330,47 @@ async function principal() {
   verificar('borrarla las muestra todas', filasVisibles().length === 3);
   verificar('buscar en la tabla no pide nada al servidor', w.__peticiones.length === 6, w.__peticiones.length);
 
+  console.log('\n=== 3c. Contar por la fecha de la visita o la de registro ===');
+  const criterio = function () { return doc.getElementById('productividadCriterio').textContent; };
+  const alcance = function () { return (resultado.querySelector('.productividad__alcance') || {}).textContent || ''; };
+  verificar('por defecto pide y cuenta por la fecha de la visita, y lo dice',
+    w.__peticiones[0].consulta.fecha === 'visita' && /fecha de la visita \(ítem 16\)/.test(criterio()) &&
+    /Por EBS y por persona aparecen también/.test(criterio()) && /Por fecha de visita/.test(alcance()),
+    criterio() + ' | ' + alcance());
+  verificar('«Contar por» es un filtro con búsqueda como los demás',
+    doc.getElementById('productividadFechaBuscar') !== null && doc.getElementById('productividadFechaBuscar').value === 'Fecha de visita');
+  const fechaSelect = doc.getElementById('productividadFecha');
+  fechaSelect.value = 'registro';
+  fechaSelect.dispatchEvent(new w.Event('change'));
+  await esperar(50);
+  verificar('cambiarlo vuelve a pedir, por la fecha de registro',
+    w.__peticiones.length === 7 && w.__peticiones[6].consulta.fecha === 'registro', JSON.stringify(w.__peticiones[6]));
+  verificar('  y el criterio y el resumen lo dicen',
+    /el día en que se guardaron en la app/.test(criterio()) && /Por fecha de registro/.test(alcance()), criterio() + ' | ' + alcance());
+
+  w.__vacio = true;
+  fechaSelect.value = 'visita';
+  fechaSelect.dispatchEvent(new w.Event('change'));
+  await esperar(50);
+  const vacio = resultado.querySelector('.productividad__vacio');
+  const cambiar = vacio && vacio.querySelector('button');
+  verificar('sin visitas en el período, explica por qué y ofrece contar por fecha de registro',
+    vacio && /aparecen en el día de su visita/.test(vacio.textContent) && cambiar && /Contar por fecha de registro/.test(cambiar.textContent),
+    vacio && vacio.textContent);
+  cambiar.click();
+  await esperar(50);
+  verificar('  el botón cambia «Contar por» y vuelve a pedir',
+    fechaSelect.value === 'registro' && doc.getElementById('productividadFechaBuscar').value === 'Fecha de registro' &&
+    w.__peticiones.length === 9 && w.__peticiones[8].consulta.fecha === 'registro', JSON.stringify(w.__peticiones[8]));
+  const vacioRegistro = resultado.querySelector('.productividad__vacio');
+  verificar('  vacío también por registro: lo dice, sin volver a ofrecer el cambio',
+    vacioRegistro && /No se guardaron fichas en la app/.test(vacioRegistro.textContent) && !vacioRegistro.querySelector('button'),
+    vacioRegistro && vacioRegistro.textContent);
+  w.__vacio = false;
+  fechaSelect.value = 'visita';
+  fechaSelect.dispatchEvent(new w.Event('change'));
+  await esperar(50);
+
   console.log('\n=== 4. Descargar para Excel ===');
   doc.getElementById('productividadDesde').value = '2026-10-01';
   doc.getElementById('productividadHasta').value = '2026-10-22';
@@ -329,6 +382,10 @@ async function principal() {
   verificar('descarga un CSV con el agrupamiento y el período en el nombre',
     /^productividad_ebs_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/.test(w.__descargas[0] || ''), w.__descargas[0]);
   verificar('con BOM, para que Excel respete las tildes', texto.charCodeAt(0) === 0xFEFF);
+  verificar('dice por qué fecha se contó, aparte de los filtros',
+    texto.indexOf('\r\nContado por;Fecha de la visita (ítem 16)\r\n') !== -1 && /\r\nFiltros;/.test(texto) &&
+    !/\r\nFiltros;[^\r]*Por fecha/.test(texto),
+    texto.slice(0, 200));
   verificar('separado por «;» y con la fila de total', /\r\nTotal;;9;9;/.test(texto) && texto.indexOf('Fichas;Viviendas;Hogares') !== -1);
   verificar('una celda que empieza por «=» no se vuelve fórmula',
     texto.indexOf('\'=HYPERLINK') !== -1 && !/(^|;|\n)=HYPERLINK/.test(texto));

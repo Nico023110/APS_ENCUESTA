@@ -56,6 +56,13 @@ async function principal() {
   const filaEnfermera = (await cliente.query(
     'SELECT fu.id::text AS id, eq.codigo AS ebs FROM aps.funcionario fu LEFT JOIN aps.equipo_salud eq ON eq.id = fu.equipo_salud_id WHERE fu.numero_id = $1',
     [ENFERMERA.documento])).rows[0] || {};
+  /* El último día (de Colombia) en que se guardaron fichas en la app, y
+     cuántas se guardaron y cuántas tienen la visita ese día. */
+  const ultimoRegistro = (await cliente.query(`
+    SELECT to_char(x.dia, 'YYYY-MM-DD') AS dia, count(*)::int AS registradas,
+           (SELECT count(*)::int FROM aps.ficha v WHERE v.fecha_diligenciamiento = x.dia) AS visitas
+      FROM (SELECT (coalesce(diligenciada_en, capturada_en) AT TIME ZONE 'America/Bogota')::date AS dia FROM aps.ficha) x
+     GROUP BY x.dia ORDER BY x.dia DESC LIMIT 1`)).rows[0] || null;
   await cliente.end();
 
   const lider = await iniciarSesionDePrueba(BASE, LIDER);
@@ -144,6 +151,38 @@ async function principal() {
     vacio.cuerpo.filas.some(function (f) { return f.etiqueta === 'Prueba Enfermería'; }), vacio.cuerpo.filas.length);
   const vacioEbs = await pedir(lider, { agrupar: 'ebs', desde: '2000-01-01', hasta: '2000-01-31' });
   verificar('y por EBS, los equipos con personal activo', vacioEbs.cuerpo.filas.some(function (f) { return f.clave === 'EBS12'; }));
+
+  console.log('\n=== 5. Contar por la fecha de la visita o la de registro ===');
+  const inventado = await pedir(lider, Object.assign({ fecha: "registro' OR 1=1" }, PERIODO));
+  verificar('rechaza un criterio de fecha inventado con 400', inventado.estado === 400, inventado.estado);
+  if (ultimoRegistro) {
+    const dia = { desde: ultimoRegistro.dia, hasta: ultimoRegistro.dia };
+    const porRegistro = await pedir(lider, Object.assign({ agrupar: 'ebs', fecha: 'registro' }, dia));
+    verificar('por registro, el día ' + ultimoRegistro.dia + ' trae las ' + ultimoRegistro.registradas + ' fichas guardadas ese día',
+      porRegistro.estado === 200 && porRegistro.cuerpo.totales.fichas === ultimoRegistro.registradas &&
+      porRegistro.cuerpo.periodo.fecha === 'registro', porRegistro.estado + ' ' + JSON.stringify(porRegistro.cuerpo.totales));
+    verificar('  y su gráfico va por el día de registro',
+      porRegistro.estado === 200 && porRegistro.cuerpo.porDia.every(function (d) { return d.fecha === ultimoRegistro.dia; }),
+      JSON.stringify(porRegistro.cuerpo.porDia));
+    const porVisita = await pedir(lider, Object.assign({ agrupar: 'ebs' }, dia));
+    verificar('por visita (por defecto), el mismo día trae las ' + ultimoRegistro.visitas + ' fichas con la visita ese día',
+      porVisita.estado === 200 && porVisita.cuerpo.totales.fichas === ultimoRegistro.visitas && porVisita.cuerpo.periodo.fecha === 'visita',
+      porVisita.estado + ' ' + JSON.stringify(porVisita.cuerpo.totales));
+  }
+  for (const agrupar of ['ebs', 'persona', 'dia', 'mes']) {
+    const r = await pedir(lider, Object.assign({ agrupar: agrupar, fecha: 'registro' }, PERIODO));
+    const sumas = r.estado !== 200 ? ['estado ' + r.estado] : COLUMNAS.filter(function (c) {
+      return r.cuerpo.filas.reduce(function (s, f) { return s + f[c]; }, 0) !== r.cuerpo.totales[c];
+    });
+    verificar('por registro, ' + agrupar + ': los grupos suman el total', sumas.length === 0, sumas.join(', '));
+  }
+  const tableroRegistro = await pedir(lider, Object.assign({ tablero: '1', fecha: 'registro' }, PERIODO));
+  verificar('el tablero de población también cuenta por registro',
+    tableroRegistro.estado === 200 && tableroRegistro.cuerpo.periodo.fecha === 'registro' &&
+    (!tableroRegistro.cuerpo.rango.primera || (tableroRegistro.cuerpo.rango.primera >= PERIODO.desde && tableroRegistro.cuerpo.rango.ultima <= PERIODO.hasta)),
+    tableroRegistro.estado + ' ' + JSON.stringify(tableroRegistro.cuerpo.rango || tableroRegistro.cuerpo));
+  const tableroInventado = await pedir(lider, Object.assign({ tablero: '1', fecha: 'mañana' }, PERIODO));
+  verificar('  y rechaza un criterio inventado con 400', tableroInventado.estado === 400, tableroInventado.estado);
 
   console.log('\n---------------------------------------------');
   console.log('Pasadas: ' + pasadas + '   Fallidas: ' + fallidas);

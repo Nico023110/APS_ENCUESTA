@@ -7709,6 +7709,9 @@ html.nivel-administrador #sincronia { display: none; }
    (cuadradas en la base, 4 px de radio en la punta) sobre ejes recesivos; la
    tabla lleva su barra por fila, y lo que está en cero se apaga. */
 .productividad__rapidos { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-4); }
+/* «Mi productividad / Mi EBS» sólo para el personal asistencial: oculto,
+   no lo debe volver a mostrar el display de arriba. */
+.productividad__rapidos[hidden] { display: none; }
 
 .opcion-periodo {
   padding: 7px var(--s-4);
@@ -7737,6 +7740,11 @@ html.nivel-administrador #sincronia { display: none; }
 }
 
 .productividad__filtros { --ancho: 4; }
+/* A lo ancho, el período y cómo contarlo en una fila (desde, hasta, contar
+   por, agrupar por) y los filtros en la siguiente. */
+@container campos (min-width: 821px) {
+  .productividad__filtros .field:is([data-campo="desde"], [data-campo="hasta"], [data-campo="fecha"], [data-campo="agrupar"]) { --ancho: 3; }
+}
 
 /* Filtros con búsqueda (crearCombo en productividad.js): el campo de texto
    a lo ancho, con la «x» para quitar el filtro dentro, a la derecha. La
@@ -7833,6 +7841,10 @@ html.nivel-administrador #sincronia { display: none; }
 
 .productividad__bloque { margin-top: var(--s-5); }
 .productividad__vacio { margin: 0; padding: var(--s-4); border-radius: var(--r-core); background: var(--ink-50); color: var(--ink-500); font-size: var(--fs-small); }
+/* Sin fichas por la fecha de la visita: el aviso y, al lado, «Contar por
+   fecha de registro». */
+div.productividad__vacio { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); }
+div.productividad__vacio p { margin: 0; max-width: 60ch; }
 
 .productividad__grafico { position: relative; }
 .productividad__grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -8266,7 +8278,7 @@ html.nivel-administrador #sincronia { display: none; }
 .tablero-filtros__periodo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .tablero-filtros__campos {
   display: grid;
-  grid-template-columns: 156px 156px repeat(3, minmax(0, 1fr));
+  grid-template-columns: 156px 156px 176px repeat(3, minmax(0, 1fr));
   gap: var(--s-3);
 }
 .tablero-filtros__campos .field { min-width: 0; }
@@ -8299,11 +8311,12 @@ html.nivel-administrador #sincronia { display: none; }
   .tablero-filtros__quitar:hover { background: var(--brand-50); }
 }
 
-@container filtros-tablero (max-width: 860px) {
+/* Hasta ~1180 px (una pantalla de 1366 con el menú de Reportes): período y
+   criterio en una fila, los tres filtros en otra. En una sola, «Todos los
+   territorios» no cabe. */
+@container filtros-tablero (max-width: 1180px) {
   .tablero-filtros__campos { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .tablero-filtros__campos .field { grid-column: span 2; }
-  .tablero-filtros__campos .field[data-campo="desde"],
-  .tablero-filtros__campos .field[data-campo="hasta"] { grid-column: span 3; }
 }
 @container filtros-tablero (max-width: 520px) {
   .tablero-filtros { grid-template-columns: minmax(0, 1fr); }
@@ -8678,7 +8691,7 @@ html.nivel-administrador #sincronia { display: none; }
   border-radius: var(--r-shell);
   box-shadow: var(--sh-hair), var(--sh-1);
 }
-.tablero__vacio i {
+.tablero__vacio > i {
   display: grid;
   place-items: center;
   width: 48px;
@@ -8691,6 +8704,7 @@ html.nivel-administrador #sincronia { display: none; }
 }
 .tablero__vacio-titulo { margin: 0; font-size: var(--fs-h3); font-weight: 700; color: var(--ink-900); }
 .tablero__vacio-texto { margin: 0; max-width: 48ch; font-size: var(--fs-small); color: var(--ink-500); }
+.tablero__vacio .tablero-filtros__quitar { margin-top: var(--s-2); }
 .tablero__fuente { margin: var(--s-5) 0 0; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-500); }
 .tablero__fuente[hidden] { display: none; }
 

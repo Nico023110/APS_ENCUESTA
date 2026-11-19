@@ -8,8 +8,11 @@
    por día, semana o mes.
 
    Parámetros (query):
-     desde, hasta   AAAA-MM-DD, fecha de diligenciamiento (ítem 16); tope de
-                    un año.
+     desde, hasta   AAAA-MM-DD; tope de un año.
+     fecha          qué fecha de la ficha cae en el período y con cuál se
+                    agrupa por día, semana o mes: «visita» (ítem 16, por
+                    defecto) o «registro» (el día en que se guardó en la
+                    app). Ver FECHAS en _tablero.js.
      agrupar        ebs | comuna | territorio | barrio | persona | dia |
                     semana | mes  (por defecto, ebs)
      ebs            código del EBS (opcional)
@@ -78,6 +81,9 @@ function validar(consulta) {
   if (desde > hasta) return { error: 'La fecha inicial es posterior a la final.' };
   if ((hasta - desde) / 86400000 >= MAX_DIAS) return { error: 'El período no puede superar un año.' };
 
+  const fecha = tablero.criterioDeFecha(q.fecha);
+  if (!fecha) return { error: 'Criterio de fecha no reconocido.' };
+
   const agrupar = q.agrupar === undefined || q.agrupar === '' ? 'ebs' : String(q.agrupar);
   if (!Object.prototype.hasOwnProperty.call(AGRUPACIONES, agrupar)) return { error: 'Agrupación no reconocida.' };
 
@@ -90,15 +96,17 @@ function validar(consulta) {
   const persona = q.persona ? String(q.persona).trim() : null;
   if (persona && !/^[0-9]{1,18}$/.test(persona)) return { error: 'Persona no válida.' };
 
-  return { desde: q.desde, hasta: q.hasta, agrupar: agrupar, ebs: ebs, comuna: comuna, persona: persona };
+  return { desde: q.desde, hasta: q.hasta, fecha: fecha, agrupar: agrupar, ebs: ebs, comuna: comuna, persona: persona };
 }
 
-/* Una fila por ficha del período, con lo que se cuenta de ella. $1-$2 el
-   período; $3 EBS, $4 comuna ('sin' = sin comuna), $5 persona y $6 el equipo
-   del alcance, todos opcionales (NULL = sin filtro). */
-const BASE = `
+/* Una fila por ficha del período, con lo que se cuenta de ella. `fecha` es
+   la del criterio (tablero.FECHAS: la visita o el registro): con ella se
+   filtra el período y se agrupa por día, semana o mes. $1-$2 el período;
+   $3 EBS, $4 comuna ('sin' = sin comuna), $5 persona y $6 el equipo del
+   alcance, todos opcionales (NULL = sin filtro). */
+const baseDe = (fecha) => `
   base AS (
-    SELECT f.id, f.fecha_diligenciamiento AS fecha, f.hogar_id, f.responsable_id,
+    SELECT f.id, ${tablero.FECHAS[fecha]} AS fecha, f.hogar_id, f.responsable_id,
            f.consentimiento, f.estado,
            eq.codigo AS ebs,
            h.territorio_codigo AS territorio,
@@ -126,7 +134,7 @@ const BASE = `
           FROM aps.familia_ficha ff
          WHERE ff.ficha_id = f.id
       ) comp ON true
-     WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
+     WHERE ${tablero.FECHAS[fecha]} BETWEEN $1 AND $2
        AND ($3::text IS NULL OR eq.codigo = $3)
        AND ($4::text IS NULL OR coalesce(m.comuna, 'sin') = $4)
        AND ($5::bigint IS NULL OR f.responsable_id = $5)
@@ -219,6 +227,7 @@ module.exports = async (req, res) => {
   }
 
   const parametros = [p.desde, p.hasta, p.ebs, p.comuna, p.persona, equiposDelAlcance];
+  const BASE = baseDe(p.fecha);
   const grupo = AGRUPACIONES[p.agrupar];
   const pool = obtenerPool();
 
@@ -342,7 +351,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       alcance: propio ? 'propia' : 'completa',
-      periodo: { desde: p.desde, hasta: p.hasta },
+      periodo: { desde: p.desde, hasta: p.hasta, fecha: p.fecha },
       agrupar: p.agrupar,
       filtros: { ebs: p.ebs, comuna: p.comuna, persona: p.persona },
       totales: medidasDe(totales),

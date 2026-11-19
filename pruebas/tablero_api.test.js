@@ -33,8 +33,14 @@ async function principal() {
   const bien = tablero.validar({ desde: '2024-01-01', hasta: '2026-10-29', ebs: 'EBS007', comuna: '18', territorio: 't52' });
   verificar('acepta un período con filtros y normaliza el territorio',
     !bien.error && bien.ebs === 'EBS007' && bien.comuna === '18' && bien.territorio === 'T52', JSON.stringify(bien));
-  verificar('sin filtros quedan en null', JSON.stringify(tablero.validar({ desde: '2026-01-01', hasta: '2026-01-31' })) ===
-    JSON.stringify({ desde: '2026-01-01', hasta: '2026-01-31', ebs: null, comuna: null, territorio: null }));
+  verificar('sin filtros quedan en null y se cuenta por la visita', JSON.stringify(tablero.validar({ desde: '2026-01-01', hasta: '2026-01-31' })) ===
+    JSON.stringify({ desde: '2026-01-01', hasta: '2026-01-31', fecha: 'visita', ebs: null, comuna: null, territorio: null }));
+  verificar('acepta contar por la fecha de registro',
+    tablero.validar({ desde: '2026-11-19', hasta: '2026-11-19', fecha: 'registro' }).fecha === 'registro');
+  ['dia', "registro'; --", 'constructor', '__proto__'].forEach(function (fecha) {
+    verificar('rechaza el criterio de fecha «' + fecha + '»',
+      !!tablero.validar({ desde: '2026-11-19', hasta: '2026-11-19', fecha: fecha }).error);
+  });
   [
     [{ desde: '2026-02-30', hasta: '2026-03-01' }, 'fecha que no existe'],
     [{ desde: '2026-03-01' }, 'falta una fecha'],
@@ -87,6 +93,29 @@ async function principal() {
   verificar('de cada vivienda, su visita más reciente y sólo con consentimiento',
     /DISTINCT ON \(f\.hogar_id\)/.test(consultas[0].sql) && /f\.consentimiento/.test(consultas[0].sql) &&
     /ORDER BY f\.hogar_id, f\.fecha_diligenciamiento DESC/.test(consultas[0].sql));
+  verificar('por defecto, el período es el de la visita (ítem 16)',
+    consultas.every(function (c) { return /AND f\.fecha_diligenciamiento BETWEEN \$1 AND \$2/.test(c.sql) && c.sql.indexOf('diligenciada_en') === -1; }));
+
+  console.log('\n=== 2b. Contar por la fecha de registro ===');
+  const deRegistro = [];
+  const poolRegistro = { query: function (sql, parametros) { deRegistro.push({ sql: sql, parametros: parametros }); return pool.query(sql, parametros); } };
+  const pr = tablero.validar({ desde: '2026-11-19', hasta: '2026-11-19', fecha: 'registro' });
+  const rr = await tablero.consultarTablero(poolRegistro, pr, null);
+  const PERIODO_REGISTRO = "AND (coalesce(f.diligenciada_en, f.capturada_en) AT TIME ZONE 'America/Bogota')::date BETWEEN $1 AND $2";
+  verificar('el período es el día de Colombia en que se guardó la ficha (o el de llegada, si no lo trae)',
+    deRegistro.length === 3 && deRegistro.every(function (c) { return c.sql.indexOf(PERIODO_REGISTRO) !== -1; }),
+    deRegistro.length && deRegistro[0].sql.slice(0, 900));
+  verificar('  la clave pedida no viaja en el SQL: sólo la expresión fija',
+    deRegistro.every(function (c) { return c.parametros.indexOf('registro') === -1; }) &&
+    JSON.stringify(deRegistro[0].parametros) === JSON.stringify(['2026-11-19', '2026-11-19', null, null, null, null]));
+  verificar('  la vivienda sigue tomando su visita más reciente y la edad se calcula a la fecha de la visita',
+    /ORDER BY f\.hogar_id, f\.fecha_diligenciamiento DESC/.test(deRegistro[0].sql) &&
+    /f\.fecha_diligenciamiento AS fecha,/.test(deRegistro[0].sql) && /age\(sel\.fecha, p\.fecha_nacimiento\)/.test(deRegistro[0].sql));
+  verificar('  las fechas de lo incluido son las del registro',
+    /min\(sel\.dia\)/.test(deRegistro[2].sql) && /max\(sel\.dia\)/.test(deRegistro[2].sql));
+  verificar('  la respuesta dice por qué fecha se contó', rr.periodo.fecha === 'registro' && r.periodo.fecha === 'visita',
+    JSON.stringify([rr.periodo, r.periodo]));
+
   verificar('no cuenta datos sensibles (orientación sexual, violencias)',
     consultas[0].sql.indexOf('orientacion_sexual') === -1 && consultas[0].sql.indexOf('modalidad_violencia') === -1);
   verificar('la comuna 18.1 de la E.S.E. se cuenta como la 18', /split_part\(m\.comuna, '\.', 1\)/.test(consultas[0].sql));

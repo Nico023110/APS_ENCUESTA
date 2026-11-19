@@ -659,6 +659,7 @@
     return {
       desde: $('tableroDesde').value,
       hasta: $('tableroHasta').value,
+      fecha: $('tableroFecha').value,
       ebs: $('tableroEbs').value,
       comuna: $('tableroComuna').value,
       territorio: $('tableroTerritorio').value
@@ -671,14 +672,19 @@
     return null;
   }
 
+  /* «Contar por»: la fecha de la visita (ítem 16) o el día en que la ficha
+     se guardó en la app (api/_tablero.js, FECHAS). */
+  function porRegistro(d) { return !!(d && d.periodo && d.periodo.fecha === 'registro'); }
+
   function pintarFuente() {
     const fuente = $('tableroFuente');
     const d = estado.datos;
     if (!d) { fuente.hidden = true; return; }
     const partes = ['Fuente: fichas de Encuesta APS con consentimiento; de cada vivienda, su visita más reciente.'];
     if (d.rango && d.rango.primera) {
-      partes.push(d.rango.primera === d.rango.ultima ? 'Fichas del ' + fechaCorta(d.rango.primera) + '.'
-        : 'Fichas del ' + fechaCorta(d.rango.primera) + ' al ' + fechaCorta(d.rango.ultima) + '.');
+      const que = porRegistro(d) ? 'Registradas en la app' : 'Visitas';
+      partes.push(d.rango.primera === d.rango.ultima ? que + ' del ' + fechaCorta(d.rango.primera) + '.'
+        : que + ' del ' + fechaCorta(d.rango.primera) + ' al ' + fechaCorta(d.rango.ultima) + '.');
     }
     if (estado.consultadoEn) {
       /* «3:18 p. m.» ya termina en punto: no se le pone otro. */
@@ -722,8 +728,24 @@
       const vacio = elemento('div', 'tablero__vacio');
       vacio.appendChild(icono('ph-magnifying-glass'));
       vacio.appendChild(elemento('p', 'tablero__vacio-titulo', 'No hay viviendas caracterizadas con estos filtros'));
-      vacio.appendChild(elemento('p', 'tablero__vacio-texto',
-        'Entran las fichas con consentimiento diligenciadas en el período. Amplíe el período o quite algún filtro.'));
+      if (porRegistro(d)) {
+        vacio.appendChild(elemento('p', 'tablero__vacio-texto',
+          'Entran las fichas con consentimiento guardadas en la app en el período. Amplíe el período o quite algún filtro.'));
+      } else {
+        vacio.appendChild(elemento('p', 'tablero__vacio-texto',
+          'Entran las fichas con consentimiento cuya visita fue en el período; las que se pasan a la app otro día ' +
+          'aparecen en el día de su visita. Amplíe el período, quite algún filtro o cuente por fecha de registro.'));
+        const cambiar = elemento('button', 'tablero-filtros__quitar', null);
+        cambiar.type = 'button';
+        cambiar.appendChild(icono('ph-calendar-check'));
+        cambiar.appendChild(elemento('span', null, 'Contar por fecha de registro'));
+        cambiar.addEventListener('click', function () {
+          $('tableroFecha').value = 'registro';
+          if (combos.has('tableroFecha')) combos.get('tableroFecha')();
+          consultar();
+        });
+        vacio.appendChild(cambiar);
+      }
       destino.appendChild(vacio);
       return;
     }
@@ -873,6 +895,7 @@
     const fila = function (celdas) { lineas.push(celdas.map(celdaCsv).join(';')); };
     fila([TABLERO.titulo]);
     fila(['Período', d.periodo.desde + ' a ' + d.periodo.hasta]);
+    fila(['Contado por', porRegistro(d) ? 'Fecha de registro en la app' : 'Fecha de la visita (ítem 16)']);
     fila(['Filtros', describirFiltros()]);
     fila(['Fuente', 'Fichas con consentimiento; de cada vivienda, su visita más reciente']);
     PANELES.forEach(function (panel) {
@@ -969,7 +992,7 @@
 
     /* Los filtros con búsqueda son los de productividad (crearCombo). */
     if (window.PRODUCTIVIDAD && typeof window.PRODUCTIVIDAD.crearCombo === 'function') {
-      ['tableroEbs', 'tableroComuna', 'tableroTerritorio'].forEach(function (id) {
+      ['tableroFecha', 'tableroEbs', 'tableroComuna', 'tableroTerritorio'].forEach(function (id) {
         combos.set(id, window.PRODUCTIVIDAD.crearCombo($(id)));
       });
     }
@@ -985,6 +1008,8 @@
         consultar();
       });
     });
+    /* «Contar por» no es un filtro: «Quitar filtros» no lo toca. */
+    $('tableroFecha').addEventListener('change', function () { consultar(); });
     $('tableroEbs').addEventListener('change', function () { actualizarQuitar(); consultar(); });
     $('tableroComuna').addEventListener('change', function () {
       /* Un territorio de otra comuna deja de valer. */

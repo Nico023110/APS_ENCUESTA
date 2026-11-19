@@ -42,12 +42,13 @@ function verificar(nombre, condicion, detalle) {
 /* Una respuesta de /api/productividad?tablero=1 como la arma _tablero.js. */
 function respuesta(consulta) {
   const vacia = consulta.get('comuna') === 'Rural';
+  const periodo = { desde: consulta.get('desde'), hasta: consulta.get('hasta'), fecha: consulta.get('fecha') || 'visita' };
   if (vacia) {
-    return { periodo: { desde: consulta.get('desde'), hasta: consulta.get('hasta') }, rango: {},
+    return { periodo: periodo, rango: {},
       totales: { viviendas: 0 }, dimensiones: {}, opciones: { ebs: [], comunas: [], territorios: [] } };
   }
   return {
-    periodo: { desde: consulta.get('desde'), hasta: consulta.get('hasta') },
+    periodo: periodo,
     filtros: { ebs: consulta.get('ebs'), comuna: consulta.get('comuna'), territorio: consulta.get('territorio') },
     rango: { primera: '2026-08-25', ultima: '2026-10-13' },
     totales: {
@@ -335,8 +336,34 @@ async function principal() {
   verificar('sin viviendas con esos filtros lo dice y deshabilita la descarga',
     /No hay viviendas caracterizadas con estos filtros/.test(doc.getElementById('tableroContenido').textContent) &&
     doc.getElementById('btnTableroDescargar').disabled && doc.getElementById('tableroError').hidden);
+
+  console.log('\n=== 5b. Contar por la fecha de la visita o la de registro ===');
+  verificar('por defecto pide por la fecha de la visita, con «Contar por» como filtro con búsqueda',
+    w.__peticiones[0].consulta.fecha === 'visita' && doc.getElementById('tableroFechaBuscar') !== null &&
+    doc.getElementById('tableroFechaBuscar').value === 'Fecha de visita', JSON.stringify(w.__peticiones[0]));
+  const vacioVisita = doc.querySelector('#tableroContenido .tablero__vacio');
+  const botonRegistro = vacioVisita && vacioVisita.querySelector('button');
+  verificar('vacío por la visita: explica por qué y ofrece contar por fecha de registro',
+    /aparecen en el día de su visita/.test(vacioVisita.textContent) && botonRegistro &&
+    /Contar por fecha de registro/.test(botonRegistro.textContent), vacioVisita.textContent);
+  const pedidosRegistro = w.__peticiones.length;
+  botonRegistro.click();
+  await esperar(40);
+  verificar('  el botón cambia «Contar por» y vuelve a pedir con los mismos filtros',
+    doc.getElementById('tableroFecha').value === 'registro' && doc.getElementById('tableroFechaBuscar').value === 'Fecha de registro' &&
+    w.__peticiones.length === pedidosRegistro + 1 && w.__peticiones[pedidosRegistro].consulta.fecha === 'registro' &&
+    w.__peticiones[pedidosRegistro].consulta.comuna === 'Rural', JSON.stringify(w.__peticiones[pedidosRegistro]));
+  verificar('  vacío también por registro: lo dice, sin volver a ofrecer el cambio',
+    /guardadas en la app en el período/.test(doc.getElementById('tableroContenido').textContent) &&
+    !doc.querySelector('#tableroContenido .tablero__vacio button'));
+
   doc.getElementById('btnTableroQuitar').click();
   await esperar(40);
+  const sinFiltros = w.__peticiones[w.__peticiones.length - 1] || {};
+  verificar('«Quitar filtros» no toca «Contar por»',
+    sinFiltros.consulta && sinFiltros.consulta.fecha === 'registro' && !sinFiltros.consulta.comuna, JSON.stringify(sinFiltros));
+  verificar('  y la fuente dice que las fechas son las del registro',
+    /Registradas en la app del /.test(doc.getElementById('tableroFuente').textContent), doc.getElementById('tableroFuente').textContent);
 
   console.log('\n=== 6. Descargar datos ===');
   doc.getElementById('btnTableroDescargar').click();
@@ -344,6 +371,7 @@ async function principal() {
   verificar('descarga un CSV con el período en el nombre', /^tablero_poblacion_\d{4}-\d{2}-\d{2}_2026-10-29\.csv$/.test(nombre), nombre);
   const csv = String((w.__blob && w.__blob.partes && w.__blob.partes[0]) || '');
   verificar('con BOM y «;» como separador', csv.charCodeAt(0) === 0xFEFF && /Categoría;Cantidad;Porcentaje/.test(csv));
+  verificar('dice por qué fecha se contó', /\r\nContado por;Fecha de registro en la app\r\n/.test(csv), csv.slice(0, 200));
   verificar('trae los siete paneles, con el ítem del instrumento',
     /Población caracterizada/.test(csv) && /Necesidades por atender/.test(csv) && /Personas por curso de vida y sexo \(ítem 64 y 66\)/.test(csv) &&
     /Enfermedades crónicas diagnosticadas \(ítem 100\)/.test(csv) && /Viviendas por comuna/.test(csv));

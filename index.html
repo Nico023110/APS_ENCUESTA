@@ -2210,6 +2210,13 @@
           <label for="tableroHasta">Hasta</label>
           <input type="date" id="tableroHasta" name="hasta" required>
         </div>
+        <div class="field" data-campo="fecha">
+          <label for="tableroFecha">Contar por</label>
+          <select id="tableroFecha" name="fecha">
+            <option value="visita">Fecha de visita</option>
+            <option value="registro">Fecha de registro</option>
+          </select>
+        </div>
         <div class="field" data-campo="ebs">
           <label for="tableroEbs">EBS</label>
           <select id="tableroEbs" name="ebs"><option value="">Todos los EBS</option></select>
@@ -2332,6 +2339,13 @@
             <label for="productividadHasta">Hasta *</label>
             <input type="date" id="productividadHasta" name="hasta" required>
           </div>
+          <div class="field" data-campo="fecha">
+            <label for="productividadFecha">Contar por</label>
+            <select id="productividadFecha" name="fecha">
+              <option value="visita">Fecha de visita</option>
+              <option value="registro">Fecha de registro</option>
+            </select>
+          </div>
           <div class="field" data-campo="agrupar">
             <label for="productividadAgrupar">Agrupar por</label>
             <select id="productividadAgrupar" name="agrupar">
@@ -2358,7 +2372,7 @@
             <select id="productividadPersona" name="persona"><option value="">Todo el personal</option></select>
           </div>
         </div>
-        <p class="field-hint reporte__criterio" id="productividadCriterio">Cuenta las fichas por su fecha de caracterización (ítem 16). Por EBS y por persona aparecen también, en cero, quienes no tienen fichas en el período.</p>
+        <p class="field-hint reporte__criterio" id="productividadCriterio">Cuenta las fichas por la fecha de la visita (ítem 16): las que se pasan a la app otro día aparecen en el día de su visita. Por EBS y por persona aparecen también, en cero, quienes no tienen fichas en el período.</p>
         <div class="reporte__acciones">
           <button type="submit" class="btn btn--primary" id="btnProductividadGenerar">
             <i class="ph ph-chart-bar" aria-hidden="true"></i><span>Generar reporte</span>

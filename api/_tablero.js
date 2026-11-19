@@ -12,8 +12,14 @@
    datos). Lo mismo que hace el Inicio con las fichas del equipo.
 
    Parámetros (query):
-     desde, hasta   AAAA-MM-DD, fecha de diligenciamiento (ítem 16); hasta
-                    cinco años, porque el tablero suele mirar lo acumulado.
+     desde, hasta   AAAA-MM-DD; hasta cinco años, porque el tablero suele
+                    mirar lo acumulado.
+     fecha          qué fecha cae en el período (FECHAS, abajo): «visita»,
+                    la de caracterización (ítem 16), por defecto; o
+                    «registro», el día en que la ficha se guardó en la app.
+                    Las fichas se pasan a la app días después de la visita
+                    (en noviembre de 2026, siete en promedio): por la visita,
+                    lo registrado hoy no aparece en «hoy».
      ebs            código del EBS (opcional)
      comuna         comuna del microterritorio, o «sin» (opcional)
      territorio     código del territorio, T48… (opcional)
@@ -32,6 +38,21 @@
 
 const MAX_DIAS = 5 * 366;
 
+/* Qué fecha de la ficha (alias f) cae en el período. El registro es el
+   instante en que quien diligenció guardó la ficha —el mismo que ordena el
+   historial—, como día de Colombia. La expresión sale de aquí; de la
+   petición sólo llega la clave. También la usa /api/productividad. */
+const FECHAS = {
+  visita: 'f.fecha_diligenciamiento',
+  registro: "(coalesce(f.diligenciada_en, f.capturada_en) AT TIME ZONE 'America/Bogota')::date"
+};
+
+/* La clave de FECHAS pedida («visita» si no viene), o null si no existe. */
+function criterioDeFecha(valor) {
+  const clave = valor === undefined || valor === null || valor === '' ? 'visita' : String(valor);
+  return Object.prototype.hasOwnProperty.call(FECHAS, clave) ? clave : null;
+}
+
 /* Fecha real AAAA-MM-DD: 2026-02-30 no pasa. */
 function fechaValida(texto) {
   if (typeof texto !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return null;
@@ -48,6 +69,9 @@ function validar(consulta) {
   if (desde > hasta) return { error: 'La fecha inicial es posterior a la final.' };
   if ((hasta - desde) / 86400000 >= MAX_DIAS) return { error: 'El período no puede superar cinco años.' };
 
+  const fecha = criterioDeFecha(q.fecha);
+  if (!fecha) return { error: 'Criterio de fecha no reconocido.' };
+
   const ebs = q.ebs ? String(q.ebs).trim() : null;
   if (ebs && !/^[A-Za-z0-9]{3,20}$/.test(ebs)) return { error: 'Código de EBS no válido.' };
 
@@ -57,7 +81,7 @@ function validar(consulta) {
   const territorio = q.territorio ? String(q.territorio).trim().toUpperCase() : null;
   if (territorio && !/^T[0-9]{1,4}$/.test(territorio)) return { error: 'Territorio no válido.' };
 
-  return { desde: q.desde, hasta: q.hasta, ebs: ebs, comuna: comuna, territorio: territorio };
+  return { desde: q.desde, hasta: q.hasta, fecha: fecha, ebs: ebs, comuna: comuna, territorio: territorio };
 }
 
 /* La comuna de Cali del microterritorio. La E.S.E. numera «1.1», «18.1» y
@@ -65,15 +89,17 @@ function validar(consulta) {
    T54): para el tablero son la 1, la 18 y la 20, como en el ítem 7. */
 const COMUNA = `CASE WHEN m.comuna ~ '^[0-9]+\\.[0-9]+$' THEN split_part(m.comuna, '.', 1) ELSE m.comuna END`;
 
-/* sel: la última visita de cada vivienda en el período, con los filtros.
-   $1-$2 el período; $3 EBS, $4 comuna ('sin' = sin comuna), $5 territorio
-   y $6 el equipo del alcance, todos opcionales (NULL = sin filtro).
+/* sel: la última visita de cada vivienda entre las fichas cuya fecha
+   (FECHAS[fecha]: la visita o el registro) cae en el período, con los
+   filtros. $1-$2 el período; $3 EBS, $4 comuna ('sin' = sin comuna), $5
+   territorio y $6 el equipo del alcance, todos opcionales (NULL = sin
+   filtro). `fecha` es siempre la de la visita; `dia`, la del criterio.
    fam y per: sus familias y sus integrantes, con la edad cumplida a la
-   fecha de la visita. */
-const BASE = `
+   fecha de la visita, se cuente por la que se cuente. */
+const base = (fecha) => `
   sel AS (
     SELECT DISTINCT ON (f.hogar_id)
-           f.id, f.hogar_id, f.fecha_diligenciamiento AS fecha,
+           f.id, f.hogar_id, f.fecha_diligenciamiento AS fecha, ${FECHAS[fecha]} AS dia,
            eq.codigo AS ebs, h.territorio_codigo AS territorio, ${COMUNA} AS comuna
       FROM aps.ficha f
       JOIN aps.hogar h         ON h.id = f.hogar_id
@@ -82,7 +108,7 @@ const BASE = `
              ON m.territorio_codigo = h.territorio_codigo AND m.codigo = h.microterritorio_codigo
      WHERE f.consentimiento
        AND f.estado <> 'rechazada_sin_consentimiento'
-       AND f.fecha_diligenciamiento BETWEEN $1 AND $2
+       AND ${FECHAS[fecha]} BETWEEN $1 AND $2
        AND ($3::text IS NULL OR eq.codigo = $3)
        AND ($4::text IS NULL OR coalesce(${COMUNA}, 'sin') = $4)
        AND ($5::text IS NULL OR h.territorio_codigo = $5)
@@ -162,14 +188,15 @@ const DIMENSIONES = `
          FROM per JOIN aps.integrante_enfermedad_no_transmisible x ON x.integrante_id = per.id GROUP BY x.codigo`;
 
 /* Los filtros ofrecen lo que hay en el período (sin los demás filtros), y
-   las fechas de la primera y la última ficha que entraron. */
+   las fechas de la primera y la última ficha que entraron, según el
+   criterio (visita o registro). */
 const OPCIONES = `
   SELECT 'ebs' AS tipo, sel.ebs AS valor, NULL::text AS comuna FROM sel GROUP BY sel.ebs
   UNION ALL SELECT 'comuna', coalesce(sel.comuna, 'sin'), NULL FROM sel GROUP BY sel.comuna
   UNION ALL SELECT 'territorio', sel.territorio, min(coalesce(sel.comuna, 'sin')) FROM sel GROUP BY sel.territorio`;
 
 const RANGO = `
-  SELECT to_char(min(sel.fecha), 'YYYY-MM-DD') AS primera, to_char(max(sel.fecha), 'YYYY-MM-DD') AS ultima FROM sel`;
+  SELECT to_char(min(sel.dia), 'YYYY-MM-DD') AS primera, to_char(max(sel.dia), 'YYYY-MM-DD') AS ultima FROM sel`;
 
 function etiquetaComuna(comuna) {
   if (!comuna || comuna === 'sin') return 'Sin comuna';
@@ -195,7 +222,7 @@ function armarRespuesta(p, filas, opciones, rango) {
 
   const deTipo = function (tipo) { return opciones.filter(function (o) { return o.tipo === tipo && o.valor; }); };
   return {
-    periodo: { desde: p.desde, hasta: p.hasta },
+    periodo: { desde: p.desde, hasta: p.hasta, fecha: p.fecha || 'visita' },
     filtros: { ebs: p.ebs, comuna: p.comuna, territorio: p.territorio },
     rango: { primera: (rango && rango.primera) || null, ultima: (rango && rango.ultima) || null },
     totales: totales,
@@ -216,6 +243,7 @@ function armarRespuesta(p, filas, opciones, rango) {
 async function consultarTablero(pool, p, equipoDelAlcance) {
   const parametros = [p.desde, p.hasta, p.ebs, p.comuna, p.territorio, equipoDelAlcance];
   const sinFiltros = [p.desde, p.hasta, null, null, null, equipoDelAlcance];
+  const BASE = base(criterioDeFecha(p.fecha) || 'visita');
   const [filas, opciones, rango] = await Promise.all([
     pool.query('WITH ' + BASE + ' ' + DIMENSIONES, parametros),
     pool.query('WITH ' + BASE + ' ' + OPCIONES, sinFiltros),
@@ -224,4 +252,4 @@ async function consultarTablero(pool, p, equipoDelAlcance) {
   return armarRespuesta(p, filas.rows, opciones.rows, rango.rows[0]);
 }
 
-module.exports = { validar, consultarTablero, armarRespuesta, MAX_DIAS };
+module.exports = { validar, consultarTablero, armarRespuesta, criterioDeFecha, FECHAS, MAX_DIAS };

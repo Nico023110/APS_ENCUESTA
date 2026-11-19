@@ -140,6 +140,7 @@
     return {
       desde: $('productividadDesde').value,
       hasta: $('productividadHasta').value,
+      fecha: $('productividadFecha').value,
       agrupar: $('productividadAgrupar').value,
       ebs: $('productividadEbs').value,
       comuna: $('productividadComuna').value,
@@ -151,6 +152,34 @@
     if (!f.desde || !f.hasta) return 'Indique las dos fechas del período.';
     if (f.desde > f.hasta) return 'La fecha inicial es posterior a la final.';
     return null;
+  }
+
+  /* «Contar por»: la fecha de la visita (ítem 16) o el día en que la ficha
+     se guardó en la app. Casi todas se pasan a la app días después de la
+     visita, así que «hoy» por visita suele salir vacío aunque hoy se haya
+     registrado mucho. */
+  function porRegistro(fecha) { return fecha === 'registro'; }
+
+  function textoCriterio(fecha) {
+    return porRegistro(fecha) ? 'Por fecha de registro' : 'Por fecha de visita';
+  }
+
+  function pintarCriterio() {
+    const fecha = porRegistro($('productividadFecha').value)
+      ? 'Cuenta las fichas por el día en que se guardaron en la app, aunque la visita sea de otra fecha.'
+      : 'Cuenta las fichas por la fecha de la visita (ítem 16): las que se pasan a la app otro día aparecen en el día de su visita.';
+    const alcance = soloPropia()
+      ? '«Mi EBS» suma las fichas de todo el equipo; no muestra el detalle de cada compañero.'
+      : 'Por EBS y por persona aparecen también, en cero, quienes no tienen fichas en el período.';
+    $('productividadCriterio').textContent = fecha + ' ' + alcance;
+  }
+
+  /* Cambia «Contar por» desde el aviso de un período vacío. */
+  function contarPor(fecha) {
+    $('productividadFecha').value = fecha;
+    if (combos.has('productividadFecha')) combos.get('productividadFecha').sincronizar();
+    pintarCriterio();
+    generar();
   }
 
   /* Cómo se nombra un grupo de fecha. */
@@ -431,7 +460,21 @@
 
     const maximo = serie.reduce(function (m, p) { return Math.max(m, p.valor); }, 0);
     if (maximo === 0) {
-      bloque.appendChild(elemento('p', 'productividad__vacio', 'No hay fichas diligenciadas en este período.'));
+      const vacio = elemento('div', 'productividad__vacio');
+      if (porRegistro(datos.periodo.fecha)) {
+        vacio.appendChild(elemento('p', null, 'No se guardaron fichas en la app en este período.'));
+      } else {
+        vacio.appendChild(elemento('p', null, 'No hay fichas con la visita en este período. Las que se pasan a la app ' +
+          'después de la visita aparecen en el día de su visita.'));
+        /* El mismo botón de texto que «Quitar filtros» del tablero. */
+        const cambiar = elemento('button', 'tablero-filtros__quitar');
+        cambiar.type = 'button';
+        cambiar.appendChild(elemento('i', 'ph ph-calendar-check')).setAttribute('aria-hidden', 'true');
+        cambiar.appendChild(elemento('span', null, 'Contar por fecha de registro'));
+        cambiar.addEventListener('click', function () { contarPor('registro'); });
+        vacio.appendChild(cambiar);
+      }
+      bloque.appendChild(vacio);
       destino.appendChild(bloque);
       return;
     }
@@ -696,8 +739,10 @@
      Pintado y pedido
      --------------------------------------------------------- */
 
+  /* El período y su criterio primero; después, los filtros. */
   function describirFiltros(datos) {
-    const partes = [fechaCorta(datos.periodo.desde, true) + ' a ' + fechaCorta(datos.periodo.hasta, true)];
+    const partes = [fechaCorta(datos.periodo.desde, true) + ' a ' + fechaCorta(datos.periodo.hasta, true),
+      textoCriterio(datos.periodo.fecha)];
     if (soloPropia()) partes.push(ambito === 'mia' ? 'Mis fichas' : 'Todo mi EBS');
     const elegido = function (id) {
       const s = $(id);
@@ -763,7 +808,9 @@
     const lineas = [];
     lineas.push(['Reporte de productividad'].map(celdaCsv).join(';'));
     lineas.push(['Período', d.periodo.desde + ' a ' + d.periodo.hasta].map(celdaCsv).join(';'));
-    lineas.push(['Filtros', describirFiltros(d).split(' · ').slice(1).join(' · ') || 'Ninguno'].map(celdaCsv).join(';'));
+    lineas.push(['Contado por', porRegistro(d.periodo.fecha) ? 'Fecha de registro en la app' : 'Fecha de la visita (ítem 16)']
+      .map(celdaCsv).join(';'));
+    lineas.push(['Filtros', describirFiltros(d).split(' · ').slice(2).join(' · ') || 'Ninguno'].map(celdaCsv).join(';'));
     lineas.push('');
     const titulos = [AGRUPACIONES[d.agrupar], 'Detalle'].concat(COLUMNAS.map(function (c) { return c.titulo; }))
       .concat(['Sin consentimiento', 'Integrantes por completar', 'Primera ficha']);
@@ -817,9 +864,10 @@
     if (iniciado || !puedeVer() || !$('formProductividad')) return;
     iniciado = true;
     if (soloPropia()) prepararVistaPropia();
-    ['productividadAgrupar', 'productividadEbs', 'productividadComuna', 'productividadPersona'].forEach(function (id) {
+    ['productividadFecha', 'productividadAgrupar', 'productividadEbs', 'productividadComuna', 'productividadPersona'].forEach(function (id) {
       crearCombo($(id));
     });
+    pintarCriterio();
     fijarPeriodo('mes');
     $('formProductividad').addEventListener('submit', generar);
     $('btnProductividadDescargar').addEventListener('click', descargar);
@@ -831,7 +879,8 @@
         document.querySelectorAll('[data-periodo-rapido]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
       });
     });
-    /* Agrupar y filtrar responden al cambiar, sin pulsar «Generar». */
+    /* Contar, agrupar y filtrar responden al cambiar, sin pulsar «Generar». */
+    $('productividadFecha').addEventListener('change', function () { pintarCriterio(); generar(); });
     ['productividadAgrupar', 'productividadEbs', 'productividadComuna', 'productividadPersona'].forEach(function (id) {
       $(id).addEventListener('change', function () { generar(); });
     });
@@ -841,7 +890,6 @@
      filtrar por persona. */
   function prepararVistaPropia() {
     $('productividadSub').textContent = 'Lo que usted y su EBS han caracterizado en un período: fichas, viviendas, hogares, familias y personas, por comuna, territorio, barrio o fecha.';
-    $('productividadCriterio').textContent = 'Cuenta las fichas por su fecha de caracterización (ítem 16). «Mi EBS» suma las fichas de todo el equipo; no muestra el detalle de cada compañero.';
     const porPersona = $('productividadAgrupar').querySelector('option[value="persona"]');
     if (porPersona) porPersona.remove();
     const campoPersona = $('productividadPersona').closest('.field');
