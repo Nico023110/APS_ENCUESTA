@@ -47,7 +47,10 @@
   const ITERACIONES = 600000;
   const BITS = 256;
   const LARGO_SAL = 16;
-  const VIGENCIA_DIAS = 7;
+  /* 30 días (decisión del 2026-11-19, antes 7): cubre un mes entero en zona
+     sin señal. Es también lo más que una cuenta desactivada sigue abriendo
+     sin señal en un teléfono que no se conecta. */
+  const VIGENCIA_DIAS = 30;
   const VIGENCIA_MS = VIGENCIA_DIAS * 24 * 60 * 60 * 1000;
   const MAX_FALLOS = 5;
   const ESPERA_MS = 15 * 60 * 1000;

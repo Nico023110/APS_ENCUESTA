@@ -663,9 +663,15 @@ async function principal() {
   const vieja = montarAccesoLocal();
   await vieja.acceso.recordar('1144099001', CLAVE, PERFIL);
   const vencida = JSON.parse(vieja.almacen.getItem('aps_acceso_local_1144099001'));
-  vencida.confirmadoEn = Date.now() - 8 * 24 * 60 * 60 * 1000;
+  vencida.confirmadoEn = Date.now() - 29 * 24 * 60 * 60 * 1000;
   vieja.almacen.setItem('aps_acceso_local_1144099001', JSON.stringify(vencida));
-  verificar('tras una semana sin confirmar con el servidor no entra', (await vieja.acceso.verificar('1144099001', CLAVE)).codigo === 'vencida');
+  verificar('a los 29 días sin confirmar con el servidor todavía entra', (await vieja.acceso.verificar('1144099001', CLAVE)).ok === true);
+  const vencida31 = JSON.parse(vieja.almacen.getItem('aps_acceso_local_1144099001'));
+  vencida31.confirmadoEn = Date.now() - 31 * 24 * 60 * 60 * 1000;
+  vieja.almacen.setItem('aps_acceso_local_1144099001', JSON.stringify(vencida31));
+  const resultado31 = await vieja.acceso.verificar('1144099001', CLAVE);
+  verificar('tras 30 días sin confirmar con el servidor no entra, y lo dice',
+    resultado31.codigo === 'vencida' && /más de 30 días/.test(resultado31.mensaje), resultado31.mensaje);
   vieja.acceso.confirmar('1144099001', PERFIL);
   verificar('al confirmar con el servidor vuelve a valer', (await vieja.acceso.verificar('1144099001', CLAVE)).ok === true);
   vieja.acceso.olvidar('1144099001');
