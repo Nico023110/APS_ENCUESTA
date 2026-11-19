@@ -10,12 +10,12 @@
    CON Y SIN SEÑAL
 
    Con señal busca en el servidor (api/base_previa.js), en toda la base. Sin
-   señal, o si el servidor no responde, busca en una copia que el teléfono
-   guarda de los territorios de sus EBS: se descarga al abrir la aplicación
-   con señal, cada 12 horas, y se guarda cifrada con la llave de la persona
-   (boveda.js) en IndexedDB, donde cabe sin quitarle espacio a las fichas.
-   En claro sólo quedan de quién es, cuándo se bajó, de qué territorios y
-   cuántas viviendas trae: lo que hace falta para decirlo en pantalla.
+   señal, o si el servidor no responde, busca en una copia de toda la base
+   (cualquier EBS y territorio) que el teléfono guarda: se descarga al abrir
+   la aplicación con señal, cada 12 horas, y se guarda cifrada con la llave de
+   la persona (boveda.js) en IndexedDB, donde cabe sin quitarle espacio a las
+   fichas. En claro sólo quedan de quién es, cuándo se bajó y cuántas
+   viviendas trae: lo que hace falta para decirlo en pantalla.
 
    Lo que se pinta viene del servidor o de la copia: siempre con textContent.
 
@@ -31,6 +31,9 @@
   const NOMBRE_BD = 'aps_base_previa';
   const ALMACEN = 'copias';
   const VIGENCIA_MS = 12 * 60 * 60 * 1000;
+  /* 2: toda la base (antes, sólo los territorios de sus EBS). Una copia de
+     otra versión se reemplaza al abrir con señal, sin esperar las 12 horas. */
+  const VERSION_COPIA = 2;
   const ESPERA_BUSQUEDA_MS = 8000;
   const RADIO = 30;
   const RADIO_AMPLIO = 100;
@@ -107,11 +110,6 @@
     return Boolean(window.SESION && typeof SESION.puede === 'function' && SESION.puede('base_previa.consultar'));
   }
 
-  function tieneEquipo() {
-    const u = usuario();
-    return Boolean(u && (u.equipoCodigo || (Array.isArray(u.equiposApoyoCodigos) && u.equiposApoyoCodigos.length)));
-  }
-
   function bovedaAbierta() {
     return Boolean(window.BOVEDA && BOVEDA.abierta());
   }
@@ -138,8 +136,6 @@
     return {
       documento: registro.documento,
       generada: registro.generada,
-      equipos: registro.equipos || [],
-      territorios: registro.territorios || [],
       viviendas: registro.viviendas || 0,
       motivo: registro.motivo || null
     };
@@ -167,14 +163,14 @@
     const forzar = Boolean(opciones && opciones.forzar);
     if (actualizando) return actualizando;
     const documento = documentoActual();
-    if (!documento || !puedeBuscar() || !tieneEquipo() || !bovedaAbierta() || navigator.onLine === false) {
+    if (!documento || !puedeBuscar() || !bovedaAbierta() || navigator.onLine === false) {
       return Promise.resolve(null);
     }
 
     pintarEstadoCopia({ ocupada: true });
     actualizando = leerRegistro(documento).then(function (registro) {
       const edad = registro ? Date.now() - Date.parse(registro.generada) : Infinity;
-      if (registro && edad < VIGENCIA_MS && !forzar) return registro;
+      if (registro && registro.version === VERSION_COPIA && edad < VIGENCIA_MS && !forzar) return registro;
 
       return fetch(RUTA, {
         method: 'POST',
@@ -188,9 +184,8 @@
         if (documentoActual() !== documento || !bovedaAbierta()) return null;
         const nuevo = {
           documento: documento,
+          version: VERSION_COPIA,
           generada: datos.generada || new Date().toISOString(),
-          equipos: datos.equipos || [],
-          territorios: datos.territorios || [],
           viviendas: Array.isArray(datos.viviendas) ? datos.viviendas.length : 0,
           motivo: datos.disponible ? null : (datos.motivo || 'sin_copia'),
           sellado: datos.disponible
@@ -288,8 +283,8 @@
     return abrirCopia().then(function (c) {
       if (!c) {
         throw new ErrorVisible(navigator.onLine === false
-          ? 'Sin señal, y este teléfono no tiene todavía la copia para buscar sin señal. Conéctese una vez con la aplicación abierta.'
-          : 'No hubo respuesta del servidor, y este teléfono no tiene la copia para buscar sin señal. Inténtelo de nuevo.');
+          ? 'No hay internet, y este teléfono todavía no tiene viviendas guardadas para buscar sin internet. Abra la aplicación una vez con internet.'
+          : 'El servidor no respondió, y este teléfono no tiene viviendas guardadas para buscar sin internet. Inténtelo de nuevo.');
       }
       return Object.assign({ fuente: 'copia', copia: c.meta }, buscarEnCopia(c, b));
     });
@@ -376,6 +371,10 @@
     if (isNaN(fecha.getTime())) return '';
     const hora = String(fecha.getHours()).padStart(2, '0') + ':' + String(fecha.getMinutes()).padStart(2, '0');
     return fecha.getDate() + ' ' + MESES[fecha.getMonth()] + ', ' + hora;
+  }
+
+  function miles(n) {
+    return Number(n || 0).toLocaleString('es-CO');
   }
 
   function plural(n, uno, varios) {
@@ -511,10 +510,9 @@
     const fuente = elemento('p', 'previa-fuente');
     if (resultado.fuente === 'copia') {
       const m = resultado.copia || {};
-      fuente.textContent = 'Sin señal: se buscó en la copia de este teléfono (' +
-        (m.territorios && m.territorios.length ? m.territorios.join(', ') : 'sus territorios') +
-        (m.generada ? ', del ' + fechaYHora(m.generada) : '') +
-        '). No incluye otros territorios ni lo subido después.';
+      fuente.textContent = 'Sin internet: se buscó en las viviendas guardadas en este teléfono' +
+        (m.generada ? ' (actualizadas el ' + fechaYHora(m.generada) + ')' : '') +
+        '. No incluye lo registrado después.';
       fuente.classList.add('previa-fuente--copia');
     } else {
       fuente.textContent = 'Se buscó en toda la base' + (resultado.buscado && resultado.modo === 'direccion' ? ', como ' + resultado.buscado : '') + '.';
@@ -570,12 +568,7 @@
     const texto = nodo.querySelector('.previa-copia__texto');
     const boton = $('btnActualizarCopiaPrevia');
     if (estado && estado.ocupada) {
-      texto.textContent = 'Preparando la copia para buscar sin señal…';
-      boton.hidden = true;
-      return;
-    }
-    if (!tieneEquipo()) {
-      texto.textContent = 'Sin copia para buscar sin señal: su cuenta no tiene EBS. Con señal busca en toda la base.';
+      texto.textContent = 'Guardando en este teléfono las viviendas ya caracterizadas, para poder buscar sin internet…';
       boton.hidden = true;
       return;
     }
@@ -585,17 +578,16 @@
       if (actualizando) return;
       boton.hidden = navigator.onLine === false;
       if (!registro) {
-        texto.textContent = navigator.onLine === false
-          ? 'Sin copia para buscar sin señal todavía: se descarga la próxima vez que abra la aplicación con señal.'
-          : 'Sin copia para buscar sin señal todavía.';
+        texto.textContent = 'Todavía no hay viviendas guardadas en este teléfono para buscar sin internet.' +
+          (navigator.onLine === false ? ' Se guardan la próxima vez que abra la aplicación con internet.' : '');
         return;
       }
       if (!registro.sellado) {
-        texto.textContent = 'Sin copia para buscar sin señal: sus EBS todavía no tienen viviendas en la base. Con señal busca en toda la base.';
+        texto.textContent = 'Todavía no hay viviendas caracterizadas en la base, así que no hay nada que guardar para buscar sin internet.';
         return;
       }
-      texto.textContent = 'Sin señal busca en la copia de este teléfono: ' + plural(registro.viviendas, 'vivienda', 'viviendas') +
-        ' de ' + (registro.territorios || []).join(', ') + ', del ' + fechaYHora(registro.generada) + '.';
+      texto.textContent = 'Para buscar sin internet, este teléfono guardó las ' + miles(registro.viviendas) +
+        ' viviendas ya caracterizadas (de todos los EBS y territorios). Última actualización: ' + fechaYHora(registro.generada) + '.';
     });
   }
 

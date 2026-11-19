@@ -24,8 +24,8 @@
    Cada búsqueda queda en aud.evento (consulta_sensible), y hay un tope por
    persona para que nadie recorra la base a fuerza de consultas.
 
-   armarCopia: lo de los territorios de los EBS de la persona, para buscar sin
-   señal (base_previa.js lo guarda cifrado con la bóveda).
+   armarCopia: toda la base, para buscar sin señal (base_previa.js la guarda
+   cifrada con la bóveda).
    ========================================================================= */
 
 'use strict';
@@ -330,31 +330,11 @@ async function buscar(db, usuario, cuerpo) {
 
 /* ---------- Copia para buscar sin señal ---------- */
 
-/* Los EBS de la persona: el suyo y los que apoya (enfoque diferencial). */
-function equiposDe(usuario) {
-  const codigos = [usuario.equipoCodigo].concat(usuario.equiposApoyoCodigos || []);
-  return Array.from(new Set(codigos.filter(Boolean).map(function (c) { return String(c).toUpperCase(); }))).sort();
-}
-
-/* Un territorio es «de» un EBS si tiene ahí una parte real de su trabajo: el
-   5 % de sus viviendas o 50 de ellas. Así no entra un territorio entero por
-   una casa mal digitada. Sólo territorios vigentes: en la base anterior, T99
-   agrupa lo que no tenía territorio. */
-const PARTE_MINIMA_TERRITORIO = 0.05;
-const VIVIENDAS_MINIMAS_TERRITORIO = 50;
-
-/* Las viviendas que entran en la copia: las de los territorios del EBS (de
-   cualquier equipo: la casa del lado pudo caracterizarla otro) y, en cualquier
-   territorio, las que caracterizó el propio EBS. */
-const FILTRO_PREVIAS = 'v.territorio = ANY($1::text[]) OR upper(v.ebs_codigo) = ANY($2::text[])';
-const FILTRO_APP = `h.territorio_codigo = ANY($1::text[]) OR EXISTS (
-  SELECT 1 FROM aps.ficha fe JOIN aps.equipo_salud ee ON ee.id = fe.equipo_salud_id
-   WHERE fe.hogar_id = h.id AND upper(ee.codigo) = ANY($2::text[]))`;
-
 /**
- * Las viviendas (anteriores y de la app) de los territorios donde trabajan
- * los EBS de la persona, en arreglos compactos. Sin EBS no hay copia: la
- * coordinación y la administración buscan con señal.
+ * Toda la base —las viviendas anteriores y las de la app, de cualquier EBS y
+ * territorio— en arreglos compactos, para buscar sin señal igual que con
+ * señal (decisión del 2026-11-19: consultar sin importar el EBS). El teléfono
+ * la guarda cifrada con la llave de la persona (base_previa.js).
  *
  * viviendas: [origen (0 anterior, 1 app), fecha, territorio, microterritorio,
  *             lugar, dirección, clave, latitud, longitud, EBS, nombre del EBS,
@@ -362,42 +342,14 @@ const FILTRO_APP = `h.territorio_codigo = ANY($1::text[]) OR EXISTS (
  * documentos: [índice de la vivienda, número]
  */
 async function armarCopia(db, usuario) {
-  const equipos = equiposDe(usuario);
-  if (!equipos.length) return { disponible: false, motivo: 'sin_equipo', equipos: [] };
-
-  const territorios = (await db.query(`
-    WITH propias AS (
-      SELECT territorio, count(*) AS n FROM hist.vivienda
-       WHERE upper(ebs_codigo) = ANY($1::text[]) AND territorio IS NOT NULL
-       GROUP BY territorio
-      UNION ALL
-      SELECT h.territorio_codigo, count(DISTINCT h.id) FROM aps.ficha f
-        JOIN aps.hogar h ON h.id = f.hogar_id
-        JOIN aps.equipo_salud e ON e.id = f.equipo_salud_id
-       WHERE upper(e.codigo) = ANY($1::text[])
-       GROUP BY h.territorio_codigo
-    ), por_territorio AS (
-      SELECT territorio, sum(n) AS n FROM propias GROUP BY territorio
-    )
-    SELECT p.territorio
-      FROM por_territorio p
-      JOIN cat.territorio t ON t.codigo = p.territorio AND t.vigente
-     WHERE p.n >= $2 OR p.n >= $3 * (SELECT sum(n) FROM por_territorio)
-     ORDER BY p.territorio
-  `, [equipos, VIVIENDAS_MINIMAS_TERRITORIO, PARTE_MINIMA_TERRITORIO])).rows.map(function (r) { return r.territorio; });
-
   const [previas, documentosPrevios, app, documentosApp] = await Promise.all([
     db.query(`
       SELECT v.id, v.numero_anterior, v.territorio, v.microterritorio, v.division_territorial, v.direccion,
              v.clave_direccion, v.latitud, v.longitud, v.ultima_fecha::text AS fecha, v.ebs_codigo, v.ebs_nombre,
              v.responsable, v.familias, v.personas
-        FROM hist.vivienda v WHERE ${FILTRO_PREVIAS}
-    `, [territorios, equipos]),
-    db.query(`
-      SELECT p.vivienda_id, p.numero_id FROM hist.persona p
-        JOIN hist.vivienda v ON v.id = p.vivienda_id
-       WHERE ${FILTRO_PREVIAS}
-    `, [territorios, equipos]),
+        FROM hist.vivienda v
+    `),
+    db.query('SELECT p.vivienda_id, p.numero_id FROM hist.persona p'),
     db.query(`
       SELECT DISTINCT ON (h.id) h.id, h.codigo, h.nuv, h.territorio_codigo, h.microterritorio_codigo,
              h.division_territorial, h.direccion_normalizada, h.latitud, h.longitud,
@@ -410,22 +362,19 @@ async function armarCopia(db, usuario) {
         JOIN aps.ficha f        ON f.hogar_id = h.id
         JOIN aps.equipo_salud e ON e.id = f.equipo_salud_id
         JOIN aps.funcionario fu ON fu.id = f.responsable_id
-       WHERE ${FILTRO_APP}
        ORDER BY h.id, f.fecha_diligenciamiento DESC, f.id DESC
-    `, [territorios, equipos]),
+    `),
     db.query(`
       SELECT DISTINCT f.hogar_id, upper(p.numero_id) AS numero_id
-        FROM aps.hogar h
-        JOIN aps.ficha f          ON f.hogar_id = h.id
+        FROM aps.ficha f
         JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
         JOIN aps.integrante i     ON i.familia_ficha_id = ff.id
         JOIN aps.persona p        ON p.id = i.persona_id
-       WHERE ${FILTRO_APP}
-    `, [territorios, equipos])
+    `)
   ]);
 
   if (!previas.rows.length && !app.rows.length) {
-    return { disponible: false, motivo: 'sin_viviendas', equipos: equipos, territorios: territorios };
+    return { disponible: false, motivo: 'sin_viviendas' };
   }
 
   const viviendas = [];
@@ -459,21 +408,18 @@ async function armarCopia(db, usuario) {
   await db.query(`
     INSERT INTO aud.evento (entidad, tipo, campo, valor_nuevo, funcionario_id)
     VALUES ($1, 'consulta_sensible', 'copia_sin_senal', $2, $3)
-  `, [ENTIDAD_AUDITORIA, viviendas.length + ' viviendas (' + equipos.join(', ') + '; territorios: ' +
-    (territorios.join(', ') || 'ninguno propio') + ')', usuario.funcionarioId]);
+  `, [ENTIDAD_AUDITORIA, viviendas.length + ' viviendas (toda la base)', usuario.funcionarioId]);
 
   return {
     disponible: true,
     version: 1,
     generada: new Date().toISOString(),
-    equipos: equipos,
-    territorios: territorios,
     viviendas: viviendas,
     documentos: documentos
   };
 }
 
 module.exports = {
-  prepararBusqueda, buscar, armarCopia, ordenarResultados, equiposDe, cajaAlrededor,
+  prepararBusqueda, buscar, armarCopia, ordenarResultados, cajaAlrededor,
   ErrorDeBusqueda, RADIO_POR_DEFECTO, RADIO_MAXIMO, MAXIMO_RESULTADOS, TOPE_BUSQUEDAS, ESTADOS_VISITA
 };

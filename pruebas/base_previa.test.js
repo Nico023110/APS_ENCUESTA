@@ -234,8 +234,6 @@ verificar('más de ' + api.MAXIMO_RESULTADOS + ': se recorta a las más reciente
 
 verificar('el permiso lo tienen todos los niveles', ['auxiliar_enfermeria', 'enfermeria', 'lider_ebs', 'administrador', 'maestro']
   .every(function (rol) { return roles.puede(rol, 'base_previa.consultar'); }));
-verificar('los EBS de la persona: el suyo y los que apoya, sin repetir',
-  api.equiposDe({ equipoCodigo: 'ebs031', equiposApoyoCodigos: ['EBS006', 'EBS031'] }).join(',') === 'EBS006,EBS031');
 
 (async function () {
   /* Cliente falso: contesta según la consulta y anota lo que se pidió. */
@@ -281,10 +279,41 @@ verificar('los EBS de la persona: el suyo y los que apoya, sin repetir',
   try { await api.buscar(db, usuario, { modo: 'documento', documento: '1143929903' }); } catch (e) { errorTope = e; }
   verificar('pasado el tope no se busca', errorTope && errorTope.codigo === 'tope' && db.consultas.length === 1);
 
-  db = clienteFalso({});
-  const sinEquipo = await api.armarCopia(db, { funcionarioId: 7, equipoCodigo: null, equiposApoyoCodigos: [] });
-  verificar('sin EBS no hay copia para sin señal (ni consulta)', sinEquipo.disponible === false && sinEquipo.motivo === 'sin_equipo' &&
-    db.consultas.length === 0);
+  /* La copia para sin señal es toda la base, sin importar el EBS de la
+     persona (2026-11-19): ni siquiera hace falta que tenga uno. */
+  const consultasCopia = [];
+  const dbCopia = {
+    query: async function (sql, params) {
+      consultasCopia.push({ sql: sql, params: params });
+      if (/FROM hist\.vivienda v\s*$/.test(sql.trim()) || /FROM hist\.vivienda v\n/.test(sql + '\n')) {
+        return { rows: [
+          { id: 1, numero_anterior: '5893', territorio: 'T48', microterritorio: 'MT04', division_territorial: 'A', direccion: 'Cra 14 # 14-14',
+            clave_direccion: 'KR 14 # 14 - 14', latitud: '3.44', longitud: '-76.52', fecha: '2025-10-22', ebs_codigo: 'EBS033',
+            ebs_nombre: 'Comuna 3', responsable: 'R', familias: 1, personas: 2 },
+          { id: 2, numero_anterior: '7001', territorio: 'T76', microterritorio: 'MT02', division_territorial: 'B', direccion: 'Vereda',
+            clave_direccion: null, latitud: null, longitud: null, fecha: '2025-03-01', ebs_codigo: 'EBS001',
+            ebs_nombre: 'Buitrera', responsable: 'S', familias: 1, personas: 1 }] };
+      }
+      if (/FROM hist\.persona p$/.test(sql.trim())) return { rows: [{ vivienda_id: 1, numero_id: '1143929903' }, { vivienda_id: 2, numero_id: '22222222' }] };
+      if (/DISTINCT ON \(h\.id\)/.test(sql)) {
+        return { rows: [{ id: 9, codigo: 'T200MT01H0001', nuv: 3, territorio_codigo: 'T200', microterritorio_codigo: 'MT01',
+          division_territorial: 'C', direccion_normalizada: 'CL 1 # 2 - 3', latitud: null, longitud: null, fecha: '2026-11-10',
+          estado: 'cerrada', ebs: 'EBS064', responsable: 'T', familias: '1', personas: '1' }] };
+      }
+      if (/DISTINCT f\.hogar_id/.test(sql)) return { rows: [{ hogar_id: 9, numero_id: '33333333' }] };
+      return { rows: [] };
+    }
+  };
+  const copiaTotal = await api.armarCopia(dbCopia, { funcionarioId: 7, equipoCodigo: null, equiposApoyoCodigos: [] });
+  verificar('la copia para sin señal trae toda la base, aun sin EBS: viviendas de cualquier EBS y territorio',
+    copiaTotal.disponible === true && copiaTotal.viviendas.length === 3 &&
+    copiaTotal.viviendas.map(function (v) { return v[9]; }).join(',') === 'EBS033,EBS001,EBS064' &&
+    copiaTotal.documentos.length === 3, JSON.stringify(copiaTotal.viviendas.map(function (v) { return v[9]; })));
+  verificar('ninguna consulta de la copia filtra por EBS ni por territorio',
+    consultasCopia.filter(function (c) { return !/INSERT INTO aud/.test(c.sql); })
+      .every(function (c) { return !/ebs_codigo\s*=|territorio\s*=|territorio_codigo\s*=/.test(c.sql) && !(c.params && c.params.length); }));
+  verificar('la descarga de la copia queda en la auditoría',
+    consultasCopia.some(function (c) { return /INSERT INTO aud\.evento/.test(c.sql) && /copia_sin_senal/.test(c.sql) && c.params[2] === 7; }));
 
   /* ---------------------------------------------------------------- */
   console.log('\n=== 5. base_previa.js en la página ===');
@@ -349,7 +378,7 @@ verificar('los EBS de la persona: el suyo y los que apoya, sin repetir',
   const zona = doc.getElementById('resultadoBusquedaPrevia');
   verificar('el resultado avisa que ya fue caracterizada y dice qué coincidió',
     /Ya fue caracterizada/.test(zona.textContent) && /Mismo documento/.test(zona.textContent) && zona.querySelectorAll('.previa-item').length === 2);
-  verificar('dice que se buscó en la copia del teléfono, sin señal', /Sin señal/.test(zona.querySelector('.previa-fuente').textContent));
+  verificar('dice que se buscó en la copia del teléfono, sin señal', /Sin internet: se buscó en las viviendas guardadas en este teléfono \(actualizadas el/.test(zona.querySelector('.previa-fuente').textContent));
   verificar('el estado de la visita de la app se muestra si no está cerrada', /Sin consentimiento/.test(zona.textContent));
   verificar('fecha en palabras', /22 oct 2025/.test(zona.textContent) && P.fechaLegible('2026-11-10') === '10 nov 2026');
 
@@ -370,7 +399,7 @@ verificar('los EBS de la persona: el suyo y los que apoya, sin repetir',
   campo.value = '1143929903';
   doc.getElementById('formYaCaracterizada').dispatchEvent(new w.Event('submit', { cancelable: true }));
   await new Promise(function (r) { setTimeout(r, 20); });
-  verificar('sin señal y sin copia: lo explica', /todavía la copia/.test(zona.textContent), zona.textContent);
+  verificar('sin señal y sin copia: lo explica', /todavía no tiene viviendas guardadas/.test(zona.textContent), zona.textContent);
 
   const sinPermiso = new JSDOM(html, { runScripts: 'outside-only', url: 'http://localhost/' }).window;
   sinPermiso.SESION = { usuario: function () { return null; }, puede: function () { return false; } };
