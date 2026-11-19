@@ -359,7 +359,7 @@ verificar('el permiso lo tienen todos los niveles', ['auxiliar_enfermeria', 'enf
       [0, '2025-10-22', 'T48', 'MT04', 'San Pascual', 'Cra 14 # 14-14', 'KR 14 # 14 - 14', 3.443338, -76.526951, 'EBS033', 'Comuna 3',
         'Responsable Uno', 1, 3, 'Vivienda 5893 de la base anterior', null],
       [1, '2026-11-10', 'T48', 'MT04', 'San Pascual', 'KR 14 # 14 - 14 AP 2', 'KR 14 # 14 - 14', 3.4434, -76.52695, 'EBS033', null,
-        'Responsable App', 1, 2, 'T48MT04H0001 · NUV0012', 'Sin consentimiento'],
+        'Responsable App', 1, 2, 'T48MT04H0001 · NUV0012', 'Sin consentimiento', '2026-11-12 09:05'],
       [0, '2025-03-01', 'T49', 'MT01', 'Otra', 'Vereda', null, 3.5, -76.6, 'EBS031', 'Comuna 1', 'Otra', 1, 1, null, null]
     ],
     documentos: [[0, '1143929903'], [1, '1143929903'], [2, '22222222']]
@@ -380,6 +380,9 @@ verificar('el permiso lo tienen todos los niveles', ['auxiliar_enfermeria', 'enf
     /Ya fue caracterizada/.test(zona.textContent) && /Mismo documento/.test(zona.textContent) && zona.querySelectorAll('.previa-item').length === 2);
   verificar('dice que se buscó en la copia del teléfono, sin señal', /Sin internet: se buscó en las viviendas guardadas en este teléfono \(actualizadas el/.test(zona.querySelector('.previa-fuente').textContent));
   verificar('el estado de la visita de la app se muestra si no está cerrada', /Sin consentimiento/.test(zona.textContent));
+  verificar('dice cuándo se caracterizó y, en la de la app, cuándo se subió al sistema',
+    /Caracterizada el 10 nov 2026/.test(zona.textContent) && /Subida12 nov 2026, 09:05/.test(zona.textContent) &&
+    zona.querySelectorAll('.previa-item__dato').length > 0 && (zona.textContent.match(/Subida/g) || []).length === 1, zona.textContent);
   verificar('fecha en palabras', /22 oct 2025/.test(zona.textContent) && P.fechaLegible('2026-11-10') === '10 nov 2026');
 
   P.pintarResultado({ fuente: 'servidor', modo: 'documento', total: 1, truncado: false, resultados: [{

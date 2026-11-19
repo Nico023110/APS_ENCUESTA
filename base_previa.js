@@ -31,9 +31,10 @@
   const NOMBRE_BD = 'aps_base_previa';
   const ALMACEN = 'copias';
   const VIGENCIA_MS = 12 * 60 * 60 * 1000;
-  /* 2: toda la base (antes, sólo los territorios de sus EBS). Una copia de
-     otra versión se reemplaza al abrir con señal, sin esperar las 12 horas. */
-  const VERSION_COPIA = 2;
+  /* 2: toda la base (antes, sólo los territorios de sus EBS); 3: con la fecha
+     de subida al sistema. Una copia de otra versión se reemplaza al abrir con
+     señal, sin esperar las 12 horas. */
+  const VERSION_COPIA = 3;
   const ESPERA_BUSQUEDA_MS = 8000;
   const RADIO = 30;
   const RADIO_AMPLIO = 100;
@@ -267,7 +268,7 @@
       const r = {
         origen: v[0] === 1 ? 'app' : 'previa', fecha: v[1], territorio: v[2], microterritorio: v[3], lugar: v[4],
         direccion: v[5], equipo: v[9], equipoNombre: v[10], responsable: v[11], familias: v[12], personas: v[13],
-        referencia: v[14], estado: v[15] || null
+        referencia: v[14], estado: v[15] || null, subida: v[16] || null
       };
       if (b.modo === 'cercania') {
         if (v[7] === null || v[8] === null) return;
@@ -366,6 +367,13 @@
     return m ? Number(m[3]) + ' ' + MESES[Number(m[2]) - 1] + ' ' + m[1] : 'sin fecha';
   }
 
+  /* «2026-11-05 10:42» → «5 nov 2026, 10:42». */
+  function fechaHoraLegible(texto) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(texto || ''));
+    if (!m) return '';
+    return Number(m[3]) + ' ' + MESES[Number(m[2]) - 1] + ' ' + m[1] + (m[4] ? ', ' + m[4] + ':' + m[5] : '');
+  }
+
   function fechaYHora(iso) {
     const fecha = new Date(iso);
     if (isNaN(fecha.getTime())) return '';
@@ -437,7 +445,7 @@
     const item = elemento('li', 'previa-item');
     /* Primero cuándo y por qué coincidió; debajo, de dónde viene. */
     const cabecera = elemento('div', 'previa-item__cabecera');
-    cabecera.appendChild(elemento('span', 'previa-item__fecha', fechaLegible(r.fecha)));
+    cabecera.appendChild(elemento('span', 'previa-item__fecha', 'Caracterizada el ' + fechaLegible(r.fecha)));
     cabecera.appendChild(elemento('span', 'previa-chip previa-chip--coincide', POR_QUE[modo](r)));
     item.appendChild(cabecera);
     item.appendChild(elemento('span', 'previa-chip previa-chip--' + (r.origen === 'app' ? 'app' : 'previa'),
@@ -461,6 +469,8 @@
       dato('Personas', plural(r.personas, 'persona', 'personas') +
         (r.familias ? ' en ' + plural(r.familias, 'familia', 'familias') : ''));
     }
+    /* Cuándo llegó al sistema: puede ser días después de la visita. */
+    if (r.subida) dato('Subida', fechaHoraLegible(r.subida));
     if (r.estado && r.estado !== 'Cerrada') dato('Visita', r.estado);
     dato('Referencia', r.referencia);
     item.appendChild(datos);
@@ -626,6 +636,7 @@
       indexar: indexar,
       pintarResultado: pintarResultado,
       fechaLegible: fechaLegible,
+      fechaHoraLegible: fechaHoraLegible,
       inicializar: inicializar,
       ErrorVisible: ErrorVisible
     }

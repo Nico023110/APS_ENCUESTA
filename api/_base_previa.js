@@ -219,6 +219,8 @@ async function visitasDeLaApp(db, b) {
     SELECT h.id, h.codigo, h.nuv, h.territorio_codigo, h.microterritorio_codigo, h.division_territorial,
            h.direccion_normalizada, h.latitud, h.longitud,
            f.fecha_diligenciamiento::text AS fecha, f.estado::text AS estado,
+           /* Cuándo llegó al servidor (subida al sistema), hora de Colombia. */
+           to_char(f.capturada_en AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI') AS subida,
            e.codigo AS ebs, fu.nombre_completo AS responsable,
            (SELECT count(*) FROM aps.familia_ficha ff WHERE ff.ficha_id = f.id) AS familias,
            (SELECT count(*) FROM aps.integrante i JOIN aps.familia_ficha ff ON ff.id = i.familia_ficha_id
@@ -251,6 +253,7 @@ function deLaApp(fila) {
     personas: numeroONulo(fila.personas),
     referencia: [fila.codigo, textoNuv(fila.nuv)].filter(Boolean).join(' · ') || null,
     estado: ESTADOS_VISITA[fila.estado] || null,
+    subida: fila.subida || null,
     tipoDocumento: null,
     latitud: numeroONulo(fila.latitud),
     longitud: numeroONulo(fila.longitud)
@@ -338,7 +341,7 @@ async function buscar(db, usuario, cuerpo) {
  *
  * viviendas: [origen (0 anterior, 1 app), fecha, territorio, microterritorio,
  *             lugar, dirección, clave, latitud, longitud, EBS, nombre del EBS,
- *             responsable, familias, personas, referencia, estado]
+ *             responsable, familias, personas, referencia, estado, subida]
  * documentos: [índice de la vivienda, número]
  */
 async function armarCopia(db, usuario) {
@@ -353,7 +356,9 @@ async function armarCopia(db, usuario) {
     db.query(`
       SELECT DISTINCT ON (h.id) h.id, h.codigo, h.nuv, h.territorio_codigo, h.microterritorio_codigo,
              h.division_territorial, h.direccion_normalizada, h.latitud, h.longitud,
-             f.fecha_diligenciamiento::text AS fecha, f.estado::text AS estado, e.codigo AS ebs,
+             f.fecha_diligenciamiento::text AS fecha, f.estado::text AS estado,
+           /* Cuándo llegó al servidor (subida al sistema), hora de Colombia. */
+           to_char(f.capturada_en AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI') AS subida, e.codigo AS ebs,
              fu.nombre_completo AS responsable,
              (SELECT count(*) FROM aps.familia_ficha ff WHERE ff.ficha_id = f.id) AS familias,
              (SELECT count(*) FROM aps.integrante i JOIN aps.familia_ficha ff ON ff.id = i.familia_ficha_id
@@ -385,7 +390,7 @@ async function armarCopia(db, usuario) {
     viviendas.push([0, v.fecha, v.territorio, v.microterritorio, v.division_territorial, v.direccion,
       v.clave_direccion, numeroONulo(v.latitud), numeroONulo(v.longitud), v.ebs_codigo, v.ebs_nombre,
       v.responsable, numeroONulo(v.familias), numeroONulo(v.personas),
-      v.numero_anterior ? 'Vivienda ' + v.numero_anterior + ' de la base anterior' : null, null]);
+      v.numero_anterior ? 'Vivienda ' + v.numero_anterior + ' de la base anterior' : null, null, null]);
   });
   documentosPrevios.rows.forEach(function (d) {
     const i = indicePrevia.get(String(d.vivienda_id));
@@ -398,7 +403,7 @@ async function armarCopia(db, usuario) {
     viviendas.push([1, h.fecha, h.territorio_codigo, h.microterritorio_codigo, h.division_territorial,
       h.direccion_normalizada, CRUCE.claveDeDireccion(h.direccion_normalizada), numeroONulo(h.latitud),
       numeroONulo(h.longitud), h.ebs, null, h.responsable, numeroONulo(h.familias), numeroONulo(h.personas),
-      [h.codigo, textoNuv(h.nuv)].filter(Boolean).join(' · ') || null, ESTADOS_VISITA[h.estado] || null]);
+      [h.codigo, textoNuv(h.nuv)].filter(Boolean).join(' · ') || null, ESTADOS_VISITA[h.estado] || null, h.subida || null]);
   });
   documentosApp.rows.forEach(function (d) {
     const i = indiceApp.get(String(d.hogar_id));
