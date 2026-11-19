@@ -410,7 +410,11 @@ erDiagram
     }
 ```
 
-### 5.1 Caracterizaciones anteriores a la app (esquema `hist`, RN-230)
+### 5.1 Visitas siguientes de una ficha (`aps.visita_ficha`, RN-051 / RN-227)
+
+Desde el 2026-11-19, completar los integrantes que no estaban es una visita más de la misma ficha. La visita 1 es la ficha (`aps.ficha`: su fecha y su responsable, que no cambian una vez sincronizada); las siguientes viven en `aps.visita_ficha (ficha_id, numero ≥ 2, fecha, responsable_id, integrantes)`, y cada `aps.integrante.visita_numero` dice en cuál se caracterizó. Cada visita sube el `codigo_cf` de todas las familias de la ficha (CF002, CF003…). El archivo plano toma de cada hogar la visita más reciente del período y lleva a los integrantes hasta ella, con la fecha y el responsable de esa visita (`api/_visitas.js`).
+
+### 5.2 Caracterizaciones anteriores a la app (esquema `hist`, RN-230)
 
 ```mermaid
 erDiagram

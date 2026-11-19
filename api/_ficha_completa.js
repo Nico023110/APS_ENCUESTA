@@ -224,6 +224,9 @@ async function leerPlanes(cliente, fichaIds) {
 
 function integranteDesdeFila(i) {
   return {
+    /* En qué visita de la ficha se caracterizó (21_segunda_visita.sql): el
+       archivo plano de cada visita lleva a los integrantes hasta ella. */
+    visitaNumero: Number(i.visita_numero) || 1,
     primerNombre: i.primer_nombre,
     segundoNombre: i.segundo_nombre,
     primerApellido: i.primer_apellido,

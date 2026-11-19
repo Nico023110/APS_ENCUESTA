@@ -1,17 +1,15 @@
 /* =========================================================================
-   Encuesta_APS — Completitud de una ficha para el archivo plano
+   Encuesta_APS — Lo que le falta a una ficha (integrantes y hogares)
    -------------------------------------------------------------------------
    Una ficha está completa cuando tiene caracterizados todos los integrantes
    que declara el ítem 51 de cada familia (RN-051) y una familia en cada hogar
-   que declara el ítem 28 (RN-028). Desde el 2026-11-18 una ficha nueva no
-   sube incompleta; las que ya estaban en la base pueden estarlo, y el archivo
-   plano no las lleva hasta que se completen (api/reporte_sispro.js).
+   que declara el ítem 28 (RN-028).
 
-   Cuándo quedó completa: una ficha que se completa después —«Completar
-   integrantes» o una corrección— deja en aud.evento campo «completitud»
-   (anotarSiQuedoCompleta). El reporte la lleva en el período en que se
-   completó. Los «integrantes» que anotaba «Completar integrantes» antes de
-   esta regla también cuentan como fecha de completitud.
+   Desde el 2026-11-19 (instrucción de los EBS) esto no decide si la ficha sube
+   ni si va al archivo plano: va con quienes estaban, y quien faltaba se
+   caracteriza en una segunda visita (api/_visitas.js). Sirve para listar en
+   el resumen del reporte las fichas que esperan esa visita. Del 18 al 19 de
+   noviembre de 2026 las incompletas quedaban por fuera del plano.
 
    Mismo criterio en JavaScript (sobre la ficha armada) y en SQL (sobre la
    base), igual que reglas.js: los hogares se cuentan distintos —una familia
@@ -64,25 +62,4 @@ const SQL_FICHA_INCOMPLETA = `(
   )
 )`;
 
-/* Día (hora de Colombia) en que la ficha f quedó completa después de su
-   visita, o NULL si nunca estuvo incompleta en la base. */
-const SQL_COMPLETADA_EL = `(
-  SELECT max((ev.ocurrido_en AT TIME ZONE 'America/Bogota')::date)
-    FROM aud.evento ev
-   WHERE ev.ficha_id = f.id AND ev.entidad = 'ficha' AND ev.campo IN ('completitud', 'integrantes')
-)`;
-
-/* Si la ficha que estaba incompleta en la base queda completa con este
-   guardado, se anota: de ahí sale el período en que va al archivo plano. */
-async function anotarSiQuedoCompleta(cliente, fichaId, antes, despues, funcionarioId, dispositivoId) {
-  if (!antes || estaCompleta(antes) || !estaCompleta(despues)) return false;
-  const f = faltantesDeFicha(antes);
-  await cliente.query(`
-    INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_anterior, valor_nuevo, funcionario_id, dispositivo_id)
-    VALUES ($1, 'ficha', $1, 'modificacion', 'completitud', $2, 'completa', $3, $4)
-  `, [fichaId, 'faltaban ' + f.integrantes + ' integrante(s) y ' + f.hogares + ' hogar(es)',
-    funcionarioId || null, dispositivoId || null]);
-  return true;
-}
-
-module.exports = { faltantesDeFicha, estaCompleta, anotarSiQuedoCompleta, SQL_FICHA_INCOMPLETA, SQL_COMPLETADA_EL };
+module.exports = { faltantesDeFicha, estaCompleta, SQL_FICHA_INCOMPLETA };

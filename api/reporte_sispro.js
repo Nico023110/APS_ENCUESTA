@@ -21,12 +21,12 @@
      - cada generación queda en aud.evento (quién, cuándo, qué período).
      - el resumen no trae datos personales: sólo códigos de ficha.
 
-   Qué fichas entran: diligenciadas dentro del período, con consentimiento,
-   cerradas y completas —todos los integrantes del ítem 51 y una familia en
-   cada hogar del ítem 28 (api/_completitud.js)—. Una ficha incompleta queda
-   por fuera y entra en el período en que se complete, aunque su visita sea
-   anterior. De cada hogar, sólo la visita más reciente: el anexo usa el ID
-   de la familia como llave primaria y no admite repetirlo.
+   Qué visitas entran (api/_visitas.js): las del período, de fichas con
+   consentimiento y cerradas, aunque les falten integrantes u hogares (van
+   con quienes estaban en la visita; 2026-11-19). La visita que completa
+   integrantes (CF002…) va en su mes con la ficha completa, con su fecha y su
+   responsable. De cada hogar, sólo la visita más reciente del período: el
+   anexo usa el ID de la familia como llave primaria y no admite repetirlo.
    El Excel, en cambio, trae todas las visitas con consentimiento del período,
    cerradas o no: es la caracterización para consultar, no el reporte.
    ========================================================================= */
@@ -39,7 +39,8 @@ const { leerFichasCompletas } = require('./_ficha_completa');
 const { construirReporte } = require('./_reporte_sispro');
 const { construirExcel } = require('./_excel_fichas');
 const { obtenerMotor } = require('./_validacion');
-const { SQL_FICHA_INCOMPLETA, SQL_COMPLETADA_EL } = require('./_completitud');
+const { SQL_FICHA_INCOMPLETA } = require('./_completitud');
+const { SQL_VISITAS_DEL_PERIODO, responsablesDeVisitas, fichaEnLaVisita } = require('./_visitas');
 
 /* AAAA-MM-DD de un DATE de la base (pg lo entrega como Date a medianoche local). */
 function fechaTexto(valor) {
@@ -181,40 +182,24 @@ module.exports = async (req, res) => {
       SELECT count(*)::int AS total,
              count(*) FILTER (WHERE NOT f.consentimiento)::int AS sin_consentimiento,
              count(*) FILTER (WHERE f.consentimiento AND f.estado NOT IN ('cerrada', 'sincronizada'))::int AS no_cerradas,
-             count(*) FILTER (WHERE f.consentimiento AND f.estado IN ('cerrada', 'sincronizada')
-                                AND ${SQL_FICHA_INCOMPLETA})::int AS incompletas
+             (SELECT count(*)::int FROM aps.visita_ficha v JOIN aps.ficha fv ON fv.id = v.ficha_id
+               WHERE v.fecha BETWEEN $1 AND $2 AND fv.consentimiento
+                 AND fv.estado IN ('cerrada', 'sincronizada')) AS visitas_siguientes
         FROM aps.ficha f
        WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
     `, [periodo.desde, periodo.hasta])).rows[0];
 
-    /* RN-051 / RN-028: una ficha con integrantes u hogares por caracterizar
-       no va al plano —PISIS no admite la familia ni la vivienda a medias—; va
-       en el del período en que se complete, aunque su visita sea anterior. De
-       cada hogar, la visita más reciente. */
-    const seleccion = (await cliente.query(`
-      SELECT id, codigo, fecha_diligenciamiento, completada_el, tardia FROM (
-        SELECT DISTINCT ON (c.hogar_id) c.id, c.codigo, c.fecha_diligenciamiento, c.completada_el,
-               c.fecha_diligenciamiento < $1 AS tardia
-          FROM (
-            SELECT f.id, f.codigo, f.hogar_id, f.fecha_diligenciamiento, ${SQL_COMPLETADA_EL} AS completada_el
-              FROM aps.ficha f
-             WHERE f.fecha_diligenciamiento <= $2
-               AND f.consentimiento
-               AND f.estado IN ('cerrada', 'sincronizada')
-               AND NOT ${SQL_FICHA_INCOMPLETA}
-          ) c
-         WHERE c.fecha_diligenciamiento BETWEEN $1 AND $2
-            OR (c.fecha_diligenciamiento < $1 AND c.completada_el BETWEEN $1 AND $2)
-         ORDER BY c.hogar_id, c.fecha_diligenciamiento DESC, c.id DESC
-      ) ultimas
-      ORDER BY fecha_diligenciamiento, id
-    `, [periodo.desde, periodo.hasta])).rows;
-    const ids = seleccion.map(function (f) { return String(f.id); });
-    const tardias = seleccion.filter(function (f) { return f.tardia; });
+    /* RN-051 / RN-227 (2026-11-19): la ficha va al archivo aunque le falten
+       integrantes, con quienes estaban en la visita; la visita en que se
+       completan (CF002…) va en el mes en que se hizo, con la ficha completa.
+       De cada vivienda, la visita más reciente del período (api/_visitas.js). */
+    const visitas = (await cliente.query(SQL_VISITAS_DEL_PERIODO, [periodo.desde, periodo.hasta])).rows;
+    const ids = Array.from(new Set(visitas.map(function (v) { return String(v.ficha_id); })));
+    const siguientes = visitas.filter(function (v) { return Number(v.numero) > 1; });
 
-    /* Las del período que quedan por fuera por incompletas: sólo su código y
-       cuánto les falta, para completarlas en la aplicación. */
-    const incompletas = conteo.incompletas === 0 ? [] : (await cliente.query(`
+    /* Las del período a las que todavía les faltan integrantes u hogares: van
+       con lo que tienen; se listan para planear la visita que las complete. */
+    const pendientes = (await cliente.query(`
       SELECT f.codigo, f.fecha_diligenciamiento,
              coalesce((SELECT sum(greatest(ff.numero_integrantes - (SELECT count(*) FROM aps.integrante i
                                                                      WHERE i.familia_ficha_id = ff.id), 0))
@@ -223,14 +208,14 @@ module.exports = async (req, res) => {
                          SELECT count(DISTINCT coalesce(ff.hogar_numero::text, 'f' || ff.id))
                            FROM aps.familia_ficha ff WHERE ff.ficha_id = f.id), 0)
                          FROM aps.vivienda v
-                        WHERE v.ficha_id = f.id AND EXISTS (SELECT 1 FROM aps.familia_ficha x WHERE x.ficha_id = f.id)), 0)::int AS hogares
+                        WHERE v.ficha_id = f.id AND EXISTS (SELECT 1 FROM aps.familia_ficha x WHERE x.ficha_id = f.id)), 0)::int AS hogares,
+             count(*) OVER ()::int AS total
         FROM aps.ficha f
-       WHERE f.fecha_diligenciamiento BETWEEN $1 AND $2
-         AND f.consentimiento AND f.estado IN ('cerrada', 'sincronizada')
+       WHERE f.id = ANY($1::bigint[])
          AND ${SQL_FICHA_INCOMPLETA}
        ORDER BY f.fecha_diligenciamiento, f.codigo
        LIMIT 500
-    `, [periodo.desde, periodo.hasta])).rows;
+    `, [ids])).rows;
 
     if (ids.length > MAX_FICHAS) {
       return res.status(400).json({
@@ -239,11 +224,16 @@ module.exports = async (req, res) => {
       });
     }
 
-    const fichas = [];
+    const leidas = new Map();
     for (let i = 0; i < ids.length; i += TAMANO_LOTE) {
-      const lote = await leerFichasCompletas(cliente, ids.slice(i, i + TAMANO_LOTE));
-      Array.prototype.push.apply(fichas, lote);
+      (await leerFichasCompletas(cliente, ids.slice(i, i + TAMANO_LOTE))).forEach(function (leida) {
+        leidas.set(String(leida.id), leida);
+      });
     }
+    const responsables = await responsablesDeVisitas(cliente, visitas);
+    const fichas = visitas.filter(function (v) { return leidas.has(String(v.ficha_id)); }).map(function (v) {
+      return fichaEnLaVisita(leidas.get(String(v.ficha_id)), v, responsables.get(String(v.responsable_id)) || null);
+    });
 
     const reporte = construirReporte({
       fichas: fichas,
@@ -263,17 +253,20 @@ module.exports = async (req, res) => {
         incluidas: fichas.length,
         sinConsentimiento: conteo.sin_consentimiento,
         noCerradas: conteo.no_cerradas,
-        incompletas: conteo.incompletas,
-        completadasDespues: tardias.length,
+        segundasVisitas: siguientes.length,
+        conPendientes: pendientes.length ? pendientes[0].total : 0,
         visitasAnterioresDelMismoHogar: Math.max(0,
-          conteo.total - conteo.sin_consentimiento - conteo.no_cerradas - conteo.incompletas - (fichas.length - tardias.length))
+          conteo.total - conteo.sin_consentimiento - conteo.no_cerradas + conteo.visitas_siguientes - fichas.length)
       },
       /* Sólo códigos de ficha, sin datos personales. */
-      incompletas: incompletas.map(function (f) {
+      conPendientes: pendientes.map(function (f) {
         return { codigo: f.codigo, fecha: fechaTexto(f.fecha_diligenciamiento), integrantes: f.integrantes, hogares: f.hogares };
       }),
-      completadasDespues: tardias.map(function (f) {
-        return { codigo: f.codigo, fecha: fechaTexto(f.fecha_diligenciamiento), completadaEl: fechaTexto(f.completada_el) };
+      segundasVisitas: siguientes.map(function (v) {
+        const leida = leidas.get(String(v.ficha_id));
+        return { codigo: leida ? leida.encuesta.codigoFicha : null, visita: Number(v.numero), fecha: v.fecha,
+          primeraVisita: leida ? fechaTexto(leida.encuesta.fechaDiligenciamiento) : null,
+          cf: 'CF' + String(v.numero).padStart(3, '0') };
       }),
       registros: reporte.resumen.registros,
       incidencias: reporte.resumen.incidencias,
@@ -282,10 +275,9 @@ module.exports = async (req, res) => {
       avisos: (reporte.resumen.incidencias.detalle.some(function (x) { return x.tipoRegistro === 2 && x.variable === 4; })
         ? ['Hay viviendas sin subregión (variable 4): su ficha no trae UZPE y no está configurado «subregion_sispro». ' +
            'Sin ella, las variables 4, 123 y 124 salen vacías.']
-        : []).concat(tardias.length > 0
-        ? [tardias.length + (tardias.length === 1 ? ' ficha visitada antes de este período va' : ' fichas visitadas antes de este período van') +
-           ' en el archivo porque se completó en él (quedó por fuera de su mes por estar incompleta). Su fecha de ' +
-           'caracterización es la de la visita, anterior al período.']
+        : []).concat(siguientes.length > 0
+        ? [siguientes.length + (siguientes.length === 1 ? ' ficha va como segunda visita (o siguiente)' : ' fichas van como segunda visita (o siguiente)') +
+           ', la que completó sus integrantes: con todas sus personas y con la fecha y el responsable de esa visita.']
         : [])
     };
 

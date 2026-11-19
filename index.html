@@ -1097,7 +1097,7 @@
                               title="Guarda lo diligenciado hasta aquí en este equipo">
                         <i class="ph ph-floppy-disk" aria-hidden="true"></i> Guardar avance</button>
                       <button type="button" class="btn btn--ghost btn--icon" data-accion="quitarIntegrante"
-                              title="Quita este bloque sin cambiar el ítem 51. Si la persona no estaba en la visita, la ficha queda en este equipo y no sube a la base hasta caracterizarla.">No estaba en la visita · quitar</button>
+                              title="Quita este bloque sin cambiar el ítem 51. Si la persona no estaba en la visita, la ficha sube con quienes estaban y se agrega después desde Historial → Completar integrantes (segunda visita).">No estaba en la visita · quitar</button>
                     </div>
 
                     <!-- ---------- 5.1 Identificación (58-72) ---------- -->
@@ -2259,7 +2259,7 @@
             <input type="date" id="reporteHasta" name="hasta" required>
           </div>
         </div>
-        <p class="field-hint reporte__criterio">Entran las fichas cerradas y con consentimiento diligenciadas en el período; de cada hogar, sólo la visita más reciente.</p>
+        <p class="field-hint reporte__criterio">Entran las fichas cerradas y con consentimiento visitadas en el período, aunque les falten integrantes: van con quienes estaban. La visita que los completa (CF002) va en el mes en que se hizo, con la ficha completa. De cada hogar, sólo la visita más reciente.</p>
         <div class="reporte__acciones">
           <button type="submit" class="btn btn--ghost" id="btnReporteRevisar">
             <i class="ph ph-list-checks" aria-hidden="true"></i><span>Revisar</span>

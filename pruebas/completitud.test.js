@@ -1,9 +1,9 @@
 /* =========================================================================
-   Pruebas unitarias: completitud de una ficha para el archivo plano
-   (api/_completitud.js). Una ficha está completa con todos los integrantes
-   del ítem 51 y una familia en cada hogar del ítem 28; si estaba incompleta
-   en la base y un guardado la completa, se anota en aud.evento. No tocan la
-   base: el cliente es falso.
+   Pruebas unitarias: lo que le falta a una ficha (api/_completitud.js) y
+   cada visita en el archivo plano (api/_visitas.js). Desde el 2026-11-19 la
+   ficha va al plano aunque le falten integrantes; la visita que los completa
+   (CF002…) va en su mes con la ficha completa, con su fecha y su responsable.
+   No tocan la base.
        node pruebas/completitud.test.js
    ========================================================================= */
 
@@ -11,6 +11,7 @@
 
 const path = require('path');
 const c = require(path.join(__dirname, '..', 'api', '_completitud.js'));
+const v = require(path.join(__dirname, '..', 'api', '_visitas.js'));
 
 let pasadas = 0;
 let fallidas = 0;
@@ -38,33 +39,78 @@ verificar('Sin familias no se cuentan hogares', f.hogares === 0 && f.integrantes
 verificar('estaCompleta', c.estaCompleta({ hogaresEnVivienda: 1, familias: [familia(2, 2, 1)] }) &&
   !c.estaCompleta({ hogaresEnVivienda: 1, familias: [familia(2, 1, 1)] }));
 
-console.log('\n=== Anotar cuándo quedó completa ===');
+console.log('\n=== SQL ===');
+verificar('La condición SQL mira integrantes y hogares',
+  /numero_integrantes >/.test(c.SQL_FICHA_INCOMPLETA) && /hogares_en_vivienda >/.test(c.SQL_FICHA_INCOMPLETA));
+verificar('Ya no decide el período del plano (sin «completitud» en aud.evento)',
+  c.anotarSiQuedoCompleta === undefined && c.SQL_COMPLETADA_EL === undefined);
+
+console.log('\n=== Cada visita en el archivo plano (api/_visitas.js) ===');
+const integrante = function (doc, visita) { return { tipoId: 'CC', numeroId: doc, visitaNumero: visita }; };
+const leida = {
+  id: '7',
+  meta: { consecutivoVivienda: 5 },
+  encuesta: {
+    codigoFicha: 'F-7', fechaDiligenciamiento: '2026-10-10',
+    responsableTipoId: 'CC', responsableNumeroId: '111', perfilProfesional: 'auxiliar_enfermeria', perfilProfesionalOtro: null,
+    familias: [
+      { numeroIntegrantes: 5, integrantes: [integrante('1', 1), integrante('2', 1), integrante('3', 2), integrante('4', 2), integrante('5', 3)] },
+      { numeroIntegrantes: 1, integrantes: [integrante('6', undefined)] }
+    ]
+  }
+};
+const responsable = { tipo_id: 'CC', numero_id: '222', perfil_profesional: 'enfermeria', perfil_otro: null };
+const documentos = function (enVisita, fi) {
+  return enVisita.encuesta.familias[fi].integrantes.map(function (i) { return i.numeroId; }).join(',');
+};
+
+let enVisita = v.fichaEnLaVisita(leida, { numero: 1, fecha: '2026-10-10' }, null);
+verificar('Visita 1: sólo quienes se caracterizaron en ella, con la fecha y el responsable de la ficha',
+  documentos(enVisita, 0) === '1,2' && enVisita.encuesta.familias[1].integrantes.length === 1 &&
+  enVisita.encuesta.fechaDiligenciamiento === '2026-10-10' && enVisita.encuesta.responsableNumeroId === '111' &&
+  enVisita.encuesta.visitaNumero === undefined,
+  documentos(enVisita, 0));
+verificar('Integrante sin número de visita (anterior a la regla) cuenta como de la visita 1',
+  documentos(enVisita, 1) === '6');
+
+enVisita = v.fichaEnLaVisita(leida, { numero: 2, fecha: '2026-11-19' }, responsable);
+verificar('Visita 2: la ficha completa hasta ella, con la fecha y el responsable de esa visita',
+  documentos(enVisita, 0) === '1,2,3,4' && documentos(enVisita, 1) === '6' &&
+  enVisita.encuesta.fechaDiligenciamiento === '2026-11-19' && enVisita.encuesta.responsableNumeroId === '222' &&
+  enVisita.encuesta.perfilProfesional === 'enfermeria' && enVisita.encuesta.visitaNumero === 2,
+  documentos(enVisita, 0));
+verificar('Visita 3: todas sus personas', documentos(v.fichaEnLaVisita(leida, { numero: 3, fecha: '2026-12-01' }, responsable), 0) ===
+  '1,2,3,4,5');
+verificar('Sin responsable encontrado conserva el de la ficha (no deja las variables 27 a 29 vacías)',
+  v.fichaEnLaVisita(leida, { numero: 2, fecha: '2026-11-19' }, null).encuesta.responsableNumeroId === '111');
+verificar('No modifica la ficha leída (sirve para otra visita del mismo archivo)',
+  leida.encuesta.familias[0].integrantes.length === 5 && leida.encuesta.fechaDiligenciamiento === '2026-10-10' &&
+  leida.encuesta.responsableNumeroId === '111');
+verificar('Conserva el meta de la ficha (consecutivo de la vivienda para las variables 123 y 124)',
+  enVisita.meta.consecutivoVivienda === 5 && enVisita.visita === 2);
+
+verificar('SQL: una visita por vivienda en el período, la más reciente, de fichas cerradas con consentimiento',
+  /DISTINCT ON \(t\.hogar_id\)/.test(v.SQL_VISITAS_DEL_PERIODO) && /aps\.visita_ficha/.test(v.SQL_VISITAS_DEL_PERIODO) &&
+  /t\.fecha DESC, t\.numero DESC/.test(v.SQL_VISITAS_DEL_PERIODO) && /consentimiento/.test(v.SQL_VISITAS_DEL_PERIODO) &&
+  /'cerrada', 'sincronizada'/.test(v.SQL_VISITAS_DEL_PERIODO));
+verificar('SQL: una ficha con integrantes por caracterizar también entra',
+  !/numero_integrantes|hogares_en_vivienda/.test(v.SQL_VISITAS_DEL_PERIODO));
+
 (async function () {
   const consultas = [];
-  const cliente = { query: async function (sql, params) { consultas.push({ sql: sql, params: params }); return { rows: [] }; } };
-  const antes = { hogaresEnVivienda: 1, familias: [familia(3, 1, 1)] };
-  const despues = { hogaresEnVivienda: 1, familias: [familia(3, 3, 1)] };
-
-  let anotada = await c.anotarSiQuedoCompleta(cliente, 7, antes, despues, 100, 'disp');
-  verificar('Incompleta → completa: se anota', anotada && consultas.length === 1 &&
-    /INSERT INTO aud\.evento/.test(consultas[0].sql) && /'completitud'/.test(consultas[0].sql) &&
-    consultas[0].params[0] === 7 && /faltaban 2 integrante/.test(consultas[0].params[1]));
-
+  const cliente = {
+    query: async function (sql, params) {
+      consultas.push(params);
+      return { rows: [{ id: 9, tipo_id: 'CC', numero_id: '222' }] };
+    }
+  };
+  const porId = await v.responsablesDeVisitas(cliente, [
+    { numero: 1, responsable_id: null }, { numero: 2, responsable_id: 9 }, { numero: 3, responsable_id: 9 }]);
+  verificar('Responsables: sólo de las visitas 2 en adelante, sin repetir',
+    consultas.length === 1 && consultas[0][0].join(',') === '9' && porId.get('9').numero_id === '222');
   consultas.length = 0;
-  anotada = await c.anotarSiQuedoCompleta(cliente, 7, antes, { hogaresEnVivienda: 1, familias: [familia(3, 2, 1)] }, 100, null);
-  verificar('Sigue incompleta: no se anota', !anotada && consultas.length === 0);
-
-  anotada = await c.anotarSiQuedoCompleta(cliente, 7, despues, despues, 100, null);
-  verificar('Ya estaba completa: no se anota (no cambia su período)', !anotada && consultas.length === 0);
-
-  anotada = await c.anotarSiQuedoCompleta(cliente, 7, null, despues, 100, null);
-  verificar('Ficha nueva (sin «antes»): no se anota', !anotada && consultas.length === 0);
-
-  console.log('\n=== SQL ===');
-  verificar('La condición SQL mira integrantes y hogares',
-    /numero_integrantes >/.test(c.SQL_FICHA_INCOMPLETA) && /hogares_en_vivienda >/.test(c.SQL_FICHA_INCOMPLETA));
-  verificar('La fecha de completitud sale de aud.evento en hora de Colombia',
-    /America\/Bogota/.test(c.SQL_COMPLETADA_EL) && /'completitud', 'integrantes'/.test(c.SQL_COMPLETADA_EL));
+  await v.responsablesDeVisitas(cliente, [{ numero: 1, responsable_id: null }]);
+  verificar('Sin segundas visitas no consulta', consultas.length === 0);
 
   console.log('\nPasadas: ' + pasadas + '   Fallidas: ' + fallidas);
   process.exit(fallidas > 0 ? 1 : 0);

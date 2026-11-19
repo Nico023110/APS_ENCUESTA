@@ -144,10 +144,6 @@
     const excluidas = [];
     if (r.fichas.sinConsentimiento) excluidas.push(r.fichas.sinConsentimiento + ' sin consentimiento');
     if (r.fichas.noCerradas) excluidas.push(r.fichas.noCerradas + ' sin cerrar o con visita incompleta');
-    if (r.fichas.incompletas) {
-      excluidas.push(r.fichas.incompletas + (r.fichas.incompletas === 1 ? ' incompleta' : ' incompletas') +
-        ' (integrantes u hogares por caracterizar; ver abajo)');
-    }
     if (r.fichas.visitasAnterioresDelMismoHogar) {
       excluidas.push(r.fichas.visitasAnterioresDelMismoHogar + ' visitas anteriores de un hogar que se volvió a visitar');
     }
@@ -162,33 +158,38 @@
       destino.appendChild(aviso);
     });
 
-    /* RN-051 / RN-028: las incompletas no van en el archivo; se listan con
-       lo que les falta para completarlas (Historial → Completar integrantes o
-       Corregir). Entran en el archivo del período en que se completen. */
-    const incompletas = r.incompletas || [];
-    if (incompletas.length > 0) {
-      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Quedan por fuera hasta completarlas'));
+    /* RN-051 / RN-227 (2026-11-19): la visita que completó integrantes va en
+       su mes con la ficha completa; se listan para que se sepa por qué una
+       ficha de otro mes aparece aquí. */
+    const segundas = r.segundasVisitas || [];
+    if (segundas.length > 0) {
+      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Segundas visitas en este período'));
       destino.appendChild(elemento('p', 'field-hint',
-        'Les faltan integrantes del ítem 51 u hogares del ítem 28. Complételas desde el Historial: entrarán en el ' +
-        'archivo del período en que queden completas.'));
-      destino.appendChild(tablaSimple(['Ficha', 'Visita', 'Falta'], incompletas.map(function (f) {
+        'Visitas que completaron integrantes de una ficha anterior: van con todas sus personas y con la fecha y el ' +
+        'responsable de esta visita.'));
+      destino.appendChild(tablaSimple(['Ficha', 'CF', 'Primera visita', 'Esta visita'], segundas.map(function (v) {
+        return [{ texto: v.codigo, clase: 'mono' }, { texto: v.cf, clase: 'mono' }, { texto: v.primeraVisita }, { texto: v.fecha }];
+      })));
+    }
+
+    /* Las que todavía esperan integrantes u hogares: van con lo que tienen;
+       se listan para planear la visita que las complete. */
+    const pendientes = r.conPendientes || [];
+    if (pendientes.length > 0) {
+      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Con personas u hogares por caracterizar'));
+      destino.appendChild(elemento('p', 'field-hint',
+        'Van en el archivo con quienes estaban. Al visitar a quienes faltan, agréguelos desde Historial → Completar ' +
+        'integrantes: quedará como segunda visita (CF002) e irá en el archivo de ese mes.'));
+      destino.appendChild(tablaSimple(['Ficha', 'Visita', 'Falta'], pendientes.map(function (f) {
         const falta = [];
         if (f.integrantes) falta.push(f.integrantes + (f.integrantes === 1 ? ' integrante' : ' integrantes'));
         if (f.hogares) falta.push(f.hogares + (f.hogares === 1 ? ' hogar' : ' hogares'));
         return [{ texto: f.codigo, clase: 'mono' }, { texto: f.fecha }, { texto: falta.join(' y ') || '—' }];
       })));
-      if (r.fichas.incompletas > incompletas.length) {
-        destino.appendChild(elemento('p', 'field-hint', 'Se muestran las primeras ' + incompletas.length + ' de ' +
-          r.fichas.incompletas + '.'));
+      if (r.fichas.conPendientes > pendientes.length) {
+        destino.appendChild(elemento('p', 'field-hint', 'Se muestran las primeras ' + pendientes.length + ' de ' +
+          r.fichas.conPendientes + '.'));
       }
-    }
-
-    const tardias = r.completadasDespues || [];
-    if (tardias.length > 0) {
-      destino.appendChild(elemento('h3', 'reporte__subtitulo', 'Completadas en este período, de visitas anteriores'));
-      destino.appendChild(tablaSimple(['Ficha', 'Visita', 'Completada el'], tardias.map(function (f) {
-        return [{ texto: f.codigo, clase: 'mono' }, { texto: f.fecha }, { texto: f.completadaEl }];
-      })));
     }
 
     const detalle = r.incidencias.detalle || [];

@@ -43,7 +43,6 @@ const { requerirSesion } = require('./_auth');
 const { leerFichaCompleta } = require('./_ficha_completa');
 const { cambiosEnPlanRegistrado, esDelPlan } = require('./_plan_bloqueo');
 const { revisarIntegrantesNuevos, esDeIntegranteNuevo, cuentaAlCompletar } = require('./_integrantes_nuevos');
-const { anotarSiQuedoCompleta } = require('./_completitud');
 const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
@@ -699,6 +698,7 @@ async function guardarIntegrantesNuevos(cliente, motor, fichaId, encuesta, revis
 
   const indices = { familias: {}, integrantes: {} };
   let agregados = 0;
+  const integranteIds = [];
 
   for (const tramo of revision.nuevos) {
     const registrada = familiaDb(tramo.familia);
@@ -716,6 +716,7 @@ async function guardarIntegrantesNuevos(cliente, motor, fichaId, encuesta, revis
         familiaFichaId: registrada.id, familia: familia, encuesta: encuesta, integrante: familia.integrantes[ii], orden: orden
       });
       indices.integrantes[tramo.familia][ii] = escrito.integranteId;
+      integranteIds.push(escrito.integranteId);
       agregados++;
     }
   }
@@ -727,7 +728,55 @@ async function guardarIntegrantesNuevos(cliente, motor, fichaId, encuesta, revis
   });
   const escritas = await insertarAlertas(cliente, fichaId, deLosNuevos, indices);
 
-  return { agregados: agregados, alertas: escritas };
+  return { agregados: agregados, alertas: escritas, integranteIds: integranteIds };
+}
+
+/* RN-051 / RN-015 — Completar integrantes es una visita más de la misma ficha
+   (2026-11-19, por instrucción de los EBS): quien no estaba en la primera se
+   caracteriza al volver. Queda en aps.visita_ficha con su número (2, 3…), su
+   día y su responsable —quien completa—; los integrantes nuevos dicen que son
+   de ella, y el CF de todas las familias de la vivienda sube uno (CF002…).
+   El archivo plano del mes de esa visita lleva la ficha completa otra vez
+   (api/_visitas.js). El día sale del instante en que se guardó en el
+   dispositivo, sin pasar de hoy ni ser anterior a la primera visita. */
+async function registrarVisitaDeCompletar(cliente, fichaId, integranteIds, usuario, instante) {
+  const numero = Number((await cliente.query(`
+    SELECT coalesce((SELECT max(v.numero) FROM aps.visita_ficha v WHERE v.ficha_id = f.id), 1) + 1 AS numero
+      FROM aps.ficha f WHERE f.id = $1 FOR UPDATE
+  `, [fichaId])).rows[0].numero);
+
+  const visita = (await cliente.query(`
+    INSERT INTO aps.visita_ficha (ficha_id, numero, fecha, diligenciada_en, responsable_id, integrantes)
+    SELECT f.id, $2,
+           greatest(f.fecha_diligenciamiento,
+                    (least(coalesce($3::timestamptz, now()), now()) AT TIME ZONE 'America/Bogota')::date),
+           $3::timestamptz, $4, $5
+      FROM aps.ficha f WHERE f.id = $1
+    RETURNING numero, to_char(fecha, 'YYYY-MM-DD') AS fecha
+  `, [fichaId, numero, instante, usuario.funcionarioId, integranteIds.length])).rows[0];
+
+  await cliente.query('UPDATE aps.integrante SET visita_numero = $2 WHERE id = ANY($1::bigint[])',
+    [integranteIds, numero]);
+
+  /* El CF cuenta las visitas: sube uno en cada familia de la vivienda. */
+  const familias = (await cliente.query(`
+    UPDATE aps.familia_ficha ff
+       SET codigo_cf = 'CF' || lpad((coalesce(nullif(regexp_replace(coalesce(ff.codigo_cf, ''), '[^0-9]', '', 'g'), '')::int,
+                                             $2 - 1) + 1)::text, 3, '0')
+      FROM aps.familia fa
+     WHERE ff.ficha_id = $1 AND fa.id = ff.familia_id
+    RETURNING fa.consecutivo, ff.codigo_cf
+  `, [fichaId, numero])).rows.sort(function (a, b) { return Number(a.consecutivo) - Number(b.consecutivo); });
+
+  return { numero: Number(visita.numero), fecha: visita.fecha, codigosCf: familias.map(function (f) { return f.codigo_cf; }) };
+}
+
+/* El instante del dispositivo en que se completó, si llega y es una fecha. */
+function instanteDeCompletar(encuesta) {
+  const valor = encuesta && encuesta.completadoEn;
+  if (typeof valor !== 'string' || valor.length > 40) return null;
+  const ms = Date.parse(valor);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 /* Una visita nueva no puede pisar la ficha de otra persona.
@@ -1299,15 +1348,17 @@ module.exports = async (req, res) => {
     if (completarIntegrantes) {
       const resultado = await guardarIntegrantesNuevos(cliente, obtenerMotor(), existente.id, encuesta,
         revisionIntegrantes, alertas);
+      /* Agregar personas es otra visita (CF002…); sólo subir el ítem 51, no. */
+      const visita = resultado.agregados > 0
+        ? await registrarVisitaDeCompletar(cliente, existente.id, resultado.integranteIds, usuario,
+          instanteDeCompletar(encuesta))
+        : null;
       await cliente.query(`
         INSERT INTO aud.evento (ficha_id, entidad, entidad_id, tipo, campo, valor_nuevo, funcionario_id, dispositivo_id)
         VALUES ($1, 'ficha', $1, 'modificacion', 'integrantes', $2, $3, $4)
-      `, [existente.id, 'completados: ' + resultado.agregados + ' integrante(s) agregado(s)',
+      `, [existente.id, 'completados: ' + resultado.agregados + ' integrante(s) agregado(s)' +
+        (visita ? ' en la visita ' + visita.numero + ' (' + visita.codigosCf[0] + ', ' + visita.fecha + ')' : ''),
         usuario.funcionarioId, texto(encuesta.dispositivoId)]);
-      /* Con los que faltaban ya puestos, la ficha va al archivo plano del
-         período en que quedó completa. */
-      await anotarSiQuedoCompleta(cliente, existente.id, guardada, encuesta, usuario.funcionarioId,
-        texto(encuesta.dispositivoId));
       if (modificaPlanRegistrado) {
         await registrarCambioDelPlan(cliente, existente.id, usuario, encuesta, autorizacion, true);
       }
@@ -1323,6 +1374,14 @@ module.exports = async (req, res) => {
         codigo: texto(encuesta.codigoFicha),
         completarIntegrantes: true,
         integrantesAgregados: resultado.agregados,
+        visita: visita,
+        codigos: visita && guardada ? {
+          nuv: guardada.nuv || null,
+          idHogar: guardada.idHogar,
+          idFamilia: guardada.idFamilia || null,
+          familias: (guardada.familias || []).map(function (f) { return f.idFamilia; }),
+          codigosCf: visita.codigosCf
+        } : null,
         advertencias: advertencias.filter(function (a) { return cuentaAlCompletar(a, revisionIntegrantes.nuevos, esDelPlan); }),
         planCuidado: planCuidado
       });
@@ -1541,13 +1600,6 @@ module.exports = async (req, res) => {
       VALUES ($1, 'ficha', $1, $2, $3, $4, $5, $6)
     `, [fichaId, tipoEvento, usuario.funcionarioId, texto(encuesta.dispositivoId),
       decimal(encuesta.latitud), decimal(encuesta.longitud)]);
-
-    /* RN-051 / RN-028: si la corrección completa una ficha que estaba en la
-       base con integrantes u hogares por caracterizar, se anota: el archivo
-       plano la lleva en el período en que se completó. */
-    if (existente) {
-      await anotarSiQuedoCompleta(cliente, fichaId, guardada, encuesta, usuario.funcionarioId, texto(encuesta.dispositivoId));
-    }
 
     await anexoBd.escribirListasConvertidas(cliente, 'ficha', fichaId, encuesta);
     await anexoBd.escribirAnexo(cliente, motor, 'ficha', fichaId, encuesta, lectorFicha);

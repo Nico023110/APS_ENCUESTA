@@ -185,6 +185,31 @@ async function principal() {
        WHERE f.codigo = $1 AND e.campo = 'integrantes'`, [CODIGO])).rows;
     verificar('Queda en auditoría', evento.length === 1 && /1 integrante/.test(evento[0].valor_nuevo), JSON.stringify(evento));
 
+    console.log('\n=== Es una segunda visita (CF002) ===');
+    verificar('La respuesta dice la visita: la 2, CF002, con fecha de hoy',
+      r.cuerpo.visita && r.cuerpo.visita.numero === 2 && r.cuerpo.visita.codigosCf.join(',') === 'CF002' &&
+      r.cuerpo.visita.fecha === hoy(), JSON.stringify(r.cuerpo.visita));
+    verificar('  y los códigos para el teléfono (vivienda y CF de cada familia)',
+      r.cuerpo.codigos && r.cuerpo.codigos.idHogar && r.cuerpo.codigos.codigosCf.join(',') === 'CF002',
+      JSON.stringify(r.cuerpo.codigos));
+    const visitas = (await cliente.query(`
+      SELECT v.numero, v.fecha::text AS fecha, v.integrantes, u.documento AS responsable
+        FROM aps.visita_ficha v JOIN aps.ficha f ON f.id = v.ficha_id
+        JOIN aps.usuario u ON u.funcionario_id = v.responsable_id
+       WHERE f.codigo = $1 ORDER BY v.numero`, [CODIGO])).rows;
+    verificar('En la base queda la visita 2: hoy, con 1 integrante y quien completó como responsable',
+      visitas.length === 1 && visitas[0].numero === 2 && visitas[0].fecha === hoy() && visitas[0].integrantes === 1 &&
+      visitas[0].responsable === sesion.usuario.documento, JSON.stringify(visitas));
+    const porVisita = (await cliente.query(`
+      SELECT p.numero_id, i.visita_numero, ff.codigo_cf FROM aps.ficha f
+        JOIN aps.familia_ficha ff ON ff.ficha_id = f.id
+        JOIN aps.integrante i ON i.familia_ficha_id = ff.id
+        JOIN aps.persona p ON p.id = i.persona_id
+       WHERE f.codigo = $1 ORDER BY i.orden`, [CODIGO])).rows;
+    verificar('Cada integrante dice su visita (1 y 2) y la familia pasa a CF002',
+      porVisita.map((x) => x.numero_id + '@' + x.visita_numero).join(',') === DOC_1 + '@1,' + DOC_2 + '@2' &&
+      porVisita.every((x) => x.codigo_cf === 'CF002'), JSON.stringify(porVisita));
+
     const lista2 = await (await fetch(BASE + '/api/listar_fichas', { headers: sesion.cabeceras })).json();
     const fila2 = lista2.find((f) => f.codigoFicha === CODIGO) || {};
     verificar('El historial ya no tiene pendientes', fila2.integrantesPendientes === 0, String(fila2.integrantesPendientes));
@@ -206,6 +231,45 @@ async function principal() {
        WHERE f.codigo = $1 GROUP BY ff.numero_integrantes`, [CODIGO])).rows[0] || {};
     verificar('  quedan 3 declarados y 3 integrantes', Number(tres.numero_integrantes) === 3 && Number(tres.n) === 3,
       JSON.stringify(tres));
+    verificar('  y es la visita 3: CF003', r.cuerpo.visita && r.cuerpo.visita.numero === 3 &&
+      r.cuerpo.visita.codigosCf.join(',') === 'CF003', JSON.stringify(r.cuerpo.visita));
+
+    console.log('\n=== Cada visita en el archivo plano de su mes ===');
+    /* Sólo en esta ficha de prueba: las visitas 2 y 3 se pasan a meses
+       siguientes para ver qué lleva el archivo de cada mes. */
+    await cliente.query(`
+      UPDATE aps.visita_ficha v SET fecha = CASE v.numero WHEN 2 THEN DATE '2031-02-10' ELSE DATE '2031-03-15' END
+        FROM aps.ficha f WHERE f.id = v.ficha_id AND f.codigo = $1`, [CODIGO]);
+    await cliente.query(`UPDATE aps.ficha SET estado = 'cerrada', cerrada_en = coalesce(cerrada_en, now())
+      WHERE codigo = $1 AND estado NOT IN ('cerrada', 'sincronizada')`, [CODIGO]);
+    const { SQL_VISITAS_DEL_PERIODO, fichaEnLaVisita, responsablesDeVisitas } = require(RAIZ + '/api/_visitas');
+    const { leerFichasCompletas } = require(RAIZ + '/api/_ficha_completa');
+    const { construirReporte } = require(RAIZ + '/api/_reporte_sispro');
+    const fichaId = (await cliente.query('SELECT id FROM aps.ficha WHERE codigo = $1', [CODIGO])).rows[0].id;
+    const leida = (await leerFichasCompletas(cliente, [String(fichaId)]))[0];
+    const enMes = async function (desde, hasta) {
+      const vs = (await cliente.query(SQL_VISITAS_DEL_PERIODO, [desde, hasta])).rows
+        .filter((x) => String(x.ficha_id) === String(fichaId));
+      if (vs.length === 0) return null;
+      const resp = await responsablesDeVisitas(cliente, vs);
+      const enVisita = fichaEnLaVisita(leida, vs[0], resp.get(String(vs[0].responsable_id)) || null);
+      const reporte = construirReporte({ fichas: [enVisita], desde: desde, hasta: hasta,
+        entidad: { tipo: 'NI', numero: '805027289' }, subregion: '006', nitPrestador: '805027289' });
+      return { visita: vs[0].numero, fecha: vs[0].fecha, tipo3: reporte.resumen.registros.tipo3,
+        lineaFamilia: reporte.contenido.split('\r\n')[1] || '' };
+    };
+    const mes1 = await enMes(hoy().slice(0, 8) + '01', hoy());
+    const mes2 = await enMes('2031-02-01', '2031-02-28');
+    const mes3 = await enMes('2031-03-01', '2031-03-31');
+    verificar('Mes de la primera visita: la visita 1, sólo con quien estaba (1 registro tipo 3)',
+      mes1 && mes1.visita === 1 && mes1.tipo3 === 1, JSON.stringify(mes1 && { visita: mes1.visita, tipo3: mes1.tipo3 }));
+    verificar('Mes de la segunda: la visita 2 con su fecha y 2 personas',
+      mes2 && mes2.visita === 2 && mes2.fecha === '2031-02-10' && mes2.tipo3 === 2 && mes2.lineaFamilia.indexOf('|2031-02-10|') !== -1,
+      JSON.stringify(mes2 && { visita: mes2.visita, fecha: mes2.fecha, tipo3: mes2.tipo3 }));
+    verificar('Mes de la tercera: la ficha completa, 3 personas',
+      mes3 && mes3.visita === 3 && mes3.tipo3 === 3, JSON.stringify(mes3 && { visita: mes3.visita, tipo3: mes3.tipo3 }));
+    verificar('El responsable de la segunda visita va en la variable 28 de su mes',
+      mes2 && mes2.lineaFamilia.indexOf('|' + sesion.usuario.documento + '|') !== -1);
   } finally {
     const hogares = (await cliente.query('DELETE FROM aps.ficha WHERE codigo = $1 RETURNING hogar_id', [CODIGO])).rows
       .map((f) => f.hogar_id);

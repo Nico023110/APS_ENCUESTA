@@ -502,6 +502,8 @@ function mostrarAvisoDeCorreccion(encuesta, opciones) {
   } else if (o.completarIntegrantes) {
     texto = 'Completando los integrantes de la ficha ' + (encuesta.codigoFicha || encuesta.id) +
       '. Sólo se agregan los que no estaban en la visita, y su plan de cuidado: lo registrado no se modifica. ' +
+      'Al guardar queda como otra visita de la ficha (CF002, CF003…) con la fecha de hoy y usted como responsable, ' +
+      'y va en el archivo plano de este mes con todas sus personas. ' +
       'Si apareció alguien que no se declaró, aumente el ítem 51 de su familia.';
   } else {
     texto = 'Corrigiendo la ficha ' + (encuesta.codigoFicha || encuesta.id) +

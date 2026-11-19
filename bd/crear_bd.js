@@ -66,7 +66,9 @@ const SCRIPTS = [
   /* Idempotente. */
   { archivo: '19_apoyo_ebs.sql', descripcion: 'Personal de apoyo a varios EBS (enfoque diferencial)' },
   /* Idempotente. Sólo crea las tablas: los datos los carga bd/cargar_base_previa.js. */
-  { archivo: '20_base_previa.sql', descripcion: 'Caracterizaciones previas a la app (base 2025 – primer semestre 2026)' }
+  { archivo: '20_base_previa.sql', descripcion: 'Caracterizaciones previas a la app (base 2025 – primer semestre 2026)' },
+  /* Idempotente. */
+  { archivo: '21_segunda_visita.sql', descripcion: 'Segunda visita para completar integrantes (CF002…)' }
 ];
 
 /* Con --migrar se aplican sólo los scripts que no destruyen ni duplican: el
@@ -75,7 +77,7 @@ const SCRIPTS = [
 const DE_MIGRACION = ['02_catalogos_seed.sql', '06_migraciones.sql', '07_anexo_sispro.sql', '08_codigos_vivienda.sql',
   '09_hogar_de_familia.sql', '10_permiso_plan.sql', '11_hora_diligenciamiento.sql', '12_coordinacion_ebs.sql',
   '13_plan_opcional.sql', '14_codigo_cf.sql', '15_portafolio_cups.sql', '16_indices_rendimiento.sql', '17_barrios.sql',
-  '18_items_opcionales_anexo.sql', '19_apoyo_ebs.sql', '20_base_previa.sql'];
+  '18_items_opcionales_anexo.sql', '19_apoyo_ebs.sql', '20_base_previa.sql', '21_segunda_visita.sql'];
 
 /* ---------------------------------------------------------
    1. CONEXIÓN
