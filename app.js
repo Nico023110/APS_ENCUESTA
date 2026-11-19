@@ -3377,6 +3377,13 @@ function construirFamiliaDetalle(familia, fechaReferencia) {
         (familia.codigoCf ? ' · ficha <span class="mono">' + escaparHtml(familia.codigoCf) + '</span>' : '') +
       '</h5>' +
       '<p class="detalle-familia__meta">' + meta + '</p>' +
+      /* RN-230: ya se había caracterizado; esta ficha es una visita más. */
+      (Array.isArray(familia.antecedentes) && familia.antecedentes.length > 0
+        ? '<p class="detalle-familia__meta">Ya caracterizada antes: ' + familia.antecedentes.map(function (a) {
+            return escaparHtml((a.origen === 'base_previa' ? 'base 2025–2026, vivienda ' : 'ficha ') + a.referencia +
+              (a.fecha ? ' (' + a.fecha + (a.ebs ? ', ' + a.ebs : '') + ')' : ''));
+          }).join('; ') + '</p>'
+        : '') +
       (integrantes.length > 0
         ? '<p class="detalle-familia__etiqueta">Integrantes</p>' +
           '<ul class="detalle-integrantes">' + integrantes.map(function (integrante) {
@@ -5465,6 +5472,14 @@ async function guardarYReiniciar(datos, formulario, mensaje) {
   }
 }
 
+/* «familia 1 queda en CF002 (antes: base 2025–2026, vivienda 4128, 2025-09-23)». */
+function textoDeVisitaAnterior(v) {
+  const antes = (Array.isArray(v.antecedentes) ? v.antecedentes : []).map(function (a) {
+    return (a.origen === 'base_previa' ? 'base 2025–2026, vivienda ' : 'ficha ') + a.referencia + (a.fecha ? ', ' + a.fecha : '');
+  });
+  return 'familia ' + v.familia + ' queda en ' + v.codigoCf + (antes.length ? ' (antes: ' + antes.join('; ') + ')' : '');
+}
+
 async function guardarFichaYReiniciar(datos, formulario, mensaje) {
   const encuesta = construirEncuestaDesdeDatos(datos);
   const boton = document.getElementById('btnGuardar');
@@ -5519,6 +5534,12 @@ async function guardarFichaYReiniciar(datos, formulario, mensaje) {
       resultado.visita.fecha + '): va en el archivo plano de ese mes, con todas sus personas.';
   } else if (encuesta.nuv && encuesta.idHogar && !enPlan) {
     mensaje += ' Vivienda ' + encuesta.nuv + ' · código ' + encuesta.idHogar + '.';
+  }
+  /* RN-230: la familia ya se había caracterizado; esta ficha es una visita más. */
+  const yaCaracterizadas = Array.isArray(resultado.visitasAnteriores) ? resultado.visitasAnteriores : [];
+  if (yaCaracterizadas.length > 0) {
+    mensaje += ' ' + (yaCaracterizadas.length === 1 ? 'Esta familia ya estaba caracterizada' : 'Estas familias ya estaban caracterizadas') +
+      ': ' + yaCaracterizadas.map(textoDeVisitaAnterior).join('; ') + '.';
   }
 
   /* El plan diferido no es error: se avisa una vez, al guardar, dónde se
@@ -5660,7 +5681,8 @@ async function enviarFichaAlServidor(encuesta, boton) {
     if (respuesta.ok) {
       ultimaSubidaALaBase = Date.now();
       const cuerpo = await respuesta.json().catch(function () { return {}; });
-      return { estado: 'guardada', codigos: cuerpo.codigos || null, visita: cuerpo.visita || null };
+      return { estado: 'guardada', codigos: cuerpo.codigos || null, visita: cuerpo.visita || null,
+        visitasAnteriores: Array.isArray(cuerpo.visitasAnteriores) ? cuerpo.visitasAnteriores : [] };
     }
 
     /* 409: lo ya registrado en el plan de cuidado no se cambia sin

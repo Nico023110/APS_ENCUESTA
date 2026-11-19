@@ -43,6 +43,7 @@ const { requerirSesion } = require('./_auth');
 const { leerFichaCompleta } = require('./_ficha_completa');
 const { cambiosEnPlanRegistrado, esDelPlan } = require('./_plan_bloqueo');
 const { revisarIntegrantesNuevos, esDeIntegranteNuevo, cuentaAlCompletar } = require('./_integrantes_nuevos');
+const { registrarAntecedentes } = require('./_antecedentes');
 const roles = require('../roles.js');
 
 /* Convierte a entero o devuelve null. No sustituye por 1: un conteo ausente
@@ -758,11 +759,11 @@ async function registrarVisitaDeCompletar(cliente, fichaId, integranteIds, usuar
   await cliente.query('UPDATE aps.integrante SET visita_numero = $2 WHERE id = ANY($1::bigint[])',
     [integranteIds, numero]);
 
-  /* El CF cuenta las visitas: sube uno en cada familia de la vivienda. */
+  /* El CF cuenta las visitas a la familia: las anteriores a la ficha (base
+     anterior u otras fichas, api/_antecedentes.js) más la de esta ficha. */
   const familias = (await cliente.query(`
     UPDATE aps.familia_ficha ff
-       SET codigo_cf = 'CF' || lpad((coalesce(nullif(regexp_replace(coalesce(ff.codigo_cf, ''), '[^0-9]', '', 'g'), '')::int,
-                                             $2 - 1) + 1)::text, 3, '0')
+       SET codigo_cf = 'CF' || lpad((ff.visitas_anteriores + $2)::text, 3, '0')
       FROM aps.familia fa
      WHERE ff.ficha_id = $1 AND fa.id = ff.familia_id
     RETURNING fa.consecutivo, ff.codigo_cf
@@ -1807,6 +1808,16 @@ module.exports = async (req, res) => {
     }
     if (autorizacion) await gastarAutorizacion(cliente, fichaId, usuario, encuesta, autorizacion);
 
+    /* RN-015 / RN-230: si alguna de sus personas ya se había caracterizado
+       (base anterior u otra ficha), la familia va en su segunda visita
+       (CF002…) y queda el vínculo con la anterior. */
+    const visitasAnteriores = await registrarAntecedentes(cliente, fichaId, usuario.funcionarioId,
+      texto(encuesta.dispositivoId));
+    familias.forEach(function (familia, fi) {
+      const calculada = visitasAnteriores.find(function (v) { return v.consecutivo === fi + 1; });
+      if (calculada) familia.codigoCf = calculada.codigoCf;
+    });
+
     await cliente.query('COMMIT');
 
     console.log('  Ficha guardada: ' + texto(encuesta.codigoFicha) +
@@ -1824,6 +1835,13 @@ module.exports = async (req, res) => {
       advertencias: advertencias,
       /* RN-220 (plan diferido): la ficha entró; esto dice si aún le falta el plan. */
       planCuidado: planCuidado,
+      /* Familias que ya se habían caracterizado: con qué y en qué CF quedan.
+         Sólo referencias (vivienda anterior o código de ficha), sin datos personales. */
+      visitasAnteriores: visitasAnteriores.filter(function (v) { return v.antecedentes.length > 0; }).map(function (v) {
+        return { familia: v.consecutivo, codigoCf: v.codigoCf, antecedentes: v.antecedentes.map(function (a) {
+          return { origen: a.origen, referencia: a.referencia, fecha: a.fecha, ebs: a.ebs };
+        }) };
+      }),
       /* Los códigos asignados al guardar: el dispositivo los guarda en su
          copia de la ficha para mostrarlos y para corregirla después. */
       codigos: {

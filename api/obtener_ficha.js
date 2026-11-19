@@ -118,7 +118,11 @@ module.exports = async (req, res) => {
          familias (RN-028): todas, en su orden de captura, con el hogar al
          que pertenecen y sus integrantes. */
       consultar(`
-        SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes
+        SELECT ff.id, fa.codigo, ff.hogar_numero, ff.codigo_cf, ff.tipo_familia, ff.numero_integrantes,
+               /* RN-230: dónde se había caracterizado antes (22_visitas_anteriores.sql). */
+               (SELECT json_agg(json_build_object('origen', a.origen, 'referencia', a.referencia,
+                         'fecha', to_char(a.fecha, 'YYYY-MM-DD'), 'ebs', a.ebs) ORDER BY a.fecha, a.referencia)
+                  FROM aps.familia_antecedente a WHERE a.familia_ficha_id = ff.id) AS antecedentes
           FROM aps.familia_ficha ff
           JOIN aps.familia fa ON fa.id = ff.familia_id
          WHERE ff.ficha_id = (SELECT id FROM aps.ficha WHERE codigo = $1)
@@ -209,6 +213,7 @@ module.exports = async (req, res) => {
           idFamilia: familia.codigo,
           hogarNumero: familia.hogar_numero,
           codigoCf: familia.codigo_cf,
+          antecedentes: familia.antecedentes || [],
           tipoFamilia: familia.tipo_familia,
           numeroIntegrantes: familia.numero_integrantes,
           integrantes: integrantes
