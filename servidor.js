@@ -25,6 +25,17 @@ const path = require('path');
 const zlib = require('zlib');
 
 const PUERTO = Number(process.env.PUERTO) || 5173;
+
+/* Producción (NODE_ENV=production: servidor propio detrás de Caddy, ver
+   despliegue/INSTALACION.md): los manejadores se cargan una vez, sólo se
+   entregan los archivos que usa la aplicación y se exige HTTPS (HSTS). */
+const PRODUCCION = process.env.NODE_ENV === 'production';
+
+/* Dónde escucha. Por defecto sólo este equipo: en desarrollo se abre por
+   localhost, y en producción el único que debe llegar es el proxy (Caddy),
+   que le pasa la IP real del cliente. Si cualquiera pudiera llegar directo,
+   podría inventarse esa IP y saltarse el bloqueo por intentos fallidos. */
+const HOST = process.env.HOST || '127.0.0.1';
 const RAIZ = __dirname;
 const DIR_API = path.join(RAIZ, 'api');
 
@@ -55,15 +66,33 @@ const TIPOS = {
    con datos móviles es la diferencia que más se nota. */
 const COMPRIMIBLES = ['.html', '.js', '.css', '.json', '.webmanifest', '.csv', '.md', '.svg'];
 
-/* Nunca se sirven por HTTP, aunque estén en la carpeta del proyecto. */
-const VETADOS = [/^\.env/, /^\.git/, /^node_modules/, /^bd\//, /^pruebas\//, /^\.claude/, /^\.impeccable/];
+/* Nunca se sirven por HTTP, aunque estén en la carpeta del proyecto. Sin
+   distinguir mayúsculas: Windows no las distingue, y «/.ENV.local» abría el
+   mismo archivo que «/.env.local» (con las claves de la base). Respaldos y
+   documentos de trabajo llevan datos personales. */
+const VETADOS = [/^\.env/i, /^\.git/i, /^node_modules/i, /^bd\//i, /^pruebas\//i, /^\.claude/i, /^\.impeccable/i,
+  /^\.agents/i, /^\.vercel/i, /^respaldos\//i, /^entregables\//i, /^img\//i, /^api\//i, /^despliegue\//i,
+  /\.(dump|sql|md|docx?|xlsx?|csv|pdf|log)$/i];
+
+/* En producción, además, sólo lo que la aplicación usa: la lista del service
+   worker (sw.js), que pruebas/pwa.test.js mantiene completa. Lo demás no
+   existe hacia afuera, aunque esté en la carpeta. */
+function archivosDeLaAplicacion() {
+  const texto = fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
+  const bloque = /const ARCHIVOS = \[([\s\S]*?)\];/.exec(texto);
+  const rutas = bloque ? (bloque[1].match(/'\/[^']+'/g) || []).map(function (r) { return r.slice(2, -1); }) : [];
+  return new Set(rutas.concat(['sw.js']));
+}
+const PERMITIDOS = PRODUCCION ? archivosDeLaAplicacion() : null;
 
 /* Cabeceras de seguridad. Las mismas que declara vercel.json para producción;
    aquí se aplican en desarrollo para que lo que rompa la CSP rompa antes de
    desplegar. Fuentes, iconos y avisos se sirven desde la aplicación (vendor/)
    para que abra sin señal, así que ya no hay ningún CDN permitido: lo único
    externo es la geocodificación. */
-const CABECERAS_SEGURIDAD = {
+const CABECERAS_SEGURIDAD = Object.assign(PRODUCCION
+  /* Con HTTPS de por medio, el navegador no vuelve a intentar por http. */
+  ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}, {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
@@ -79,7 +108,7 @@ const CABECERAS_SEGURIDAD = {
     "base-uri 'self'",
     "form-action 'self'"
   ].join('; ')
-};
+});
 
 /* =========================================================
    1. EMULACIÓN DEL CONTRATO DE VERCEL
@@ -188,9 +217,20 @@ function recordarFechasDeCarga() {
 /* Se recarga el manejador en cada petición para poder editarlo sin
    reiniciar el servidor, y con él los módulos del proyecto que hayan
    cambiado. Es deliberado y sólo vale en desarrollo. */
+const manejadoresCargados = new Map();
+
 function cargarManejador(nombre) {
   const ruta = path.join(DIR_API, nombre + '.js');
   if (!fs.existsSync(ruta)) return null;
+
+  /* En producción el código no cambia mientras corre: se carga una vez. */
+  if (PRODUCCION) {
+    if (!manejadoresCargados.has(nombre)) {
+      const cargado = require(ruta);
+      manejadoresCargados.set(nombre, typeof cargado === 'function' ? cargado : cargado.default);
+    }
+    return manejadoresCargados.get(nombre);
+  }
 
   soltarModulosModificados();
   delete require.cache[require.resolve(ruta)];
@@ -256,6 +296,11 @@ function comprimido(absoluta, version, contenido) {
 }
 
 function atenderEstatico(peticion, respuesta, relativa) {
+  if (PERMITIDOS && !PERMITIDOS.has(relativa)) {
+    respuesta.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    respuesta.end('No se encontró');
+    return;
+  }
   if (VETADOS.some(function (patron) { return patron.test(relativa); })) {
     respuesta.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     respuesta.end('Acceso denegado');
@@ -356,7 +401,7 @@ const servidor = http.createServer(function (peticion, respuesta) {
   atenderEstatico(peticion, respuesta, ruta === '/' ? 'index.html' : ruta.replace(/^\/+/, ''));
 });
 
-servidor.listen(PUERTO, function () {
+servidor.listen(PUERTO, HOST, function () {
   const endpoints = fs.existsSync(DIR_API)
     ? fs.readdirSync(DIR_API).filter(function (a) {
       return a.endsWith('.js') && a.charAt(0) !== '_';
@@ -366,7 +411,8 @@ servidor.listen(PUERTO, function () {
   console.log('');
   console.log('  Encuesta_APS en marcha');
   console.log('  ----------------------');
-  console.log('  Abra:  http://localhost:' + PUERTO);
+  console.log('  Abra:  http://localhost:' + PUERTO + (HOST === '127.0.0.1' ? '' : '   (escucha en ' + HOST + ')') +
+    (PRODUCCION ? '   · producción: sólo los archivos de la aplicación' : ''));
   console.log('');
 
   if (endpoints.length > 0) {
