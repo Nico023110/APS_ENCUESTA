@@ -1,0 +1,8 @@
+{
+  "_como_se_usa": "Aviso de mudanza (mudanza.js). Con activa en false no se muestra nada. Para encenderlo: activa en true, revisar corte y apertura (hora de Colombia, -05:00) y subir a main. mensaje vacio = texto automatico con la fecha del corte. Solo se ve en la direccion vieja (Vercel); en la nueva nunca.",
+  "activa": false,
+  "nuevaDireccion": "https://ebs.saludladera.gov.co",
+  "corte": "2026-11-27T16:00:00-05:00",
+  "apertura": "2026-11-28T06:00:00-05:00",
+  "mensaje": ""
+}

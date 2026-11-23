@@ -8840,6 +8840,74 @@ select::-ms-expand { display: none; }
 }
 .aviso-version__boton--principal { background: #fff; color: var(--brand-700); font-weight: 700; }
 
+/* ---- Mudanza a la dirección nueva (mudanza.js) ----------------------------
+   Apagada no existe. Antes del corte es un aviso azul claro que se puede
+   cerrar; desde el corte, un bloque azul lleno que no se cierra, con lo que
+   falta subir en ámbar (lo pendiente, como en toda la aplicación). */
+.mudanza {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-6);
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-card);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  box-shadow: inset 0 0 0 1px var(--brand-100);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+}
+.mudanza--fuerte { background: var(--brand-700); color: #fff; box-shadow: var(--sh-2, none); }
+.app-main--reportes > .mudanza { grid-column: 1 / -1; }
+.puerta__acceso > .mudanza,
+.instalar > .mudanza { margin: 0; }
+.mudanza__titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.mudanza__titulo i { flex: none; font-size: 20px; }
+.mudanza__texto { margin: 0; }
+.mudanza__pendiente {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--warn-50);
+  color: var(--warn-700);
+  font-weight: 600;
+}
+.mudanza__pasos { margin: 0; padding-left: 1.3em; }
+.mudanza__pasos li + li { margin-top: 2px; }
+.mudanza__acciones { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
+.mudanza__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px var(--s-4);
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--brand-600);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.mudanza--fuerte .mudanza__boton { background: #fff; color: var(--brand-700); }
+.mudanza__boton--suave { background: transparent; color: var(--brand-700); box-shadow: inset 0 0 0 1px var(--brand-300); }
+.mudanza__boton:disabled { opacity: 0.65; cursor: default; }
+.mudanza__boton:focus-visible { outline: 3px solid var(--brand-300); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .mudanza { padding: var(--s-4); margin-bottom: var(--s-4); }
+  .mudanza__boton { flex: 1 1 100%; }
+}
+
 /* ---- Enlace a la instalación, bajo la tarjeta de acceso ------------------ */
 .acceso__instalar {
   align-self: center;

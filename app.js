@@ -1843,6 +1843,9 @@ function programarSalidaDeAviso(aviso, duracionMs) {
    --------------------------------------------------------- */
 
 function cambiarVista(nombreVista) {
+  /* Tras el corte de la mudanza (mudanza.js) no se empiezan fichas aquí; sí se
+     termina la que está en pantalla. */
+  if (nombreVista === 'nueva' && window.MUDANZA && !window.MUDANZA.permiteEntrarAlFormulario()) return;
   document.querySelectorAll('.view').forEach(function (vista) {
     vista.classList.toggle('is-active', vista.id === 'view-' + nombreVista);
   });
@@ -2338,6 +2341,13 @@ function renderizarEstadoSync() {
   const isla = boton.querySelector('.btn-sync__icono');
   isla.hidden = !vista.botonIcono;
   if (vista.botonIcono) isla.firstElementChild.className = 'ph ' + vista.botonIcono;
+
+  /* El aviso de mudanza dice qué falta subir antes de cambiar de dirección. */
+  if (window.MUDANZA) {
+    window.MUDANZA.alCambiarSincronia({
+      estado: estado, pendientes: pendientes, ajenas: ajenas.length, conOtraLlave: Boolean(conOtraLlave)
+    });
+  }
 }
 
 /* A quién buscar para que suba lo suyo. Por su nombre, si ya entró en este equipo

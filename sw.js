@@ -63,6 +63,7 @@ const ARCHIVOS = [
   '/logo-ladera.png',
 
   '/pwa.js',
+  '/mudanza.js',
   '/acceso_local.js',
   '/boveda.js',
   '/sesion.js',

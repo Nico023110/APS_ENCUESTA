@@ -15,3 +15,6 @@ respaldos/
 
 # Capturas de referencia del diseño (tableros SI-APS): material de trabajo.
 img/
+
+# Material de trabajo (guías, mensajes e imágenes de la mudanza): no es parte de la app.
+entregables/

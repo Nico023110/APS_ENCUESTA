@@ -557,6 +557,8 @@ function descartarYEmpezarOtra() {
    pregunta lo que hace falta: una ficha en blanco no tiene nada que perder, y
    sin autorización (RN-001) no hay borrador que ofrecer. */
 function empezarOtraFicha() {
+  /* Tras el corte de la mudanza (mudanza.js) aquí ya no se empiezan fichas. */
+  if (window.MUDANZA && !window.MUDANZA.permiteFichaNueva()) return;
   const enCorreccion = Boolean(encuestaEnCorreccion);
   const titulo = '¿Empezar otra encuesta?';
   const seguir = 'Seguir en esta encuesta';

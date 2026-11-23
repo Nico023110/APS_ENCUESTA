@@ -1,0 +1,51 @@
+MENSAJES PARA LOS LÍDERES DE EBS (WhatsApp)
+Fechas de mudanza.json. Si cambian, cámbielas también aquí y vuelva a generar
+las imágenes (node entregables/mudanza/generar_instructivo.js).
+==========================================================================
+
+
+1) AVISO PREVIO — el día que se enciende el aviso
+   Con la imagen instructivo_1_antes.png
+--------------------------------------------------------------------------
+
+📢 *Encuesta APS cambia de dirección*
+
+Desde el *viernes 27 de noviembre a las 4:00 p. m.* la aplicación se usa en:
+👉 *https://ebs.saludladera.gov.co*
+
+Es el *mismo usuario y la misma contraseña*.
+
+Antes de esa hora:
+1. Termine sus borradores.
+2. Abra la app con señal y toque *Sincronizar ahora* hasta que diga *Todo está en la base*.
+3. Si comparte el teléfono, cada persona entra y sube lo suyo.
+
+⚠️ Lo que quede sin subir en el teléfono *no pasa solo* a la dirección nueva.
+
+Por favor compartan este mensaje con todo su equipo.
+
+
+2) RECORDATORIO — el día antes del corte
+--------------------------------------------------------------------------
+
+⏰ *Recordatorio: mañana viernes a las 4:00 p. m.* Encuesta APS cambia a
+*https://ebs.saludladera.gov.co*
+
+Hoy mismo: termine sus borradores y sincronice hasta ver *Todo está en la base*.
+Desde mañana a las 4:00 p. m. la dirección vieja ya no deja empezar fichas nuevas.
+
+
+3) APERTURA — sábado 28 de noviembre, temprano
+   Con la imagen instructivo_2_ya.png
+--------------------------------------------------------------------------
+
+✅ *Ya está abierta la nueva dirección de Encuesta APS*
+👉 *https://ebs.saludladera.gov.co*
+
+1. Ábrala *con señal* y entre con su usuario y contraseña de siempre.
+2. Instálela: menú del navegador › *Instalar aplicación* (o la página *Instalar*).
+3. Espere el aviso *lista para trabajar sin señal*.
+4. Si en la app vieja le quedó algo sin subir: ábrala, súbalo y después desinstálela.
+
+La dirección vieja (aps-encuesta.vercel.app) ya no recibe fichas nuevas.
+Si algo no le funciona, escriba a su líder con una foto de la pantalla.
