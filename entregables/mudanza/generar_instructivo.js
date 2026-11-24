@@ -36,6 +36,7 @@ function cuando(texto) {
 const corte = cuando(configuracion.corte);
 
 function pagina(titulo, subtitulo, pasos, pie) {
+  const simple = pasos.length === 0;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
 <link rel="stylesheet" href="../../vendor/fuentes/fuentes.css">
 <style>
@@ -57,14 +58,19 @@ function pagina(titulo, subtitulo, pasos, pie) {
          font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 30px; }
   li b { color: #00365a; }
   .pie { margin-top: auto; background: #fcf4e8; color: #8a4e05; border-radius: 22px; padding: 28px 36px; font-size: 29px; line-height: 1.4; font-weight: 600; }
+  body.simple { justify-content: center; gap: 56px; }
+  body.simple h1 { font-size: 84px; }
+  body.simple .sub { font-size: 40px; }
+  body.simple .link strong { font-size: 62px; word-break: normal; white-space: nowrap; }
+  body.simple .link { padding: 56px 48px; }
   .puntos { display: flex; gap: 10px; } .puntos u { width: 18px; height: 18px; border-radius: 50%; display: block; }
-</style></head><body>
+</style></head><body class="${simple ? 'simple' : ''}">
   <div class="marca"><img src="../../logo-ladera.png" alt=""><span>Red de Salud de Ladera E.S.E.<br>Encuesta APS</span></div>
   <h1>${titulo}</h1>
   <p class="sub">${subtitulo}</p>
   <div class="link"><small>Dirección nueva</small><strong>${host}</strong></div>
-  <ol>${pasos.map(function (p, i) { return '<li><i>' + (i + 1) + '</i><span>' + p + '</span></li>'; }).join('')}</ol>
-  <p class="pie">${pie}</p>
+  ${pasos.length ? '<ol>' + pasos.map(function (p, i) { return '<li><i>' + (i + 1) + '</i><span>' + p + '</span></li>'; }).join('') + '</ol>' : ''}
+  ${pie ? '<p class="pie">' + pie + '</p>' : ''}
 </body></html>`;
 }
 
@@ -85,15 +91,10 @@ const IMAGENES = [
   {
     archivo: 'instructivo_2_ya.png',
     html: pagina(
-      'Ya está abierta la nueva dirección',
-      'Entre con su <b>usuario y contraseña de siempre</b>.',
-      [
-        'Abra <b>' + host + '</b> con señal y entre.',
-        'Instálela: menú del navegador › <b>Instalar aplicación</b> (o la página <b>Instalar</b>).',
-        'Espere el aviso <b>lista para trabajar sin señal</b>.',
-        'Si en la app vieja le quedó algo, ábrala, <b>súbalo</b> y después <b>desinstálela</b>.'
-      ],
-      'La dirección vieja (aps-encuesta.vercel.app) ya no recibe fichas nuevas.'
+      'Este es el nuevo link de Encuesta APS',
+      'A partir de ahora la aplicación se usa en esta dirección.',
+      [],
+      ''
     )
   }
 ];

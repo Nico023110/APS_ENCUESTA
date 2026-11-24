@@ -39,13 +39,7 @@ Desde mañana a las 4:00 p. m. la dirección vieja ya no deja empezar fichas nue
    Con la imagen instructivo_2_ya.png
 --------------------------------------------------------------------------
 
-✅ *Ya está abierta la nueva dirección de Encuesta APS*
+✅ *Este es el nuevo link de Encuesta APS*
 👉 *https://ebs.saludladera.gov.co*
 
-1. Ábrala *con señal* y entre con su usuario y contraseña de siempre.
-2. Instálela: menú del navegador › *Instalar aplicación* (o la página *Instalar*).
-3. Espere el aviso *lista para trabajar sin señal*.
-4. Si en la app vieja le quedó algo sin subir: ábrala, súbalo y después desinstálela.
-
-La dirección vieja (aps-encuesta.vercel.app) ya no recibe fichas nuevas.
-Si algo no le funciona, escriba a su líder con una foto de la pantalla.
+A partir de ahora la aplicación se usa en esta dirección.
