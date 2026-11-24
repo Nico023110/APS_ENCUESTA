@@ -12,7 +12,7 @@
    --desde es la hora de Colombia en que se sacó la copia final (está en el
    nombre del archivo: neon_20261127_2200.dump → "2026-11-27 22:00").
 
-   La sesión va con default_transaction_read_only: no puede cambiar nada.
+   La sesión es de sólo lectura (SET SESSION CHARACTERISTICS): no puede cambiar nada.
    Sólo muestra cantidades, códigos de ficha y EBS: ni nombres ni documentos.
    ========================================================================= */
 
@@ -40,8 +40,9 @@ const desde = coincide[1] + 'T' + coincide[2] + ':' + coincide[3] + ':00-05:00';
 (async function () {
   const cadena = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!cadena) throw new Error('No hay DATABASE_URL.');
-  const cliente = new Client(Object.assign({}, opcionesConexion(cadena), { options: '-c default_transaction_read_only=on' }));
+  const cliente = new Client(opcionesConexion(cadena));
   await cliente.connect();
+  await cliente.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
   try {
     const fichas = await cliente.query(
       `SELECT f.codigo, eq.codigo AS ebs,
