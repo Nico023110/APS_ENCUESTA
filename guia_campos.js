@@ -159,8 +159,8 @@ const GUIA_CAMPOS = {
     variable: '9',
     que: 'Punto de referencia: hito visual o descripción que facilita encontrar el hogar en el territorio.',
     como: 'Describa de manera clara y concreta cómo llegar, en máximo 200 caracteres. Ejemplo: al lado derecho de la ' +
-      'iglesia, dos casas a la izquierda del puesto de salud. Es indispensable cuando la vivienda no tiene dirección ' +
-      'o nomenclatura.'
+      'iglesia, dos casas a la izquierda del puesto de salud. Es obligatorio en zona rural y cuando la vivienda no tiene ' +
+      'dirección; en zona urbana con dirección es opcional.'
   },
 
   nuv: {
@@ -209,8 +209,9 @@ const GUIA_CAMPOS = {
 
   personasEnVivienda: {
     variable: '14',
-    que: 'Total de habitantes de toda la estructura de la vivienda.',
-    como: 'Escriba el número de personas. No se acepta texto.'
+    que: 'Personas que se encuentran en la vivienda en el momento de la caracterización y pueden dar sus datos.',
+    como: 'Escriba el número. No se acepta texto. La aplicación abre una hoja de integrante por cada persona. Si la ' +
+      'familia tiene más personas (ítem 51), se avisa que faltan y se caracterizan después, en una segunda visita.'
   },
 
   habitacionesVivienda: {
@@ -327,7 +328,8 @@ const GUIA_CAMPOS = {
   numeroIntegrantes: {
     variable: '22',
     que: 'Cantidad de personas que conforman o integran la familia.',
-    como: 'Escriba el número. No se acepta texto. La aplicación crea un bloque de integrante por cada persona.'
+    como: 'Escriba el número de toda la familia, aunque alguien no esté hoy. No se acepta texto. La aplicación abre una ' +
+      'hoja por cada persona que está en la vivienda (ítem 29).'
   },
 
   cuidadorPrincipal: {

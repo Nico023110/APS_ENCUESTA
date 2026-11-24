@@ -667,7 +667,10 @@ function seleccionarModoDireccion(modo) {
 
 // El modo se sugiere a partir del ítem 6 (área de ubicación de la vivienda).
 function sincronizarModoDireccionConArea() {
-  if (modoDireccionElegidoManualmente) return;
+  if (modoDireccionElegidoManualmente) {
+    actualizarMarcaDeReferencia(normalizarDireccion(recolectarComponentesDireccion()));
+    return;
+  }
   const area = document.getElementById('areaUbicacion').value;
   const modoSugerido = MODO_DIRECCION_POR_AREA[area];
   if (modoSugerido) seleccionarModoDireccion(modoSugerido);
@@ -768,9 +771,25 @@ function recolectarComponentesDireccion() {
   };
 }
 
+/* RN-024: en la vivienda urbana con dirección el punto de referencia es
+   opcional. La marca «*» y la ayuda lo dicen según lo que se va llenando. */
+function actualizarMarcaDeReferencia(direccion) {
+  const marca = document.getElementById('marcaReferencia');
+  const ayuda = document.getElementById('ayudaReferencia');
+  if (!marca || !ayuda) return;
+  const opcional = puntoDeReferenciaOpcional({
+    areaUbicacion: document.getElementById('areaUbicacion').value, direccionNormalizada: direccion
+  });
+  marca.textContent = opcional ? '(opcional)' : '*';
+  ayuda.textContent = opcional
+    ? 'Con la dirección basta; si lo llena, claro y concreto, máximo 200 caracteres.'
+    : 'Clara y concreta, máximo 200 caracteres.';
+}
+
 function actualizarVistaPreviaDireccion() {
   const componentes = recolectarComponentesDireccion();
   const resultado = normalizarDireccion(componentes);
+  actualizarMarcaDeReferencia(resultado);
 
   document.getElementById('direccionCanonica').textContent = resultado.canonica || '—';
   document.getElementById('direccionLegible').textContent = resultado.legible || '—';

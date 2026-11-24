@@ -75,6 +75,8 @@ const ARCHIVOS = [
   '/direccion.js',
   '/geocodificacion.js',
   '/reglas.js',
+  '/antropometria_tablas.js',
+  '/antropometria.js',
   '/formulario.js',
   '/cups.js',
   '/buscador_lista.js',

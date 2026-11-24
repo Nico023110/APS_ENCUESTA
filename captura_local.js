@@ -617,7 +617,7 @@ function restaurarBorrador(borrador) {
   const datos = borrador.datos;
 
   cambiarVista('nueva');
-  cargarEncuestaEnFormulario(datos);
+  cargarEncuestaEnFormulario(datos, { nueva: !(borrador.correccion && borrador.correccion.id) });
 
   /* La carga de una ficha da por autorizada la que no trae consentimiento, y
      todas las guardadas lo traen. Un borrador puede no traerlo todavía, y
@@ -853,11 +853,12 @@ function inicializarCapturaLocal() {
   const botonOtra = document.getElementById('btnEmpezarOtraFicha');
   if (botonOtra) botonOtra.addEventListener('click', empezarOtraFicha);
 
-  const equipo = document.getElementById('equipoSaludId');
-  if (equipo) {
-    equipo.addEventListener('input', actualizarCodigoPorEquipo);
-    equipo.addEventListener('change', actualizarCodigoPorEquipo);
-  }
+  /* Desde el formulario: el ítem 10 puede pasar de texto a lista (sesion.js). */
+  const alCambiarEquipo = function (evento) {
+    if (evento.target && evento.target.id === 'equipoSaludId') actualizarCodigoPorEquipo();
+  };
+  formulario.addEventListener('input', alCambiarEquipo);
+  formulario.addEventListener('change', alCambiarEquipo);
 
   /* Al pasar a segundo plano Android puede cerrar la pestaña sin aviso: se
      escribe ya, sin esperar la pausa. */

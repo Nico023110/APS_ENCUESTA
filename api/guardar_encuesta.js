@@ -1438,7 +1438,8 @@ module.exports = async (req, res) => {
       texto(encuesta.direccion) || texto(encuesta.direccionLegible),
       decimal(encuesta.latitud),
       decimal(encuesta.longitud),
-      texto(encuesta.ubicacionReferencia),
+      /* Opcional en la urbana con dirección (RN-024); la columna no admite nulos. */
+      texto(encuesta.ubicacionReferencia) || '',
       decimal(encuesta.latitud) === null || decimal(encuesta.longitud) === null,
       componentesDeDireccion(encuesta.direccionComponentes),
       /* RN-022: sin coordenadas, el motivo es obligatorio en el formulario;

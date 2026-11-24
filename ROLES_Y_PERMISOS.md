@@ -57,8 +57,8 @@ El instrumento no distingue permisos entre profesiones; lo que distingue es el
   social— que no pertenece a un EBS sino que apoya a los de determinadas
   comunas. Se crea **sin equipo** y con la lista de **EBS que apoya**
   (`aps.funcionario_apoyo_ebs`), que tienen que estar registrados. En el ítem
-  10 elige uno de ellos para cada visita (con uno solo, queda fijo) y el
-  servidor rechaza cualquier otro, porque el anexo SI‑APS exige en la variable
+  10 elige uno de ellos, de una lista desplegable, para cada visita (con uno
+  solo, queda fijo) y el servidor rechaza cualquier otro, porque el anexo SI‑APS exige en la variable
   25 del tipo 2 un EBS parametrizado en gestión técnica. Sus permisos son los
   de su nivel, y «su equipo» son todos los EBS que apoya: ve sus fichas y,
   como profesional, evoluciona el plan de cualquiera de ellas. El equipo de

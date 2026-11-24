@@ -234,6 +234,8 @@ verificar('A01', 'Cada pregunta del anexo muestra su código (A2.x / A3.x)', cod
 silencio('\n=== N / S. Límites y seguridad en pantalla ===');
 const campoNum = $('[data-rol="numeroIntegrantes"]');
 console.log = function () {};
+/* El ítem 29 son los presentes y manda las hojas: con 4 sólo abriría 4. */
+setVal($('#personasEnVivienda'), '40');
 setVal(campoNum, '31');
 console.log = silencio;
 verificar('N05', 'Ítem 51 en 31: lo baja a 30', campoNum.value === '30', campoNum.value);

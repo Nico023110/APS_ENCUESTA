@@ -138,7 +138,7 @@ Cuando el ítem 6 es "Área Urbana" el contenido esperado es barrio o localidad;
 
 **Estructura de la ficha técnica APS124CCFP (variable 15):** las letras EBS seguidas de un consecutivo de 3 dígitos (`EBS001`). Se verifica como **advertencia**, no como bloqueo: hay equipos registrados con otra forma y sus fichas cuelgan de ese código. La gestión de usuarios lo advierte al guardar un equipo que no la sigue.
 
-**Quién lo firma.** El personal asistencial y el maestro firman el ítem 10 con el EBS de su cuenta, fijo en el formulario. La coordinación del EBS y los líderes de zona no pertenecen a un EBS —cada zona agrupa varios—: al diligenciar una ficha indican el EBS de esa visita, con la lista de los EBS registrados, y el servidor rechaza un código que no corresponda a un EBS registrado y activo.
+**Quién lo firma.** El personal asistencial y el maestro firman el ítem 10 con el EBS de su cuenta, fijo en el formulario. Quien trabaja en **varios EBS** lo **elige de una lista desplegable con los suyos** (sin ninguno elegido de antemano: el EBS forma parte del código de la ficha); el servidor rechaza cualquier otro. La coordinación del EBS y los líderes de zona no pertenecen a un EBS —cada zona agrupa varios—: al diligenciar una ficha indican el EBS de esa visita, con la lista de los EBS registrados, y el servidor rechaza un código que no corresponda a un EBS registrado y activo.
 
 ### RN-011 — Prestador primario / Organismo de adscripción
 
@@ -236,7 +236,9 @@ Latitud y longitud deben registrarse siempre **como par**: no se admite una sin 
 
 ### RN-024 — Punto de referencia
 
-**Ítem 24.** Campo de texto alfanumérico obligatorio para consignar descripciones geográficas o hitos visuales que faciliten la localización exacta del hogar en territorio. Máximo **200 caracteres**, escritos de manera clara y concreta (ficha técnica, variable 9).
+**Ítem 24.** Campo de texto alfanumérico para consignar descripciones geográficas o hitos visuales que faciliten la localización exacta del hogar en territorio. Máximo **200 caracteres**, escritos de manera clara y concreta (ficha técnica, variable 9).
+
+**Cuándo es obligatorio (2026-11-24, a pedido de los EBS).** Es **opcional en zona urbana con dirección** y **obligatorio en zona rural** —aunque tenga dirección— y en toda vivienda **sin dirección**. La columna no admite nulos: si queda vacío se guarda vacío. Como PISIS exige la variable 11 del anexo, el archivo plano lleva **la dirección** cuando no hay punto de referencia.
 
 ### RN-025 — Número de identificación del hogar
 
@@ -277,7 +279,12 @@ Las fichas capturadas antes de este campo no lo traen y se leen como un hogar po
 
 ### RN-029 — Número de personas en la vivienda
 
-**Ítem 29.** Campo numérico entero obligatorio, **mayor a 0**. Debe ser **mayor o igual** a la suma de los integrantes declarados en el ítem 51 de todas las familias del hogar; si resulta menor, el sistema bloquea el avance por inconsistencia.
+**Ítem 29.** Campo numérico entero obligatorio, **mayor a 0**: las personas que **se encuentran en la vivienda en el momento de la caracterización** y pueden dar sus datos (2026-11-24, precisión de los EBS; variable 18 del anexo, «número de personas en la vivienda»). **No** es el tamaño de la familia: eso lo dice el ítem 51, que puede ser mayor.
+
+- **Las hojas de integrante salen de aquí.** En una ficha nueva con **una sola familia** se abre una hoja por cada persona presente, sin pasar de las que declara el ítem 51. Al cambiar el ítem se abren las que falten y se quitan sólo las **vacías**: ninguna con información se pierde. Con **varias familias** el ítem no dice cuántos presentes hay de cada una, así que las hojas salen del ítem 51, y quien no estaba se quita a mano («No estaba en la visita · quitar»).
+- **Quién falta se sabe por el ítem 51** (RN-051), con una advertencia que no impide guardar; se caracteriza en la segunda visita, que **no cambia** el ítem 29.
+- **En una ficha nueva** no puede haber más integrantes caracterizados que personas presentes (bloqueo). En una ficha ya registrada esto no se exige: los de la segunda visita no estaban en la primera.
+- **El riesgo del entorno no baja porque alguien no estuviera:** las alertas de hacinamiento y de elementos para dormir usan el mayor entre el ítem 29 y la suma del ítem 51. Los ítems 32 y 33 se siguen calculando con el 29, que es lo que se reporta.
 
 Valores superiores a 20 exigen confirmación explícita del encuestador.
 
@@ -424,7 +431,7 @@ Las fuentes no tratadas activan alerta de **agua no apta para consumo humano** c
    - **Quien faltaba se caracteriza en una segunda visita**, desde *Historial → Completar integrantes*: lo registrado queda intocable, sólo se agregan los integrantes que faltaban (y su plan de cuidado), y el ítem 51 puede aumentar —apareció alguien que no se declaró—, no disminuir. Lo puede hacer quien evoluciona el plan de esa ficha, sin autorización; el servidor escribe sólo lo nuevo y rechaza cambiar o quitar a un integrante registrado. **Agregar personas es otra visita de la misma ficha** (`aps.visita_ficha`, `bd/21_segunda_visita.sql`): tiene su número (2, 3…), su día —el del dispositivo al guardar, sin pasar de hoy ni ser anterior a la primera visita— y su responsable —quien completa—; cada integrante dice en qué visita se caracterizó, y el **CF de todas las familias de la vivienda sube uno** (CF002, CF003…, RN-015). Subir sólo el ítem 51 sin agregar a nadie no es una visita.
 2. **Ningún integrante capturado puede quedar incompleto.** Una instancia se considera completa cuando se han diligenciado todos los campos obligatorios *habilitados para ese individuo* según su edad y sexo. Un menor de 6 meses no responde tensión arterial y eso no lo hace incompleto; un adulto sin peso ni talla, sí.
 3. Debe existir **exactamente un** integrante con rol "Responsable económico de la familia" (ítem 72) por cada familia. El aviso nombra lo que falta o lo que sobra y se muestra sobre el integrante que hay que cambiar: si ninguno tiene el rol, sobre el primero («Ningún integrante de esta familia tiene el rol…»); si hay más de uno, sobre cada responsable adicional, citando al que ya lo tiene.
-4. La suma de los integrantes de todas las familias del hogar no puede superar el ítem 29 (RN-029).
+4. En una ficha nueva, los integrantes caracterizados de todas las familias no pueden superar a las personas presentes del ítem 29 (RN-029). En una ficha ya registrada no se exige: los de una segunda visita no estaban en la primera.
 5. Un integrante declarado sin caracterizar no impide subir la ficha (punto 1). Entre el 2026-11-18 y el 2026-11-19 sí lo impedía en una ficha nueva.
 
 ### RN-052 — Identificación de cuidador principal
@@ -784,7 +791,18 @@ Un par peso/talla que produzca un **IMC de 200 o más** se rechaza antes de guar
 
 ### RN-096 — Clasificación antropométrica
 
-**Ítem 96.** Selección obligatoria basada en las tablas del Ministerio de Salud, según indicador Peso para la Talla (P/T) o IMC para la edad, teniendo en cuenta el grupo de edad y la condición de gestación: Obesidad, Sobrepeso, Riesgo de Sobrepeso, Peso adecuado para la talla o IMC adecuado para la edad, Riesgo de Desnutrición Aguda (< 5 años) o Riesgo de delgadez (> 4 años), Desnutrición Aguda Moderada, Desnutrición Aguda Severa, Riesgo de Delgadez, Delgadez, Bajo Peso para la Edad Gestacional, Normal.
+**Ítem 96.** Desde el 2026-11-24 **la calcula la aplicación** con el peso, la talla, la edad y el sexo según la **Resolución 2465 de 2016** (`antropometria.js`), y **se puede cambiar**: lo que elige quien caracteriza no se vuelve a tocar, la pantalla dice cuál daba el cálculo y «Usar la calculada» la devuelve. Una ficha guardada se respeta tal como está.
+
+| Grupo | Indicador | Cortes |
+|---|---|---|
+| Menores de 5 años | Peso para la talla (longitud antes de los 24 meses), tablas OMS | Cuadro 2: > +3 obesidad; > +2 a ≤ +3 sobrepeso; > +1 a ≤ +2 riesgo de sobrepeso; ≥ −1 a ≤ +1 adecuado; ≥ −2 a < −1 riesgo de desnutrición aguda; < −2 a ≥ −3 moderada; < −3 severa |
+| 5 a 17 años | IMC para la edad, tablas OMS 2007 | Cuadro 3: > +2 obesidad; > +1 a ≤ +2 sobrepeso; ≥ −1 a ≤ +1 adecuado; ≥ −2 a < −1 riesgo de delgadez; < −2 delgadez |
+| 18 a 64 años | IMC | Cuadro 7: < 18,5 delgadez; 18,5 a < 25 normal; 25 a < 30 sobrepeso; ≥ 30 obesidad |
+| Gestantes de 18 a 64 años | IMC para la edad gestacional (Atalah) | Cuadro 12, semanas 6 a 42; las semanas salen de la fecha probable de parto |
+
+**Se elige a mano** cuando la norma no alcanza: **65 años o más**, gestantes sin fecha probable de parto o menores de 18 años, sexo intersexual en menores de 18, y tallas fuera de las tablas. El servidor no exige el cálculo: un teléfono con la versión anterior manda lo marcado a mano. Los resultados extremos (más de ±5 DE, o IMC fuera de 10 a 70) avisan que se verifiquen las medidas.
+
+Selección obligatoria, según indicador Peso para la Talla (P/T) o IMC para la edad, teniendo en cuenta el grupo de edad y la condición de gestación: Obesidad, Sobrepeso, Riesgo de Sobrepeso, Peso adecuado para la talla o IMC adecuado para la edad, Riesgo de Desnutrición Aguda (< 5 años) o Riesgo de delgadez (> 4 años), Desnutrición Aguda Moderada, Desnutrición Aguda Severa, Riesgo de Delgadez, Delgadez, Bajo Peso para la Edad Gestacional, Normal.
 
 La clasificación determina la conducta definida en **RN-204**.
 
@@ -1815,6 +1833,7 @@ Durante la elaboración de estas reglas se identificaron tres inconsistencias en
 | **2.2** | **14/10/2026** | **RN-028**: un hogar puede reunir varias familias; cada familia indica a qué hogar de la vivienda pertenece. **RN-228**: «Evolucionar plan» desde el historial y bloqueo de lo registrado en el plan de cuidado, que sólo se completa; cambiarlo exige autorización del usuario maestro. |
 | **2.5** | **20/10/2026** | Observaciones de la E.S.E. del 19/10/2026. **RN-222**: nada del plan de cuidado bloquea el guardado; lo que le falta a una fila se advierte y se completa con «Evolucionar plan». **RN-228**: en una fila registrada a medias sólo queda bloqueado lo escrito. **RN-115/125/136**: «Derivada» pide institución de destino y fecha de cita. **RN-226**: campo de motivo del «No cumple». **RN-015**: código `CFnnn` por familia (variable 19) y consecutivo reservado para las fichas sin terminar. **RN-114/124/136**: búsqueda CUPS tolerante y portafolio de la E.S.E. primero. |
 | **2.7** | **30/10/2026** | **RN-227** según la estructura de PISIS Cliente Neo (leída de su ventana «Estructura»): UZPE completa en la variable 4, códigos de las tablas de SISPRO, «no aplica» en toda obligatoria y texto sin signos. Vuelven a ser obligatorios el ítem 37 y los cigarrillos y años de fumador (A3.65–66); las preguntas de asbesto A3.103, 104 y 106 pasan a Sí/No. |
+| **2.10** | **24/11/2026** | Observaciones de los EBS. **RN-010**: quien trabaja en varios EBS elige el de la visita de una lista. **RN-024**: el punto de referencia es opcional en zona urbana con dirección (el plano lleva la dirección). **RN-029**: son las personas presentes al momento de la caracterización y mandan cuántas hojas se abren; quien falta se sabe por el ítem 51. **RN-096**: la clasificación nutricional se calcula según la Resolución 2465 de 2016 y se puede cambiar. |
 | **2.9** | **19/11/2026** | Por instrucción de los EBS: **RN-051** y **RN-028** vuelven a sólo advertir, y la ficha va al archivo plano con quienes estaban. **«Completar integrantes» es una segunda visita** de la misma ficha (`aps.visita_ficha`): sube el **CF** de todas las familias (RN-015) y va en el plano de su mes con la ficha completa, su fecha y su responsable (**RN-227**). **RN-230**: la copia sin internet trae toda la base, y la familia que ya estaba en la base anterior (o en otra ficha) queda en su segunda visita (CF002) con el vínculo a la anterior. |
 | **2.8** | **18/11/2026** | **RN-230**: la base de caracterizaciones de 2025 y del primer semestre de 2026 entra al sistema como consulta aparte (no como fichas), y el buscador «¿Ya fue caracterizada?» de Inicio avisa, con y sin señal, si una vivienda o una persona ya fue caracterizada. |
 | **2.6** | **30/10/2026** | Obligatoriedad según la columna «Requerido» del anexo SI-APS: 25 preguntas del anexo y los ítems **37, 70, 76 y 80** pasan a opcionales (**RN-222.7** ya no bloquea); las 7 listas obligatorias sin opción de exclusión reciben «Ninguno»/«Ninguna» y dejan de ser advertencia; los ítems **55 y 57** (RN-055, RN-057) pasan a obligatorios, también con «Ninguna». **RN-227**: un solo consecutivo en todo el archivo y lo no diligenciado va vacío entre `|` (sin «NO APLICA» en la variable 24 ni «No aplica» en la 84). |

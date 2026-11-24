@@ -349,6 +349,26 @@ function calcularImc(pesoKg, tallaCm) {
   return Math.round((pesoKg / (tallaMetros * tallaMetros)) * 100) / 100;
 }
 
+/* RN-024 — El punto de referencia es opcional en la vivienda urbana con
+   dirección. La rural lo exige aunque tenga dirección, y «Sin dirección» lo
+   exige en cualquier zona: es lo único que la ubica. */
+function puntoDeReferenciaOpcional(datos) {
+  if (!datos || datos.areaUbicacion !== 'urbana') return false;
+  const normalizada = datos.direccionNormalizada;
+  const direccion = normalizada ? (normalizada.completa ? normalizada.canonica : '') : datos.direccion;
+  return !esVacio(direccion) && !/^\s*SIN DIRECCI[OÓ]N\s*$/i.test(String(direccion));
+}
+
+/* Cuántas personas viven en la vivienda, para el riesgo del entorno. El ítem 29
+   cuenta a quienes estaban en la caracterización; el 51, a toda la familia: con
+   el mayor de los dos no se pierde el hacinamiento porque alguien no estuviera. */
+function personasQueViven(datos) {
+  const declaradas = (Array.isArray(datos && datos.familias) ? datos.familias : []).reduce(function (suma, familia) {
+    return suma + (familia && esEnteroPositivo(familia.numeroIntegrantes) ? familia.numeroIntegrantes : 0);
+  }, 0);
+  return Math.max(esEnteroPositivo(datos && datos.personasEnVivienda) ? datos.personasEnVivienda : 0, declaradas);
+}
+
 /* RN-032 y RN-033 — Personas por habitación y clasificación de hacinamiento.
    `calcularHacinamiento` de app.js resuelve la vista; esta función es la
    fuente de verdad de las reglas y añade el nivel crítico. */
@@ -785,8 +805,12 @@ const REGLAS_BLOQUE_3 = [
     mensaje: 'Las coordenadas se registran como par: complete latitud y longitud.'
   },
   {
+    /* Obligatorio salvo en la vivienda urbana con dirección (2026-11-24, a
+       pedido de los EBS): ahí la dirección ya la ubica, y es lo que se reporta
+       en la variable 11 cuando queda vacío. */
     codigo: 'RN-024',
     campo: 'ubicacionReferencia',
+    aplica: function (d) { return !puntoDeReferenciaOpcional(d); },
     valida: function (d) { return !esVacio(d.ubicacionReferencia); },
     mensaje: 'Registre un punto de referencia que facilite la localización del hogar.'
   },
@@ -2376,17 +2400,20 @@ function evaluarTodo(datos) {
       });
     }
 
-    // RN-029 — Las personas de la vivienda no pueden ser menos que los integrantes.
+    /* RN-029 — El ítem 29 son quienes están en la vivienda en la caracterización
+       (2026-11-24): en una ficha nueva no puede haber más hojas que personas
+       presentes. En una ya registrada sí: las de la segunda visita no estaban. */
     const totalIntegrantes = datos.familias.reduce(function (suma, familia) {
       return suma + (Array.isArray(familia.integrantes) ? familia.integrantes.length : 0);
     }, 0);
-    if (esEnteroPositivo(datos.personasEnVivienda) && totalIntegrantes > datos.personasEnVivienda) {
+    if (esEnteroPositivo(datos.personasEnVivienda) && datos.yaRegistradaEnLaBase !== true &&
+        totalIntegrantes > datos.personasEnVivienda) {
       salida.push({
         codigo: 'RN-029',
         campo: 'personasEnVivienda',
         ruta: 'personasEnVivienda',
         mensaje: 'Hay ' + totalIntegrantes + ' integrantes caracterizados y sólo ' +
-                 datos.personasEnVivienda + ' personas declaradas en la vivienda.',
+                 datos.personasEnVivienda + ' personas en la vivienda al momento de la caracterización (ítem 29).',
         severidad: SEVERIDAD.BLOQUEO,
         ambito: AMBITO.VIVIENDA,
         referencia: null
@@ -2521,7 +2548,8 @@ function alertasUrgenciaVital(datos) {
 /* --- RN-211 — Riesgo del entorno y la vivienda --- */
 function alertasEntorno(datos) {
   const alertas = [];
-  const hacinamiento = evaluarHacinamiento(datos.personasEnVivienda, datos.habitacionesVivienda);
+  const viven = personasQueViven(datos);
+  const hacinamiento = evaluarHacinamiento(viven, datos.habitacionesVivienda);
 
   if (hacinamiento.hacinamiento === 'si') {
     alertas.push(crearAlerta(
@@ -2635,11 +2663,11 @@ function alertasEntorno(datos) {
 
   // RN-031 — Déficit de elementos para dormir.
   if (esEnteroNoNegativo(datos.elementosParaDormir) && esEnteroPositivo(datos.personasEnVivienda) &&
-      datos.elementosParaDormir < datos.personasEnVivienda / 2) {
+      datos.elementosParaDormir < viven / 2) {
     alertas.push(crearAlerta(
       'RN-211', PRIORIDAD.REGULAR,
       'Déficit de elementos para dormir',
-      'Hay ' + datos.elementosParaDormir + ' elementos para ' + datos.personasEnVivienda + ' personas.',
+      'Hay ' + datos.elementosParaDormir + ' elementos para ' + viven + ' personas.',
       { plan: 'vivienda', ruta: 'elementosParaDormir' }
     ));
   }
@@ -3067,7 +3095,7 @@ function alertasContactosTuberculosis(datos) {
   });
   if (!hayCaso) return [];
 
-  const hacinamiento = evaluarHacinamiento(datos.personasEnVivienda, datos.habitacionesVivienda);
+  const hacinamiento = evaluarHacinamiento(personasQueViven(datos), datos.habitacionesVivienda);
   const prioridad = hacinamiento.hacinamiento === 'si' ? PRIORIDAD.PRIORITARIA : PRIORIDAD.REGULAR;
   const alertas = [];
 

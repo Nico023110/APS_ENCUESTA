@@ -768,13 +768,18 @@ function aplicarBloqueosDePlan(encuesta, opciones) {
    la cerraba —en una fila del plan ya registrado, bloqueada, no había forma
    (RN-228)—. Los nombres los pone resolverCombosCups al final de la carga. */
 let cargandoFichaEnFormulario = false;
+/* Lo que se está cargando es una ficha nueva sin guardar (un borrador), no una
+   registrada: las hojas de integrante las manda el ítem 29 (formulario.js). */
+let cargandoFichaNueva = false;
 
-function cargarEncuestaEnFormulario(encuesta) {
+function cargarEncuestaEnFormulario(encuesta, opciones) {
   cargandoFichaEnFormulario = true;
+  cargandoFichaNueva = Boolean(opciones && opciones.nueva);
   try {
     cargarEncuestaEnFormularioAhora(encuesta);
   } finally {
     cargandoFichaEnFormulario = false;
+    cargandoFichaNueva = false;
   }
 }
 
@@ -1128,6 +1133,17 @@ function reponerFirmaOriginal(formulario, encuesta) {
     const control = formulario.querySelector('[name="' + nombre + '"]');
     const valor = encuesta[nombre];
     if (!control || valor === undefined || valor === null || control.value === String(valor)) return;
+    /* Quien tiene varios EBS ve el ítem 10 como lista de los suyos, y el de la
+       ficha que corrige puede no ser uno de ellos: se agrega sólo para esta
+       corrección (sesion.js lo retira), y el servidor conserva la firma. */
+    if (nombre === 'equipoSaludId' && control.tagName === 'SELECT' &&
+        !Array.prototype.some.call(control.options, function (o) { return o.value === String(valor); })) {
+      const ajeno = document.createElement('option');
+      ajeno.value = String(valor);
+      ajeno.textContent = String(valor);
+      ajeno.dataset.ajeno = 'si';
+      control.appendChild(ajeno);
+    }
     control.value = String(valor);
     dispararCambio(control);
   });

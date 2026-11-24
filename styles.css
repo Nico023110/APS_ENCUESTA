@@ -8840,6 +8840,36 @@ select::-ms-expand { display: none; }
 }
 .aviso-version__boton--principal { background: #fff; color: var(--brand-700); font-weight: 700; }
 
+/* ---- Clasificación nutricional calculada (ítem 96, antropometria.js) ------ */
+.nutricion-calculada {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-control);
+  background: var(--brand-50);
+  color: var(--brand-800);
+  font-size: var(--fs-label);
+  line-height: 1.45;
+}
+.nutricion-calculada[hidden] { display: none; }
+.nutricion-calculada--diferente { background: var(--warn-50); color: var(--warn-700); }
+.nutricion-calculada__usar {
+  min-height: 40px;
+  padding: 6px var(--s-3);
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--brand-600);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+.nutricion-calculada__usar[hidden] { display: none; }
+
 /* ---- Mudanza a la dirección nueva (mudanza.js) ----------------------------
    Apagada no existe. Antes del corte es un aviso azul claro que se puede
    cerrar; desde el corte, un bloque azul lleno que no se cierra, con lo que

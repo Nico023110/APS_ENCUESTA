@@ -716,8 +716,8 @@
           <h3 class="eyebrow campos-grupo__titulo" id="grupoViviendaContacto">Ubicación y contacto</h3>
           <div class="form-grid">
             <div class="field field--xl" data-campo="ubicacionReferencia">
-              <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): *</label>
-              <span class="field-hint field-hint--inline">Clara y concreta, máximo 200 caracteres.</span>
+              <label for="ubicacionReferencia"><span class="item-num">24.</span> Ubicación del hogar (punto de referencia): <span id="marcaReferencia">*</span></label>
+              <span class="field-hint field-hint--inline" id="ayudaReferencia">Clara y concreta, máximo 200 caracteres.</span>
               <input type="text" id="ubicacionReferencia" name="ubicacionReferencia" maxlength="200" placeholder="Ej. Al lado derecho de la iglesia, casa verde con rejas negras">
             </div>
             <div class="anexo-grupo anexo-grupo--en-linea" data-anexo-grupo="vivienda-contacto"></div>
@@ -763,6 +763,7 @@
           <div class="form-grid form-grid--alineado">
             <div class="field field--md" data-campo="personasEnVivienda">
               <label for="personasEnVivienda"><span class="item-num">29.</span> N.° de personas en la vivienda: *</label>
+              <span class="field-hint field-hint--inline">Las que están en el momento de la caracterización y pueden dar sus datos.</span>
               <input type="number" id="personasEnVivienda" name="personasEnVivienda" min="1" step="1" placeholder="Ej. 4">
             </div>
             <div class="field field--md" data-campo="habitacionesVivienda">
@@ -1012,7 +1013,7 @@
                   </div>
                   <div class="field field--sm" data-campo="numeroIntegrantes">
                     <label><span class="item-num">51.</span> N.° de personas que conforman la familia: *</label>
-                    <span class="field-hint field-hint--inline">Genera un bloque de sección 5 por integrante.</span>
+                    <span class="field-hint field-hint--inline">Toda la familia, aunque alguien no esté hoy. Se abre una hoja por cada persona presente (ítem 29); las demás se caracterizan después.</span>
                     <input type="number" name="familias[0].numeroIntegrantes" min="1" step="1" data-rol="numeroIntegrantes" placeholder="Ej. 3">
                   </div>
                   <div class="field field--md" data-campo="idFamiliaBloque">
@@ -1351,6 +1352,8 @@
 
                       <div class="field field--full field--block" data-campo="clasificacionAntropometrica">
                         <label><span class="item-num">96.</span> Clasificación antropométrica del estado nutricional según indicador Peso para la Talla (P/T) o IMC para la edad: *</label>
+                        <!-- RN-096: se calcula con el peso, la talla, la edad y el sexo (antropometria.js); se puede cambiar. -->
+                        <p class="nutricion-calculada" data-rol="nutricionCalculada" role="status" hidden><span></span> <button type="button" class="nutricion-calculada__usar" data-accion="usarNutricionCalculada" hidden>Usar la calculada</button></p>
                         <div class="check-group check-group--una-columna" data-catalogo="CAT_CLASIFICACION_ANTROPOMETRICA" data-name="familias[0].integrantes[0].clasificacionAntropometrica" data-tipo="radio"></div>
                       </div>
 
@@ -2606,6 +2609,8 @@
 <script src="direccion.js"></script>
 <script src="geocodificacion.js"></script>
 <script src="reglas.js"></script>
+<script src="antropometria_tablas.js"></script>
+<script src="antropometria.js"></script>
 <script src="formulario.js"></script>
 <script src="cups.js"></script>
 <script src="buscador_lista.js"></script>

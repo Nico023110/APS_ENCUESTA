@@ -574,8 +574,8 @@
   }
 
   /* Quien trabaja en varios EBS (su principal y otros, o sólo los que apoya,
-     en el enfoque diferencial) elige en el ítem 10 el de la visita entre los
-     suyos; con uno solo, ese queda fijo. El servidor rechaza cualquier otro. */
+     en el enfoque diferencial) elige en el ítem 10 el de la visita, de una
+     lista con los suyos; con uno solo, ese queda fijo. El servidor rechaza cualquier otro. */
   function equiposQueApoya() {
     if (usuario.nivel === 'coordinacion') return [];
     const apoyo = Array.isArray(usuario.equiposApoyoCodigos) ? usuario.equiposApoyoCodigos : [];
@@ -585,38 +585,79 @@
     }));
   }
 
-  function abrirCampoDeEquipo(formulario, lista, ejemplo) {
-    const control = formulario.querySelector('[name="equipoSaludId"]');
+  /* El ítem 10 es un texto —fijo con un solo EBS, o abierto para la
+     coordinación— o una lista con los EBS de la persona. Al pasar de uno a
+     otro se conservan id y nombre; lo que escucha el campo lo hace desde el
+     formulario, no desde el control. */
+  function controlDeEquipo(formulario, etiqueta) {
+    const actual = formulario.querySelector('[name="equipoSaludId"]');
+    if (!actual || actual.tagName === etiqueta) return actual;
+    const nuevo = document.createElement(etiqueta.toLowerCase());
+    nuevo.id = actual.id;
+    nuevo.name = 'equipoSaludId';
+    if (etiqueta === 'INPUT') {
+      nuevo.type = 'text';
+      nuevo.placeholder = 'Ej. EBS001';
+    }
+    actual.replaceWith(nuevo);
+    return nuevo;
+  }
+
+  function abrirCampoDeEquipo(formulario) {
+    const control = controlDeEquipo(formulario, 'INPUT');
     if (!control) return;
     control.readOnly = false;
     control.classList.remove('is-sesion');
-    control.setAttribute('list', lista || 'listaEquiposEbs');
+    control.setAttribute('list', 'listaEquiposEbs');
     control.setAttribute('autocomplete', 'off');
-    control.placeholder = 'EBS de esta visita, ej. ' + (ejemplo || 'EBS001');
+    control.placeholder = 'EBS de esta visita, ej. EBS001';
   }
 
-  function listaDeApoyo(equipos) {
-    let lista = document.getElementById('listaEquiposApoyo');
-    if (!lista) {
-      lista = document.createElement('datalist');
-      lista.id = 'listaEquiposApoyo';
-      document.body.appendChild(lista);
-    }
-    lista.innerHTML = '';
+  /* Sus EBS en una lista, sin ninguno elegido: escribirlo a mano traía errores
+     de digitación, y el EBS forma parte del código de la ficha. La lista no se
+     rehace si no cambió, para no borrar lo elegido al confirmarse la sesión. */
+  function abrirListaDeEquipo(formulario, equipos) {
+    const control = controlDeEquipo(formulario, 'SELECT');
+    if (!control) return;
+    control.classList.remove('is-sesion');
+    control.removeAttribute('tabindex');
+    control.removeAttribute('aria-readonly');
+
+    /* El EBS de otra persona que se puso para corregir su ficha sobra en cuanto
+       el formulario vuelve a estar en blanco. */
+    Array.prototype.forEach.call(control.querySelectorAll('option[data-ajeno]'), function (opcion) {
+      if (control.value !== opcion.value) opcion.remove();
+    });
+
+    const firma = equipos.join(',');
+    if (control.dataset.equipos === firma) return;
+    const elegido = control.value;
+    control.dataset.equipos = firma;
+    control.textContent = '';
+    const vacia = document.createElement('option');
+    vacia.value = '';
+    vacia.textContent = 'Elija el EBS de esta visita…';
+    control.appendChild(vacia);
     equipos.forEach(function (codigo) {
       const opcion = document.createElement('option');
       opcion.value = codigo;
-      lista.appendChild(opcion);
+      opcion.textContent = codigo;
+      control.appendChild(opcion);
     });
-    return lista.id;
+    control.value = equipos.indexOf(elegido) !== -1 ? elegido : '';
+  }
+
+  function fijarEquipo(formulario, codigo) {
+    if (!controlDeEquipo(formulario, 'INPUT')) return;
+    fijarCampo(formulario, 'equipoSaludId', codigo);
   }
 
   function aplicarEnFormulario(formulario) {
     if (!formulario || !usuario || usuario.nivel === 'administrador') return;
     const apoyo = equiposQueApoya();
     if (eligeEquipoDeLaFicha()) abrirCampoDeEquipo(formulario);
-    else if (apoyo.length > 1) abrirCampoDeEquipo(formulario, listaDeApoyo(apoyo), apoyo[0]);
-    else fijarCampo(formulario, 'equipoSaludId', apoyo[0] || usuario.equipoCodigo || '');
+    else if (apoyo.length > 1) abrirListaDeEquipo(formulario, apoyo);
+    else fijarEquipo(formulario, apoyo[0] || usuario.equipoCodigo || '');
     fijarCampo(formulario, 'responsableTipoId', usuario.tipoId || 'CC');
     fijarCampo(formulario, 'responsableNumeroId', usuario.documento);
     fijarCampo(formulario, 'perfilProfesional', usuario.perfilProfesional || usuario.rol);
@@ -629,7 +670,7 @@
         ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Como lidera una zona, indique en el ítem 10 ' +
           'el EBS de esta visita.'
         : apoyo.length > 1
-          ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Indique en el ítem 10 el EBS de esta ' +
+          ? 'Responsable tomado de su sesión: ' + usuario.nombre + '. Elija en el ítem 10 el EBS de esta ' +
             'visita: ' + apoyo.join(', ') + '.'
           : 'Equipo y responsable tomados de su sesión: ' + usuario.nombre +
             (apoyo[0] || usuario.equipoCodigo ? ', ' + (apoyo[0] || usuario.equipoCodigo) : '') + '.';

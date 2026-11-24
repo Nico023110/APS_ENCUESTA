@@ -275,7 +275,9 @@ function variablesTipo2(m, c) {
     7: { valor: function (ctx) { return R(e(ctx).microterritorio); } },
     9: { valor: function (ctx) { return R(e(ctx).divisionTerritorial); } },
     10: { valor: function (ctx) { return c.codigoDe('CAT_AREA_UBICACION', e(ctx).areaUbicacion); } },
-    11: { valor: function (ctx) { return R(e(ctx).ubicacionReferencia); } },
+    /* PISIS la exige: si no hay punto de referencia (RN-024, urbana con
+       dirección) va la dirección, que es lo que la ubica. */
+    11: { valor: function (ctx) { return R(e(ctx).ubicacionReferencia || e(ctx).direccion); } },
     12: { valor: function (ctx) { return R(coordenada(e(ctx).longitud, 10)); } },
     13: { valor: function (ctx) { return R(coordenada(e(ctx).latitud, 10)); } },
     14: { valor: function (ctx) { return R(e(ctx).direccion); } },

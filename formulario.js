@@ -957,7 +957,89 @@ function actualizarCondicionalesIntegrante(bloque) {
 
   actualizarAtencionesRpms(bloque, meses, sexo, gestante);
   actualizarImc(bloque, edad);
+  actualizarClasificacionNutricional(bloque, edad, sexo, gestante);
   actualizarTension(bloque);
+}
+
+/* RN-096 — Ítem 96: la clasificación que da la Resolución 2465 de 2016 con el
+   peso, la talla, la edad y el sexo (antropometria.js). Se marca sola, como
+   valor autoasignado, y quien caracteriza la puede cambiar: lo que elige a mano
+   —o lo que ya venía en una ficha guardada— no se vuelve a tocar, y se le dice
+   cuál daba el cálculo. Cuando la norma no alcanza se elige a mano. */
+function clasificacionCalculada(bloque, edad, sexo, gestante) {
+  if (typeof ANTROPOMETRIA === 'undefined') return null;
+  let semanas = null;
+  if (gestante) {
+    const campoParto = bloque.querySelector('[name$=".fechaEventoObstetrico"]');
+    const dias = campoParto && campoParto.value ? diferenciaEnDias(fechaDeReferencia(), campoParto.value) : null;
+    semanas = ANTROPOMETRIA.semanasDeGestacion(dias);
+  }
+  return ANTROPOMETRIA.clasificarEstadoNutricional({
+    sexo: sexo, edad: edad, gestante: gestante, semanas: semanas,
+    peso: numeroDe(bloque.querySelector('[data-rol="peso"]')),
+    talla: numeroDe(bloque.querySelector('[data-rol="talla"]'))
+  });
+}
+
+function actualizarClasificacionNutricional(bloque, edad, sexo, gestante) {
+  const aviso = bloque.querySelector('[data-rol="nutricionCalculada"]');
+  const radios = Array.prototype.slice.call(bloque.querySelectorAll('input[type="radio"][name$=".clasificacionAntropometrica"]'));
+  if (!aviso || radios.length === 0) return;
+  const r = clasificacionCalculada(bloque, edad, sexo, gestante);
+  if (!r) return;
+
+  const cargando = typeof cargandoFichaEnFormulario !== 'undefined' && cargandoFichaEnFormulario;
+  const bloqueado = radios[0].matches(':disabled');
+  const elRadio = function (valor) { return radios.find(function (x) { return x.value === valor; }); };
+  let marcado = radios.find(function (x) { return x.checked; }) || null;
+  const automatico = marcado !== null && marcado.dataset.autoasignado === 'si';
+
+  if (!bloqueado && !cargando) {
+    if (r.valor && (!marcado || (automatico && marcado.value !== r.valor))) {
+      radios.forEach(function (x) { delete x.dataset.autoasignado; });
+      marcado = elRadio(r.valor);
+      autoasignar(marcado);
+    } else if (!r.valor && automatico) {
+      marcado.checked = false;
+      delete marcado.dataset.autoasignado;
+      marcado = null;
+    }
+  }
+  /* Lo que coincide con el cálculo sigue con él: si cambia el peso o la talla,
+     cambia. Lo que no coincide lo eligió alguien y se respeta. */
+  if (r.valor && marcado && marcado.value === r.valor) autoasignar(marcado);
+
+  const textoDe = function (valor) {
+    const opcion = CAT_CLASIFICACION_ANTROPOMETRICA.find(function (x) { return x.valor === valor; });
+    return opcion ? opcion.etiqueta : valor;
+  };
+  const diferente = Boolean(r.valor && marcado && marcado.value !== r.valor);
+  let mensaje = '';
+  if (r.valor) {
+    mensaje = (diferente
+      ? 'Eligió «' + textoDe(marcado.value) + '». Con el peso y la talla da «' + textoDe(r.valor) + '» (' + r.detalle + ').'
+      : 'Calculada: «' + textoDe(r.valor) + '» (' + r.detalle + '). Puede cambiarla si hace falta.') +
+      (r.extremo ? ' El resultado es extremo: verifique el peso y la talla.' : '');
+  } else if (r.motivo) {
+    mensaje = r.motivo;
+  }
+  aviso.hidden = mensaje === '';
+  aviso.classList.toggle('nutricion-calculada--diferente', diferente || Boolean(r.valor && r.extremo));
+  if (aviso.firstElementChild.textContent !== mensaje) aviso.firstElementChild.textContent = mensaje;
+  aviso.querySelector('[data-accion="usarNutricionCalculada"]').hidden = !diferente || bloqueado;
+}
+
+/* Vuelve al valor calculado y deja que siga al peso y la talla. */
+function usarNutricionCalculada(boton) {
+  const bloque = boton.closest('[data-bloque="integrante"]');
+  if (!bloque) return;
+  bloque.querySelectorAll('input[type="radio"][name$=".clasificacionAntropometrica"]').forEach(function (x) {
+    x.checked = false;
+    delete x.dataset.autoasignado;
+  });
+  actualizarCondicionalesIntegrante(bloque);
+  const marcado = bloque.querySelector('input[type="radio"][name$=".clasificacionAntropometrica"]:checked');
+  if (marcado) marcado.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /** Ítem 73 — Nombre de la ocupación CIUO bajo el código escrito. */
@@ -1212,6 +1294,55 @@ function autoasignar(control) {
   control.dataset.autoasignado = 'si';
 }
 
+/* RN-029 / RN-051 — Cuántas hojas de integrante se abren. El ítem 51 es toda la
+   familia; el 29, quienes están en la vivienda: se abre una hoja por cada
+   persona presente. Sólo en una ficha nueva con una sola familia, porque con
+   varias el 29 no dice cuántos hay de cada una, y en una ficha ya registrada las
+   hojas las manda la ficha. Devuelve las hojas que tocan. */
+function hojasSegunPresentes(declarados) {
+  const cargando = typeof cargandoFichaEnFormulario !== 'undefined' && cargandoFichaEnFormulario;
+  const nueva = cargando
+    ? typeof cargandoFichaNueva !== 'undefined' && cargandoFichaNueva
+    : !(typeof encuestaEnCorreccion !== 'undefined' && encuestaEnCorreccion);
+  if (!nueva || document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]').length !== 1) return declarados;
+  const campo = document.getElementById('personasEnVivienda');
+  const presentes = campo ? Number(campo.value) : 0;
+  return Number.isInteger(presentes) && presentes >= 1 ? Math.min(declarados, presentes) : declarados;
+}
+
+/* Al cambiar el ítem 29 se abren las hojas que faltan y se quitan las vacías que
+   sobran. Nunca una con información: eso lo decide quien caracteriza. */
+function ajustarHojasAlCambiarPresentes() {
+  const familias = document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]');
+  if (familias.length !== 1 || (typeof encuestaEnCorreccion !== 'undefined' && encuestaEnCorreccion)) return;
+  const campo = familias[0].querySelector('[data-rol="numeroIntegrantes"]');
+  const contenedor = familias[0].querySelector('[data-rol="contenedorIntegrantes"]');
+  const declarados = campo ? Number(campo.value) : 0;
+  if (!contenedor || !Number.isInteger(declarados) || declarados < 1) return;
+
+  const objetivo = hojasSegunPresentes(declarados);
+  let bloques = Array.prototype.slice.call(contenedor.querySelectorAll(':scope > [data-bloque="integrante"]'));
+  for (let i = bloques.length; i < objetivo; i++) {
+    const clon = crearDesdePrototipo('integrante');
+    if (clon) contenedor.appendChild(clon);
+  }
+  for (let i = bloques.length - 1; i >= 0 && bloques.length > objetivo; i--) {
+    if (bloqueTieneDatos(bloques[i])) continue;
+    bloques[i].remove();
+    bloques.splice(i, 1);
+  }
+  const quedan = contenedor.querySelectorAll(':scope > [data-bloque="integrante"]').length;
+  if (quedan > objetivo) {
+    mostrarNotificacion('Hay ' + quedan + ' hojas con información y en el ítem 29 puso ' + campoPresentes() +
+      (campoPresentes() === 1 ? ' persona' : ' personas') + '. Si alguien no estaba, quite su hoja con «No estaba en la visita · quitar».', 'warning');
+  }
+  finalizarSincronizacion();
+}
+
+function campoPresentes() {
+  return Number((document.getElementById('personasEnVivienda') || {}).value);
+}
+
 /**
  * Genera o retira bloques de integrante para igualar el ítem 51 (RN-051).
  * Al reducir se pide confirmación explícita, porque los bloques sobrantes
@@ -1245,8 +1376,12 @@ function sincronizarIntegrantes(familia) {
     return sincronizarIntegrantes(familia);
   }
 
-  if (declarados > actuales) {
-    for (let i = actuales; i < declarados; i++) {
+  const objetivo = hojasSegunPresentes(declarados);
+  const previo = campo.dataset.declarado;
+  campo.dataset.declarado = String(declarados);
+
+  if (objetivo > actuales) {
+    for (let i = actuales; i < objetivo; i++) {
       const clon = crearDesdePrototipo('integrante');
       if (clon) contenedor.appendChild(clon);
     }
@@ -1254,8 +1389,14 @@ function sincronizarIntegrantes(familia) {
     return;
   }
 
-  if (declarados < actuales) {
-    const sobrantes = Array.prototype.slice.call(bloques, declarados);
+  /* Al abrir un borrador no se quita ninguna hoja: las que trae son las suyas. */
+  if (objetivo < actuales && typeof cargandoFichaEnFormulario !== 'undefined' && cargandoFichaEnFormulario) {
+    finalizarSincronizacion();
+    return;
+  }
+
+  if (objetivo < actuales) {
+    const sobrantes = Array.prototype.slice.call(bloques, objetivo);
     const conDatos = sobrantes.filter(bloqueTieneDatos).length;
 
     // Sin información capturada no hay nada que perder: se retiran directamente.
@@ -1281,8 +1422,9 @@ function sincronizarIntegrantes(familia) {
         );
       },
       alCancelar: function () {
-        // Se restablece el ítem 51 al número de bloques realmente presentes.
-        campo.value = actuales;
+        // Se restablece el ítem 51 (con menos presentes que familia, al que había).
+        campo.value = objetivo < declarados && previo ? previo : actuales;
+        campo.dataset.declarado = campo.value;
         finalizarSincronizacion();
       }
     });
@@ -1560,6 +1702,10 @@ function manejarCambioEnFormulario(evento) {
   if (objetivo.dataset.rol === 'numeroIntegrantes' && evento.type === 'change' && bloqueFamilia) {
     sincronizarIntegrantes(bloqueFamilia);
   }
+  if (objetivo.id === 'personasEnVivienda' && evento.type === 'change') {
+    const cargando = typeof cargandoFichaEnFormulario !== 'undefined' && cargandoFichaEnFormulario;
+    if (!cargando) ajustarHojasAlCambiarPresentes();
+  }
 
   // Los selectores de 6.2 y 6.3 se alimentan de los datos de identificación,
   // así que deben repintarse ante cualquier cambio dentro de una familia.
@@ -1584,6 +1730,9 @@ function manejarClicEnFormulario(evento) {
   switch (accion) {
     case 'btnAgregarFamilia':
       agregarBloque('#contenedorFamilias', 'familia');
+      /* Con más de una familia el ítem 29 ya no dice cuántas hojas lleva cada
+         una: vuelven a salir del ítem 51, como siempre. */
+      Array.prototype.forEach.call(document.querySelectorAll('#contenedorFamilias > [data-bloque="familia"]'), sincronizarIntegrantes);
       break;
 
     case 'agregarIntegrante': {
@@ -1627,6 +1776,10 @@ function manejarClicEnFormulario(evento) {
 
     case 'quitarFila':
       quitarFila(boton);
+      return;
+
+    case 'usarNutricionCalculada':
+      usarNutricionCalculada(boton);
       return;
 
     case 'agregarAccionVivienda':
