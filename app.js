@@ -1589,6 +1589,8 @@ function marcarComoSubida(enviada, codigos) {
 /* Sincronizar es subir lo que sólo está en este equipo y, después, traer lo
    que haya en la base: así también aparece lo que otros dispositivos del
    equipo guardaron. Con nada pendiente, el toque sólo trae. */
+const MAXIMO_RECHAZOS_EN_AVISO = 4;
+
 async function sincronizarEncuestas() {
   if (sincronizacionEnCurso) return;
 
@@ -1690,20 +1692,22 @@ async function sincronizarEncuestas() {
        consola: se queda sin saber qué corregir y la ficha no sube nunca. El
        servidor ya devuelve qué campo falla; se muestra. */
     if (rechazadas.length > 0) {
-      const primera = rechazadas[0];
-
       /* Tres desenlaces distintos y tres mensajes distintos. Decir «no hubo
          respuesta del servidor» ante un 500 manda a revisar la red o la base
-         cuando el servidor ya dijo exactamente qué falló. */
-      let detalle;
-      if (primera.bloqueos.length > 0) {
-        detalle = ' ' + primera.codigo + ': ' + primera.bloqueos[0].mensaje;
-      } else if (primera.fallaDelServidor) {
-        detalle = ' ' + primera.codigo + ': el servidor no pudo guardarla — ' +
-          primera.fallaDelServidor;
-      } else {
-        detalle = ' ' + primera.codigo + ': no hubo respuesta del servidor.';
-      }
+         cuando el servidor ya dijo exactamente qué falló. Y de todas: con dos
+         rechazadas sólo se decía el motivo de la primera. */
+      const detalle = ' ' + rechazadas.slice(0, MAXIMO_RECHAZOS_EN_AVISO).map(function (r) {
+        if (r.bloqueos.length > 0) {
+          const b = r.bloqueos[0];
+          const otros = r.bloqueos.length - 1;
+          return r.codigo + ': ' + (b.referencia ? b.referencia + ': ' : '') + b.mensaje +
+            (otros > 0 ? ' (y ' + textoCantidad(otros, 'dato más', 'datos más') + ' por corregir)' : '') +
+            ' Corríjala desde el Historial.';
+        }
+        if (r.fallaDelServidor) return r.codigo + ': el servidor no pudo guardarla — ' + r.fallaDelServidor + '.';
+        return r.codigo + ': no hubo respuesta del servidor.';
+      }).join(' · ') + (rechazadas.length > MAXIMO_RECHAZOS_EN_AVISO
+        ? ' · Hay ' + (rechazadas.length - MAXIMO_RECHAZOS_EN_AVISO) + ' más.' : '');
 
       mostrarNotificacion(
         (exitosas > 0 ? textoCantidad(exitosas, 'ficha subió', 'fichas subieron') + ' a la base. ' : '') +
@@ -5901,6 +5905,8 @@ function normalizarCampoCapturado(evento) {
     limpio = limpiarNumeroDocumento(campo.value);
   } else if (CAMPOS_CODIGO_FICHA_TECNICA.indexOf(nombre) !== -1) {
     limpio = campo.value.toUpperCase().replace(/\s+/g, '');
+  } else if (nombre === 'telefonoVivienda' || /\.telefono[12]$/.test(nombre)) {
+    limpio = telefonoLimpio(campo.value);
   }
 
   if (limpio !== campo.value) campo.value = limpio;

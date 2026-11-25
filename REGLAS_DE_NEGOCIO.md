@@ -601,9 +601,11 @@ Este dato es **sensible** y tiene tratamiento reforzado conforme a RN-224.
 
 ### RN-070 — Teléfono 1
 
-**Ítem 70.** Campo numérico **opcional**: el anexo técnico no lo exige (variable 15 del registro tipo 3, «Requerido» NO). Si se registra, acepta de **10 a 20 dígitos** (numérico de hasta 20 en el anexo). Los fijos de 7 dígitos ya no se aceptan: desde la marcación nacional los fijos de Cali también tienen 10 (60 2 + número). El sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
+**Ítem 70.** Campo numérico **opcional**: el anexo técnico no lo exige (variable 15 del registro tipo 3, «Requerido» NO). Si se registra, son **10 dígitos** exactos (numérico de hasta 20 en el anexo). Los fijos de 7 dígitos ya no se aceptan: desde la marcación nacional los fijos de Cali también tienen 10 (60 2 + número). El sistema rechaza secuencias repetidas o consecutivas evidentemente falsas.
 
 Conviene registrar al menos un teléfono por familia, porque las derivaciones del Plan de Cuidado y los seguimientos de los ítems 118, 119, 128, 129, 139 y 140 dependen de poder contactar al hogar; pero desde el 30-10-2026 su ausencia **no impide cerrar la ficha**. Si el hogar carece de teléfono, puede registrarse la novedad **"sin medio de contacto telefónico"**.
+
+**Cómo se guarda (2026-11-25).** Los teléfonos de los ítems 70 y 71 y el de la vivienda (A2.15) se guardan con los **10 dígitos seguidos**: la aplicación y el servidor quitan espacios, guiones y el 57. Si no quedan exactamente 10 —un dígito de más, dos números juntos— la regla lo señala; antes se aceptaban hasta 20 dígitos y la base rechazaba la ficha al subirla.
 
 ### RN-071 — Teléfono 2
 

@@ -714,6 +714,14 @@ verificar('Ocupación 9998 (sin ocupación remunerada) => válida',
   codigos(fichaConFamilia({ ocupacion: '9998' })).indexOf('RN-073') === -1);
 verificar('Teléfono de 7 dígitos (fijo antiguo) => bloqueo RN-070',
   codigos(fichaConFamilia({ telefono1: '4451234' })).indexOf('RN-070') !== -1);
+['315 555 1234', '315-555-1234', '+57 315 555 1234', '573155551234'].forEach(function (t) {
+  verificar('Teléfono «' + t + '» => válido (se guarda limpio)', codigos(fichaConFamilia({ telefono1: t })).indexOf('RN-070') === -1);
+});
+['31555512345', '3155551234 3165551234', '3155551234/3165551234', '3333333333'].forEach(function (t) {
+  verificar('Teléfono «' + t + '» => bloqueo RN-070 (la base lo rechazaría)', codigos(fichaConFamilia({ telefono1: t })).indexOf('RN-070') !== -1);
+});
+verificar('El mismo teléfono escrito distinto en el 2 => bloqueo RN-071',
+  codigos(fichaConFamilia({ telefono1: '3155551234', telefono2: '+57 315 555 1234' })).indexOf('RN-071') !== -1);
 const familiaSinTelefono = fichaConFamilia({ telefono1: null });
 verificar('Familia sin teléfono y sin la novedad => cierra (ítem 70 / variable 15, «Requerido» NO)',
   codigos(familiaSinTelefono).indexOf('RN-070') === -1 && validarCierre(familiaSinTelefono).puedeCerrar,

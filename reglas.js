@@ -239,13 +239,28 @@ function documentoValidoParaTipo(tipo, numero) {
   return documentoValidoParaFormato(tipo === 'CC' ? 'numerico_6_10' : 'alfanumerico_5_16', numero);
 }
 
-/* RN-070 / RN-071 — Teléfono de 10 a 20 dígitos, sin secuencias falsas. El
-   anexo técnico (variables 15 y 16 del registro 3) no admite menos de 10:
-   desde 2021 los fijos de Colombia también marcan 10 (60 + indicativo). */
+/* RN-070 / RN-071 — El teléfono como se guarda: los 10 dígitos seguidos, sin
+   espacios, guiones ni el 57 de Colombia. Sólo si así quedan exactamente 10: lo
+   demás (un dígito de más, dos números juntos) se devuelve como llegó, para que
+   la regla lo señale y nadie adivine cuál es. */
+function telefonoLimpio(valor) {
+  if (valor === null || valor === undefined) return valor;
+  const texto = String(valor).trim();
+  const digitos = texto.replace(/\D/g, '');
+  const sinPais = /^(?:00)?57(\d{10})$/.exec(digitos);
+  if (sinPais) return sinPais[1];
+  return digitos.length === 10 ? digitos : texto;
+}
+
+/* RN-070 / RN-071 — Teléfono de 10 dígitos, sin secuencias falsas: lo que
+   admiten el anexo técnico (variables 15 y 16 del registro 3: no menos de 10) y
+   la base (int_telefono1_formato). Desde 2021 los fijos de Colombia también
+   marcan 10 (60 + indicativo). Hasta el 2026-11-25 aceptaba hasta 20 dígitos y
+   la base rechazaba la ficha al subirla. */
 function telefonoValido(valor) {
   if (esVacio(valor)) return false;
-  const limpio = String(valor).replace(/\D/g, '');
-  if (limpio.length < 10 || limpio.length > 20) return false;
+  const limpio = telefonoLimpio(valor);
+  if (!/^\d{10}$/.test(limpio)) return false;
   if (/^(\d)\1+$/.test(limpio)) return false;               // 3333333333
   if ('01234567890123456789'.indexOf(limpio) !== -1) return false; // consecutivos
   return true;
@@ -1357,14 +1372,15 @@ const REGLAS_INTEGRANTE = [
     campo: 'telefono1',
     aplica: function (i) { return !esVacio(i.telefono1); },
     valida: function (i) { return telefonoValido(i.telefono1); },
-    mensaje: 'Teléfono inválido. Use 10 dígitos (celular, o fijo con 60 + indicativo), sin secuencias repetidas.'
+    mensaje: 'Teléfono inválido. Escriba un solo número de 10 dígitos (celular, o fijo con 60 + indicativo), sin ' +
+      'secuencias repetidas. Si hay otro, va en el teléfono 2.'
   },
   {
     codigo: 'RN-071',
     campo: 'telefono2',
     aplica: function (i) { return !esVacio(i.telefono2); },
-    valida: function (i) { return telefonoValido(i.telefono2) && String(i.telefono2) !== String(i.telefono1); },
-    mensaje: 'El teléfono alternativo debe ser válido y distinto del teléfono 1.'
+    valida: function (i) { return telefonoValido(i.telefono2) && telefonoLimpio(i.telefono2) !== telefonoLimpio(i.telefono1); },
+    mensaje: 'El teléfono 2 debe ser un solo número de 10 dígitos, distinto del teléfono 1.'
   },
   {
     codigo: 'RN-072',

@@ -634,6 +634,10 @@ async function evaluarAdvertenciasIntegridad(cliente, encuesta) {
    Y recomponerlo es además lo correcto: un `completa: true` que viene en el
    cuerpo de la petición no prueba nada, porque quien envía el POST lo
    escribe. Se recalcula desde los componentes, que son el dato de origen. */
+function vacioDeTelefono(valor) {
+  return valor === null || valor === undefined || valor === '';
+}
+
 function prepararFicha(m, encuesta) {
   const copia = Object.assign({}, encuesta);
 
@@ -649,6 +653,29 @@ function prepararFicha(m, encuesta) {
      una ficha sin componentes de dirección también lo necesita. */
   if (typeof m.liderDelEntorno === 'function') {
     copia.cabezaFamilia = m.liderDelEntorno(copia) || copia.cabezaFamilia || null;
+  }
+
+  /* RN-070 / RN-071: el teléfono se escribe limpio («315 555 1234» o «+57 315…»
+     es 3155551234). La base sólo admite los dígitos, y un teléfono con la
+     versión anterior lo manda como se escribió: rechazarla dejaba la ficha
+     atrapada en el equipo. */
+  if (typeof m.telefonoLimpio === 'function') {
+    if (!vacioDeTelefono(copia.telefonoVivienda)) copia.telefonoVivienda = m.telefonoLimpio(copia.telefonoVivienda);
+    if (Array.isArray(copia.familias)) {
+      copia.familias = copia.familias.map(function (familia) {
+        if (!familia || typeof familia !== 'object' || !Array.isArray(familia.integrantes)) return familia;
+        return Object.assign({}, familia, {
+          integrantes: familia.integrantes.map(function (integrante) {
+            if (!integrante || typeof integrante !== 'object') return integrante;
+            const limpio = Object.assign({}, integrante);
+            ['telefono1', 'telefono2'].forEach(function (campo) {
+              if (!vacioDeTelefono(limpio[campo])) limpio[campo] = m.telefonoLimpio(limpio[campo]);
+            });
+            return limpio;
+          })
+        });
+      });
+    }
   }
 
   /* RN-053: la clasificación del ZARIT sale del puntaje (variable 115 del

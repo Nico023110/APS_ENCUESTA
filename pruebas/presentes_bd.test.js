@@ -151,6 +151,16 @@ async function principal() {
     verificar('una clasificación distinta de la calculada se guarda', r.estado === 200, r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 300));
     const c96 = (await cliente.query('SELECT i.clasificacion_antropometrica c FROM aps.integrante i JOIN aps.familia_ficha ff ON ff.id = i.familia_ficha_id JOIN aps.ficha f ON f.id = ff.ficha_id WHERE f.codigo = $1', [manual])).rows[0];
     verificar('  tal como se mandó', c96 && c96.c === 'normal', JSON.stringify(c96));
+
+    console.log('\n=== 70. El teléfono que dejaba la ficha atrapada en el equipo ===');
+    const tel = nuevo('TEL');
+    r = await enviar(ficha(tel, { telefonoVivienda: '315 555 0000' }, [integrante(DOCS[0], 'Ana', null, { telefono1: '+57 315-555 1234', telefono2: '316 555 1234' })]));
+    verificar('con espacios, guion y +57: se guarda', r.estado === 200, r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 300));
+    const t = (await cliente.query('SELECT i.telefono1, i.telefono2, v.telefono_vivienda FROM aps.integrante i JOIN aps.familia_ficha ff ON ff.id = i.familia_ficha_id JOIN aps.ficha f ON f.id = ff.ficha_id JOIN aps.vivienda v ON v.ficha_id = f.id WHERE f.codigo = $1', [tel])).rows[0];
+    verificar('  y queda limpio', t && t.telefono1 === '3155551234' && t.telefono2 === '3165551234' && t.telefono_vivienda === '3155550000', JSON.stringify(t));
+    const telMalo = nuevo('TEL2');
+    r = await enviar(ficha(telMalo, {}, [integrante(DOCS[0], 'Ana', null, { telefono1: '31555512345' })]));
+    verificar('con un dígito de más: 400 que señala el campo, no un error de la base', r.estado === 400 && (r.cuerpo.bloqueos || []).some((b) => b.codigo === 'RN-070' && /telefono1$/.test(b.ruta)), r.estado + ' ' + JSON.stringify(r.cuerpo).slice(0, 300));
   } finally {
     const hogares = (await cliente.query('DELETE FROM aps.ficha WHERE codigo = ANY($1) RETURNING hogar_id', [codigos])).rows.map((f) => f.hogar_id);
     const sinFicha = `SELECT h.id FROM aps.hogar h WHERE h.id = ANY($1::bigint[]) AND NOT EXISTS (SELECT 1 FROM aps.ficha f WHERE f.hogar_id = h.id)`;
